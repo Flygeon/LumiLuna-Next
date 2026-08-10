@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, onMounted, onBeforeUnmount } from "vue";
 import { useLibraryStore } from "@/stores/library";
 import { usePlayerStore } from "@/stores/player";
 import { useSettingsStore } from "@/stores/settings";
@@ -13,6 +13,8 @@ const player = usePlayerStore();
 const settings = useSettingsStore();
 const router = useRouter();
 const songs = ref<Song[]>([]);
+const songCache = ref<Map<string, Song>>(new Map());
+let cancelled = false;
 
 function t(key: string) {
   return translate(settings.lang, key);
@@ -22,13 +24,26 @@ async function loadSongs() {
   await library.refresh("audio");
   const list: Song[] = [];
   for (const f of library.files) {
+    // 优先使用缓存
+    if (songCache.value.has(f.id)) {
+      list.push(songCache.value.get(f.id)!);
+      continue;
+    }
     const meta = library.metaMap[f.id];
     const song: Song = { file: f, meta, coverBase64: null };
-    try {
-      const full = await capabilities.getSong(f.id);
-      if (full.coverBase64) song.coverBase64 = full.coverBase64;
-    } catch {}
     list.push(song);
+    // 异步加载封面（不阻塞列表渲染）
+    capabilities.getSong(f.id).then((full) => {
+      if (cancelled) return;
+      if (full.coverBase64) {
+        song.coverBase64 = full.coverBase64;
+        songCache.value.set(f.id, song);
+      }
+      if (full.lyrics) {
+        song.lyrics = full.lyrics;
+        songCache.value.set(f.id, song);
+      }
+    }).catch(() => {});
   }
   songs.value = list;
 }
@@ -39,13 +54,8 @@ async function play(song: Song, index: number) {
   router.push("/music/player");
 }
 
-function formatTime(ms: number) {
-  if (!ms) return "—";
-  const s = Math.floor(ms / 1000);
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
-}
-
 onMounted(loadSongs);
+onBeforeUnmount(() => { cancelled = true; });
 </script>
 
 <template>

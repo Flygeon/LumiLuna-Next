@@ -92,7 +92,9 @@ export const capabilities = {
   /** 用系统默认应用打开文件 */
   async openFile(path: string): Promise<void> {
     if (isTauri) {
-      await openPath(path);
+      // 规范化路径分隔符（Windows 反斜杠 → 正斜杠）
+      const normalizedPath = path.replace(/\\/g, "/");
+      await openPath(normalizedPath);
     }
   },
   /** 选择目录，返回路径或 null */

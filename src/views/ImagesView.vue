@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { onMounted, ref, onBeforeUnmount } from "vue";
 import { useLibraryStore } from "@/stores/library";
 import { useSettingsStore } from "@/stores/settings";
 import { capabilities } from "@/capabilities";
 import { translate } from "@shared/i18n";
-import type { MediaFile } from "@shared/types";
 
 const library = useLibraryStore();
 const settings = useSettingsStore();
 const thumbs = ref<Record<string, string>>({});
+let cancelled = false;
 
 function t(key: string) {
   return translate(settings.lang, key);
@@ -16,12 +16,22 @@ function t(key: string) {
 
 onMounted(async () => {
   await library.refresh("image");
+  // 使用缓存的缩略图
   for (const f of library.files) {
-    try {
-      const dataUrl = await capabilities.getThumbnail(f.id, 300);
-      if (dataUrl) thumbs.value[f.id] = dataUrl;
-    } catch {}
+    if (library.thumbCache[f.id]) {
+      thumbs.value[f.id] = library.thumbCache[f.id];
+    }
   }
+  // 异步增量加载未缓存的缩略图
+  await library.loadThumbnails("image", (id, dataUrl) => {
+    if (!cancelled) {
+      thumbs.value = { ...thumbs.value, [id]: dataUrl };
+    }
+  });
+});
+
+onBeforeUnmount(() => {
+  cancelled = true;
 });
 
 function openFile(path: string) {

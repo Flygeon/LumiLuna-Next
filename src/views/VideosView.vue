@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { onMounted, ref, onBeforeUnmount } from "vue";
 import { useLibraryStore } from "@/stores/library";
 import { useSettingsStore } from "@/stores/settings";
 import { capabilities } from "@/capabilities";
@@ -7,12 +7,17 @@ import { translate } from "@shared/i18n";
 
 const library = useLibraryStore();
 const settings = useSettingsStore();
+let cancelled = false;
 
 function t(key: string) {
   return translate(settings.lang, key);
 }
 
 onMounted(() => library.refresh("video"));
+
+onBeforeUnmount(() => {
+  cancelled = true;
+});
 
 function openFile(path: string) {
   capabilities.openFile(path);

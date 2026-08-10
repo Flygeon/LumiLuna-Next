@@ -1,5 +1,6 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import type { Song, LyricLine } from "@shared/types";
 
 /**
@@ -166,6 +167,10 @@ export const usePlayerStore = defineStore("player", () => {
     song.value = s;
     lyrics.value = s.lyrics ? parseLrc(s.lyrics) : [];
     activeLine.value = -1;
+    // 设置音频源（Tauri 文件路径转为可用 URL）
+    if (audioEl.value && s.file?.path) {
+      audioEl.value.src = convertFileSrc(s.file.path);
+    }
     if (s.coverBase64) {
       const img = new Image();
       img.onload = () => {
