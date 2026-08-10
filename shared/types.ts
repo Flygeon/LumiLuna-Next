@@ -63,6 +63,7 @@ export interface Song {
 export interface LyricLine {
   time: number;
   text: string;
+  translation?: string;
 }
 
 /** 阅读进度 */

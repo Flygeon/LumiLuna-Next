@@ -68,7 +68,8 @@ watch(() => player.lyrics.length, onLyricsLoaded);
         }"
         @click="player.seekToLyric(i)"
       >
-        {{ line.text }}
+        <div class="lyric-text">{{ line.text }}</div>
+        <div v-if="line.translation" class="lyric-translation">{{ line.translation }}</div>
       </div>
       <div v-if="!player.lyrics.length" class="empty-lyrics">
         <span class="material-symbols-outlined">lyrics</span>
@@ -123,6 +124,15 @@ watch(() => player.lyrics.length, onLyricsLoaded);
 }
 .lyric-line.active {
   color: rgba(255, 255, 255, 1);
+}
+.lyric-text {
+  margin-bottom: 2px;
+}
+.lyric-translation {
+  font-size: 0.65em;
+  font-weight: normal;
+  opacity: 0.7;
+  color: rgba(255, 255, 255, 0.6);
 }
 .empty-lyrics {
   color: rgba(255, 255, 255, 0.5);

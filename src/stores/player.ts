@@ -4,27 +4,73 @@ import { convertFileSrc } from "@tauri-apps/api/core";
 import type { Song, LyricLine } from "@shared/types";
 
 /**
- * 音频解码（LRC 解析，编码尝试 utf-8/gbk/big5/shift-jis）
- * 参考《音乐播放器参考》index.js 的 parseLrc 与 decodeBuffer。
+ * 双语 LRC 解析器
+ * 支持格式：
+ * 1. 同时间戳双行（如网易云/QQ音乐双语歌词）
+ *    [00:12.34]Hello World
+ *    [00:12.34]你好世界
+ * 2. [tr:翻译] 标签
+ *    [00:12.34]Hello World [tr:你好世界]
+ * 3. 单语歌词（向后兼容）
  */
-const LRC_TIME_RE = /\[(\d{2}):(\d{2})(?:\.(\d{2,3}))?\]/;
+const LRC_TIME_RE = /\[(\d{2}):(\d{2})(?:\.(\d{2,3}))?\]/g;
+const LRC_TR_RE = /\[tr:(.*?)\]/g;
+
 export function parseLrc(text: string): LyricLine[] {
   const lines = text.trim().split("\n");
-  const out: LyricLine[] = [];
-  lines.forEach((line) => {
-    const m = line.match(LRC_TIME_RE);
-    if (m) {
+  const map = new Map<number, LyricLine>();
+
+  for (const line of lines) {
+    // 提取所有时间戳
+    const times: number[] = [];
+    let m: RegExpExecArray | null;
+    LRC_TIME_RE.lastIndex = 0;
+    while ((m = LRC_TIME_RE.exec(line)) !== null) {
       const minutes = parseInt(m[1], 10);
       const seconds = parseInt(m[2], 10);
       const ms = m[3] ? parseInt(m[3], 10) : 0;
-      const time = minutes * 60 + seconds + ms / 1000;
-      const content = line.replace(m[0], "").trim();
-      if (content) {
-        out.push({ time, text: content });
+      times.push(minutes * 60 + seconds + ms / 1000);
+    }
+    if (times.length === 0) continue;
+
+    // 提取翻译标签 [tr:xxx]
+    let translation = "";
+    LRC_TR_RE.lastIndex = 0;
+    const trMatch = LRC_TR_RE.exec(line);
+    if (trMatch) {
+      translation = trMatch[1].trim();
+    }
+
+    // 移除所有时间戳和翻译标签，得到歌词文本
+    let content = line
+      .replace(/\[\d{2}:\d{2}(?:\.\d{2,3})?\]/g, "")
+      .replace(/\[tr:.*?\]/g, "")
+      .replace(/\[lang:.*?\]/g, "")
+      .replace(/\[ar:.*?\]/g, "")
+      .replace(/\[ti:.*?\]/g, "")
+      .replace(/\[al:.*?\]/g, "")
+      .replace(/\[by:.*?\]/g, "")
+      .trim();
+
+    if (!content) continue;
+
+    for (const time of times) {
+      const key = Math.round(time * 1000); // 精确到毫秒
+      const existing = map.get(key);
+      if (existing) {
+        // 同一时间戳的第二行作为翻译
+        if (translation) {
+          existing.translation = translation;
+        } else if (!existing.translation) {
+          existing.translation = content;
+        }
+      } else {
+        map.set(key, { time, text: content, translation: translation || undefined });
       }
     }
-  });
-  return out.sort((a, b) => a.time - b.time);
+  }
+
+  return Array.from(map.values()).sort((a, b) => a.time - b.time);
 }
 
 export function decodeBuffer(buffer: ArrayBuffer): string {
@@ -167,16 +213,24 @@ export const usePlayerStore = defineStore("player", () => {
     song.value = s;
     lyrics.value = s.lyrics ? parseLrc(s.lyrics) : [];
     activeLine.value = -1;
-    // 设置音频源（Tauri 文件路径转为可用 URL）
-    if (audioEl.value && s.file?.path) {
-      audioEl.value.src = convertFileSrc(s.file.path);
-    }
+    // 音频源在 PlayerView mounted 后设置（此时 audioEl 可能还不存在）
     if (s.coverBase64) {
       const img = new Image();
       img.onload = () => {
         coverColors.value = getDominantColors(img);
       };
       img.src = s.coverBase64;
+    }
+  }
+
+  /** 在 PlayerView 挂载后调用，设置音频源并播放 */
+  function initAudio() {
+    if (audioEl.value && song.value?.file?.path) {
+      audioEl.value.src = convertFileSrc(song.value.file.path);
+      audioEl.value.load();
+      audioEl.value.play().then(() => {
+        playing.value = true;
+      }).catch(() => {});
     }
   }
 
@@ -303,6 +357,7 @@ export const usePlayerStore = defineStore("player", () => {
     currentLyric,
     bindAudio,
     loadSong,
+    initAudio,
     togglePlay,
     setIndex,
     seek,

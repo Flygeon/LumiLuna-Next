@@ -9,7 +9,7 @@ const store = new LazyStore("settings.json");
 const DEFAULTS = {
   theme: "system" as ThemeMode,
   lang: "zh" as "zh" | "en",
-  lyricFontSize: 18,
+  lyricFontSize: 30,
   lyricLineHeight: 2.5,
   bgBlur: true,
   lyricBlur: true,

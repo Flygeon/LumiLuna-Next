@@ -5,7 +5,8 @@ import { useSettingsStore } from "@/stores/settings";
 import type { MediaFile, MediaMetadata, ScanProgress } from "@shared/types";
 
 export const useLibraryStore = defineStore("library", () => {
-  const files = ref<MediaFile[]>([]);
+  // 按类型缓存文件列表
+  const filesByType = ref<Record<string, MediaFile[]>>({});
   const metaMap = ref<Record<string, MediaMetadata>>({});
   const thumbCache = ref<Record<string, string>>({});
   const loading = ref(false);
@@ -14,23 +15,30 @@ export const useLibraryStore = defineStore("library", () => {
   const scanLogs = ref<string[]>([]);
   const loadedTypes = ref<Set<string>>(new Set());
 
+  /** 当前活跃类型（供模板用） */
+  const files = ref<MediaFile[]>([]);
+
   async function refresh(type?: string, force = false) {
-    // 如果已有该类型缓存且不强制刷新，跳过
-    if (type && !force && loadedTypes.value.has(type) && files.value.length > 0) {
+    const key = type || "__all__";
+    // 如果已有该类型缓存且不强制刷新，直接返回
+    if (!force && loadedTypes.value.has(key) && filesByType.value[key]?.length >= 0) {
+      files.value = filesByType.value[key] || [];
       return;
     }
     loading.value = true;
     try {
-      files.value = await capabilities.listFiles(type);
+      const list = await capabilities.listFiles(type);
+      filesByType.value[key] = list;
+      files.value = list;
       // 批量获取元数据（仅获取尚未缓存的）
-      const missing = files.value.filter((f) => !metaMap.value[f.id]);
+      const missing = list.filter((f) => !metaMap.value[f.id]);
       const metas = await Promise.all(
         missing.slice(0, 200).map((f) => capabilities.getMetadata(f.id)),
       );
       metas.forEach((m) => {
         metaMap.value[m.file_id] = m;
       });
-      if (type) loadedTypes.value.add(type);
+      loadedTypes.value.add(key);
     } finally {
       loading.value = false;
     }
@@ -42,7 +50,7 @@ export const useLibraryStore = defineStore("library", () => {
     onThumb: (id: string, dataUrl: string) => void,
     concurrency = 6,
   ) {
-    const list = files.value;
+    const list = filesByType.value[type] || files.value;
     let index = 0;
     async function worker() {
       while (index < list.length) {
@@ -73,7 +81,6 @@ export const useLibraryStore = defineStore("library", () => {
       const settings = useSettingsStore();
       const scanDirs = dirs && dirs.length ? dirs : (settings.scanDirs.length ? settings.scanDirs : ["/"]);
       const { jobId } = await capabilities.scanStart({ dirs: scanDirs });
-      // 轮询进度
       const poll = setInterval(async () => {
         const p = await capabilities.scanStatus(jobId);
         progress.value = p;
@@ -83,6 +90,7 @@ export const useLibraryStore = defineStore("library", () => {
           // 扫描完成后强制刷新所有类型
           loadedTypes.value.clear();
           thumbCache.value = {};
+          filesByType.value = {};
           await refresh();
         }
       }, 500);
@@ -94,6 +102,7 @@ export const useLibraryStore = defineStore("library", () => {
 
   return {
     files,
+    filesByType,
     metaMap,
     thumbCache,
     loading,

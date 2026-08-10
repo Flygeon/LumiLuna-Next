@@ -34,7 +34,7 @@ async function loadSongs() {
     list.push(song);
     // 异步加载封面（不阻塞列表渲染）
     capabilities.getSong(f.id).then((full) => {
-      if (cancelled) return;
+      if (cancelled || !full) return;
       if (full.coverBase64) {
         song.coverBase64 = full.coverBase64;
         songCache.value.set(f.id, song);

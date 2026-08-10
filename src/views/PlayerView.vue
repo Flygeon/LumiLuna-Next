@@ -40,8 +40,10 @@ function cycleSpeed() {
 }
 
 onMounted(() => {
-  if (audioRef.value) player.bindAudio(audioRef.value);
-  // demo：无数据时清空音频源
+  if (audioRef.value) {
+    player.bindAudio(audioRef.value);
+    player.initAudio();
+  }
 });
 
 onBeforeUnmount(() => {
