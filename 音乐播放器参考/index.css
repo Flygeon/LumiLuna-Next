@@ -1,0 +1,406 @@
+@font-face {
+    src: url(fonts/PingFangSC-Regular.woff2);
+    font-family: "PingFangSC-Regular";
+}
+
+@font-face {
+    src: url(fonts/sf-pro-display_regular.woff2);
+    font-family: "SFPro-Regular";
+}
+
+@font-face {
+    src: url(fonts/PingFangTC-Regular.woff2);
+    font-family: "PingFangTC-Regular";
+}
+
+@font-face {
+    src: url(fonts/SFProJP_regular.woff2);
+    font-family: "SFProJP-Regular";
+}
+
+* {
+    font-family: "SFPro-Regular", "PingFangSC-Regular", "PingFangTC-Regular", "SFProJP-Regular";
+    -webkit-user-select: none;
+    user-select: none;
+    --color1: rgba(232, 232, 232, 0.9);
+    --color2: rgba(197, 197, 199, 0.9);
+    --color3: rgba(255, 255, 255, 0.9);
+    --color4: rgba(150, 150, 150, 0.9);
+    --color1-rgba: rgba(232, 232, 232, 0.3);
+    --color2-rgba: rgba(197, 197, 199, 0.3);
+    --color3-rgba: rgba(255, 255, 255, 0.3);
+    --color4-rgba: rgba(150, 150, 150, 0.3);
+    --type-time: 0;
+    letter-spacing: 0.3px;
+}
+
+body {
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    /* -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px); */
+    z-index: 2;
+    margin: 0;
+    /* background: #e8e8e8; */
+}
+
+.main {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+
+.leftcontent {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    width: 50vw;
+    height: 100vh;
+}
+
+.svgcontainer {
+    width: 420px;
+    height: 420px;
+    background: #e8e8e8;
+    border-radius: 10px;
+    overflow: hidden;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 32px #0003;
+    transition: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
+    margin-top: 28px;
+    transform: scale(1);
+    background: url(./default.svg), #ebebeb;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.svgcontainer:hover {
+    transform: scale(1.05);
+    filter: brightness(0.9);
+}
+
+.svgcontainer:active {
+    transform: scale(1);
+    filter: brightness(1);
+}
+
+.svg svg {
+    width: 100%;
+    height: 100%;
+}
+
+input[type="file"] {
+    display: none;
+}
+
+.processbar {
+    width: 425px;
+    background: #fff9;
+    height: 5px;
+    overflow: hidden;
+    border-radius: 4px;
+    box-shadow: 0 0 16px #0004;
+    margin: 10px 0;
+    transition: height 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.processbar:hover {
+    height: 10px;
+}
+
+.process {
+    width: 0%;
+    height: 100%;
+    background: #fff;
+    border-radius: 4px;
+    /* box-shadow: 0 0 3px #0009; */
+}
+
+.time {
+    margin-top: 25px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: bold;
+    width: 425px;
+    color: #fff;
+    text-shadow: 0 0 16px #0004;
+}
+
+p {
+    margin: 0;
+}
+
+.name {
+    -webkit-user-select: auto;
+    user-select: auto;
+}
+
+.conbox {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.controls,
+.controls>* {
+    display: flex;
+    width: 32px;
+    height: 28px;
+}
+
+.controls div {
+    display: block;
+    transition: all 0.25s ease;
+    filter: drop-shadow(0 0 16px #0005) brightness(1);
+    transform: scale(1);
+}
+
+.controls div:hover {
+    filter: brightness(0.9);
+}
+
+.controls div:active {
+    transform: scale(0.8);
+    filter: brightness(1);
+}
+
+.rightcontent {
+    width: 55vw;
+}
+
+.lyricscontainer {
+    height: 100vh;
+    position: relative;
+    z-index: 2;
+    -webkit-mask-image: linear-gradient(to bottom,
+            transparent 0%,
+            black 30%,
+            black 70%,
+            transparent 100%);
+    mask-image: linear-gradient(to bottom,
+            transparent 0%,
+            black 30%,
+            black 70%,
+            transparent 100%);
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+}
+
+.lyrics {
+    max-width: 100%;
+    /* font-size: 24px; */
+    /* line-height: 40px; */
+    z-index: 2;
+}
+
+.lyrics>.item {
+    position: absolute;
+    padding: 25px;
+
+    box-sizing: border-box;
+
+    background-color: transparent;
+    border-radius: 15px;
+    color: rgba(255, 255, 255, 0.2);
+    line-height: 250%;
+
+    /*transition-timing-function: cubic-bezier(.19,.11,0,1);
+    transition: transform 0.5s;*/
+}
+
+.lyrics>.item>p {
+    font-size: 40px;
+    font-weight: bold;
+    word-wrap: break-word;
+    letter-spacing: 0.6px;
+}
+
+/*
+.lyrics p {
+    position: relative;
+    margin: 0;
+    margin: 4% 0;
+    will-change: opacity, font-weight, margin-left, margin-top, margin-bottom, transform;
+    transition: opacity 0.75s cubic-bezier(0.25, 0.8, 0.25, 1),
+      
+        font-weight 0.75s cubic-bezier(0.25, 0.8, 0.25, 1),
+        margin-left 0.75s cubic-bezier(0.25, 0.8, 0.25, 1),
+        margin-top 0.6s cubic-bezier(.01,1.22,.97,1.12),
+        margin-bottom 1s cubic-bezier(0.25, 0.8, 0.25, 1),
+        transform 0.75s cubic-bezier(0.25, 0.8, 0.25, 1);
+    width: 100%;
+    font-weight: normal;
+    font-size: inherit;
+    margin-top: 4%;
+    font-size: 36px;
+    text-shadow: -1px 1px 20px #0009, 0 1px 5px #0009;
+    align-self: flex-start;
+    transform: matrix(1, 0, 0, 1, 0, 0);
+    transform-origin: 0px 50%;
+    word-wrap: break-word;
+    white-space: normal;
+    color: #fff;
+    opacity: 0.3;
+    -webkit-background-clip: text;
+    background-clip: text;
+    z-index: 2;
+}
+
+.lyrics p.highlight {
+    margin: 5% 0;
+    font-weight: bold;
+    filter: none;
+    margin-top: 4%;
+    opacity: 0.9;
+    transform: matrix(1.2, 0, 0, 1.2, 0, 0);
+    background-size: 100% 100%, 100% 100%;
+    transform-origin: 0px 50%;
+    word-wrap: break-word;
+    white-space: normal;
+    font-family: "SFPro-Semibold", "PingFangSC-Semibold";
+}
+*/
+/* .lyrics p::after {
+    content: attr(data-text);
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 3;
+    color: #fff;
+    clip-path: polygon(0 0, 0 0, 0 100%, 0 100%);
+    transition: clip-path var(--type-time) linear;
+}
+
+.lyrics p.highlight::after {
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+} */
+
+.background {
+    margin: 0;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -5;
+    background-color: var(--background);
+    background-image:
+        radial-gradient(closest-side, var(--color1), var(--color1-rgba)),
+        radial-gradient(closest-side, var(--color2), var(--color2-rgba)),
+        radial-gradient(closest-side, var(--color3), var(--color3-rgba)),
+        radial-gradient(closest-side, var(--color4), var(--color4-rgba));
+    background-size:
+        130vmax 130vmax,
+        80vmax 80vmax,
+        90vmax 90vmax,
+        110vmax 110vmax,
+        90vmax 90vmax;
+    background-position:
+        -80vmax -80vmax,
+        60vmax -30vmax,
+        10vmax 10vmax,
+        -30vmax -10vmax,
+        50vmax 50vmax;
+    background-repeat: no-repeat;
+    animation: 20s movement linear infinite;
+    background-attachment: fixed;
+    filter: brightness(0.8) blur(5px);
+    scale: 1.2;
+}
+
+@keyframes movement {
+
+    0%,
+    100% {
+        background-size:
+            130vmax 130vmax,
+            80vmax 80vmax,
+            90vmax 90vmax,
+            110vmax 110vmax,
+            90vmax 90vmax;
+        background-position:
+            -80vmax -80vmax,
+            60vmax -30vmax,
+            10vmax 10vmax,
+            -30vmax -10vmax,
+            50vmax 50vmax;
+    }
+
+    25% {
+        background-size:
+            100vmax 100vmax,
+            90vmax 90vmax,
+            100vmax 100vmax,
+            90vmax 90vmax,
+            60vmax 60vmax;
+        background-position:
+            -60vmax -90vmax,
+            50vmax -40vmax,
+            0vmax -20vmax,
+            -40vmax -20vmax,
+            40vmax 60vmax;
+    }
+
+    50% {
+        background-size:
+            80vmax 80vmax,
+            110vmax 110vmax,
+            80vmax 80vmax,
+            60vmax 60vmax,
+            80vmax 80vmax;
+        background-position:
+            -50vmax -70vmax,
+            40vmax -30vmax,
+            10vmax 0vmax,
+            20vmax 10vmax,
+            30vmax 70vmax;
+    }
+
+    75% {
+        background-size:
+            90vmax 90vmax,
+            90vmax 90vmax,
+            100vmax 100vmax,
+            90vmax 90vmax,
+            70vmax 70vmax;
+        background-position:
+            -50vmax -40vmax,
+            50vmax -30vmax,
+            20vmax 0vmax,
+            -10vmax 10vmax,
+            40vmax 60vmax;
+    }
+}
+
+.noTransition,
+.noTransition * {
+    transition: none !important;
+}
+
+.canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    scale: 1.5;
+    z-index: -1;
+    filter: blur(30px) saturate(2.5) brightness(0.6);
+    pointer-events: none;
+    background-color: #000;
+}

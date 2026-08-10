@@ -1,0 +1,44 @@
+[package]
+name = "lumiluna"
+version = "1.0.0"
+description = "LumiLuna —— 本地优先全媒体库应用"
+authors = ["LumiLuna"]
+edition = "2021"
+rust-version = "1.77"
+
+[lib]
+name = "lumiluna_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-store = "2"
+tauri-plugin-opener = "2"
+tauri-plugin-global-shortcut = "2"
+
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rusqlite = { version = "0.31", features = ["bundled"] }
+walkdir = "2"
+xxhash-rust = { version = "0.8", features = ["xxh3"] }
+lofty = "0.20"
+kamadak-exif = "0.5"
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp", "gif"] }
+notify = "6"
+tokio = { version = "1", features = ["full"] }
+rayon = "1"
+base64 = "0.22"
+getrandom = "0.2"
+chrono = "0.4"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true
+panic = "abort"

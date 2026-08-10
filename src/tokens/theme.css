@@ -1,0 +1,164 @@
+/* ===== LumiLuna M3 设计令牌层 =====
+   Material Design 3 全局设计令牌，全部用 CSS 变量承载，一次定义全局复用。
+   组件外观统一由令牌驱动，禁止魔法色值。 */
+
+@font-face {
+  src: url("../assets/fonts/sf-pro-display_regular.woff2");
+  font-family: "SFPro-Regular";
+}
+@font-face {
+  src: url("../assets/fonts/PingFangSC-Regular.woff2");
+  font-family: "PingFangSC-Regular";
+}
+@font-face {
+  src: url("../assets/fonts/PingFangTC-Regular.woff2");
+  font-family: "PingFangTC-Regular";
+}
+@font-face {
+  src: url("../assets/fonts/SFProJP_regular.woff2");
+  font-family: "SFProJP-Regular";
+}
+
+:root {
+  color-scheme: light;
+
+  /* ---- M3 Color Tokens ---- */
+  --md-sys-color-primary: #2b5f5a;
+  --md-sys-color-on-primary: #ffffff;
+  --md-sys-color-primary-container: #b2f1e8;
+  --md-sys-color-on-primary-container: #00201d;
+  --md-sys-color-secondary: #4a635f;
+  --md-sys-color-on-secondary: #ffffff;
+  --md-sys-color-secondary-container: #cce9e3;
+  --md-sys-color-on-secondary-container: #05201c;
+  --md-sys-color-tertiary: #41627b;
+  --md-sys-color-on-tertiary: #ffffff;
+  --md-sys-color-tertiary-container: #c5e7ff;
+  --md-sys-color-on-tertiary-container: #001e30;
+  --md-sys-color-error: #ba1a1a;
+  --md-sys-color-on-error: #ffffff;
+  --md-sys-color-error-container: #ffdad6;
+  --md-sys-color-on-error-container: #410002;
+  --md-sys-color-surface: #f5fbf8;
+  --md-sys-color-on-surface: #171d1b;
+  --md-sys-color-surface-variant: #dae5e1;
+  --md-sys-color-on-surface-variant: #3f4946;
+  --md-sys-color-surface-container: #e9f0ed;
+  --md-sys-color-surface-container-low: #f0f6f3;
+  --md-sys-color-surface-container-high: #e3eae7;
+  --md-sys-color-outline: #6f7976;
+  --md-sys-color-on-background: #171d1b;
+  --md-sys-color-background: #f5fbf8;
+
+  /* ---- M3 Shape Tokens ---- */
+  --md-sys-shape-corner-none: 0px;
+  --md-sys-shape-corner-extra-small: 4px;
+  --md-sys-shape-corner-small: 8px;
+  --md-sys-shape-corner-medium: 12px;
+  --md-sys-shape-corner-large: 16px;
+  --md-sys-shape-corner-extra-large: 28px;
+
+  /* ---- M3 Type Scale ---- */
+  --md-sys-typescale-display-size: 57px;
+  --md-sys-typescale-display-weight: 400;
+  --md-sys-typescale-display-line-height: 64px;
+  --md-sys-typescale-headline-size: 32px;
+  --md-sys-typescale-headline-weight: 400;
+  --md-sys-typescale-headline-line-height: 40px;
+  --md-sys-typescale-title-size: 22px;
+  --md-sys-typescale-title-weight: 500;
+  --md-sys-typescale-title-line-height: 28px;
+  --md-sys-typescale-body-size: 14px;
+  --md-sys-typescale-body-weight: 400;
+  --md-sys-typescale-body-line-height: 20px;
+  --md-sys-typescale-label-size: 12px;
+  --md-sys-typescale-label-weight: 500;
+  --md-sys-typescale-label-line-height: 16px;
+
+  /* ---- M3 Motion Tokens ---- */
+  --md-sys-motion-duration-short: 200ms;
+  --md-sys-motion-duration-medium: 300ms;
+  --md-sys-motion-duration-long: 500ms;
+  --md-sys-motion-easing-standard: cubic-bezier(0.2, 0, 0, 1);
+  --md-sys-motion-easing-emphasized: cubic-bezier(0.2, 0, 0, 1);
+  --md-sys-motion-easing-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+
+  /* ---- 应用级令牌 ---- */
+  --md-elevation-1: 0 1px 3px rgba(0, 0, 0, 0.2);
+  --md-elevation-2: 0 2px 6px rgba(0, 0, 0, 0.2);
+  --md-elevation-3: 0 8px 24px rgba(0, 0, 0, 0.25);
+
+  /* 播放器令牌（Apple Music 蓝本，写死勿改） */
+  --am-ease-out-back: cubic-bezier(0.25, 0.8, 0.25, 1);
+  --am-ease-lyric: cubic-bezier(0.19, 0.11, 0, 1);
+  --am-lyric-offset: 0px;
+  --am-line-gap: 20px;
+}
+
+/* 深色主题 */
+[data-theme="dark"] {
+  color-scheme: dark;
+  --md-sys-color-primary: #97d5cd;
+  --md-sys-color-on-primary: #003731;
+  --md-sys-color-primary-container: #13504b;
+  --md-sys-color-on-primary-container: #b2f1e8;
+  --md-sys-color-secondary: #b0cdc7;
+  --md-sys-color-on-secondary: #1b3531;
+  --md-sys-color-secondary-container: #324c47;
+  --md-sys-color-on-secondary-container: #cce9e3;
+  --md-sys-color-tertiary: #a7cbe7;
+  --md-sys-color-on-tertiary: #0a3149;
+  --md-sys-color-tertiary-container: #27485f;
+  --md-sys-color-on-tertiary-container: #c5e7ff;
+  --md-sys-color-error: #ffb4ab;
+  --md-sys-color-on-error: #690005;
+  --md-sys-color-error-container: #93000a;
+  --md-sys-color-on-error-container: #ffdad6;
+  --md-sys-color-surface: #0e1513;
+  --md-sys-color-on-surface: #dde5e1;
+  --md-sys-color-surface-variant: #3f4946;
+  --md-sys-color-on-surface-variant: #bec9c5;
+  --md-sys-color-surface-container: #141c19;
+  --md-sys-color-surface-container-low: #171d1b;
+  --md-sys-color-surface-container-high: #1e2623;
+  --md-sys-color-outline: #89938f;
+  --md-sys-color-on-background: #dde5e1;
+  --md-sys-color-background: #0e1513;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  width: 100%;
+}
+
+body {
+  font-family: "SFPro-Regular", "PingFangSC-Regular", "Helvetica Neue",
+    "PingFang TC", "Microsoft YaHei", system-ui, sans-serif;
+  background: var(--md-sys-color-background);
+  color: var(--md-sys-color-on-background);
+  font-size: var(--md-sys-typescale-body-size);
+  line-height: var(--md-sys-typescale-body-line-height);
+  overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--md-sys-color-outline);
+  border-radius: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}

@@ -1,0 +1,29 @@
+# dependencies
+node_modules/
+dist/
+
+# rust
+src-tauri/target/
+src-tauri/gen/schemas/
+src-tauri/.tauri/
+
+# logs
+*.log
+crash_log.txt
+
+# os
+.DS_Store
+Thumbs.db
+
+# ide
+.idea/
+*.swp
+
+# ci artifacts
+
+# build artifacts (deliverables, do not commit)
+*.exe
+*.zip
+*.apk
+*.AppImage
+*.msi
