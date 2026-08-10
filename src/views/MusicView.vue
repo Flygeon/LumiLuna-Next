@@ -4,6 +4,7 @@ import { useLibraryStore } from "@/stores/library";
 import { usePlayerStore } from "@/stores/player";
 import { useSettingsStore } from "@/stores/settings";
 import { useRouter } from "vue-router";
+import { capabilities } from "@/capabilities";
 import { translate } from "@shared/i18n";
 import type { Song } from "@shared/types";
 
@@ -22,13 +23,18 @@ async function loadSongs() {
   const list: Song[] = [];
   for (const f of library.files) {
     const meta = library.metaMap[f.id];
-    list.push({ file: f, meta, coverBase64: null });
+    const song: Song = { file: f, meta, coverBase64: null };
+    try {
+      const full = await capabilities.getSong(f.id);
+      if (full.coverBase64) song.coverBase64 = full.coverBase64;
+    } catch {}
+    list.push(song);
   }
   songs.value = list;
 }
 
 async function play(song: Song, index: number) {
-  player.setIndex(index);
+  player.setQueue(songs.value, index);
   await player.loadSong(song);
   router.push("/music/player");
 }
@@ -43,7 +49,7 @@ onMounted(loadSongs);
 </script>
 
 <template>
-  <div class="music-view">
+  <div class="media-grid-view">
     <div class="toolbar">
       <button class="scan-btn" @click="library.startScan()">
         {{ library.scanning ? t("library.scanning") : t("actions.scan") }}
@@ -56,34 +62,27 @@ onMounted(loadSongs);
       <button class="scan-btn" @click="library.startScan()">{{ t("actions.scan") }}</button>
     </div>
 
-    <div v-else class="song-table">
-      <div class="table-header">
-        <span class="c-idx">#</span>
-        <span class="c-title">标题</span>
-        <span class="c-artist">艺人</span>
-        <span class="c-album">专辑</span>
-        <span class="c-dur">时长</span>
-      </div>
+    <div v-else class="grid">
       <div
         v-for="(s, i) in songs"
         :key="s.file.id"
-        class="song-row"
+        class="cell"
         @dblclick="play(s, i)"
       >
-        <span class="c-idx">{{ i + 1 }}</span>
-        <span class="c-title">{{ s.meta.title || s.file.path.split(/[\\/]/).pop() }}</span>
-        <span class="c-artist">{{ s.meta.artist || "—" }}</span>
-        <span class="c-album">{{ s.meta.album || "—" }}</span>
-        <span class="c-dur">{{ formatTime(s.meta.duration_ms || 0) }}</span>
+        <div class="thumb">
+          <img v-if="s.coverBase64" :src="s.coverBase64" alt="" loading="lazy" />
+          <span v-else class="placeholder"><span class="material-symbols-outlined">music_note</span></span>
+        </div>
+        <div class="info">
+          <div class="title">{{ s.meta.title || s.file.path.split(/[\\/]/).pop() }}</div>
+          <div class="artist">{{ s.meta.artist || "—" }}</div>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.music-view {
-  height: 100%;
-}
 .toolbar {
   margin-bottom: 16px;
 }
@@ -111,46 +110,50 @@ onMounted(loadSongs);
 .empty .scan-btn {
   margin-top: 20px;
 }
-.song-table {
-  display: flex;
-  flex-direction: column;
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 16px;
+}
+.cell {
+  border-radius: var(--md-sys-shape-corner-medium);
+  overflow: hidden;
   background: var(--md-sys-color-surface-container-low);
-  border-radius: var(--md-sys-shape-corner-large);
+  cursor: pointer;
+  transition: transform var(--md-sys-motion-duration-short);
+}
+.cell:hover {
+  transform: scale(1.02);
+}
+.thumb {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--md-sys-color-surface-container-high);
   overflow: hidden;
 }
-.table-header,
-.song-row {
-  display: grid;
-  grid-template-columns: 40px 2fr 1.5fr 1.5fr 70px;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
+.thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
-.table-header {
-  font-weight: 600;
-  font-size: 12px;
-  color: var(--md-sys-color-on-surface-variant);
-  background: var(--md-sys-color-surface-container-high);
-}
-.song-row {
-  border-bottom: 1px solid var(--md-sys-color-outline);
-  cursor: pointer;
-  transition: background var(--md-sys-motion-duration-short);
-}
-.song-row:hover {
-  background: var(--md-sys-color-surface-container-high);
-}
-.c-idx {
+.placeholder .material-symbols-outlined {
+  font-size: 48px;
   color: var(--md-sys-color-on-surface-variant);
 }
-.c-title {
-  font-weight: 600;
+.info {
+  padding: 8px 10px;
+}
+.title {
+  font-size: 13px;
+  font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.c-artist,
-.c-album {
+.artist {
+  font-size: 12px;
   color: var(--md-sys-color-on-surface-variant);
   white-space: nowrap;
   overflow: hidden;

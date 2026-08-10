@@ -51,7 +51,8 @@ const currentTab = computed(() => {
   return p || "images";
 });
 
-onMounted(() => {
+onMounted(async () => {
+  await settings.load();
   settings.applyTheme(settings.theme);
 });
 </script>

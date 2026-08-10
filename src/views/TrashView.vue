@@ -12,7 +12,7 @@ function t(key: string) {
   <div class="simple-view">
     <div class="empty">
       <div class="empty-icon"><span class="material-symbols-outlined">delete</span></div>
-      <p>{{ t("nav.trash") }} · 回收站</p>
+      <p>{{ t("nav.trash") }}</p>
     </div>
   </div>
 </template>

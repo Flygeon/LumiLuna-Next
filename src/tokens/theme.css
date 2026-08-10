@@ -22,33 +22,41 @@
 :root {
   color-scheme: light;
 
-  /* ---- M3 Color Tokens ---- */
-  --md-sys-color-primary: #2b5f5a;
-  --md-sys-color-on-primary: #ffffff;
-  --md-sys-color-primary-container: #b2f1e8;
-  --md-sys-color-on-primary-container: #00201d;
-  --md-sys-color-secondary: #4a635f;
-  --md-sys-color-on-secondary: #ffffff;
-  --md-sys-color-secondary-container: #cce9e3;
-  --md-sys-color-on-secondary-container: #05201c;
-  --md-sys-color-tertiary: #41627b;
-  --md-sys-color-on-tertiary: #ffffff;
-  --md-sys-color-tertiary-container: #c5e7ff;
-  --md-sys-color-on-tertiary-container: #001e30;
-  --md-sys-color-error: #ba1a1a;
-  --md-sys-color-on-error: #ffffff;
-  --md-sys-color-error-container: #ffdad6;
+  /* ---- M3 Color Tokens (Light) ---- */
+  --md-sys-color-primary: #1A5C9E;
+  --md-sys-color-on-primary: #FFFFFF;
+  --md-sys-color-primary-container: #D2E4FF;
+  --md-sys-color-on-primary-container: #001C3B;
+  --md-sys-color-secondary: #535F70;
+  --md-sys-color-on-secondary: #FFFFFF;
+  --md-sys-color-secondary-container: #D7E3F7;
+  --md-sys-color-on-secondary-container: #101C2B;
+  --md-sys-color-tertiary: #6B5778;
+  --md-sys-color-on-tertiary: #FFFFFF;
+  --md-sys-color-tertiary-container: #F2DAFF;
+  --md-sys-color-on-tertiary-container: #251431;
+  --md-sys-color-error: #BA1A1A;
+  --md-sys-color-on-error: #FFFFFF;
+  --md-sys-color-error-container: #FFDAD6;
   --md-sys-color-on-error-container: #410002;
-  --md-sys-color-surface: #f5fbf8;
-  --md-sys-color-on-surface: #171d1b;
-  --md-sys-color-surface-variant: #dae5e1;
-  --md-sys-color-on-surface-variant: #3f4946;
-  --md-sys-color-surface-container: #e9f0ed;
-  --md-sys-color-surface-container-low: #f0f6f3;
-  --md-sys-color-surface-container-high: #e3eae7;
-  --md-sys-color-outline: #6f7976;
-  --md-sys-color-on-background: #171d1b;
-  --md-sys-color-background: #f5fbf8;
+  --md-sys-color-surface: #FCFCFC;
+  --md-sys-color-on-surface: #1A1C1E;
+  --md-sys-color-surface-dim: #DADDE0;
+  --md-sys-color-surface-bright: #FCFCFC;
+  --md-sys-color-surface-container-lowest: #FFFFFF;
+  --md-sys-color-surface-container-low: #F6F7F9;
+  --md-sys-color-surface-container: #F2F3F5;
+  --md-sys-color-surface-container-high: #ECEEE0;
+  --md-sys-color-surface-container-highest: #E2E4E7;
+  --md-sys-color-on-surface-variant: #44474E;
+  --md-sys-color-outline: #7A7E87;
+  --md-sys-color-outline-variant: #C4C6CF;
+  --md-sys-color-inverse-surface: #2F3033;
+  --md-sys-color-inverse-on-surface: #F1F0F4;
+  --md-sys-color-inverse-primary: #A4C9FF;
+  --md-sys-color-scrim: rgba(0, 0, 0, 0.7);
+  --md-sys-color-on-background: #1A1C1E;
+  --md-sys-color-background: #FCFCFC;
 
   /* ---- M3 Shape Tokens ---- */
   --md-sys-shape-corner-none: 0px;
@@ -63,17 +71,32 @@
   --md-sys-typescale-display-weight: 400;
   --md-sys-typescale-display-line-height: 64px;
   --md-sys-typescale-headline-size: 32px;
-  --md-sys-typescale-headline-weight: 400;
+  --md-sys-typescale-headline-weight: 600;
   --md-sys-typescale-headline-line-height: 40px;
-  --md-sys-typescale-title-size: 22px;
-  --md-sys-typescale-title-weight: 500;
-  --md-sys-typescale-title-line-height: 28px;
-  --md-sys-typescale-body-size: 14px;
-  --md-sys-typescale-body-weight: 400;
-  --md-sys-typescale-body-line-height: 20px;
-  --md-sys-typescale-label-size: 12px;
-  --md-sys-typescale-label-weight: 500;
-  --md-sys-typescale-label-line-height: 16px;
+  --md-sys-typescale-title-large-size: 22px;
+  --md-sys-typescale-title-large-weight: 500;
+  --md-sys-typescale-title-large-line-height: 28px;
+  --md-sys-typescale-title-medium-size: 16px;
+  --md-sys-typescale-title-medium-weight: 500;
+  --md-sys-typescale-title-medium-line-height: 24px;
+  --md-sys-typescale-title-small-size: 14px;
+  --md-sys-typescale-title-small-weight: 500;
+  --md-sys-typescale-title-small-line-height: 20px;
+  --md-sys-typescale-body-large-size: 16px;
+  --md-sys-typescale-body-large-weight: 400;
+  --md-sys-typescale-body-large-line-height: 24px;
+  --md-sys-typescale-body-medium-size: 14px;
+  --md-sys-typescale-body-medium-weight: 400;
+  --md-sys-typescale-body-medium-line-height: 20px;
+  --md-sys-typescale-body-small-size: 12px;
+  --md-sys-typescale-body-small-weight: 400;
+  --md-sys-typescale-body-small-line-height: 16px;
+  --md-sys-typescale-label-large-size: 14px;
+  --md-sys-typescale-label-large-weight: 500;
+  --md-sys-typescale-label-large-line-height: 20px;
+  --md-sys-typescale-label-small-size: 11px;
+  --md-sys-typescale-label-small-weight: 500;
+  --md-sys-typescale-label-small-line-height: 16px;
 
   /* ---- M3 Motion Tokens ---- */
   --md-sys-motion-duration-short: 200ms;
@@ -98,32 +121,45 @@
 /* 深色主题 */
 [data-theme="dark"] {
   color-scheme: dark;
-  --md-sys-color-primary: #97d5cd;
-  --md-sys-color-on-primary: #003731;
-  --md-sys-color-primary-container: #13504b;
-  --md-sys-color-on-primary-container: #b2f1e8;
-  --md-sys-color-secondary: #b0cdc7;
-  --md-sys-color-on-secondary: #1b3531;
-  --md-sys-color-secondary-container: #324c47;
-  --md-sys-color-on-secondary-container: #cce9e3;
-  --md-sys-color-tertiary: #a7cbe7;
-  --md-sys-color-on-tertiary: #0a3149;
-  --md-sys-color-tertiary-container: #27485f;
-  --md-sys-color-on-tertiary-container: #c5e7ff;
-  --md-sys-color-error: #ffb4ab;
+  --md-sys-color-primary: #8BB9F0;
+  --md-sys-color-on-primary: #001C3B;
+  --md-sys-color-primary-container: #002E5E;
+  --md-sys-color-on-primary-container: #D2E4FF;
+  --md-sys-color-secondary: #BBC7DB;
+  --md-sys-color-on-secondary: #253140;
+  --md-sys-color-secondary-container: #3B4758;
+  --md-sys-color-on-secondary-container: #D7E3F7;
+  --md-sys-color-tertiary: #D6BEE4;
+  --md-sys-color-on-tertiary: #3B2948;
+  --md-sys-color-tertiary-container: #523F5F;
+  --md-sys-color-on-tertiary-container: #F2DAFF;
+  --md-sys-color-error: #FFB4AB;
   --md-sys-color-on-error: #690005;
-  --md-sys-color-error-container: #93000a;
-  --md-sys-color-on-error-container: #ffdad6;
-  --md-sys-color-surface: #0e1513;
-  --md-sys-color-on-surface: #dde5e1;
-  --md-sys-color-surface-variant: #3f4946;
-  --md-sys-color-on-surface-variant: #bec9c5;
-  --md-sys-color-surface-container: #141c19;
-  --md-sys-color-surface-container-low: #171d1b;
-  --md-sys-color-surface-container-high: #1e2623;
-  --md-sys-color-outline: #89938f;
-  --md-sys-color-on-background: #dde5e1;
-  --md-sys-color-background: #0e1513;
+  --md-sys-color-error-container: #93000A;
+  --md-sys-color-on-error-container: #FFDAD6;
+  --md-sys-color-surface: #0F0F11;
+  --md-sys-color-on-surface: #E2E2E5;
+  --md-sys-color-surface-dim: #0F0F11;
+  --md-sys-color-surface-bright: #3A3A3D;
+  --md-sys-color-surface-container-lowest: #0A0A0C;
+  --md-sys-color-surface-container-low: #131316;
+  --md-sys-color-surface-container: #1A1C1E;
+  --md-sys-color-surface-container-high: #24262A;
+  --md-sys-color-surface-container-highest: #2E3035;
+  --md-sys-color-on-surface-variant: #C7C9CD;
+  --md-sys-color-outline: #8F939B;
+  --md-sys-color-outline-variant: #44474E;
+  --md-sys-color-inverse-surface: #E2E2E5;
+  --md-sys-color-inverse-on-surface: #2F3033;
+  --md-sys-color-inverse-primary: #0061A4;
+  --md-sys-color-scrim: rgba(0, 0, 0, 0.85);
+  --md-sys-color-on-background: #E2E2E5;
+  --md-sys-color-background: #0F0F11;
+}
+
+/* 暗色模式 Grade 轴微调：减细笔画提升夜间阅读舒适度 */
+[data-theme="dark"] body {
+  font-variation-settings: 'GRAD' -25;
 }
 
 * {
@@ -144,14 +180,26 @@ body {
     "PingFang TC", "Microsoft YaHei", system-ui, sans-serif;
   background: var(--md-sys-color-background);
   color: var(--md-sys-color-on-background);
-  font-size: var(--md-sys-typescale-body-size);
-  line-height: var(--md-sys-typescale-body-line-height);
+  font-size: var(--md-sys-typescale-body-medium-size);
+  line-height: var(--md-sys-typescale-body-medium-line-height);
   overflow: hidden;
   -webkit-user-select: none;
   user-select: none;
 }
 
 .material-symbols-outlined {
+  font-family: 'Material Symbols Rounded';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
   font-variation-settings:
     'FILL' 0,
     'wght' 400,
@@ -160,14 +208,21 @@ body {
   vertical-align: middle;
 }
 
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+/* 数字等宽：时间码、文件大小、百分比 */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }
-::-webkit-scrollbar-thumb {
-  background: var(--md-sys-color-outline);
-  border-radius: 8px;
+
+/* 自定义沉浸式滚动条 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--md-sys-color-surface-container-highest);
+  border-radius: 3px;
+  transition: opacity 0.3s ease;
 }

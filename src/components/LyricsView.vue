@@ -2,10 +2,12 @@
 import { ref, watch, nextTick } from "vue";
 import { usePlayerStore } from "@/stores/player";
 import { useSettingsStore } from "@/stores/settings";
+import { translate } from "@shared/i18n";
 
 /**
  * 歌词播放器（1:1 参考《音乐播放器参考》的 UpdateLyricsLayout / GetLyricsLayout）。
  * LYRIC_OFFSET = 视口高/3，当前行放大 1.25x，距离模糊，上下渐隐遮罩。
+ * 过渡使用 Apple Music 参考的 cubic-bezier(.19,.11,0,1) 700ms。
  */
 const player = usePlayerStore();
 const settings = useSettingsStore();
@@ -14,6 +16,10 @@ const lineRefs = ref<HTMLDivElement[]>([]);
 
 const LINE_HEIGHT = 20;
 const LYRICS_OFFSET = () => (containerRef.value ? containerRef.value.clientHeight / 3 : 200);
+
+function t(key: string) {
+  return translate(settings.lang, key);
+}
 
 function setLineRef(el: any, index: number) {
   if (el) lineRefs.value[index] = el;
@@ -56,17 +62,18 @@ watch(() => player.lyrics.length, onLyricsLoaded);
         :style="{
           fontSize: settings.lyricFontSize + 'px',
           lineHeight: settings.lyricLineHeight,
-          filter: settings.lyricBlur ? `blur(${Math.abs(i - player.activeLine) * 0.8}px)` : 'none',
+          filter: settings.lyricBlur ? `blur(${Math.abs(i - player.activeLine) * 0.5}px)` : 'none',
           transform: i === player.activeLine ? 'scale(1.25)' : 'scale(1)',
-          opacity: i === player.activeLine ? 1 : Math.max(0.15, 1 - Math.abs(i - player.activeLine) * 0.25),
+          opacity: i === player.activeLine ? 1.0 : Math.max(0.2, 1.0 - Math.abs(i - player.activeLine) * 0.25),
         }"
         @click="player.seekToLyric(i)"
       >
         {{ line.text }}
       </div>
       <div v-if="!player.lyrics.length" class="empty-lyrics">
-        <p>暂无歌词</p>
-        <p class="sub">可加载同名 .lrc 文件或内嵌歌词</p>
+        <span class="material-symbols-outlined">lyrics</span>
+        <p>{{ t("player.noLyrics") }}</p>
+        <p class="sub">{{ t("player.lyricsHint") }}</p>
       </div>
     </div>
   </div>
@@ -78,15 +85,15 @@ watch(() => player.lyrics.length, onLyricsLoaded);
   -webkit-mask-image: linear-gradient(
     to bottom,
     transparent 0%,
-    black 22%,
-    black 78%,
+    black 15%,
+    black 85%,
     transparent 100%
   );
   mask-image: linear-gradient(
     to bottom,
     transparent 0%,
-    black 22%,
-    black 78%,
+    black 15%,
+    black 85%,
     transparent 100%
   );
   overflow: hidden;
@@ -101,25 +108,31 @@ watch(() => player.lyrics.length, onLyricsLoaded);
   display: none;
 }
 .lyric-line {
-  padding: 4px 0;
-  color: rgba(255, 255, 255, 0.25);
+  padding: 6px 0;
+  color: rgba(255, 255, 255, 0.2);
   font-weight: bold;
   letter-spacing: 0.6px;
   cursor: pointer;
   transition:
-    color 600ms cubic-bezier(0.19, 0.11, 0, 1),
-    transform 600ms cubic-bezier(0.19, 0.11, 0, 1),
-    filter 600ms cubic-bezier(0.19, 0.11, 0, 1);
+    color 700ms cubic-bezier(0.19, 0.11, 0, 1),
+    transform 700ms cubic-bezier(0.19, 0.11, 0, 1),
+    filter 700ms cubic-bezier(0.19, 0.11, 0, 1),
+    opacity 700ms cubic-bezier(0.19, 0.11, 0, 1);
   text-align: left;
+  transform-origin: left center;
 }
 .lyric-line.active {
   color: rgba(255, 255, 255, 1);
-  transform-origin: left center;
 }
 .empty-lyrics {
   color: rgba(255, 255, 255, 0.5);
   text-align: center;
   margin-top: 40%;
+}
+.empty-lyrics .material-symbols-outlined {
+  font-size: 48px;
+  opacity: 0.5;
+  margin-bottom: 12px;
 }
 .empty-lyrics .sub {
   font-size: 13px;

@@ -2,6 +2,7 @@ use crate::{MediaFile, MediaMetadata, Song};
 use crate::commands::{DbState, metadata};
 use tauri::Manager;
 use lofty::file::TaggedFileExt;
+use std::path::Path;
 
 /// 获取歌曲（音频文件 + 元数据 + 封面 base64 + 内嵌/旁注歌词）
 #[tauri::command]
@@ -34,8 +35,8 @@ pub fn get_song(app: tauri::AppHandle, file_id: String) -> Option<Song> {
     // 封面 + 歌词（lofty）
     let mut cover_base64 = None;
     let mut lyrics = None;
-    let ext = std::path::Path::new(&file.path)
-        .extension()
+    let path = Path::new(&file.path);
+    let ext = path.extension()
         .map(|e| e.to_string_lossy().to_lowercase())
         .unwrap_or_default();
     if ["mp3", "flac", "m4a", "ogg", "wav"].contains(&ext.as_str()) {
@@ -52,17 +53,22 @@ pub fn get_song(app: tauri::AppHandle, file_id: String) -> Option<Song> {
                     );
                     cover_base64 = Some(format!("data:{};base64,{}", mime, b64));
                 }
-                // 内嵌歌词字段
+                // 内嵌歌词字段（尝试多种 key）
                 if let Some(l) = tag.get_string(&lofty::tag::ItemKey::Lyrics) {
+                    lyrics = Some(l.to_string());
+                } else if let Some(l) = tag.get_string(&lofty::tag::ItemKey::UnsynchronizedLyrics) {
                     lyrics = Some(l.to_string());
                 }
             }
         }
-        // 旁注 .lrc
+        // 旁注 .lrc（使用 Path API 正确替换扩展名）
         if lyrics.is_none() {
-            let lrc_path = file.path.replace(&ext, "lrc");
-            if let Ok(content) = std::fs::read_to_string(lrc_path) {
-                lyrics = Some(content);
+            if let Some(stem) = path.file_stem() {
+                let mut lrc_path = path.to_path_buf();
+                lrc_path.set_file_name(format!("{}.lrc", stem.to_string_lossy()));
+                if let Ok(content) = std::fs::read_to_string(&lrc_path) {
+                    lyrics = Some(content);
+                }
             }
         }
     }

@@ -105,15 +105,23 @@ onBeforeUnmount(() => {
 
         <div class="controls">
           <div class="ctrl-group left">
-            <button class="side-btn" :title="t('player.repeat')"><span class="material-symbols-outlined">repeat</span></button>
-            <button class="side-btn" :title="t('player.shuffle')"><span class="material-symbols-outlined">shuffle</span></button>
+            <button class="side-btn" :class="{ active: player.repeatMode !== 'off' }" :title="t('player.repeat')" @click="player.cycleRepeat()">
+              <span class="material-symbols-outlined">{{ player.repeatMode === 'one' ? 'repeat_one' : 'repeat' }}</span>
+            </button>
+            <button class="side-btn" :class="{ active: player.shuffleMode }" :title="t('player.shuffle')" @click="player.toggleShuffle()">
+              <span class="material-symbols-outlined">shuffle</span>
+            </button>
           </div>
           <div class="ctrl-group center">
-            <button class="side-btn" :title="t('player.prev')"><span class="material-symbols-outlined">skip_previous</span></button>
+            <button class="side-btn" :title="t('player.prev')" @click="player.previous()">
+              <span class="material-symbols-outlined">skip_previous</span>
+            </button>
             <button class="main-btn" @click="player.togglePlay()">
               <span class="material-symbols-outlined">{{ player.playing ? "pause" : "play_arrow" }}</span>
             </button>
-            <button class="side-btn" :title="t('player.next')"><span class="material-symbols-outlined">skip_next</span></button>
+            <button class="side-btn" :title="t('player.next')" @click="player.next()">
+              <span class="material-symbols-outlined">skip_next</span>
+            </button>
           </div>
           <div class="ctrl-group right">
             <button class="side-btn speed" @click="cycleSpeed">{{ speed }}x</button>
@@ -137,7 +145,7 @@ onBeforeUnmount(() => {
         </div>
         <div class="right-content">
           <LyricsView v-if="rightTab === 'lyrics'" />
-          <div v-else class="queue-empty">播放队列</div>
+          <div v-else class="queue-empty">{{ t("actions.queue") }}</div>
         </div>
       </div>
     </div>

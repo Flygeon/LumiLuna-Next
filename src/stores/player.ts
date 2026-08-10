@@ -103,15 +103,23 @@ export function getDominantColors(
   return dominant.map(([r, g, b]) => `rgba(${r},${g},${b},0.8)`);
 }
 
+export type RepeatMode = "off" | "all" | "one";
+
 export const usePlayerStore = defineStore("player", () => {
   const song = ref<Song | null>(null);
   const playing = ref(false);
   const currentTime = ref(0);
   const duration = ref(0);
   const currentIndex = ref(0);
+  const queue = ref<Song[]>([]);
+  const shuffleMode = ref(false);
+  const repeatMode = ref<RepeatMode>("off");
+  const shuffledIndices = ref<number[]>([]);
+
   function setIndex(i: number) {
     currentIndex.value = i;
   }
+
   const lyrics = ref<LyricLine[]>([]);
   const activeLine = ref(-1);
   const coverColors = ref<string[]>([]);
@@ -126,6 +134,9 @@ export const usePlayerStore = defineStore("player", () => {
     });
     el.addEventListener("loadedmetadata", () => {
       duration.value = el.duration;
+    });
+    el.addEventListener("ended", () => {
+      next();
     });
   }
 
@@ -142,6 +153,15 @@ export const usePlayerStore = defineStore("player", () => {
     activeLine.value = idx;
   }
 
+  function generateShuffleOrder() {
+    const indices = Array.from({ length: queue.value.length }, (_, i) => i);
+    for (let i = indices.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [indices[i], indices[j]] = [indices[j], indices[i]];
+    }
+    shuffledIndices.value = indices;
+  }
+
   async function loadSong(s: Song) {
     song.value = s;
     lyrics.value = s.lyrics ? parseLrc(s.lyrics) : [];
@@ -153,6 +173,94 @@ export const usePlayerStore = defineStore("player", () => {
       };
       img.src = s.coverBase64;
     }
+  }
+
+  async function playFromQueue(index: number) {
+    if (index < 0 || index >= queue.value.length) return;
+    currentIndex.value = index;
+    await loadSong(queue.value[index]);
+    if (audioEl.value) {
+      audioEl.value.load();
+      audioEl.value.play();
+      playing.value = true;
+    }
+  }
+
+  async function next() {
+    if (queue.value.length === 0) return;
+    if (repeatMode.value === "one") {
+      if (audioEl.value) {
+        audioEl.value.currentTime = 0;
+        audioEl.value.play();
+      }
+      return;
+    }
+    let nextIndex: number;
+    if (shuffleMode.value) {
+      const currentShufflePos = shuffledIndices.value.indexOf(currentIndex.value);
+      const nextShufflePos = currentShufflePos + 1;
+      if (nextShufflePos >= shuffledIndices.value.length) {
+        if (repeatMode.value === "all") {
+          generateShuffleOrder();
+          nextIndex = shuffledIndices.value[0];
+        } else {
+          playing.value = false;
+          return;
+        }
+      } else {
+        nextIndex = shuffledIndices.value[nextShufflePos];
+      }
+    } else {
+      nextIndex = currentIndex.value + 1;
+      if (nextIndex >= queue.value.length) {
+        if (repeatMode.value === "all") {
+          nextIndex = 0;
+        } else {
+          playing.value = false;
+          return;
+        }
+      }
+    }
+    await playFromQueue(nextIndex);
+  }
+
+  async function previous() {
+    if (queue.value.length === 0) return;
+    if (audioEl.value && audioEl.value.currentTime > 3) {
+      audioEl.value.currentTime = 0;
+      return;
+    }
+    let prevIndex: number;
+    if (shuffleMode.value) {
+      const currentShufflePos = shuffledIndices.value.indexOf(currentIndex.value);
+      prevIndex = currentShufflePos > 0
+        ? shuffledIndices.value[currentShufflePos - 1]
+        : shuffledIndices.value[shuffledIndices.value.length - 1];
+    } else {
+      prevIndex = currentIndex.value > 0 ? currentIndex.value - 1 : queue.value.length - 1;
+    }
+    await playFromQueue(prevIndex);
+  }
+
+  function toggleShuffle() {
+    shuffleMode.value = !shuffleMode.value;
+    if (shuffleMode.value) {
+      generateShuffleOrder();
+    }
+  }
+
+  function cycleRepeat() {
+    const modes: RepeatMode[] = ["off", "all", "one"];
+    const currentIdx = modes.indexOf(repeatMode.value);
+    repeatMode.value = modes[(currentIdx + 1) % modes.length];
+  }
+
+  function setQueue(songs: Song[], startIndex = 0) {
+    queue.value = songs;
+    if (shuffleMode.value) {
+      generateShuffleOrder();
+    }
+    currentIndex.value = startIndex;
   }
 
   function togglePlay() {
@@ -181,6 +289,9 @@ export const usePlayerStore = defineStore("player", () => {
     currentTime,
     duration,
     currentIndex,
+    queue,
+    shuffleMode,
+    repeatMode,
     lyrics,
     activeLine,
     coverColors,
@@ -191,5 +302,11 @@ export const usePlayerStore = defineStore("player", () => {
     setIndex,
     seek,
     seekToLyric,
+    next,
+    previous,
+    toggleShuffle,
+    cycleRepeat,
+    setQueue,
+    playFromQueue,
   };
 });

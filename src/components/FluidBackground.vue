@@ -4,7 +4,7 @@ import { usePlayerStore } from "@/stores/player";
 
 /**
  * 流体动态背景（1:1 参考《音乐播放器参考》index.js 的 Slice / animate）。
- * 4 象限旋转 + screen 混合 + blur/saturate/brightness 滤镜。
+ * 4 象限旋转 + screen 混合 + blur(30px) saturate(2.5) brightness(0.5) + scale(1.5)。
  */
 const player = usePlayerStore();
 const canvasRef = ref<HTMLCanvasElement | null>(null);
@@ -24,18 +24,25 @@ function startAnimation() {
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
+
+  const dpr = window.devicePixelRatio || 1;
   const resize = () => {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    canvas.width = window.innerWidth * dpr;
+    canvas.height = window.innerHeight * dpr;
+    canvas.style.width = window.innerWidth + "px";
+    canvas.style.height = window.innerHeight + "px";
+    ctx.scale(dpr, dpr);
   };
   resize();
+  window.addEventListener("resize", resize);
+
   const currentImg = img;
   if (!currentImg) return;
 
   slices = [0, 1, 2, 3].map((i) => ({
     index: i,
     angle: Math.random() * Math.PI * 2,
-    velocity: (Math.random() - 0.5) * 0.005 * 2 * Math.PI, // 极慢
+    velocity: (Math.random() - 0.5) * 0.005 * 2 * Math.PI,
     scale: 1,
   }));
 
@@ -45,12 +52,14 @@ function startAnimation() {
     if (!c || !currentImg) return;
     const cctx = c.getContext("2d");
     if (!cctx) return;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
     cctx.clearRect(0, 0, c.width, c.height);
     cctx.globalCompositeOperation = "screen";
     slices.forEach((s) => {
       s.angle += s.velocity;
-      const cx = s.index % 2 === 0 ? c.width * 0.25 : c.width * 0.75;
-      const cy = s.index < 2 ? c.height * 0.25 : c.height * 0.75;
+      const cx = s.index % 2 === 0 ? w * 0.25 : w * 0.75;
+      const cy = s.index < 2 ? h * 0.25 : h * 0.75;
       cctx.save();
       cctx.translate(cx, cy);
       cctx.rotate(s.angle);
@@ -59,7 +68,7 @@ function startAnimation() {
       const sh = currentImg.height / 2;
       const sx = (s.index % 2) * sw;
       const sy = Math.floor(s.index / 2) * sh;
-      const drawSize = Math.max(c.width, c.height) * 0.6;
+      const drawSize = Math.max(w, h) * 0.6;
       cctx.drawImage(currentImg, sx, sy, sw, sh, -drawSize / 2, -drawSize / 2, drawSize, drawSize);
       cctx.restore();
     });
@@ -82,7 +91,6 @@ function loadCover() {
 onMounted(() => {
   if (player.song?.coverBase64) loadCover();
   else if (canvasRef.value) {
-    // 默认封面
     img = new Image();
     img.src = "/default.svg";
     img.onload = () => startAnimation();
@@ -96,24 +104,38 @@ watch(
 
 onBeforeUnmount(() => {
   if (animationId) cancelAnimationFrame(animationId);
+  window.removeEventListener("resize", startAnimation);
 });
 </script>
 
 <template>
-  <canvas ref="canvasRef" class="fluid-bg"></canvas>
+  <div class="fluid-wrapper">
+    <canvas ref="canvasRef" class="fluid-canvas"></canvas>
+    <div class="dark-overlay"></div>
+  </div>
 </template>
 
 <style scoped>
-.fluid-bg {
+.fluid-wrapper {
   position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  background-color: #0F0F11;
+}
+.fluid-canvas {
+  position: absolute;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
   transform: scale(1.5);
-  z-index: -1;
   filter: blur(30px) saturate(2.5) brightness(0.5);
   pointer-events: none;
-  background-color: #000;
+  will-change: transform;
+}
+.dark-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 15, 17, 0.55);
+  backdrop-filter: blur(10px);
 }
 </style>
