@@ -71,7 +71,7 @@ function clearScanDirs() {
       <div v-if="settings.scanDirs.length" class="dir-list">
         <div v-for="(dir, i) in settings.scanDirs" :key="dir" class="dir-item">
           <span class="dir-path">{{ dir }}</span>
-          <button class="dir-remove" @click="removeScanDir(i)">✕</button>
+          <button class="dir-remove" @click="removeScanDir(i)"><span class="material-symbols-outlined">close</span></button>
         </div>
       </div>
       <div v-else class="global-hint">{{ t("settings.globalScanHint") }}</div>
@@ -210,9 +210,14 @@ function clearScanDirs() {
   background: transparent;
   color: var(--md-sys-color-error);
   cursor: pointer;
-  font-size: 16px;
   padding: 2px 6px;
   border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dir-remove .material-symbols-outlined {
+  font-size: 18px;
 }
 .dir-remove:hover {
   background: var(--md-sys-color-error-container);

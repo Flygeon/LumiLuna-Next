@@ -19,7 +19,7 @@ function t(key: string) {
       </button>
     </div>
     <div class="empty">
-      <div class="empty-icon">📁</div>
+      <div class="empty-icon"><span class="material-symbols-outlined">folder</span></div>
       <p>{{ t("nav.folders") }} · 树形浏览本地目录</p>
     </div>
   </div>
@@ -46,5 +46,8 @@ function t(key: string) {
 .empty-icon {
   font-size: 60px;
   margin-bottom: 16px;
+}
+.empty-icon .material-symbols-outlined {
+  font-size: 60px;
 }
 </style>

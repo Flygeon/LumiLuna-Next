@@ -37,14 +37,14 @@ function openFile(path: string) {
       </button>
     </div>
     <div v-if="!library.files.length" class="empty">
-      <div class="empty-icon">🖼️</div>
+      <div class="empty-icon"><span class="material-symbols-outlined">image</span></div>
       <p>{{ t("library.empty") }}</p>
     </div>
     <div v-else class="grid">
       <div v-for="f in library.files" :key="f.id" class="cell" @click="openFile(f.path)">
         <div class="thumb">
           <img v-if="thumbs[f.id]" :src="thumbs[f.id]" alt="" loading="lazy" />
-          <span v-else class="placeholder">🖼️</span>
+          <span v-else class="placeholder"><span class="material-symbols-outlined">image</span></span>
         </div>
         <div class="name">{{ f.path.split(/[\\/]/).pop() }}</div>
       </div>
@@ -74,6 +74,9 @@ function openFile(path: string) {
   font-size: 60px;
   margin-bottom: 16px;
 }
+.empty-icon .material-symbols-outlined {
+  font-size: 60px;
+}
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -102,7 +105,7 @@ function openFile(path: string) {
   height: 100%;
   object-fit: cover;
 }
-.placeholder {
+.placeholder .material-symbols-outlined {
   font-size: 48px;
 }
 .name {

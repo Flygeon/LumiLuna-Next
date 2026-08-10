@@ -27,12 +27,12 @@ function openFile(path: string) {
       </button>
     </div>
     <div v-if="!library.files.length" class="empty">
-      <div class="empty-icon">📚</div>
+      <div class="empty-icon"><span class="material-symbols-outlined">library_books</span></div>
       <p>{{ t("library.empty") }}</p>
     </div>
     <div v-else class="grid">
       <div v-for="f in library.files" :key="f.id" class="cell" @click="openFile(f.path)">
-        <div class="cover">📖</div>
+        <div class="cover"><span class="material-symbols-outlined">menu_book</span></div>
         <div class="name">{{ f.path.split(/[\\/]/).pop() }}</div>
       </div>
     </div>
@@ -61,6 +61,9 @@ function openFile(path: string) {
   font-size: 60px;
   margin-bottom: 16px;
 }
+.empty-icon .material-symbols-outlined {
+  font-size: 60px;
+}
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -79,8 +82,10 @@ function openFile(path: string) {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 48px;
   background: var(--md-sys-color-surface-container-high);
+}
+.cover .material-symbols-outlined {
+  font-size: 48px;
 }
 .name {
   margin-top: 8px;

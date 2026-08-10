@@ -51,7 +51,7 @@ onMounted(loadSongs);
     </div>
 
     <div v-if="!songs.length" class="empty">
-      <div class="empty-icon">🎵</div>
+      <div class="empty-icon"><span class="material-symbols-outlined">music_note</span></div>
       <p>{{ t("library.empty") }}</p>
       <button class="scan-btn" @click="library.startScan()">{{ t("actions.scan") }}</button>
     </div>
@@ -104,6 +104,9 @@ onMounted(loadSongs);
 .empty-icon {
   font-size: 60px;
   margin-bottom: 16px;
+}
+.empty-icon .material-symbols-outlined {
+  font-size: 60px;
 }
 .empty .scan-btn {
   margin-top: 20px;

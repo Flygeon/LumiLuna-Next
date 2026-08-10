@@ -56,7 +56,7 @@ onBeforeUnmount(() => {
 
     <!-- 顶部覆盖层 -->
     <div class="player-topbar">
-      <button class="back" @click="router.back()">⬅ {{ t("player.back") }}</button>
+      <button class="back" @click="router.back()"><span class="material-symbols-outlined">arrow_back</span> {{ t("player.back") }}</button>
       <div class="now-title">{{ t("player.nowPlaying") }}</div>
       <div class="right-placeholder"></div>
     </div>
@@ -68,7 +68,7 @@ onBeforeUnmount(() => {
           <div class="cover" v-if="player.song?.coverBase64">
             <img :src="player.song.coverBase64" alt="" />
           </div>
-          <div class="cover default" v-else>🎵</div>
+          <div class="cover default" v-else><span class="material-symbols-outlined">music_note</span></div>
         </div>
 
         <div class="song-info">
@@ -105,15 +105,15 @@ onBeforeUnmount(() => {
 
         <div class="controls">
           <div class="ctrl-group left">
-            <button class="side-btn" :title="t('player.repeat')">🔁</button>
-            <button class="side-btn" :title="t('player.shuffle')">🔀</button>
+            <button class="side-btn" :title="t('player.repeat')"><span class="material-symbols-outlined">repeat</span></button>
+            <button class="side-btn" :title="t('player.shuffle')"><span class="material-symbols-outlined">shuffle</span></button>
           </div>
           <div class="ctrl-group center">
-            <button class="side-btn" :title="t('player.prev')">⏮</button>
+            <button class="side-btn" :title="t('player.prev')"><span class="material-symbols-outlined">skip_previous</span></button>
             <button class="main-btn" @click="player.togglePlay()">
-              {{ player.playing ? "⏸" : "▶" }}
+              <span class="material-symbols-outlined">{{ player.playing ? "pause" : "play_arrow" }}</span>
             </button>
-            <button class="side-btn" :title="t('player.next')">⏭</button>
+            <button class="side-btn" :title="t('player.next')"><span class="material-symbols-outlined">skip_next</span></button>
           </div>
           <div class="ctrl-group right">
             <button class="side-btn speed" @click="cycleSpeed">{{ speed }}x</button>
@@ -171,6 +171,9 @@ onBeforeUnmount(() => {
   font-size: 15px;
   cursor: pointer;
   opacity: 0.9;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 .now-title {
   font-size: 14px;
@@ -228,8 +231,10 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 120px;
   background: #222;
+}
+.cover.default .material-symbols-outlined {
+  font-size: 120px;
 }
 .song-info {
   margin-top: 28px;
@@ -307,12 +312,14 @@ onBeforeUnmount(() => {
   border: none;
   background: #fff;
   color: #000;
-  font-size: 34px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: transform 200ms;
+}
+.main-btn .material-symbols-outlined {
+  font-size: 34px;
 }
 .main-btn:hover {
   transform: scale(1.03);
@@ -327,11 +334,13 @@ onBeforeUnmount(() => {
   background: transparent;
   color: #fff;
   opacity: 0.7;
-  font-size: 20px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+.side-btn .material-symbols-outlined {
+  font-size: 20px;
 }
 .side-btn:active {
   transform: scale(0.8);

@@ -18,7 +18,7 @@ function t(key: string) {
     <div class="cover" v-if="player.song?.coverBase64">
       <img :src="player.song.coverBase64" alt="" />
     </div>
-    <div class="cover default" v-else>🎵</div>
+    <div class="cover default" v-else><span class="material-symbols-outlined">music_note</span></div>
     <div class="info">
       <div class="title">{{ player.song?.meta.title || "—" }}</div>
       <div class="artist">{{ player.song?.meta.artist || "" }}</div>
@@ -30,7 +30,7 @@ function t(key: string) {
       ></div>
     </div>
     <button class="ctrl" @click.stop="player.togglePlay()">
-      {{ player.playing ? "⏸" : "▶" }}
+      <span class="material-symbols-outlined">{{ player.playing ? "pause" : "play_arrow" }}</span>
     </button>
   </div>
 </template>
@@ -60,6 +60,10 @@ function t(key: string) {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+.cover .material-symbols-outlined {
+  font-size: 24px;
+  color: var(--md-sys-color-on-surface-variant);
 }
 .cover img {
   width: 100%;
@@ -95,8 +99,13 @@ function t(key: string) {
 .ctrl {
   border: none;
   background: transparent;
-  font-size: 22px;
   cursor: pointer;
   color: var(--md-sys-color-on-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ctrl .material-symbols-outlined {
+  font-size: 22px;
 }
 </style>

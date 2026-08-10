@@ -11,7 +11,7 @@ function t(key: string) {
 <template>
   <div class="simple-view">
     <div class="empty">
-      <div class="empty-icon">🗑️</div>
+      <div class="empty-icon"><span class="material-symbols-outlined">delete</span></div>
       <p>{{ t("nav.trash") }} · 回收站</p>
     </div>
   </div>
@@ -26,5 +26,8 @@ function t(key: string) {
 .empty-icon {
   font-size: 60px;
   margin-bottom: 16px;
+}
+.empty-icon .material-symbols-outlined {
+  font-size: 60px;
 }
 </style>

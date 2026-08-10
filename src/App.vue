@@ -26,15 +26,15 @@ const bottomItems = [
 ];
 
 const icons: Record<string, string> = {
-  images: "🖼️",
-  videos: "🎬",
-  music: "🎵",
-  books: "📚",
-  folders: "📁",
-  favorites: "⭐",
-  history: "🕘",
-  trash: "🗑️",
-  settings: "⚙️",
+  images: "image",
+  videos: "movie",
+  music: "music_note",
+  books: "library_books",
+  folders: "folder",
+  favorites: "star",
+  history: "history",
+  trash: "delete",
+  settings: "settings",
 };
 
 function t(key: string) {
@@ -69,7 +69,7 @@ onMounted(() => {
           :class="{ active: route.path === item.path }"
           @click="go(item.path)"
         >
-          <span class="nav-icon">{{ icons[item.key] }}</span>
+          <span class="nav-icon"><span class="material-symbols-outlined">{{ icons[item.key] }}</span></span>
           <span class="nav-label">{{ t("nav." + item.key) }}</span>
         </div>
       </div>
@@ -81,7 +81,7 @@ onMounted(() => {
           :class="{ active: route.path === item.path }"
           @click="go(item.path)"
         >
-          <span class="nav-icon">{{ icons[item.key] }}</span>
+          <span class="nav-icon"><span class="material-symbols-outlined">{{ icons[item.key] }}</span></span>
           <span class="nav-label">{{ t("nav." + item.key) }}</span>
         </div>
       </div>
@@ -95,7 +95,7 @@ onMounted(() => {
           <input type="text" :placeholder="t('actions.search')" />
         </div>
         <button class="theme-btn" @click="settings.applyTheme(settings.theme === 'dark' ? 'light' : 'dark')">
-          {{ settings.theme === "dark" ? "🌙" : "☀️" }}
+          <span class="material-symbols-outlined">{{ settings.theme === "dark" ? "dark_mode" : "light_mode" }}</span>
         </button>
       </header>
 
@@ -210,8 +210,11 @@ onMounted(() => {
   border-radius: 50%;
   width: 40px;
   height: 40px;
-  font-size: 18px;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--md-sys-color-on-surface);
 }
 .main-content {
   flex: 1;
