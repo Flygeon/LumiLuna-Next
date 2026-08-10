@@ -14,7 +14,7 @@ function t(key: string) {
 <template>
   <div class="folders-view">
     <div class="toolbar">
-      <button class="scan-btn" @click="library.startScan(['/'])">
+      <button class="scan-btn" @click="library.startScan()">
         {{ t("actions.addDir") }}
       </button>
     </div>

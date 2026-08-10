@@ -1,23 +1,38 @@
 <script setup lang="ts">
-import { onMounted } from "vue";
+import { onMounted, ref } from "vue";
 import { useLibraryStore } from "@/stores/library";
 import { useSettingsStore } from "@/stores/settings";
+import { capabilities } from "@/capabilities";
 import { translate } from "@shared/i18n";
+import type { MediaFile } from "@shared/types";
 
 const library = useLibraryStore();
 const settings = useSettingsStore();
+const thumbs = ref<Record<string, string>>({});
 
 function t(key: string) {
   return translate(settings.lang, key);
 }
 
-onMounted(() => library.refresh("image"));
+onMounted(async () => {
+  await library.refresh("image");
+  for (const f of library.files) {
+    try {
+      const dataUrl = await capabilities.getThumbnail(f.id, 300);
+      if (dataUrl) thumbs.value[f.id] = dataUrl;
+    } catch {}
+  }
+});
+
+function openFile(path: string) {
+  capabilities.openFile(path);
+}
 </script>
 
 <template>
   <div class="media-grid-view">
     <div class="toolbar">
-      <button class="scan-btn" @click="library.startScan(['/'])">
+      <button class="scan-btn" @click="library.startScan()">
         {{ library.scanning ? t("library.scanning") : t("actions.scan") }}
       </button>
     </div>
@@ -26,8 +41,11 @@ onMounted(() => library.refresh("image"));
       <p>{{ t("library.empty") }}</p>
     </div>
     <div v-else class="grid">
-      <div v-for="f in library.files" :key="f.id" class="cell">
-        <div class="thumb">🖼️</div>
+      <div v-for="f in library.files" :key="f.id" class="cell" @click="openFile(f.path)">
+        <div class="thumb">
+          <img v-if="thumbs[f.id]" :src="thumbs[f.id]" alt="" loading="lazy" />
+          <span v-else class="placeholder">🖼️</span>
+        </div>
         <div class="name">{{ f.path.split(/[\\/]/).pop() }}</div>
       </div>
     </div>
@@ -76,8 +94,16 @@ onMounted(() => library.refresh("image"));
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 48px;
   background: var(--md-sys-color-surface-container-high);
+  overflow: hidden;
+}
+.thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.placeholder {
+  font-size: 48px;
 }
 .name {
   padding: 8px 10px;

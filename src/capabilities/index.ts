@@ -4,6 +4,8 @@
  * 前端不直接触碰磁盘/数据库/原生资源。
  */
 import { invoke } from "@tauri-apps/api/core";
+import { openPath } from "@tauri-apps/plugin-opener";
+import { open as dialogOpen } from "@tauri-apps/plugin-dialog";
 import type {
   MediaFile,
   MediaMetadata,
@@ -86,5 +88,19 @@ export const capabilities = {
   /** 获取缩略图/封面（返回 data url 或路径） */
   getThumbnail(fileId: string, size?: number): Promise<string> {
     return safeInvoke("get_thumbnail", { fileId, size });
+  },
+  /** 用系统默认应用打开文件 */
+  async openFile(path: string): Promise<void> {
+    if (isTauri) {
+      await openPath(path);
+    }
+  },
+  /** 选择目录，返回路径或 null */
+  async pickDirectory(): Promise<string | null> {
+    if (!isTauri) return null;
+    const result = await dialogOpen({ directory: true, multiple: false });
+    if (typeof result === "string") return result;
+    if (result && typeof result === "object" && "path" in result) return (result as any).path;
+    return null;
   },
 };

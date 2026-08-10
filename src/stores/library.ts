@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import { capabilities } from "@/capabilities";
+import { useSettingsStore } from "@/stores/settings";
 import type { MediaFile, MediaMetadata, ScanProgress } from "@shared/types";
 
 export const useLibraryStore = defineStore("library", () => {
@@ -27,11 +28,13 @@ export const useLibraryStore = defineStore("library", () => {
     }
   }
 
-  async function startScan(dirs: string[]) {
+  async function startScan(dirs?: string[]) {
     scanning.value = true;
     scanLogs.value = [];
     try {
-      const { jobId } = await capabilities.scanStart({ dirs });
+      const settings = useSettingsStore();
+      const scanDirs = dirs && dirs.length ? dirs : (settings.scanDirs.length ? settings.scanDirs : ["/"]);
+      const { jobId } = await capabilities.scanStart({ dirs: scanDirs });
       // 轮询进度（demo 简化；正式用 Tauri 事件推送）
       const poll = setInterval(async () => {
         const p = await capabilities.scanStatus(jobId);

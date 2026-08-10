@@ -45,7 +45,7 @@ onMounted(loadSongs);
 <template>
   <div class="music-view">
     <div class="toolbar">
-      <button class="scan-btn" @click="library.startScan(['/'])">
+      <button class="scan-btn" @click="library.startScan()">
         {{ library.scanning ? t("library.scanning") : t("actions.scan") }}
       </button>
     </div>
@@ -53,7 +53,7 @@ onMounted(loadSongs);
     <div v-if="!songs.length" class="empty">
       <div class="empty-icon">🎵</div>
       <p>{{ t("library.empty") }}</p>
-      <button class="scan-btn" @click="library.startScan(['/'])">{{ t("actions.scan") }}</button>
+      <button class="scan-btn" @click="library.startScan()">{{ t("actions.scan") }}</button>
     </div>
 
     <div v-else class="song-table">

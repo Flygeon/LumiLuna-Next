@@ -65,6 +65,10 @@ export const messages = {
       licenses: "开源许可证",
       clearCache: "清理缓存",
       scanDirs: "扫描目录",
+      scanDirsHint: "不选择目录则全局扫描，选择目录后仅扫描指定目录内的文件。",
+      addScanDir: "添加目录",
+      clearScanDirs: "清除目录（全局扫描）",
+      globalScanHint: "当前：全局扫描",
     },
   },
   en: {
@@ -132,6 +136,10 @@ export const messages = {
       licenses: "Licenses",
       clearCache: "Clear Cache",
       scanDirs: "Scan Directories",
+      scanDirsHint: "No directory selected = global scan. Select a directory to scan only that folder.",
+      addScanDir: "Add Directory",
+      clearScanDirs: "Clear Directories (Global Scan)",
+      globalScanHint: "Current: Global scan",
     },
   },
 } as const;

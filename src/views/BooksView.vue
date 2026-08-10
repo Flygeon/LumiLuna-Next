@@ -2,6 +2,7 @@
 import { onMounted } from "vue";
 import { useLibraryStore } from "@/stores/library";
 import { useSettingsStore } from "@/stores/settings";
+import { capabilities } from "@/capabilities";
 import { translate } from "@shared/i18n";
 
 const library = useLibraryStore();
@@ -12,12 +13,16 @@ function t(key: string) {
 }
 
 onMounted(() => library.refresh("book"));
+
+function openFile(path: string) {
+  capabilities.openFile(path);
+}
 </script>
 
 <template>
   <div class="media-grid-view">
     <div class="toolbar">
-      <button class="scan-btn" @click="library.startScan(['/'])">
+      <button class="scan-btn" @click="library.startScan()">
         {{ library.scanning ? t("library.scanning") : t("actions.scan") }}
       </button>
     </div>
@@ -26,7 +31,7 @@ onMounted(() => library.refresh("book"));
       <p>{{ t("library.empty") }}</p>
     </div>
     <div v-else class="grid">
-      <div v-for="f in library.files" :key="f.id" class="cell">
+      <div v-for="f in library.files" :key="f.id" class="cell" @click="openFile(f.path)">
         <div class="cover">📖</div>
         <div class="name">{{ f.path.split(/[\\/]/).pop() }}</div>
       </div>

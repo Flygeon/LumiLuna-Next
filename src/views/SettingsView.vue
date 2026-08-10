@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useSettingsStore, type ThemeMode } from "@/stores/settings";
+import { capabilities } from "@/capabilities";
 import { translate } from "@shared/i18n";
 
 const settings = useSettingsStore();
@@ -14,6 +15,21 @@ function setTheme(mode: ThemeMode) {
 
 function switchLang() {
   settings.lang = settings.lang === "zh" ? "en" : "zh";
+}
+
+async function addScanDir() {
+  const dir = await capabilities.pickDirectory();
+  if (dir && !settings.scanDirs.includes(dir)) {
+    settings.scanDirs.push(dir);
+  }
+}
+
+function removeScanDir(index: number) {
+  settings.scanDirs.splice(index, 1);
+}
+
+function clearScanDirs() {
+  settings.scanDirs.splice(0, settings.scanDirs.length);
 }
 </script>
 
@@ -47,6 +63,22 @@ function switchLang() {
       <button class="row-btn" @click="switchLang">
         {{ settings.lang === "zh" ? "简体中文 / English" : "English / 简体中文" }}
       </button>
+    </section>
+
+    <section class="card">
+      <h3>{{ t("settings.scanDirs") }}</h3>
+      <p class="hint">{{ t("settings.scanDirsHint") }}</p>
+      <div v-if="settings.scanDirs.length" class="dir-list">
+        <div v-for="(dir, i) in settings.scanDirs" :key="dir" class="dir-item">
+          <span class="dir-path">{{ dir }}</span>
+          <button class="dir-remove" @click="removeScanDir(i)">✕</button>
+        </div>
+      </div>
+      <div v-else class="global-hint">{{ t("settings.globalScanHint") }}</div>
+      <div class="dir-actions">
+        <button class="row-btn" @click="addScanDir">{{ t("settings.addScanDir") }}</button>
+        <button v-if="settings.scanDirs.length" class="row-btn danger" @click="clearScanDirs">{{ t("settings.clearScanDirs") }}</button>
+      </div>
     </section>
 
     <section class="card">
@@ -144,5 +176,65 @@ function switchLang() {
   border-radius: var(--md-sys-shape-corner-small);
   cursor: pointer;
   color: var(--md-sys-color-on-surface);
+}
+.hint {
+  font-size: 13px;
+  color: var(--md-sys-color-on-surface-variant);
+  margin-bottom: 12px;
+}
+.dir-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.dir-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--md-sys-color-surface-container-high);
+  border-radius: var(--md-sys-shape-corner-small);
+}
+.dir-path {
+  font-size: 13px;
+  font-family: monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  margin-right: 8px;
+}
+.dir-remove {
+  border: none;
+  background: transparent;
+  color: var(--md-sys-color-error);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 2px 6px;
+  border-radius: 50%;
+}
+.dir-remove:hover {
+  background: var(--md-sys-color-error-container);
+}
+.global-hint {
+  font-size: 13px;
+  color: var(--md-sys-color-on-surface-variant);
+  padding: 10px 12px;
+  background: var(--md-sys-color-surface-container-high);
+  border-radius: var(--md-sys-shape-corner-small);
+  margin-bottom: 10px;
+}
+.dir-actions {
+  display: flex;
+  gap: 8px;
+}
+.dir-actions .row-btn {
+  flex: 1;
+  margin-top: 0;
+}
+.danger {
+  color: var(--md-sys-color-error);
+  border-color: var(--md-sys-color-error);
 }
 </style>
