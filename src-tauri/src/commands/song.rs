@@ -53,10 +53,8 @@ pub fn get_song(app: tauri::AppHandle, file_id: String) -> Option<Song> {
                     );
                     cover_base64 = Some(format!("data:{};base64,{}", mime, b64));
                 }
-                // 内嵌歌词字段（尝试多种 key）
+                // 内嵌歌词字段
                 if let Some(l) = tag.get_string(&lofty::tag::ItemKey::Lyrics) {
-                    lyrics = Some(l.to_string());
-                } else if let Some(l) = tag.get_string(&lofty::tag::ItemKey::UnsynchronizedLyrics) {
                     lyrics = Some(l.to_string());
                 }
             }
