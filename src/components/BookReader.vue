@@ -12,13 +12,18 @@
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue";
 import { readFile } from "@tauri-apps/plugin-fs";
 import { capabilities, isTauri } from "@/capabilities";
+import { useSettingsStore } from "@/stores/settings";
+import { loadPdfjs, toArrayBuffer } from "@/utils/pdf";
 import type { MediaEntry } from "@shared/types";
 
 const props = defineProps<{ item: MediaEntry }>();
 const emit = defineEmits<{ (e: "close"): void }>();
 
+const settings = useSettingsStore();
+
 const host = ref<HTMLDivElement | null>(null);
-const pdfCanvas = ref<HTMLCanvasElement | null>(null);
+/** 单页/双页模式下的画布容器；滚动模式下承载所有页 */
+const pdfPane = ref<HTMLDivElement | null>(null);
 const loading = ref(true);
 const error = ref("");
 
@@ -29,48 +34,50 @@ const zoom = ref(1.2);
 const kind = computed(() =>
   props.item.ext.toLowerCase() === "pdf" ? "pdf" : "epub",
 );
+const mode = computed(() => settings.pdfReadMode);
+/** 双页模式一次前进两页 */
+const step = computed(() => (mode.value === "dual" ? 2 : 1));
 
 // 这些库的实例不需要响应式深追踪
 const book = shallowRef<any>(null);
 const rendition = shallowRef<any>(null);
 const pdfDoc = shallowRef<any>(null);
-let renderTask: any = null;
+const pdfLoadingTask = shallowRef<any>(null);
+let renderTasks: any[] = [];
 
 async function loadBytes(): Promise<ArrayBuffer> {
   if (!isTauri) throw new Error("仅在应用内可读取本地文件");
   const bytes = await readFile(props.item.path);
-  // 复制到独立 ArrayBuffer，pdf.js 会接管（detach）传入的缓冲区
-  return bytes.buffer.slice(
-    bytes.byteOffset,
-    bytes.byteOffset + bytes.byteLength,
-  ) as ArrayBuffer;
+  return toArrayBuffer(bytes);
 }
 
 // ---- PDF ----
 
 async function openPdf() {
-  const pdfjs: any = await import("pdfjs-dist");
-  // worker 与主包版本必须一致，用 Vite 的 ?url 引用打包产物
-  const workerUrl = (await import("pdfjs-dist/build/pdf.worker.mjs?url")).default;
-  pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
-
+  const pdfjs = await loadPdfjs();
   const data = await loadBytes();
-  pdfDoc.value = await pdfjs.getDocument({ data }).promise;
+  // destroy() 挂在 loadingTask 上，PDFDocumentProxy 没有该方法
+  pdfLoadingTask.value = pdfjs.getDocument({ data });
+  pdfDoc.value = await pdfLoadingTask.value.promise;
   totalPages.value = pdfDoc.value.numPages;
   page.value = 1;
-  await renderPdfPage();
+  await renderPdf();
 }
 
-async function renderPdfPage() {
+function cancelRenders() {
+  renderTasks.forEach((t) => t?.cancel?.());
+  renderTasks = [];
+}
+
+/** 把第 n 页画到一个新建的 canvas 上 */
+async function renderPageTo(n: number, container: HTMLElement) {
   const doc = pdfDoc.value;
-  const canvas = pdfCanvas.value;
-  if (!doc || !canvas) return;
+  if (!doc || n < 1 || n > doc.numPages) return;
 
-  // 取消上一次未完成的渲染，避免快速翻页时两次绘制打架
-  renderTask?.cancel();
-
-  const pdfPage = await doc.getPage(page.value);
+  const pdfPage = await doc.getPage(n);
   const viewport = pdfPage.getViewport({ scale: zoom.value });
+
+  const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
 
@@ -81,12 +88,37 @@ async function renderPdfPage() {
   canvas.style.width = `${Math.floor(viewport.width)}px`;
   canvas.style.height = `${Math.floor(viewport.height)}px`;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  container.appendChild(canvas);
 
-  renderTask = pdfPage.render({ canvasContext: ctx, viewport });
+  const task = pdfPage.render({ canvasContext: ctx, viewport });
+  renderTasks.push(task);
   try {
-    await renderTask.promise;
+    await task.promise;
   } catch (e: any) {
     if (e?.name !== "RenderingCancelledException") throw e;
+  }
+}
+
+/** 依据阅读模式渲染当前视图 */
+async function renderPdf() {
+  const pane = pdfPane.value;
+  const doc = pdfDoc.value;
+  if (!pane || !doc) return;
+
+  cancelRenders();
+  pane.innerHTML = "";
+
+  if (mode.value === "scroll") {
+    // 连续滚动：一次性铺开所有页，逐页顺序绘制
+    for (let n = 1; n <= doc.numPages; n++) {
+      await renderPageTo(n, pane);
+    }
+    return;
+  }
+
+  await renderPageTo(page.value, pane);
+  if (mode.value === "dual" && page.value + 1 <= doc.numPages) {
+    await renderPageTo(page.value + 1, pane);
   }
 }
 
@@ -135,9 +167,11 @@ async function openEpub() {
 
 async function nextPage() {
   if (kind.value === "pdf") {
-    if (page.value < totalPages.value) {
-      page.value++;
-      await renderPdfPage();
+    // 滚动模式下整篇连续，翻页交给滚动条
+    if (mode.value === "scroll") return;
+    if (page.value + step.value <= totalPages.value) {
+      page.value += step.value;
+      await renderPdf();
     }
   } else {
     await rendition.value?.next();
@@ -146,9 +180,10 @@ async function nextPage() {
 
 async function prevPage() {
   if (kind.value === "pdf") {
+    if (mode.value === "scroll") return;
     if (page.value > 1) {
-      page.value--;
-      await renderPdfPage();
+      page.value = Math.max(1, page.value - step.value);
+      await renderPdf();
     }
   } else {
     await rendition.value?.prev();
@@ -158,7 +193,7 @@ async function prevPage() {
 async function setZoom(delta: number) {
   zoom.value = Math.min(4, Math.max(0.5, zoom.value + delta));
   if (kind.value === "pdf") {
-    await renderPdfPage();
+    await renderPdf();
   } else {
     rendition.value?.themes.fontSize(`${Math.round(zoom.value * 87)}%`);
   }
@@ -194,20 +229,26 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   window.removeEventListener("keydown", onKey);
-  renderTask?.cancel();
+  cancelRenders();
   rendition.value?.destroy();
   book.value?.destroy();
-  pdfDoc.value?.destroy();
+  void pdfLoadingTask.value?.destroy();
 });
 
-// PDF 缩放后重绘
-watch(zoom, () => {
-  if (kind.value === "pdf") void renderPdfPage();
+// 切换阅读模式或缩放后重绘
+watch([mode, zoom], () => {
+  if (kind.value === "pdf" && pdfDoc.value) void renderPdf();
 });
 
 function openExternally() {
   void capabilities.openFile(props.item.path);
 }
+
+const PDF_MODES = [
+  { key: "single" as const, icon: "description", label: "单页" },
+  { key: "dual" as const, icon: "auto_stories", label: "双页" },
+  { key: "scroll" as const, icon: "view_day", label: "滚动" },
+];
 </script>
 
 <template>
@@ -219,10 +260,31 @@ function openExternally() {
       <div class="title" :title="item.path">{{ item.title || item.name }}</div>
       <div class="pager" v-if="totalPages">
         <span class="tabular-nums">
-          {{ kind === "pdf" ? `${page} / ${totalPages}` : `第 ${page} 节` }}
+          {{
+            kind === "pdf"
+              ? mode === "scroll"
+                ? `共 ${totalPages} 页`
+                : mode === "dual" && page + 1 <= totalPages
+                  ? `${page}-${page + 1} / ${totalPages}`
+                  : `${page} / ${totalPages}`
+              : `第 ${page} 节`
+          }}
         </span>
       </div>
       <div class="tools">
+        <!-- PDF 阅读模式切换 -->
+        <div v-if="kind === 'pdf'" class="modes">
+          <button
+            v-for="m in PDF_MODES"
+            :key="m.key"
+            class="mode-btn"
+            :class="{ active: mode === m.key }"
+            :title="m.label"
+            @click="settings.pdfReadMode = m.key"
+          >
+            <span class="material-symbols-outlined">{{ m.icon }}</span>
+          </button>
+        </div>
         <button class="rbtn" title="缩小" @click="setZoom(-0.2)">
           <span class="material-symbols-outlined">zoom_out</span>
         </button>
@@ -249,16 +311,31 @@ function openExternally() {
         </button>
       </div>
 
-      <!-- PDF 画布 -->
-      <div v-show="!loading && !error && kind === 'pdf'" class="pdf-scroll">
-        <canvas ref="pdfCanvas"></canvas>
+      <!-- PDF：单页/双页居中，滚动模式纵向排列 -->
+      <div
+        v-if="kind === 'pdf'"
+        class="pdf-scroll"
+        :class="`mode-${mode}`"
+        :style="{ visibility: loading || error ? 'hidden' : 'visible' }"
+      >
+        <div ref="pdfPane" class="pdf-pane" :class="`mode-${mode}`"></div>
       </div>
 
-      <!-- EPUB 渲染容器：必须常驻 DOM，epub.js 需要真实尺寸 -->
-      <div v-show="!loading && !error && kind === 'epub'" ref="host" class="epub-host"></div>
+      <!--
+        EPUB 容器必须始终保持真实尺寸：epub.js 在 renderTo 时读取宿主的
+        宽高来分栏，如果此刻是 display:none（v-show 隐藏），拿到的是 0×0，
+        渲染出的 iframe 尺寸为空，表现为「打开了但一片空白」。
+        因此这里用 visibility 占位，加载态由上层浮层遮盖。
+      -->
+      <div
+        v-if="kind === 'epub'"
+        ref="host"
+        class="epub-host"
+        :style="{ visibility: loading || error ? 'hidden' : 'visible' }"
+      ></div>
 
       <button
-        v-if="!loading && !error"
+        v-if="!loading && !error && mode !== 'scroll'"
         class="nav prev"
         title="上一页 (←)"
         @click="prevPage"
@@ -266,7 +343,7 @@ function openExternally() {
         <span class="material-symbols-outlined">chevron_left</span>
       </button>
       <button
-        v-if="!loading && !error"
+        v-if="!loading && !error && mode !== 'scroll'"
         class="nav next"
         title="下一页 (→)"
         @click="nextPage"
@@ -353,11 +430,56 @@ function openExternally() {
   justify-content: center;
   padding: 24px;
 }
-.pdf-scroll canvas {
+/* 单页/双页：内容居中且不参与纵向滚动堆叠 */
+.pdf-pane {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  height: fit-content;
+}
+.pdf-pane.mode-scroll {
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+.pdf-pane :deep(canvas) {
   background: #fff;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
   border-radius: 2px;
-  height: fit-content;
+  display: block;
+}
+
+.modes {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  margin-right: 4px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.08);
+}
+.mode-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.65);
+  cursor: pointer;
+  transition: all 160ms ease;
+}
+.mode-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+}
+.mode-btn.active {
+  background: rgba(255, 255, 255, 0.9);
+  color: #17171a;
+}
+.mode-btn .material-symbols-outlined {
+  font-size: 18px;
 }
 
 .epub-host {
@@ -369,6 +491,7 @@ function openExternally() {
 .state {
   position: absolute;
   inset: 0;
+  z-index: 3;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -377,6 +500,7 @@ function openExternally() {
   opacity: 0.85;
   text-align: center;
   padding: 24px;
+  background: #17171a;
 }
 .state .big {
   font-size: 56px;

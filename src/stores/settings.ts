@@ -3,6 +3,7 @@ import { ref, watch } from "vue";
 import { LazyStore } from "@tauri-apps/plugin-store";
 
 export type ThemeMode = "system" | "light" | "dark";
+export type PdfReadMode = "single" | "dual" | "scroll";
 
 const store = new LazyStore("settings.json");
 
@@ -17,6 +18,8 @@ const DEFAULTS = {
   gridColumns: 6,
   /** 最小文件体积过滤（MB）；0 表示不过滤 */
   minFileSizeMb: 0,
+  /** PDF 阅读模式：single 单页 / dual 双页 / scroll 滚动 */
+  pdfReadMode: "single" as PdfReadMode,
   /** 用户手动指定的 ffmpeg 目录；空串表示自动探测 PATH */
   ffmpegDir: "",
 };
@@ -31,6 +34,7 @@ export const useSettingsStore = defineStore("settings", () => {
   const scanDirs = ref<string[]>([...DEFAULTS.scanDirs]);
   const gridColumns = ref(DEFAULTS.gridColumns);
   const minFileSizeMb = ref(DEFAULTS.minFileSizeMb);
+  const pdfReadMode = ref<PdfReadMode>(DEFAULTS.pdfReadMode);
   const ffmpegDir = ref(DEFAULTS.ffmpegDir);
   const loaded = ref(false);
 
@@ -45,6 +49,7 @@ export const useSettingsStore = defineStore("settings", () => {
     scanDirs,
     gridColumns,
     minFileSizeMb,
+    pdfReadMode,
     ffmpegDir,
   } as const;
 

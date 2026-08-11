@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import { computed, ref, shallowRef } from "vue";
 import type { UnlistenFn } from "@tauri-apps/api/event";
-import { capabilities } from "@/capabilities";
+import { capabilities, isTauri } from "@/capabilities";
 import { useSettingsStore } from "@/stores/settings";
 import type { ListQuery, MediaEntry, ScanProgress } from "@shared/types";
 
@@ -98,6 +98,15 @@ export const useLibraryStore = defineStore("library", () => {
     const pending = ids.filter((id) => id && !thumbCache.value.has(id));
     if (!pending.length) return;
 
+    // PDF 需要前端渲染封面，先按 id 找出对应条目
+    const entryOf = (id: string) => {
+      for (const list of Object.values(entriesByType.value)) {
+        const hit = list.find((e) => e.id === id);
+        if (hit) return hit;
+      }
+      return undefined;
+    };
+
     let cursor = 0;
     const worker = async () => {
       while (cursor < pending.length) {
@@ -105,7 +114,16 @@ export const useLibraryStore = defineStore("library", () => {
         if (thumbCache.value.has(id)) continue;
         try {
           const url = await capabilities.getThumbnail(id, 320);
-          if (url) setThumb(id, url);
+          if (url) {
+            setThumb(id, url);
+            continue;
+          }
+          // 后端拿不到封面时，PDF 用 pdf.js 渲染首页补上
+          const entry = entryOf(id);
+          if (entry?.ext.toLowerCase() === "pdf") {
+            const generated = await generatePdfCover(entry);
+            if (generated) setThumb(id, generated);
+          }
         } catch {
           /* 单张失败不影响其它 */
         }
@@ -114,6 +132,24 @@ export const useLibraryStore = defineStore("library", () => {
     await Promise.all(
       Array.from({ length: Math.min(concurrency, pending.length) }, worker),
     );
+  }
+
+  /** 用 pdf.js 渲染 PDF 首页作为封面，并回存到后端磁盘缓存 */
+  async function generatePdfCover(entry: MediaEntry): Promise<string | null> {
+    if (!isTauri) return null;
+    try {
+      const cached = await capabilities.thumbnailCachePath(entry.id, 320);
+      if (cached) return cached;
+
+      const { readFile } = await import("@tauri-apps/plugin-fs");
+      const { renderPdfCover, toArrayBuffer } = await import("@/utils/pdf");
+      const bytes = await readFile(entry.path);
+      const jpeg = await renderPdfCover(toArrayBuffer(bytes), 320);
+      if (!jpeg) return null;
+      return await capabilities.saveThumbnail(entry.id, jpeg, 320);
+    } catch {
+      return null;
+    }
   }
 
   /** 扫描完成后所有缓存都失效 */

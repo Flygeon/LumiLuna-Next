@@ -130,6 +130,8 @@ pub fn run() {
             commands::song::list_trash,
             commands::song::empty_trash,
             commands::thumbnail::get_thumbnail,
+            commands::thumbnail::thumbnail_cache_path,
+            commands::thumbnail::save_thumbnail,
             commands::thumbnail::clear_thumbnail_cache,
             commands::ffmpeg::ffmpeg_status,
             commands::ffmpeg::ffmpeg_set_path,

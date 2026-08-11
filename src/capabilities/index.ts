@@ -72,6 +72,27 @@ export const capabilities = {
   clearThumbnailCache(): Promise<number> {
     return safeInvoke("clear_thumbnail_cache");
   },
+  /** 查询缓存中是否已有缩略图（PDF 封面按需生成前先探测） */
+  async thumbnailCachePath(fileId: string, size = 320): Promise<string | null> {
+    const path = await safeInvoke<string | null>("thumbnail_cache_path", {
+      fileId,
+      size,
+    });
+    return path ? (isTauri ? convertFileSrc(path) : path) : null;
+  },
+  /** 保存前端渲染的封面（PDF 首页）到缩略图缓存 */
+  async saveThumbnail(
+    fileId: string,
+    jpeg: Uint8Array,
+    size = 320,
+  ): Promise<string | null> {
+    const path = await safeInvoke<string | null>("save_thumbnail", {
+      fileId,
+      size,
+      jpeg: Array.from(jpeg),
+    });
+    return path ? (isTauri ? convertFileSrc(path) : path) : null;
+  },
 
   // ---- 收藏 / 历史 / 回收站 ----
   toggleFavorite(fileId: string): Promise<boolean> {

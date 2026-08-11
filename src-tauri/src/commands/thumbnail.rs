@@ -203,6 +203,8 @@ pub fn get_thumbnail(
             .and_then(|bytes| image::load_from_memory(&bytes).ok())
             .and_then(|img| to_jpeg(img, target, None)),
         "video" => crate::commands::ffmpeg::extract_frame(&path, target, duration),
+        // PDF 首页封面需要栅格化 PDF，纯 Rust 方案体积过大；
+        // 改由前端 pdf.js 渲染后回传（generate_pdf_cover），这里只处理 EPUB。
         "book" => epub_cover(&path)
             .and_then(|bytes| image::load_from_memory(&bytes).ok())
             .and_then(|img| to_jpeg(img, target, None)),
@@ -213,6 +215,62 @@ pub fn get_thumbnail(
 
     std::fs::write(&cache_file, &jpeg).map_err(|e| e.to_string())?;
     Ok(Some(cache_file.to_string_lossy().into_owned()))
+}
+
+/// 查询某文件的缩略图缓存路径；未生成时返回 None。
+/// 前端据此判断是否需要用 pdf.js 渲染 PDF 首页封面。
+#[tauri::command]
+pub fn thumbnail_cache_path(
+    app: tauri::AppHandle,
+    file_id: String,
+    size: Option<u32>,
+) -> Result<Option<String>, String> {
+    let target = size.unwrap_or(320).clamp(64, 1024);
+    let (mtime, fsize) = {
+        let state = app.state::<DbState>();
+        let conn = state.0.lock().map_err(|e| e.to_string())?;
+        conn.query_row(
+            "SELECT mtime, size FROM files WHERE id=?1",
+            rusqlite::params![file_id],
+            |r| Ok((r.get::<_, i64>(0)?, r.get::<_, i64>(1)?)),
+        )
+        .map_err(|_| format!("文件不存在: {file_id}"))?
+    };
+    let Some(dir) = cache_dir(&app) else {
+        return Ok(None);
+    };
+    let path = dir.join(format!("{}.jpg", cache_key(&file_id, mtime, fsize, target)));
+    Ok(path.is_file().then(|| path.to_string_lossy().into_owned()))
+}
+
+/// 保存前端渲染出的封面（PDF 首页）到缩略图磁盘缓存，返回缓存路径。
+#[tauri::command]
+pub fn save_thumbnail(
+    app: tauri::AppHandle,
+    file_id: String,
+    size: Option<u32>,
+    jpeg: Vec<u8>,
+) -> Result<Option<String>, String> {
+    if jpeg.is_empty() {
+        return Ok(None);
+    }
+    let target = size.unwrap_or(320).clamp(64, 1024);
+    let (mtime, fsize) = {
+        let state = app.state::<DbState>();
+        let conn = state.0.lock().map_err(|e| e.to_string())?;
+        conn.query_row(
+            "SELECT mtime, size FROM files WHERE id=?1",
+            rusqlite::params![file_id],
+            |r| Ok((r.get::<_, i64>(0)?, r.get::<_, i64>(1)?)),
+        )
+        .map_err(|_| format!("文件不存在: {file_id}"))?
+    };
+    let Some(dir) = cache_dir(&app) else {
+        return Ok(None);
+    };
+    let path = dir.join(format!("{}.jpg", cache_key(&file_id, mtime, fsize, target)));
+    std::fs::write(&path, &jpeg).map_err(|e| e.to_string())?;
+    Ok(Some(path.to_string_lossy().into_owned()))
 }
 
 /// 清空缩略图磁盘缓存，返回释放的字节数

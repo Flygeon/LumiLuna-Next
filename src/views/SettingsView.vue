@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
-import { useSettingsStore, type ThemeMode } from "@/stores/settings";
+import {
+  useSettingsStore,
+  type PdfReadMode,
+  type ThemeMode,
+} from "@/stores/settings";
 import { useLibraryStore } from "@/stores/library";
 import { capabilities } from "@/capabilities";
 import { formatSize } from "@/utils/format";
@@ -222,6 +226,28 @@ async function clearCache() {
         >
           {{ p === 0 ? t("settings.minSizeOff") : `${p} MB` }}
         </button>
+      </div>
+    </section>
+
+    <!-- 阅读 -->
+    <section class="card">
+      <h3>{{ t("settings.reading") }}</h3>
+      <p class="hint">{{ t("settings.pdfModeHint") }}</p>
+      <div class="row">
+        <div class="row-label">
+          <span>{{ t("settings.pdfMode") }}</span>
+        </div>
+        <div class="segmented">
+          <button
+            v-for="m in (['single', 'dual', 'scroll'] as PdfReadMode[])"
+            :key="m"
+            class="seg"
+            :class="{ active: settings.pdfReadMode === m }"
+            @click="settings.pdfReadMode = m"
+          >
+            {{ t("settings.pdfMode_" + m) }}
+          </button>
+        </div>
       </div>
     </section>
 

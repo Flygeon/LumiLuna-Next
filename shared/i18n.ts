@@ -76,6 +76,12 @@ export const messages = {
       minSizeHint:
         "小于该体积的文件不会出现在各分类中，用于过滤缩略图、图标等碎文件。仅影响展示，不会删除文件。",
       minSizeOff: "不过滤",
+      reading: "阅读",
+      pdfMode: "PDF 阅读模式",
+      pdfModeHint: "单页适合竖屏阅读，双页模拟纸质书跨页，滚动式可连续上下翻阅。",
+      pdfMode_single: "单页",
+      pdfMode_dual: "双页",
+      pdfMode_scroll: "滚动",
       ffmpeg: "FFmpeg 支持",
       ffmpegHint:
         "视频缩略图、时长与分辨率解析依赖 FFmpeg。默认自动探测系统 PATH，也可手动指定安装目录。",
@@ -166,6 +172,12 @@ export const messages = {
       minSizeHint:
         "Files smaller than this are hidden from all categories — useful for filtering out thumbnails and icons. Display only; no files are deleted.",
       minSizeOff: "Off",
+      reading: "Reading",
+      pdfMode: "PDF Reading Mode",
+      pdfModeHint: "Single page suits portrait reading, dual page mimics a printed spread, scroll lets you read continuously.",
+      pdfMode_single: "Single",
+      pdfMode_dual: "Dual",
+      pdfMode_scroll: "Scroll",
       ffmpeg: "FFmpeg Support",
       ffmpegHint:
         "Video thumbnails, duration and resolution require FFmpeg. Detected from PATH by default; you can also pick its install directory.",
