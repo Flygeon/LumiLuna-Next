@@ -51,8 +51,8 @@ export const capabilities = {
   listFiles(query?: ListQuery): Promise<MediaEntry[]> {
     return safeInvoke("list_files", { query: query ?? null });
   },
-  libraryCounts(): Promise<Record<string, number>> {
-    return safeInvoke("library_counts");
+  libraryCounts(minSize = 0): Promise<Record<string, number>> {
+    return safeInvoke("library_counts", { minSize });
   },
   getMetadata(fileId: string): Promise<MediaMetadata> {
     return safeInvoke("get_metadata", { fileId });

@@ -15,6 +15,8 @@ const DEFAULTS = {
   lyricBlur: true,
   scanDirs: [] as string[],
   gridColumns: 6,
+  /** 最小文件体积过滤（MB）；0 表示不过滤 */
+  minFileSizeMb: 0,
   /** 用户手动指定的 ffmpeg 目录；空串表示自动探测 PATH */
   ffmpegDir: "",
 };
@@ -28,6 +30,7 @@ export const useSettingsStore = defineStore("settings", () => {
   const lyricBlur = ref(DEFAULTS.lyricBlur);
   const scanDirs = ref<string[]>([...DEFAULTS.scanDirs]);
   const gridColumns = ref(DEFAULTS.gridColumns);
+  const minFileSizeMb = ref(DEFAULTS.minFileSizeMb);
   const ffmpegDir = ref(DEFAULTS.ffmpegDir);
   const loaded = ref(false);
 
@@ -41,6 +44,7 @@ export const useSettingsStore = defineStore("settings", () => {
     lyricBlur,
     scanDirs,
     gridColumns,
+    minFileSizeMb,
     ffmpegDir,
   } as const;
 

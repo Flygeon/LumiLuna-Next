@@ -55,7 +55,7 @@ export const useLibraryStore = defineStore("library", () => {
     return entriesByType.value[type] ?? [];
   }
 
-  /** 拉取某类型列表。搜索与排序下推到 SQL，不在前端做。 */
+  /** 拉取某类型列表。搜索、排序、体积过滤都下推到 SQL，不在前端做。 */
   async function refresh(type: string) {
     loading.value = true;
     error.value = null;
@@ -65,6 +65,7 @@ export const useLibraryStore = defineStore("library", () => {
         search: search.value || undefined,
         sortBy: sortBy.value,
         desc: sortDesc.value,
+        minSize: minSizeBytes(),
       });
       entriesByType.value = { ...entriesByType.value, [type]: list };
     } catch (e) {
@@ -75,9 +76,15 @@ export const useLibraryStore = defineStore("library", () => {
     }
   }
 
+  /** 设置里的 MB 阈值换算成字节 */
+  function minSizeBytes(): number {
+    const mb = useSettingsStore().minFileSizeMb;
+    return mb > 0 ? Math.round(mb * 1024 * 1024) : 0;
+  }
+
   async function refreshCounts() {
     try {
-      counts.value = await capabilities.libraryCounts();
+      counts.value = await capabilities.libraryCounts(minSizeBytes());
     } catch {
       /* 角标失败不影响主流程 */
     }

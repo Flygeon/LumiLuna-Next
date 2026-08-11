@@ -72,6 +72,10 @@ export const messages = {
       clearScanDirs: "清除目录（全局扫描）",
       globalScanHint: "当前：全局扫描",
       appearance: "外观",
+      minSize: "最小文件体积",
+      minSizeHint:
+        "小于该体积的文件不会出现在各分类中，用于过滤缩略图、图标等碎文件。仅影响展示，不会删除文件。",
+      minSizeOff: "不过滤",
       ffmpeg: "FFmpeg 支持",
       ffmpegHint:
         "视频缩略图、时长与分辨率解析依赖 FFmpeg。默认自动探测系统 PATH，也可手动指定安装目录。",
@@ -158,6 +162,10 @@ export const messages = {
       clearScanDirs: "Clear Directories (Global Scan)",
       globalScanHint: "Current: Global scan",
       appearance: "Appearance",
+      minSize: "Minimum File Size",
+      minSizeHint:
+        "Files smaller than this are hidden from all categories — useful for filtering out thumbnails and icons. Display only; no files are deleted.",
+      minSizeOff: "Off",
       ffmpeg: "FFmpeg Support",
       ffmpegHint:
         "Video thumbnails, duration and resolution require FFmpeg. Detected from PATH by default; you can also pick its install directory.",

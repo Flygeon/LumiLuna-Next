@@ -137,12 +137,12 @@ onBeforeUnmount(() => {
             class="seg-btn"
             :class="{ active: rightTab === 'lyrics' }"
             @click="rightTab = 'lyrics'"
-          >{{ t("player.lyrics") }}</button>
+          >{{ t("actions.lyrics") }}</button>
           <button
             class="seg-btn"
             :class="{ active: rightTab === 'queue' }"
             @click="rightTab = 'queue'"
-          >{{ t("player.queue") }}</button>
+          >{{ t("actions.queue") }}</button>
         </div>
         <div class="right-content">
           <LyricsView v-if="rightTab === 'lyrics'" />

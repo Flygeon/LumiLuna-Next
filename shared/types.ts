@@ -116,6 +116,8 @@ export interface ListQuery {
   search?: string;
   sortBy?: "name" | "mtime" | "size" | "title" | "taken_at";
   desc?: boolean;
+  /** 最小文件体积（字节），小于此值的文件被过滤掉 */
+  minSize?: number;
   limit?: number;
   offset?: number;
 }

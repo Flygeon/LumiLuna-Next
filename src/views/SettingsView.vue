@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useSettingsStore, type ThemeMode } from "@/stores/settings";
 import { useLibraryStore } from "@/stores/library";
 import { capabilities } from "@/capabilities";
@@ -58,6 +58,46 @@ async function resetFfmpegDir() {
 
 function setTheme(mode: ThemeMode) {
   settings.applyTheme(mode);
+}
+
+// ---- 最小体积过滤 ----
+
+const SIZE_PRESETS = [0, 1, 5, 20, 100];
+/** 滑块上限 2GB */
+const MAX_MB = 2048;
+
+/**
+ * 滑块位置与体积之间用对数映射：0-100 的行程覆盖 0MB–2GB，
+ * 又能在几 MB 的常用区间给出足够精细的调节粒度（线性映射下
+ * 1MB 和 5MB 会挤在同一格里，几乎选不中）。
+ */
+function posToMb(pos: number): number {
+  if (pos <= 0) return 0;
+  const mb = Math.pow(MAX_MB, pos / 100);
+  return mb < 10 ? Math.round(mb * 10) / 10 : Math.round(mb);
+}
+
+function mbToPos(mb: number): number {
+  if (mb <= 0) return 0;
+  return Math.round((Math.log(mb) / Math.log(MAX_MB)) * 100);
+}
+
+const sliderPos = computed(() => mbToPos(settings.minFileSizeMb));
+
+const sizeLabel = computed(() => {
+  const mb = settings.minFileSizeMb;
+  return mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb} MB`;
+});
+
+function onSizeSlider(value: string) {
+  applySize(posToMb(Number(value)));
+}
+
+function applySize(mb: number) {
+  settings.minFileSizeMb = mb;
+  // 阈值变了，已缓存的各类型列表和角标都要重取
+  library.invalidate();
+  void library.refreshCounts();
 }
 
 async function addScanDir() {
@@ -151,6 +191,36 @@ async function clearCache() {
           @click="clearScanDirs"
         >
           {{ t("settings.clearScanDirs") }}
+        </button>
+      </div>
+    </section>
+
+    <!-- 体积过滤 -->
+    <section class="card">
+      <h3>{{ t("settings.minSize") }}</h3>
+      <p class="hint">{{ t("settings.minSizeHint") }}</p>
+      <div class="row">
+        <input
+          type="range"
+          min="0"
+          max="100"
+          step="1"
+          :value="sliderPos"
+          @input="onSizeSlider(($event.target as HTMLInputElement).value)"
+        />
+        <span class="value tabular-nums">
+          {{ settings.minFileSizeMb > 0 ? sizeLabel : t("settings.minSizeOff") }}
+        </span>
+      </div>
+      <div class="presets">
+        <button
+          v-for="p in SIZE_PRESETS"
+          :key="p"
+          class="chip"
+          :class="{ active: settings.minFileSizeMb === p }"
+          @click="applySize(p)"
+        >
+          {{ p === 0 ? t("settings.minSizeOff") : `${p} MB` }}
         </button>
       </div>
     </section>
@@ -454,6 +524,34 @@ async function clearCache() {
 }
 .actions .material-symbols-outlined {
   font-size: 18px;
+}
+
+.presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+.presets .chip {
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-small);
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  font-family: inherit;
+  font-size: var(--md-sys-typescale-label-large-size);
+  cursor: pointer;
+  transition: all var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard);
+}
+.presets .chip:hover {
+  background: var(--md-sys-color-surface-container-high);
+}
+.presets .chip.active {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+  border-color: transparent;
+  font-weight: 600;
 }
 
 .toast {

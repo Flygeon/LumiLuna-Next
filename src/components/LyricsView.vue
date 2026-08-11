@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { ref, watch, nextTick } from "vue";
+import { ref, watch, nextTick, onMounted } from "vue";
 import { usePlayerStore } from "@/stores/player";
 import { useSettingsStore } from "@/stores/settings";
 import { translate } from "@shared/i18n";
 
 /**
  * 歌词播放器（1:1 参考《音乐播放器参考》的 UpdateLyricsLayout / GetLyricsLayout）。
- * LYRIC_OFFSET = 视口高/3，当前行放大 1.25x，距离模糊，上下渐隐遮罩。
+ * 当前行定位在视口 1/3 处，放大 1.25x，距离模糊，上下渐隐遮罩。
  * 过渡使用 Apple Music 参考的 cubic-bezier(.19,.11,0,1) 700ms。
  */
 const player = usePlayerStore();
@@ -14,8 +14,9 @@ const settings = useSettingsStore();
 const containerRef = ref<HTMLDivElement | null>(null);
 const lineRefs = ref<HTMLDivElement[]>([]);
 
-const LINE_HEIGHT = 20;
-const LYRICS_OFFSET = () => (containerRef.value ? containerRef.value.clientHeight / 3 : 200);
+/** 当前行停靠位置：视口高度的 1/3 */
+const anchor = () =>
+  containerRef.value ? containerRef.value.clientHeight / 3 : 200;
 
 function t(key: string) {
   return translate(settings.lang, key);
@@ -25,29 +26,51 @@ function setLineRef(el: any, index: number) {
   if (el) lineRefs.value[index] = el;
 }
 
-function scrollToLine(index: number) {
+/**
+ * 把第 index 行滚到锚点位置。
+ *
+ * 用 offsetTop 直接取实际布局位置：此前按「累加 offsetHeight + 固定行距」
+ * 估算，遇到双语歌词/不同字号就会越算越偏；且当时是 offset + anchor，
+ * 符号反了，等于把当前行推到视口下方，导致正在唱的那句始终不可见。
+ */
+function scrollToLine(index: number, smooth = true) {
   const container = containerRef.value;
-  if (!container || !lineRefs.value.length) return;
-  let offset = 0;
-  for (let i = 0; i < index; i++) {
-    offset += (lineRefs.value[i]?.offsetHeight || 0) + LINE_HEIGHT;
-  }
-  const target = offset + LYRICS_OFFSET();
-  container.scrollTo({ top: target, behavior: "smooth" });
+  const line = lineRefs.value[index];
+  if (!container || !line) return;
+
+  const target = line.offsetTop - anchor() + line.offsetHeight / 2;
+  container.scrollTo({
+    top: Math.max(0, target),
+    behavior: smooth ? "smooth" : "auto",
+  });
 }
 
 watch(
   () => player.activeLine,
-  (idx) => {
-    if (idx >= 0) scrollToLine(idx);
+  async (idx) => {
+    if (idx < 0) return;
+    // 等 DOM 应用完 active 类（字号/缩放会改变行高）再计算位置
+    await nextTick();
+    scrollToLine(idx);
   },
 );
 
-async function onLyricsLoaded() {
+// 换歌或歌词加载完成后重置到当前行
+watch(
+  () => player.lyrics,
+  async () => {
+    // 换歌后行数可能变少，旧引用会残留导致定位到不存在的行
+    lineRefs.value = [];
+    await nextTick();
+    scrollToLine(Math.max(0, player.activeLine), false);
+  },
+);
+
+// 从队列页切回歌词页时组件重新挂载，需要立刻回到当前行
+onMounted(async () => {
   await nextTick();
-  scrollToLine(0);
-}
-watch(() => player.lyrics.length, onLyricsLoaded);
+  scrollToLine(Math.max(0, player.activeLine), false);
+});
 </script>
 
 <template>
@@ -103,6 +126,8 @@ watch(() => player.lyrics.length, onLyricsLoaded);
   height: 100%;
   overflow-y: auto;
   padding: 25px;
+  /* 末尾留白，保证最后几行也能滚到 1/3 锚点位置 */
+  padding-bottom: 70%;
   scrollbar-width: none;
 }
 .lyrics-container::-webkit-scrollbar {

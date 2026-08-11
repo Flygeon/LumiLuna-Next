@@ -413,6 +413,8 @@ pub struct ListQuery {
     /// name | mtime | size | title | taken_at
     pub sort_by: Option<String>,
     pub desc: Option<bool>,
+    /// 最小文件体积（字节）；小于此值的文件不出现在列表中
+    pub min_size: Option<i64>,
     pub limit: Option<i64>,
     pub offset: Option<i64>,
 }
@@ -441,6 +443,10 @@ pub fn list_files(
     if let Some(t) = q.kind.filter(|t| !t.is_empty()) {
         sql.push_str(" AND f.type = ?");
         params.push(Box::new(t));
+    }
+    if let Some(min) = q.min_size.filter(|m| *m > 0) {
+        sql.push_str(" AND f.size >= ?");
+        params.push(Box::new(min));
     }
     if let Some(s) = q.search.filter(|s| !s.trim().is_empty()) {
         sql.push_str(" AND (f.name LIKE ? OR m.title LIKE ? OR m.artist LIKE ? OR m.album LIKE ?)");
@@ -504,18 +510,21 @@ pub fn list_files(
     Ok(rows.filter_map(|r| r.ok()).collect())
 }
 
-/// 各类型数量统计（导航栏角标）
+/// 各类型数量统计（导航栏角标）。与列表使用同一体积过滤，避免角标数与实际条数对不上。
 #[tauri::command]
 pub fn library_counts(
     app: tauri::AppHandle,
+    min_size: Option<i64>,
 ) -> Result<std::collections::HashMap<String, i64>, String> {
     let db = app.state::<DbState>();
     let conn = db.0.lock().map_err(|e| e.to_string())?;
     let mut stmt = conn
-        .prepare("SELECT type, COUNT(*) FROM files WHERE deleted=0 GROUP BY type")
+        .prepare("SELECT type, COUNT(*) FROM files WHERE deleted=0 AND size >= ?1 GROUP BY type")
         .map_err(|e| e.to_string())?;
     let rows = stmt
-        .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?)))
+        .query_map(rusqlite::params![min_size.unwrap_or(0).max(0)], |r| {
+            Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?))
+        })
         .map_err(|e| e.to_string())?;
     Ok(rows.filter_map(|r| r.ok()).collect())
 }

@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, onActivated, onMounted } from "vue";
+import { computed, onActivated, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import LibraryToolbar from "@/components/LibraryToolbar.vue";
 import MediaGrid from "@/components/MediaGrid.vue";
+import BookReader from "@/components/BookReader.vue";
 import EmptyState from "@/components/EmptyState.vue";
 import { useLibraryStore } from "@/stores/library";
 import { useSettingsStore } from "@/stores/settings";
@@ -16,6 +17,11 @@ const router = useRouter();
 
 const items = computed(() => library.entries("book"));
 const hasScanDirs = computed(() => settings.scanDirs.length > 0);
+/** 正在阅读的书；null 表示未打开阅读器 */
+const reading = ref<MediaEntry | null>(null);
+
+/** 应用内可阅读的格式，其余仍交系统程序 */
+const READABLE = ["epub", "pdf"];
 
 function t(key: string) {
   return translate(settings.lang, key);
@@ -31,7 +37,11 @@ onActivated(() => {
 });
 
 function open(item: MediaEntry) {
-  void capabilities.openFile(item.path);
+  if (READABLE.includes(item.ext.toLowerCase())) {
+    reading.value = item;
+  } else {
+    void capabilities.openFile(item.path);
+  }
 }
 
 function clearSearch() {
@@ -77,6 +87,12 @@ function clearSearch() {
       secondary-label="前往设置"
       @action="library.startScan()"
       @secondary="router.push('/settings')"
+    />
+
+    <BookReader
+      v-if="reading"
+      :item="reading"
+      @close="reading = null"
     />
   </div>
 </template>

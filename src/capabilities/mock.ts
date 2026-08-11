@@ -101,8 +101,13 @@ export function mockInvoke<T>(
         removed: 0,
       });
     case "list_files": {
-      const q = (args?.query ?? {}) as { type?: string; search?: string };
+      const q = (args?.query ?? {}) as {
+        type?: string;
+        search?: string;
+        minSize?: number;
+      };
       let list = DEMO.filter((f) => !q.type || f.type === q.type);
+      if (q.minSize) list = list.filter((f) => f.size >= q.minSize!);
       if (q.search?.trim()) {
         const s = q.search.trim().toLowerCase();
         list = list.filter((f) =>
@@ -114,8 +119,12 @@ export function mockInvoke<T>(
       return as(list.map((f) => ({ ...f, favorite: favorites.has(f.id) })));
     }
     case "library_counts": {
+      const min = Number((args?.minSize as number) ?? 0);
       const counts: Record<string, number> = {};
-      for (const f of DEMO) counts[f.type] = (counts[f.type] ?? 0) + 1;
+      for (const f of DEMO) {
+        if (f.size < min) continue;
+        counts[f.type] = (counts[f.type] ?? 0) + 1;
+      }
       return as(counts);
     }
     case "get_thumbnail": {
