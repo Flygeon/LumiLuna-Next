@@ -5,7 +5,6 @@
   "windows": ["main"],
   "permissions": [
     "core:default",
-    "core:asset-protocol:allow-read",
     "dialog:default",
     "dialog:allow-open",
     "fs:default",
