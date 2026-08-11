@@ -3,7 +3,7 @@
  * 所有原生能力经 invoke（请求/响应）+ listen（事件推送）调用 Rust Command。
  * 前端不直接触碰磁盘/数据库/原生资源。
  */
-import { invoke } from "@tauri-apps/api/core";
+import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { openPath, openUrl } from "@tauri-apps/plugin-opener";
 import { open as dialogOpen } from "@tauri-apps/plugin-dialog";
@@ -60,9 +60,14 @@ export const capabilities = {
   getSong(fileId: string): Promise<Song> {
     return safeInvoke("get_song", { fileId });
   },
-  /** 缩略图 data URL；无法生成时返回 null（调用方显示类型占位图） */
-  getThumbnail(fileId: string, size = 320): Promise<string | null> {
-    return safeInvoke("get_thumbnail", { fileId, size });
+  /**
+   * 缩略图。后端返回磁盘缓存路径，这里转成 asset:// URL 交给 <img> 流式加载。
+   * 不用 base64 data URL：上万张图会把渲染进程内存撑爆。
+   */
+  async getThumbnail(fileId: string, size = 320): Promise<string | null> {
+    const path = await safeInvoke<string | null>("get_thumbnail", { fileId, size });
+    if (!path) return null;
+    return isTauri ? convertFileSrc(path) : path;
   },
   clearThumbnailCache(): Promise<number> {
     return safeInvoke("clear_thumbnail_cache");

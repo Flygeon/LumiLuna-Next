@@ -3,6 +3,7 @@ import { computed, onActivated, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import LibraryToolbar from "@/components/LibraryToolbar.vue";
 import MediaGrid from "@/components/MediaGrid.vue";
+import MediaViewer from "@/components/MediaViewer.vue";
 import EmptyState from "@/components/EmptyState.vue";
 import { useLibraryStore } from "@/stores/library";
 import { useSettingsStore } from "@/stores/settings";
@@ -18,6 +19,8 @@ const items = computed(() => library.entries("video"));
 const hasScanDirs = computed(() => settings.scanDirs.length > 0);
 const ffmpeg = ref<FfmpegStatus | null>(null);
 const bannerDismissed = ref(false);
+/** 详情查看器当前索引；-1 表示未打开 */
+const viewerIndex = ref(-1);
 
 function t(key: string) {
   return translate(settings.lang, key);
@@ -37,8 +40,8 @@ onActivated(() => {
   if (!items.value.length) void load();
 });
 
-function open(item: MediaEntry) {
-  void capabilities.openFile(item.path);
+function openViewer(_item: MediaEntry, index: number) {
+  viewerIndex.value = index;
 }
 
 function clearSearch() {
@@ -75,7 +78,7 @@ function clearSearch() {
       aspect="16/9"
       :min-width="260"
       subtitle="resolution"
-      @open="open"
+      @open="openViewer"
       @favorite="library.toggleFavorite"
     />
 
@@ -101,6 +104,15 @@ function clearSearch() {
       secondary-label="前往设置"
       @action="library.startScan()"
       @secondary="router.push('/settings')"
+    />
+
+    <MediaViewer
+      v-if="viewerIndex >= 0"
+      :items="items"
+      :index="viewerIndex"
+      @update:index="viewerIndex = $event"
+      @close="viewerIndex = -1"
+      @favorite="library.toggleFavorite"
     />
   </div>
 </template>

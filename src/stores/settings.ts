@@ -3,7 +3,6 @@ import { ref, watch } from "vue";
 import { LazyStore } from "@tauri-apps/plugin-store";
 
 export type ThemeMode = "system" | "light" | "dark";
-export type MusicLayout = "list" | "grid";
 
 const store = new LazyStore("settings.json");
 
@@ -16,7 +15,6 @@ const DEFAULTS = {
   lyricBlur: true,
   scanDirs: [] as string[],
   gridColumns: 6,
-  musicLayout: "list" as MusicLayout,
   /** 用户手动指定的 ffmpeg 目录；空串表示自动探测 PATH */
   ffmpegDir: "",
 };
@@ -30,7 +28,6 @@ export const useSettingsStore = defineStore("settings", () => {
   const lyricBlur = ref(DEFAULTS.lyricBlur);
   const scanDirs = ref<string[]>([...DEFAULTS.scanDirs]);
   const gridColumns = ref(DEFAULTS.gridColumns);
-  const musicLayout = ref<MusicLayout>(DEFAULTS.musicLayout);
   const ffmpegDir = ref(DEFAULTS.ffmpegDir);
   const loaded = ref(false);
 
@@ -44,7 +41,6 @@ export const useSettingsStore = defineStore("settings", () => {
     lyricBlur,
     scanDirs,
     gridColumns,
-    musicLayout,
     ffmpegDir,
   } as const;
 

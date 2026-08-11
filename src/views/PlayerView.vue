@@ -11,7 +11,6 @@ import { formatDuration } from "@/utils/format";
 const player = usePlayerStore();
 const settings = useSettingsStore();
 const router = useRouter();
-const audioRef = ref<HTMLAudioElement | null>(null);
 const rightTab = ref<"lyrics" | "queue">("lyrics");
 const speed = ref(1);
 const isDragging = ref(false);
@@ -37,25 +36,24 @@ function onProgressClick(e: MouseEvent) {
 function cycleSpeed() {
   const speeds = [1, 1.5, 2, 0.5, 0.75];
   speed.value = speeds[(speeds.indexOf(speed.value) + 1) % speeds.length];
-  if (audioRef.value) audioRef.value.playbackRate = speed.value;
+  player.setPlaybackRate(speed.value);
 }
 
 onMounted(() => {
-  if (audioRef.value) {
-    player.bindAudio(audioRef.value);
-    player.initAudio();
-  }
+  // audio 元素由 store 全局持有，这里只确保已起播
+  player.initAudio();
+  player.setPlaybackRate(speed.value);
 });
 
 onBeforeUnmount(() => {
-  player.togglePlay();
+  // 不中断播放，退出后由 MiniPlayer 接管
+  player.detachAudio();
 });
 </script>
 
 <template>
   <div class="player-page">
     <FluidBackground />
-    <audio ref="audioRef" v-if="player.song"></audio>
 
     <!-- 顶部覆盖层 -->
     <div class="player-topbar">

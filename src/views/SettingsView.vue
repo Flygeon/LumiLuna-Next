@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
-import { useSettingsStore, type MusicLayout, type ThemeMode } from "@/stores/settings";
+import { useSettingsStore, type ThemeMode } from "@/stores/settings";
 import { useLibraryStore } from "@/stores/library";
 import { capabilities } from "@/capabilities";
 import { formatSize } from "@/utils/format";
@@ -60,10 +60,6 @@ function setTheme(mode: ThemeMode) {
   settings.applyTheme(mode);
 }
 
-function setLayout(layout: MusicLayout) {
-  settings.musicLayout = layout;
-}
-
 async function addScanDir() {
   const dir = await capabilities.pickDirectory();
   if (dir && !settings.scanDirs.includes(dir)) {
@@ -106,24 +102,6 @@ async function clearCache() {
           >
             {{ t("settings." + mode) }}
           </button>
-        </div>
-      </div>
-
-      <div class="row">
-        <div class="row-label">
-          <span>{{ t("settings.musicLayout") }}</span>
-        </div>
-        <div class="segmented">
-          <button
-            class="seg"
-            :class="{ active: settings.musicLayout === 'list' }"
-            @click="setLayout('list')"
-          >{{ t("settings.layoutList") }}</button>
-          <button
-            class="seg"
-            :class="{ active: settings.musicLayout === 'grid' }"
-            @click="setLayout('grid')"
-          >{{ t("settings.layoutGrid") }}</button>
         </div>
       </div>
 

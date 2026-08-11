@@ -28,7 +28,25 @@ const DEMO: MediaEntry[] = [
   entry("demo-v1", "video", "旅行记录.mp4", { width: 1920, height: 1080, durationMs: 754000, codec: "H264", fps: 29.97 }),
   entry("demo-v2", "video", "延时摄影.mov", { width: 3840, height: 2160, durationMs: 62000, codec: "HEVC", fps: 60 }),
   entry("demo-b1", "book", "小王子.epub", { title: "小王子", artist: null }),
+  // 用 ?bulk=N 注入大批量图片，便于验证虚拟滚动在大图库下的表现
+  ...bulkImages(),
 ];
+
+function bulkImages(): MediaEntry[] {
+  const n = Number(
+    new URLSearchParams(location.search).get("bulk") ??
+      new URLSearchParams(location.hash.split("?")[1] ?? "").get("bulk") ??
+      0,
+  );
+  if (!n || Number.isNaN(n)) return [];
+  return Array.from({ length: n }, (_, i) =>
+    entry(`bulk-${i}`, "image", `照片_${String(i).padStart(5, "0")}.jpg`, {
+      width: 4000,
+      height: 3000,
+      mtime: 1700000000 + i,
+    }),
+  );
+}
 
 function entry(
   id: string,

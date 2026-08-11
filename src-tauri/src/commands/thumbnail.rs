@@ -27,14 +27,6 @@ fn cache_key(file_id: &str, mtime: i64, size: i64, target: u32) -> String {
     format!("{:016x}", xxhash_rust::xxh3::xxh3_64(raw.as_bytes()))
 }
 
-fn encode_data_url(jpeg: &[u8]) -> String {
-    use base64::Engine;
-    format!(
-        "data:image/jpeg;base64,{}",
-        base64::engine::general_purpose::STANDARD.encode(jpeg)
-    )
-}
-
 /// 把任意已解码图像缩放并编码为 JPEG 字节
 fn to_jpeg(img: image::DynamicImage, target: u32, orientation: Option<i64>) -> Option<Vec<u8>> {
     let img = apply_orientation(img, orientation);
@@ -123,7 +115,34 @@ fn epub_cover(path: &str) -> Option<Vec<u8>> {
     Some(buf)
 }
 
-/// 生成缩略图，返回 JPEG data URL。无法生成时返回 None（前端显示类型占位图）。
+/// 解码图片。
+///
+/// image 0.25 未暴露 JPEG 的 DCT 降采样接口，只能整幅解码；
+/// 因此这里限制解码时的内存上限，避免个别超大图（或损坏文件谎报尺寸）
+/// 一次性吃掉几个 GB 把进程拖垮——缩略图场景宁可跳过也不该卡死。
+fn decode_scaled(path: &str, _target: u32) -> Option<image::DynamicImage> {
+    use image::ImageReader;
+
+    let file = std::fs::File::open(path).ok()?;
+    let mut reader = ImageReader::new(std::io::BufReader::new(file))
+        .with_guessed_format()
+        .ok()?;
+
+    let mut limits = image::Limits::default();
+    // 单张图解码上限 512MB，足够 8K RGBA，又能挡住异常大图
+    limits.max_alloc = Some(512 * 1024 * 1024);
+    limits.max_image_width = Some(30_000);
+    limits.max_image_height = Some(30_000);
+    reader.limits(limits);
+
+    reader.decode().ok()
+}
+
+/// 生成缩略图，返回**磁盘缓存文件路径**（前端用 convertFileSrc 引用）。
+///
+/// 早期版本返回 base64 data URL，导致每张图在 JS 堆里常驻一份字符串，
+/// 上万张图片时渲染进程内存暴涨、页面严重卡顿。改为返回路径后由
+/// webview 直接流式读取，内存由浏览器按需回收。
 #[tauri::command]
 pub fn get_thumbnail(
     app: tauri::AppHandle,
@@ -133,11 +152,11 @@ pub fn get_thumbnail(
     let target = size.unwrap_or(320).clamp(64, 1024);
 
     // 取文件信息（尽早释放数据库锁，解码可能耗时）
-    let (path, kind, mtime, fsize, orientation) = {
+    let (path, kind, mtime, fsize, orientation, duration) = {
         let state = app.state::<DbState>();
         let conn = state.0.lock().map_err(|e| e.to_string())?;
         conn.query_row(
-            "SELECT f.path, f.type, f.mtime, f.size, m.orientation
+            "SELECT f.path, f.type, f.mtime, f.size, m.orientation, m.duration_ms
              FROM files f LEFT JOIN media_metadata m ON m.file_id = f.id
              WHERE f.id = ?1",
             rusqlite::params![file_id],
@@ -148,18 +167,24 @@ pub fn get_thumbnail(
                     row.get::<_, i64>(2)?,
                     row.get::<_, i64>(3)?,
                     row.get::<_, Option<i64>>(4)?,
+                    row.get::<_, Option<i64>>(5)?,
                 ))
             },
         )
         .map_err(|_| format!("文件不存在: {file_id}"))?
     };
 
+    let Some(dir) = cache_dir(&app) else {
+        return Ok(None);
+    };
+    let cache_file = dir.join(format!(
+        "{}.jpg",
+        cache_key(&file_id, mtime, fsize, target)
+    ));
+
     // ---- 磁盘缓存命中 ----
-    let cache_file = cache_dir(&app).map(|d| d.join(format!("{}.jpg", cache_key(&file_id, mtime, fsize, target))));
-    if let Some(cf) = &cache_file {
-        if let Ok(bytes) = std::fs::read(cf) {
-            return Ok(Some(encode_data_url(&bytes)));
-        }
+    if cache_file.is_file() {
+        return Ok(Some(cache_file.to_string_lossy().into_owned()));
     }
 
     // ---- 按类型生成 ----
@@ -167,8 +192,7 @@ pub fn get_thumbnail(
         "image" => {
             let ext = ext_of(std::path::Path::new(&path));
             if DECODABLE_IMAGE_EXTS.contains(&ext.as_str()) {
-                image::open(&path)
-                    .ok()
+                decode_scaled(&path, target)
                     .and_then(|img| to_jpeg(img, target, orientation))
             } else {
                 None
@@ -178,21 +202,7 @@ pub fn get_thumbnail(
             .or_else(|| sidecar_cover(&path))
             .and_then(|bytes| image::load_from_memory(&bytes).ok())
             .and_then(|img| to_jpeg(img, target, None)),
-        "video" => {
-            // 时长用于避开纯黑开场
-            let duration = {
-                let state = app.state::<DbState>();
-                let conn = state.0.lock().map_err(|e| e.to_string())?;
-                conn.query_row(
-                    "SELECT duration_ms FROM media_metadata WHERE file_id=?1",
-                    rusqlite::params![file_id],
-                    |r| r.get::<_, Option<i64>>(0),
-                )
-                .ok()
-                .flatten()
-            };
-            crate::commands::ffmpeg::extract_frame(&path, target, duration)
-        }
+        "video" => crate::commands::ffmpeg::extract_frame(&path, target, duration),
         "book" => epub_cover(&path)
             .and_then(|bytes| image::load_from_memory(&bytes).ok())
             .and_then(|img| to_jpeg(img, target, None)),
@@ -201,10 +211,8 @@ pub fn get_thumbnail(
 
     let Some(jpeg) = jpeg else { return Ok(None) };
 
-    if let Some(cf) = &cache_file {
-        let _ = std::fs::write(cf, &jpeg);
-    }
-    Ok(Some(encode_data_url(&jpeg)))
+    std::fs::write(&cache_file, &jpeg).map_err(|e| e.to_string())?;
+    Ok(Some(cache_file.to_string_lossy().into_owned()))
 }
 
 /// 清空缩略图磁盘缓存，返回释放的字节数

@@ -1,7 +1,12 @@
 <script setup lang="ts">
 /**
  * 媒体网格：图片/视频/音乐/书籍四个列表页共用。
- * 缩略图按可视区懒加载（IntersectionObserver），避免一次性解码整库。
+ *
+ * 大图库性能策略（三层）：
+ * 1. 虚拟滚动——只渲染可视区 ±2 行的卡片，DOM 节点数恒定，
+ *    不随库容量增长（此前上万张图会创建上万个节点，直接卡死）。
+ * 2. 缩略图按可视区批量请求，滚动过快时丢弃过期批次。
+ * 3. 缩略图是 asset:// 路径而非 base64，内存由 webview 回收。
  */
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useLibraryStore } from "@/stores/library";
@@ -23,7 +28,6 @@ const props = withDefaults(
     /** 副标题字段来源 */
     subtitle?: "artist" | "resolution" | "size" | "none";
     loading?: boolean;
-    /** 骨架屏占位数量 */
     skeletonCount?: number;
   }>(),
   {
@@ -41,64 +45,138 @@ const emit = defineEmits<{
 }>();
 
 const library = useLibraryStore();
-const root = ref<HTMLElement | null>(null);
-const visibleIds = ref<Set<string>>(new Set());
-let observer: IntersectionObserver | null = null;
-// 批量收集可视 id，避免每个格子单独发一次 IPC
-let pending: string[] = [];
-let flushTimer: number | null = null;
 
-function flush() {
-  flushTimer = null;
-  const batch = pending;
-  pending = [];
-  if (batch.length) void library.loadThumbnails(batch);
-}
+const GAP_X = 16;
+const GAP_Y = 20;
+/** 卡片文字区高度，用于估算行高 */
+const META_H = 44;
+/** 可视区上下各多渲染的行数，滚动时不留白 */
+const OVERSCAN = 2;
 
-function observeCell(el: Element | null, id: string) {
-  if (!el || !observer) return;
-  (el as HTMLElement).dataset.fileId = id;
-  observer.observe(el);
-}
+const viewport = ref<HTMLElement | null>(null);
+const scroller = ref<HTMLElement | null>(null);
+const width = ref(0);
+const scrollTop = ref(0);
+const viewportH = ref(800);
 
-onMounted(() => {
-  observer = new IntersectionObserver(
-    (entries) => {
-      for (const entry of entries) {
-        if (!entry.isIntersecting) continue;
-        const id = (entry.target as HTMLElement).dataset.fileId;
-        if (!id || visibleIds.value.has(id)) continue;
-        visibleIds.value.add(id);
-        pending.push(id);
-        observer?.unobserve(entry.target);
-      }
-      if (pending.length && flushTimer === null) {
-        flushTimer = window.setTimeout(flush, 60);
-      }
-    },
-    // 提前一屏预取，滚动时不留白
-    { root: null, rootMargin: "400px 0px", threshold: 0.01 },
-  );
+const columns = computed(() =>
+  Math.max(1, Math.floor((width.value + GAP_X) / (props.minWidth + GAP_X))),
+);
+const cellW = computed(
+  () => (width.value - GAP_X * (columns.value - 1)) / columns.value,
+);
+/** 由 aspect（"16/9" 或 "1"）推算缩略图高度 */
+const ratio = computed(() => {
+  const [w, h] = props.aspect.split("/").map(Number);
+  return h ? w / h : (w || 1);
+});
+const rowH = computed(() => cellW.value / ratio.value + META_H + GAP_Y);
+const rowCount = computed(() => Math.ceil(props.items.length / columns.value));
+const totalH = computed(() => rowCount.value * rowH.value);
+
+const firstRow = computed(() =>
+  Math.max(0, Math.floor(scrollTop.value / rowH.value) - OVERSCAN),
+);
+const lastRow = computed(() =>
+  Math.min(
+    rowCount.value,
+    Math.ceil((scrollTop.value + viewportH.value) / rowH.value) + OVERSCAN,
+  ),
+);
+
+/** 当前需要渲染的条目及其全局索引 */
+const visible = computed(() => {
+  const start = firstRow.value * columns.value;
+  const end = Math.min(props.items.length, lastRow.value * columns.value);
+  const out: { item: MediaEntry; index: number }[] = [];
+  for (let i = start; i < end; i++) {
+    out.push({ item: props.items[i], index: i });
+  }
+  return out;
 });
 
+const offsetY = computed(() => firstRow.value * rowH.value);
+
+// ---- 缩略图按可视区拉取 ----
+let thumbTimer: number | null = null;
+function scheduleThumbs() {
+  if (thumbTimer !== null) return;
+  // 合并高频滚动产生的请求
+  thumbTimer = window.setTimeout(() => {
+    thumbTimer = null;
+    const ids = visible.value.map((v) => v.item.id);
+    if (ids.length) void library.loadThumbnails(ids);
+  }, 120);
+}
+
+watch(visible, scheduleThumbs, { immediate: true });
+
+function onScroll() {
+  const el = viewport.value;
+  if (!el) return;
+  scrollTop.value = el.scrollTop;
+}
+
+let ro: ResizeObserver | null = null;
+
+function measure() {
+  const el = scroller.value;
+  const vp = viewport.value;
+  if (el) width.value = el.clientWidth;
+  if (vp) viewportH.value = vp.clientHeight;
+}
+
+function detach() {
+  viewport.value?.removeEventListener("scroll", onScroll);
+  ro?.disconnect();
+  ro = null;
+  viewport.value = null;
+}
+
+/**
+ * 绑定滚动容器。必须在 scroller 真正出现后调用——首屏 loading 为 true 时
+ * 渲染的是骨架屏分支，此时 scroller 为 null，若只在 onMounted 里绑定
+ * 会永远拿不到滚动事件（虚拟窗口卡在第一屏）。
+ */
+function attach() {
+  if (!scroller.value || viewport.value) return;
+  viewport.value = scroller.value.closest(".main-content");
+  if (!viewport.value) return;
+  viewport.value.addEventListener("scroll", onScroll, { passive: true });
+  ro = new ResizeObserver(measure);
+  ro.observe(scroller.value);
+  ro.observe(viewport.value);
+  measure();
+  scrollTop.value = viewport.value.scrollTop;
+}
+
+watch(scroller, attach, { flush: "post" });
+onMounted(attach);
 onBeforeUnmount(() => {
-  observer?.disconnect();
-  observer = null;
-  if (flushTimer !== null) clearTimeout(flushTimer);
+  detach();
+  if (thumbTimer !== null) clearTimeout(thumbTimer);
 });
 
-// 列表整体替换后（切换类型/重新扫描）重置观察状态
+// 换类型/重新搜索后回到顶部，否则会停在旧的滚动位置看到空白
 watch(
   () => props.items,
   () => {
-    visibleIds.value = new Set();
-    pending = [];
+    if (viewport.value) viewport.value.scrollTop = 0;
+    scrollTop.value = 0;
+    measure();
   },
 );
 
-const gridStyle = computed(() => ({
-  gridTemplateColumns: `repeat(auto-fill, minmax(${props.minWidth}px, 1fr))`,
-}));
+function cellStyle(index: number) {
+  const col = index % columns.value;
+  const row = Math.floor(index / columns.value) - firstRow.value;
+  return {
+    position: "absolute" as const,
+    left: `${col * (cellW.value + GAP_X)}px`,
+    top: `${row * rowH.value}px`,
+    width: `${cellW.value}px`,
+  };
+}
 
 function thumbOf(item: MediaEntry): string | undefined {
   return library.getThumb(item.id);
@@ -119,80 +197,91 @@ function subtitleOf(item: MediaEntry): string {
 </script>
 
 <template>
-  <div ref="root" class="media-grid" :style="gridStyle">
-    <template v-if="loading">
-      <div v-for="n in skeletonCount" :key="'sk' + n" class="cell">
-        <div class="thumb lm-skeleton" :style="{ aspectRatio: aspect }"></div>
-        <div class="meta">
-          <div class="lm-skeleton line"></div>
-          <div class="lm-skeleton line short"></div>
-        </div>
+  <!-- 骨架屏：加载中用普通网格，数量固定不需要虚拟化 -->
+  <div
+    v-if="loading"
+    class="skeleton-grid"
+    :style="{ gridTemplateColumns: `repeat(auto-fill, minmax(${minWidth}px, 1fr))` }"
+  >
+    <div v-for="n in skeletonCount" :key="n" class="cell">
+      <div class="thumb lm-skeleton" :style="{ aspectRatio: aspect }"></div>
+      <div class="meta">
+        <div class="lm-skeleton line"></div>
+        <div class="lm-skeleton line short"></div>
       </div>
-    </template>
+    </div>
+  </div>
 
-    <template v-else>
+  <div v-else ref="scroller" class="virtual-root" :style="{ height: totalH + 'px' }">
+    <div class="layer" :style="{ transform: `translateY(${offsetY}px)` }">
       <article
-        v-for="(item, i) in items"
-        :key="item.id"
-        :ref="(el) => observeCell(el as Element, item.id)"
+        v-for="v in visible"
+        :key="v.item.id"
         class="cell"
-        :style="{ animationDelay: `${Math.min(i, 24) * 25}ms` }"
+        :style="cellStyle(v.index)"
         tabindex="0"
-        @click="emit('open', item, i)"
-        @keydown.enter="emit('open', item, i)"
-        @keydown.space.prevent="emit('open', item, i)"
+        @click="emit('open', v.item, v.index)"
+        @keydown.enter="emit('open', v.item, v.index)"
+        @keydown.space.prevent="emit('open', v.item, v.index)"
       >
         <div class="thumb" :style="{ aspectRatio: aspect }">
           <img
-            v-if="thumbOf(item)"
-            :src="thumbOf(item)"
-            :alt="item.name"
+            v-if="thumbOf(v.item)"
+            :src="thumbOf(v.item)"
+            :alt="v.item.name"
             loading="lazy"
             decoding="async"
           />
           <span v-else class="placeholder material-symbols-outlined">
-            {{ TYPE_ICONS[item.type] ?? "draft" }}
+            {{ TYPE_ICONS[v.item.type] ?? "draft" }}
           </span>
 
-          <!-- 时长角标 -->
-          <span v-if="item.durationMs" class="badge tabular-nums">
-            {{ formatDuration(item.durationMs) }}
+          <span v-if="v.item.durationMs" class="badge tabular-nums">
+            {{ formatDuration(v.item.durationMs) }}
           </span>
 
-          <!-- 悬停操作层 -->
-          <div class="overlay">
+          <div class="overlay" :class="{ pinned: v.item.favorite }">
             <button
               class="fav"
-              :class="{ on: item.favorite }"
-              :title="item.favorite ? '取消收藏' : '收藏'"
-              @click.stop="emit('favorite', item)"
+              :class="{ on: v.item.favorite }"
+              :title="v.item.favorite ? '取消收藏' : '收藏'"
+              @click.stop="emit('favorite', v.item)"
             >
               <span
                 class="material-symbols-outlined"
-                :class="{ filled: item.favorite }"
+                :class="{ filled: v.item.favorite }"
               >favorite</span>
             </button>
           </div>
         </div>
 
         <div class="meta">
-          <div class="title" :title="item.name">
-            {{ item.title || item.name }}
+          <div class="title" :title="v.item.name">
+            {{ v.item.title || v.item.name }}
           </div>
           <div v-if="subtitle !== 'none'" class="subtitle">
-            {{ subtitleOf(item) }}
+            {{ subtitleOf(v.item) }}
           </div>
         </div>
       </article>
-    </template>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.media-grid {
+.virtual-root {
+  position: relative;
+  width: 100%;
+}
+.layer {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+}
+
+.skeleton-grid {
   display: grid;
   gap: 20px 16px;
-  padding-bottom: 24px;
 }
 
 .cell {
@@ -202,7 +291,6 @@ function subtitleOf(item: MediaEntry): string {
   cursor: pointer;
   border-radius: var(--md-sys-shape-corner-large);
   outline: none;
-  animation: lm-rise 380ms var(--md-sys-motion-easing-emphasized-decelerate) both;
 }
 .cell:focus-visible {
   outline: 2px solid var(--md-sys-color-primary);
@@ -217,11 +305,10 @@ function subtitleOf(item: MediaEntry): string {
   overflow: hidden;
   border-radius: var(--md-sys-shape-corner-large);
   background: var(--md-sys-color-surface-container);
-  /* 内描边替代硬边框，浅色封面不至于糊进背景 */
   box-shadow: inset 0 0 0 1px var(--lm-hairline);
   transition:
-    transform 260ms var(--md-sys-motion-spring-soft),
-    box-shadow 260ms var(--md-sys-motion-easing-standard);
+    transform 220ms var(--md-sys-motion-spring-soft),
+    box-shadow 220ms var(--md-sys-motion-easing-standard);
 }
 .cell:hover .thumb {
   transform: translateY(-4px) scale(1.015);
@@ -255,8 +342,6 @@ function subtitleOf(item: MediaEntry): string {
   color: #fff;
   font-size: 11px;
   font-weight: 500;
-  letter-spacing: 0.2px;
-  backdrop-filter: blur(4px);
 }
 
 .overlay {
@@ -267,16 +352,17 @@ function subtitleOf(item: MediaEntry): string {
   justify-content: flex-end;
   padding: 6px;
   opacity: 0;
-  background: linear-gradient(
-    to bottom,
-    rgba(0, 0, 0, 0.35) 0%,
-    transparent 40%
-  );
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.35) 0%, transparent 40%);
   transition: opacity var(--md-sys-motion-duration-short);
 }
 .cell:hover .overlay,
 .cell:focus-within .overlay {
   opacity: 1;
+}
+/* 已收藏的项常驻显示心形 */
+.overlay.pinned {
+  opacity: 1;
+  background: none;
 }
 
 .fav {
@@ -290,7 +376,6 @@ function subtitleOf(item: MediaEntry): string {
   background: rgba(0, 0, 0, 0.4);
   color: #fff;
   cursor: pointer;
-  backdrop-filter: blur(6px);
   transition: transform 140ms var(--md-sys-motion-spring), background 160ms;
 }
 .fav:hover {
@@ -302,15 +387,6 @@ function subtitleOf(item: MediaEntry): string {
 }
 .fav.on {
   color: #ff6b81;
-  opacity: 1;
-}
-/* 已收藏的项即便未悬停也要露出标记 */
-.cell .fav.on {
-  opacity: 1;
-}
-.cell:not(:hover) .overlay:has(.fav.on) {
-  opacity: 1;
-  background: none;
 }
 
 .meta {

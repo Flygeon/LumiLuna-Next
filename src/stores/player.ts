@@ -167,6 +167,7 @@ export const usePlayerStore = defineStore("player", () => {
   /** 队列只存轻量条目；完整 Song（封面/歌词）在切歌时按需拉取 */
   const queue = ref<MediaEntry[]>([]);
   const loadingSong = ref(false);
+  const lastError = ref<string | null>(null);
   const shuffleMode = ref(false);
   const repeatMode = ref<RepeatMode>("off");
   const shuffledIndices = ref<number[]>([]);
@@ -179,10 +180,17 @@ export const usePlayerStore = defineStore("player", () => {
   const activeLine = ref(-1);
   const coverColors = ref<string[]>([]);
 
-  // audio element
+  /**
+   * 全局唯一的 audio 元素，由 store 持有而非某个组件。
+   * PlayerView 会被路由销毁，若音频挂在它身上，返回列表页后
+   * MiniPlayer 的控制会全部失效、播放也会中断。
+   */
   const audioEl = ref<HTMLAudioElement | null>(null);
-  function bindAudio(el: HTMLAudioElement) {
-    audioEl.value = el;
+
+  function ensureAudio(): HTMLAudioElement {
+    if (audioEl.value) return audioEl.value;
+    const el = new Audio();
+    el.preload = "auto";
     el.addEventListener("timeupdate", () => {
       currentTime.value = el.currentTime;
       updateActiveLine();
@@ -190,9 +198,30 @@ export const usePlayerStore = defineStore("player", () => {
     el.addEventListener("loadedmetadata", () => {
       duration.value = el.duration;
     });
-    el.addEventListener("ended", () => {
-      next();
+    el.addEventListener("play", () => {
+      playing.value = true;
     });
+    el.addEventListener("pause", () => {
+      playing.value = false;
+    });
+    el.addEventListener("ended", () => {
+      void next();
+    });
+    el.addEventListener("error", () => {
+      playing.value = false;
+      lastError.value = `无法播放：${song.value?.file.name ?? ""}`;
+    });
+    audioEl.value = el;
+    return el;
+  }
+
+  /** PlayerView 用它挂可视化，不再转移所有权 */
+  function bindAudio(_el?: HTMLAudioElement) {
+    ensureAudio();
+  }
+
+  function detachAudio() {
+    // audio 由 store 持有，离开播放器页时无需做任何事
   }
 
   const currentLyric = computed(() =>
@@ -223,7 +252,8 @@ export const usePlayerStore = defineStore("player", () => {
     lyrics.value = s.lyrics ? parseLrc(s.lyrics) : [];
     activeLine.value = -1;
     coverColors.value = [];
-    // 音频源在 PlayerView mounted 后设置（此时 audioEl 可能还不存在）
+    currentTime.value = 0;
+    duration.value = 0;
     if (s.coverBase64) {
       const img = new Image();
       img.onload = () => {
@@ -233,29 +263,45 @@ export const usePlayerStore = defineStore("player", () => {
     }
   }
 
-  /** 按 id 拉取完整歌曲并播放 */
+  /** 唯一的起播路径：设源 → load → play */
+  async function startPlayback() {
+    const path = song.value?.file?.path;
+    if (!path) return;
+    const el = ensureAudio();
+    lastError.value = null;
+    el.src = toMediaSrc(path);
+    el.load();
+    try {
+      await el.play();
+    } catch (e) {
+      // 自动播放被拒或解码失败；playing 由 error/pause 事件同步
+      lastError.value = String(e);
+    }
+  }
+
+  /** 按 id 拉取完整歌曲并立即播放 */
   async function loadById(fileId: string) {
     loadingSong.value = true;
     try {
       const full = await capabilities.getSong(fileId);
       await loadSong(full);
+      await startPlayback();
       void capabilities.recordPlay(fileId);
+    } catch (e) {
+      lastError.value = String(e);
     } finally {
       loadingSong.value = false;
     }
   }
 
-  /** 在 PlayerView 挂载后调用，设置音频源并播放 */
+  /**
+   * PlayerView 挂载后调用。歌曲已在播放则不打断，
+   * 仅在音频尚未起播时补一次（如刷新后直接进入播放器页）。
+   */
   function initAudio() {
-    if (audioEl.value && song.value?.file?.path) {
-      audioEl.value.src = toMediaSrc(song.value.file.path);
-      audioEl.value.load();
-      audioEl.value
-        .play()
-        .then(() => {
-          playing.value = true;
-        })
-        .catch(() => {});
+    const el = ensureAudio();
+    if (song.value && !el.src) {
+      void startPlayback();
     }
   }
 
@@ -263,25 +309,14 @@ export const usePlayerStore = defineStore("player", () => {
     if (index < 0 || index >= queue.value.length) return;
     currentIndex.value = index;
     await loadById(queue.value[index].id);
-    if (audioEl.value && song.value) {
-      audioEl.value.src = toMediaSrc(song.value.file.path);
-      audioEl.value.load();
-      try {
-        await audioEl.value.play();
-        playing.value = true;
-      } catch {
-        playing.value = false;
-      }
-    }
   }
 
   async function next() {
     if (queue.value.length === 0) return;
     if (repeatMode.value === "one") {
-      if (audioEl.value) {
-        audioEl.value.currentTime = 0;
-        audioEl.value.play();
-      }
+      const el = ensureAudio();
+      el.currentTime = 0;
+      void el.play().catch(() => {});
       return;
     }
     let nextIndex: number;
@@ -353,18 +388,27 @@ export const usePlayerStore = defineStore("player", () => {
   }
 
   function togglePlay() {
-    if (!audioEl.value || !song.value) return;
-    if (playing.value) {
-      audioEl.value.pause();
-    } else {
-      audioEl.value.play();
+    if (!song.value) return;
+    const el = ensureAudio();
+    // 源尚未设置（如从 MiniPlayer 恢复播放）时补一次起播
+    if (!el.src) {
+      void startPlayback();
+      return;
     }
-    playing.value = !audioEl.value.paused;
+    if (el.paused) {
+      void el.play().catch(() => {});
+    } else {
+      el.pause();
+    }
   }
 
   function seek(t: number) {
-    if (!audioEl.value) return;
-    audioEl.value.currentTime = t;
+    if (!audioEl.value || !Number.isFinite(t)) return;
+    audioEl.value.currentTime = Math.max(0, t);
+  }
+
+  function setPlaybackRate(rate: number) {
+    ensureAudio().playbackRate = rate;
   }
 
   function seekToLyric(i: number) {
@@ -380,6 +424,7 @@ export const usePlayerStore = defineStore("player", () => {
     currentIndex,
     queue,
     loadingSong,
+    lastError,
     shuffleMode,
     repeatMode,
     lyrics,
@@ -387,12 +432,14 @@ export const usePlayerStore = defineStore("player", () => {
     coverColors,
     currentLyric,
     bindAudio,
+    detachAudio,
     loadSong,
     loadById,
     initAudio,
     togglePlay,
     setIndex,
     seek,
+    setPlaybackRate,
     seekToLyric,
     next,
     previous,

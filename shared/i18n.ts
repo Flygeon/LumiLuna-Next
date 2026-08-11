@@ -72,9 +72,6 @@ export const messages = {
       clearScanDirs: "清除目录（全局扫描）",
       globalScanHint: "当前：全局扫描",
       appearance: "外观",
-      musicLayout: "音乐视图",
-      layoutList: "列表",
-      layoutGrid: "网格",
       ffmpeg: "FFmpeg 支持",
       ffmpegHint:
         "视频缩略图、时长与分辨率解析依赖 FFmpeg。默认自动探测系统 PATH，也可手动指定安装目录。",
@@ -161,9 +158,6 @@ export const messages = {
       clearScanDirs: "Clear Directories (Global Scan)",
       globalScanHint: "Current: Global scan",
       appearance: "Appearance",
-      musicLayout: "Music View",
-      layoutList: "List",
-      layoutGrid: "Grid",
       ffmpeg: "FFmpeg Support",
       ffmpegHint:
         "Video thumbnails, duration and resolution require FFmpeg. Detected from PATH by default; you can also pick its install directory.",
