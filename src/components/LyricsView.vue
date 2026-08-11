@@ -123,9 +123,14 @@ watch(
 
 watch(() => player.lyrics, resetLayout);
 
-// 字号/行距改变会影响每行高度，需要重新计算位移
+// 字号/行距/翻译字号/翻译间距改变会影响每行高度，需要重新计算位移
 watch(
-  () => [settings.lyricFontSize, settings.lyricLineHeight],
+  () => [
+    settings.lyricFontSize,
+    settings.lyricLineHeight,
+    settings.lyricTranslationSize,
+    settings.lyricTranslationGap,
+  ],
   async () => {
     await nextTick();
     updateLayout(Math.max(0, player.activeLine), 0);
@@ -166,7 +171,14 @@ const hasLyrics = computed(() => player.lyrics.length > 0);
         @click="player.seekToLyric(i)"
       >
         <p class="lyric-text">{{ line.text }}</p>
-        <p v-if="line.translation" class="lyric-translation">
+        <p
+          v-if="line.translation"
+          class="lyric-translation"
+          :style="{
+            fontSize: settings.lyricTranslationSize + '%',
+            marginTop: settings.lyricTranslationGap + 'px',
+          }"
+        >
           {{ line.translation }}
         </p>
       </div>
@@ -241,9 +253,7 @@ const hasLyrics = computed(() => player.lyrics.length > 0);
 }
 
 .lyric-translation {
-  font-size: 0.62em;
   font-weight: 500;
-  margin-top: 2px;
   opacity: 0.72;
 }
 

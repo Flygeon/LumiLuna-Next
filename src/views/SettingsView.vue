@@ -331,6 +331,28 @@ async function clearCache() {
         />
         <span class="value tabular-nums">{{ settings.lyricLineHeight }}</span>
       </div>
+      <div class="row">
+        <div class="row-label"><span>{{ t("settings.lyricTranslationSize") }}</span></div>
+        <input
+          type="range"
+          min="40"
+          max="120"
+          step="5"
+          v-model.number="settings.lyricTranslationSize"
+        />
+        <span class="value tabular-nums">{{ settings.lyricTranslationSize }}%</span>
+      </div>
+      <div class="row">
+        <div class="row-label"><span>{{ t("settings.lyricTranslationGap") }}</span></div>
+        <input
+          type="range"
+          min="0"
+          max="24"
+          step="1"
+          v-model.number="settings.lyricTranslationGap"
+        />
+        <span class="value tabular-nums">{{ settings.lyricTranslationGap }}px</span>
+      </div>
     </section>
 
     <!-- 播放器 -->

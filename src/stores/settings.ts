@@ -4,6 +4,10 @@ import { LazyStore } from "@tauri-apps/plugin-store";
 
 export type ThemeMode = "system" | "light" | "dark";
 export type PdfReadMode = "single" | "dual" | "scroll";
+/** 阅读器背景主题 */
+export type ReaderThemeKey = "dark" | "light" | "sepia" | "green";
+/** 阅读器正文字体 */
+export type ReaderFontKey = "system" | "serif" | "sans" | "kai" | "yuan";
 
 const store = new LazyStore("settings.json");
 
@@ -12,6 +16,10 @@ const DEFAULTS = {
   lang: "zh" as "zh" | "en",
   lyricFontSize: 30,
   lyricLineHeight: 2.5,
+  /** 歌词翻译字号（相对主歌词字号的百分比） */
+  lyricTranslationSize: 62,
+  /** 歌词与翻译之间的间距（px） */
+  lyricTranslationGap: 4,
   bgBlur: true,
   lyricBlur: true,
   scanDirs: [] as string[],
@@ -20,6 +28,16 @@ const DEFAULTS = {
   minFileSizeMb: 0,
   /** PDF 阅读模式：single 单页 / dual 双页 / scroll 滚动 */
   pdfReadMode: "single" as PdfReadMode,
+  /** 阅读器背景主题 */
+  readerTheme: "dark" as ReaderThemeKey,
+  /** 阅读器正文字体 */
+  readerFont: "system" as ReaderFontKey,
+  /** 阅读器字号（%） */
+  readerFontPct: 100,
+  /** 阅读器行距 */
+  readerLineHeight: 1.75,
+  /** 阅读器段落间距（px）；0 表示跟随原书排版 */
+  readerParaSpacing: 0,
   /** 用户手动指定的 ffmpeg 目录；空串表示自动探测 PATH */
   ffmpegDir: "",
 };
@@ -29,12 +47,19 @@ export const useSettingsStore = defineStore("settings", () => {
   const lang = ref<"zh" | "en">(DEFAULTS.lang);
   const lyricFontSize = ref(DEFAULTS.lyricFontSize);
   const lyricLineHeight = ref(DEFAULTS.lyricLineHeight);
+  const lyricTranslationSize = ref(DEFAULTS.lyricTranslationSize);
+  const lyricTranslationGap = ref(DEFAULTS.lyricTranslationGap);
   const bgBlur = ref(DEFAULTS.bgBlur);
   const lyricBlur = ref(DEFAULTS.lyricBlur);
   const scanDirs = ref<string[]>([...DEFAULTS.scanDirs]);
   const gridColumns = ref(DEFAULTS.gridColumns);
   const minFileSizeMb = ref(DEFAULTS.minFileSizeMb);
   const pdfReadMode = ref<PdfReadMode>(DEFAULTS.pdfReadMode);
+  const readerTheme = ref<ReaderThemeKey>(DEFAULTS.readerTheme);
+  const readerFont = ref<ReaderFontKey>(DEFAULTS.readerFont);
+  const readerFontPct = ref(DEFAULTS.readerFontPct);
+  const readerLineHeight = ref(DEFAULTS.readerLineHeight);
+  const readerParaSpacing = ref(DEFAULTS.readerParaSpacing);
   const ffmpegDir = ref(DEFAULTS.ffmpegDir);
   const loaded = ref(false);
 
@@ -44,12 +69,19 @@ export const useSettingsStore = defineStore("settings", () => {
     lang,
     lyricFontSize,
     lyricLineHeight,
+    lyricTranslationSize,
+    lyricTranslationGap,
     bgBlur,
     lyricBlur,
     scanDirs,
     gridColumns,
     minFileSizeMb,
     pdfReadMode,
+    readerTheme,
+    readerFont,
+    readerFontPct,
+    readerLineHeight,
+    readerParaSpacing,
     ffmpegDir,
   } as const;
 
