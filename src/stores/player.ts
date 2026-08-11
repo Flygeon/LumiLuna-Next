@@ -1,7 +1,13 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import type { Song, LyricLine } from "@shared/types";
+import { capabilities, isTauri } from "@/capabilities";
+import type { MediaEntry, Song, LyricLine } from "@shared/types";
+
+/** 浏览器预览下没有 Tauri 协议，直接返回原路径避免抛错 */
+function toMediaSrc(path: string): string {
+  return isTauri ? convertFileSrc(path) : path;
+}
 
 /**
  * 双语 LRC 解析器
@@ -158,7 +164,9 @@ export const usePlayerStore = defineStore("player", () => {
   const currentTime = ref(0);
   const duration = ref(0);
   const currentIndex = ref(0);
-  const queue = ref<Song[]>([]);
+  /** 队列只存轻量条目；完整 Song（封面/歌词）在切歌时按需拉取 */
+  const queue = ref<MediaEntry[]>([]);
+  const loadingSong = ref(false);
   const shuffleMode = ref(false);
   const repeatMode = ref<RepeatMode>("off");
   const shuffledIndices = ref<number[]>([]);
@@ -209,10 +217,12 @@ export const usePlayerStore = defineStore("player", () => {
     shuffledIndices.value = indices;
   }
 
+  /** 应用一首已取回的完整 Song（解析歌词、提取封面主色） */
   async function loadSong(s: Song) {
     song.value = s;
     lyrics.value = s.lyrics ? parseLrc(s.lyrics) : [];
     activeLine.value = -1;
+    coverColors.value = [];
     // 音频源在 PlayerView mounted 后设置（此时 audioEl 可能还不存在）
     if (s.coverBase64) {
       const img = new Image();
@@ -223,25 +233,45 @@ export const usePlayerStore = defineStore("player", () => {
     }
   }
 
+  /** 按 id 拉取完整歌曲并播放 */
+  async function loadById(fileId: string) {
+    loadingSong.value = true;
+    try {
+      const full = await capabilities.getSong(fileId);
+      await loadSong(full);
+      void capabilities.recordPlay(fileId);
+    } finally {
+      loadingSong.value = false;
+    }
+  }
+
   /** 在 PlayerView 挂载后调用，设置音频源并播放 */
   function initAudio() {
     if (audioEl.value && song.value?.file?.path) {
-      audioEl.value.src = convertFileSrc(song.value.file.path);
+      audioEl.value.src = toMediaSrc(song.value.file.path);
       audioEl.value.load();
-      audioEl.value.play().then(() => {
-        playing.value = true;
-      }).catch(() => {});
+      audioEl.value
+        .play()
+        .then(() => {
+          playing.value = true;
+        })
+        .catch(() => {});
     }
   }
 
   async function playFromQueue(index: number) {
     if (index < 0 || index >= queue.value.length) return;
     currentIndex.value = index;
-    await loadSong(queue.value[index]);
-    if (audioEl.value) {
+    await loadById(queue.value[index].id);
+    if (audioEl.value && song.value) {
+      audioEl.value.src = toMediaSrc(song.value.file.path);
       audioEl.value.load();
-      audioEl.value.play();
-      playing.value = true;
+      try {
+        await audioEl.value.play();
+        playing.value = true;
+      } catch {
+        playing.value = false;
+      }
     }
   }
 
@@ -314,8 +344,8 @@ export const usePlayerStore = defineStore("player", () => {
     repeatMode.value = modes[(currentIdx + 1) % modes.length];
   }
 
-  function setQueue(songs: Song[], startIndex = 0) {
-    queue.value = songs;
+  function setQueue(entries: MediaEntry[], startIndex = 0) {
+    queue.value = entries;
     if (shuffleMode.value) {
       generateShuffleOrder();
     }
@@ -349,6 +379,7 @@ export const usePlayerStore = defineStore("player", () => {
     duration,
     currentIndex,
     queue,
+    loadingSong,
     shuffleMode,
     repeatMode,
     lyrics,
@@ -357,6 +388,7 @@ export const usePlayerStore = defineStore("player", () => {
     currentLyric,
     bindAudio,
     loadSong,
+    loadById,
     initAudio,
     togglePlay,
     setIndex,

@@ -6,6 +6,7 @@ import { useRouter } from "vue-router";
 import { translate } from "@shared/i18n";
 import FluidBackground from "@/components/FluidBackground.vue";
 import LyricsView from "@/components/LyricsView.vue";
+import { formatDuration } from "@/utils/format";
 
 const player = usePlayerStore();
 const settings = useSettingsStore();
@@ -147,6 +148,25 @@ onBeforeUnmount(() => {
         </div>
         <div class="right-content">
           <LyricsView v-if="rightTab === 'lyrics'" />
+          <div v-else-if="player.queue.length" class="queue-list">
+            <button
+              v-for="(item, i) in player.queue"
+              :key="item.id"
+              class="queue-item"
+              :class="{ current: i === player.currentIndex }"
+              @click="player.playFromQueue(i)"
+            >
+              <span class="q-index tabular-nums">
+                <span v-if="i !== player.currentIndex">{{ i + 1 }}</span>
+                <span v-else class="material-symbols-outlined">equalizer</span>
+              </span>
+              <span class="q-names">
+                <span class="q-title">{{ item.title || item.name }}</span>
+                <span class="q-artist">{{ item.artist || "未知艺术家" }}</span>
+              </span>
+              <span class="q-time tabular-nums">{{ formatDuration(item.durationMs) }}</span>
+            </button>
+          </div>
           <div v-else class="queue-empty">{{ t("actions.queue") }}</div>
         </div>
       </div>
@@ -387,6 +407,68 @@ onBeforeUnmount(() => {
 .right-content {
   flex: 1;
   overflow: hidden;
+}
+.queue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+  height: 100%;
+}
+.queue-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.75);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 180ms ease;
+}
+.queue-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.queue-item.current {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+.q-index {
+  width: 22px;
+  text-align: center;
+  font-size: 12px;
+  opacity: 0.6;
+}
+.q-index .material-symbols-outlined {
+  font-size: 16px;
+  opacity: 1;
+}
+.q-names {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.q-title {
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.q-artist {
+  font-size: 12px;
+  opacity: 0.6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.q-time {
+  font-size: 12px;
+  opacity: 0.55;
 }
 .queue-empty {
   color: rgba(255, 255, 255, 0.5);

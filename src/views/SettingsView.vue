@@ -1,20 +1,67 @@
 <script setup lang="ts">
-import { useSettingsStore, type ThemeMode } from "@/stores/settings";
+import { onMounted, ref } from "vue";
+import { useSettingsStore, type MusicLayout, type ThemeMode } from "@/stores/settings";
+import { useLibraryStore } from "@/stores/library";
 import { capabilities } from "@/capabilities";
+import { formatSize } from "@/utils/format";
 import { translate } from "@shared/i18n";
+import type { FfmpegStatus } from "@shared/types";
 
 const settings = useSettingsStore();
+const library = useLibraryStore();
+
+const ffmpeg = ref<FfmpegStatus | null>(null);
+const checking = ref(false);
+const toast = ref("");
 
 function t(key: string) {
   return translate(settings.lang, key);
+}
+
+function notify(message: string) {
+  toast.value = message;
+  window.setTimeout(() => (toast.value = ""), 2400);
+}
+
+onMounted(async () => {
+  // 恢复上次手动指定的目录，再查询实际可用状态
+  if (settings.ffmpegDir) {
+    ffmpeg.value = await capabilities.ffmpegSetPath(settings.ffmpegDir);
+  } else {
+    ffmpeg.value = await capabilities.ffmpegStatus();
+  }
+});
+
+async function recheckFfmpeg() {
+  checking.value = true;
+  try {
+    ffmpeg.value = await capabilities.ffmpegSetPath(settings.ffmpegDir || null);
+  } finally {
+    checking.value = false;
+  }
+}
+
+async function chooseFfmpegDir() {
+  const dir = await capabilities.pickDirectory();
+  if (!dir) return;
+  settings.ffmpegDir = dir;
+  ffmpeg.value = await capabilities.ffmpegSetPath(dir);
+  if (!ffmpeg.value.available) {
+    notify("该目录下未找到 ffmpeg 可执行文件");
+  }
+}
+
+async function resetFfmpegDir() {
+  settings.ffmpegDir = "";
+  ffmpeg.value = await capabilities.ffmpegSetPath(null);
 }
 
 function setTheme(mode: ThemeMode) {
   settings.applyTheme(mode);
 }
 
-function switchLang() {
-  settings.lang = settings.lang === "zh" ? "en" : "zh";
+function setLayout(layout: MusicLayout) {
+  settings.musicLayout = layout;
 }
 
 async function addScanDir() {
@@ -31,215 +78,426 @@ function removeScanDir(index: number) {
 function clearScanDirs() {
   settings.scanDirs.splice(0, settings.scanDirs.length);
 }
+
+async function clearCache() {
+  const freed = await capabilities.clearThumbnailCache();
+  library.invalidate();
+  notify(`${t("settings.cacheCleared")}${freed ? ` · ${formatSize(freed)}` : ""}`);
+}
 </script>
 
 <template>
   <div class="settings-view">
-    <h2 class="page-title">{{ t("settings.title") }}</h2>
-
+    <!-- 外观 -->
     <section class="card">
-      <h3>{{ t("settings.theme") }}</h3>
-      <div class="segmented">
-        <button
-          class="seg"
-          :class="{ active: settings.theme === 'system' }"
-          @click="setTheme('system')"
-        >{{ t("settings.system") }}</button>
-        <button
-          class="seg"
-          :class="{ active: settings.theme === 'light' }"
-          @click="setTheme('light')"
-        >{{ t("settings.light") }}</button>
-        <button
-          class="seg"
-          :class="{ active: settings.theme === 'dark' }"
-          @click="setTheme('dark')"
-        >{{ t("settings.dark") }}</button>
+      <h3>{{ t("settings.appearance") }}</h3>
+
+      <div class="row">
+        <div class="row-label">
+          <span>{{ t("settings.theme") }}</span>
+        </div>
+        <div class="segmented">
+          <button
+            v-for="mode in (['system', 'light', 'dark'] as ThemeMode[])"
+            :key="mode"
+            class="seg"
+            :class="{ active: settings.theme === mode }"
+            @click="setTheme(mode)"
+          >
+            {{ t("settings." + mode) }}
+          </button>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="row-label">
+          <span>{{ t("settings.musicLayout") }}</span>
+        </div>
+        <div class="segmented">
+          <button
+            class="seg"
+            :class="{ active: settings.musicLayout === 'list' }"
+            @click="setLayout('list')"
+          >{{ t("settings.layoutList") }}</button>
+          <button
+            class="seg"
+            :class="{ active: settings.musicLayout === 'grid' }"
+            @click="setLayout('grid')"
+          >{{ t("settings.layoutGrid") }}</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="row-label">
+          <span>{{ t("settings.language") }}</span>
+        </div>
+        <div class="segmented">
+          <button
+            class="seg"
+            :class="{ active: settings.lang === 'zh' }"
+            @click="settings.lang = 'zh'"
+          >简体中文</button>
+          <button
+            class="seg"
+            :class="{ active: settings.lang === 'en' }"
+            @click="settings.lang = 'en'"
+          >English</button>
+        </div>
       </div>
     </section>
 
-    <section class="card">
-      <h3>{{ t("settings.language") }}</h3>
-      <button class="row-btn" @click="switchLang">
-        {{ settings.lang === "zh" ? "简体中文 / English" : "English / 简体中文" }}
-      </button>
-    </section>
-
+    <!-- 扫描目录 -->
     <section class="card">
       <h3>{{ t("settings.scanDirs") }}</h3>
       <p class="hint">{{ t("settings.scanDirsHint") }}</p>
+
       <div v-if="settings.scanDirs.length" class="dir-list">
         <div v-for="(dir, i) in settings.scanDirs" :key="dir" class="dir-item">
-          <span class="dir-path">{{ dir }}</span>
-          <button class="dir-remove" @click="removeScanDir(i)"><span class="material-symbols-outlined">close</span></button>
+          <span class="material-symbols-outlined">folder</span>
+          <span class="dir-path" :title="dir">{{ dir }}</span>
+          <button class="lm-icon-btn small danger" @click="removeScanDir(i)">
+            <span class="material-symbols-outlined">close</span>
+          </button>
         </div>
       </div>
-      <div v-else class="global-hint">{{ t("settings.globalScanHint") }}</div>
-      <div class="dir-actions">
-        <button class="row-btn" @click="addScanDir">{{ t("settings.addScanDir") }}</button>
-        <button v-if="settings.scanDirs.length" class="row-btn danger" @click="clearScanDirs">{{ t("settings.clearScanDirs") }}</button>
+      <div v-else class="notice">{{ t("settings.globalScanHint") }}</div>
+
+      <div class="actions">
+        <button class="lm-btn lm-btn--tonal" @click="addScanDir">
+          <span class="material-symbols-outlined">create_new_folder</span>
+          {{ t("settings.addScanDir") }}
+        </button>
+        <button
+          v-if="settings.scanDirs.length"
+          class="lm-btn lm-btn--text"
+          @click="clearScanDirs"
+        >
+          {{ t("settings.clearScanDirs") }}
+        </button>
       </div>
     </section>
 
+    <!-- FFmpeg -->
+    <section class="card">
+      <h3>{{ t("settings.ffmpeg") }}</h3>
+      <p class="hint">{{ t("settings.ffmpegHint") }}</p>
+
+      <div class="status" :class="ffmpeg?.available ? 'ok' : 'warn'">
+        <span class="material-symbols-outlined">
+          {{ ffmpeg?.available ? "check_circle" : "error" }}
+        </span>
+        <div class="status-text">
+          <strong>
+            {{ ffmpeg?.available ? t("settings.ffmpegDetected") : t("settings.ffmpegMissing") }}
+          </strong>
+          <span v-if="ffmpeg?.available" class="mono">{{ ffmpeg.ffmpegPath }}</span>
+          <span v-if="ffmpeg?.version" class="version">{{ ffmpeg.version }}</span>
+          <span v-if="ffmpeg?.available" class="source">
+            {{
+              ffmpeg.source === "override"
+                ? t("settings.ffmpegFromOverride")
+                : t("settings.ffmpegFromPath")
+            }}
+          </span>
+        </div>
+      </div>
+
+      <div v-if="settings.ffmpegDir" class="dir-item override">
+        <span class="material-symbols-outlined">tune</span>
+        <span class="dir-path" :title="settings.ffmpegDir">{{ settings.ffmpegDir }}</span>
+      </div>
+
+      <div class="actions">
+        <button class="lm-btn lm-btn--tonal" @click="chooseFfmpegDir">
+          <span class="material-symbols-outlined">folder_open</span>
+          {{ t("settings.ffmpegChoose") }}
+        </button>
+        <button
+          class="lm-btn lm-btn--outlined"
+          :disabled="checking"
+          @click="recheckFfmpeg"
+        >
+          <span class="material-symbols-outlined">refresh</span>
+          {{ t("settings.ffmpegRecheck") }}
+        </button>
+        <button
+          v-if="settings.ffmpegDir"
+          class="lm-btn lm-btn--text"
+          @click="resetFfmpegDir"
+        >
+          {{ t("settings.ffmpegReset") }}
+        </button>
+        <button
+          v-if="!ffmpeg?.available"
+          class="lm-btn lm-btn--text"
+          @click="capabilities.openFfmpegDownloadPage()"
+        >
+          <span class="material-symbols-outlined">download</span>
+          {{ t("settings.ffmpegDownload") }}
+        </button>
+      </div>
+    </section>
+
+    <!-- 歌词 -->
     <section class="card">
       <h3>{{ t("settings.lyrics") }}</h3>
-      <div class="setting-row">
-        <span>{{ t("settings.lyricFontSize") }}</span>
-        <input type="range" min="14" max="32" v-model.number="settings.lyricFontSize" />
-        <span>{{ settings.lyricFontSize }}px</span>
+      <div class="row">
+        <div class="row-label"><span>{{ t("settings.lyricFontSize") }}</span></div>
+        <input type="range" min="16" max="48" v-model.number="settings.lyricFontSize" />
+        <span class="value tabular-nums">{{ settings.lyricFontSize }}px</span>
       </div>
-      <div class="setting-row">
-        <span>{{ t("settings.lyricLineHeight") }}</span>
-        <input type="range" min="1.6" max="2.6" step="0.1" v-model.number="settings.lyricLineHeight" />
-        <span>{{ settings.lyricLineHeight }}</span>
+      <div class="row">
+        <div class="row-label"><span>{{ t("settings.lyricLineHeight") }}</span></div>
+        <input
+          type="range"
+          min="1.6"
+          max="3.2"
+          step="0.1"
+          v-model.number="settings.lyricLineHeight"
+        />
+        <span class="value tabular-nums">{{ settings.lyricLineHeight }}</span>
       </div>
     </section>
 
+    <!-- 播放器 -->
     <section class="card">
       <h3>{{ t("settings.playback") }}</h3>
-      <div class="setting-row">
-        <span>{{ t("settings.bgBlur") }}</span>
+      <label class="row switch-row">
+        <span class="row-label">{{ t("settings.bgBlur") }}</span>
         <input type="checkbox" v-model="settings.bgBlur" />
-      </div>
-      <div class="setting-row">
-        <span>{{ t("settings.lyricBlur") }}</span>
+      </label>
+      <label class="row switch-row">
+        <span class="row-label">{{ t("settings.lyricBlur") }}</span>
         <input type="checkbox" v-model="settings.lyricBlur" />
+      </label>
+    </section>
+
+    <!-- 关于 -->
+    <section class="card">
+      <h3>{{ t("settings.about") }}</h3>
+      <div class="row">
+        <span class="row-label">{{ t("settings.version") }}</span>
+        <span class="value">1.0.0</span>
+      </div>
+      <div class="actions">
+        <button class="lm-btn lm-btn--outlined" @click="clearCache">
+          <span class="material-symbols-outlined">cleaning_services</span>
+          {{ t("settings.clearCache") }}
+        </button>
       </div>
     </section>
 
-    <section class="card">
-      <h3>{{ t("settings.about") }}</h3>
-      <div class="setting-row">
-        <span>{{ t("settings.version") }}</span>
-        <span>1.0.0</span>
-      </div>
-      <button class="row-btn">{{ t("settings.licenses") }}</button>
-      <button class="row-btn">{{ t("settings.clearCache") }}</button>
-    </section>
+    <transition name="toast">
+      <div v-if="toast" class="toast">{{ toast }}</div>
+    </transition>
   </div>
 </template>
 
 <style scoped>
 .settings-view {
-  max-width: 720px;
+  max-width: 760px;
   margin: 0 auto;
+  padding-bottom: 40px;
 }
-.page-title {
-  font-size: var(--md-sys-typescale-headline-size);
-  font-weight: var(--md-sys-typescale-headline-weight);
-  margin-bottom: 20px;
-}
+
 .card {
   background: var(--md-sys-color-surface-container-low);
   border-radius: var(--md-sys-shape-corner-large);
-  padding: 20px;
+  padding: 20px 22px;
   margin-bottom: 16px;
+  box-shadow: inset 0 0 0 1px var(--lm-hairline);
+  animation: lm-rise 340ms var(--md-sys-motion-easing-emphasized-decelerate) both;
 }
 .card h3 {
-  margin-bottom: 14px;
-  color: var(--md-sys-color-on-surface);
+  margin-bottom: 6px;
+  font-size: var(--md-sys-typescale-title-medium-size);
+  font-weight: var(--md-sys-typescale-title-medium-weight);
 }
+
+.hint {
+  margin-bottom: 16px;
+  font-size: var(--md-sys-typescale-body-small-size);
+  line-height: 1.6;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 48px;
+}
+.row-label {
+  flex: 1;
+  font-size: var(--md-sys-typescale-body-medium-size);
+}
+.row input[type="range"] {
+  flex: 2;
+  accent-color: var(--md-sys-color-primary);
+}
+.value {
+  min-width: 52px;
+  text-align: right;
+  font-size: var(--md-sys-typescale-body-small-size);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.switch-row {
+  cursor: pointer;
+}
+.switch-row input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--md-sys-color-primary);
+  cursor: pointer;
+}
+
 .segmented {
   display: inline-flex;
-  gap: 4px;
   padding: 3px;
+  gap: 2px;
   background: var(--md-sys-color-surface-container-high);
   border-radius: var(--md-sys-shape-corner-extra-large);
 }
 .seg {
   border: none;
   background: transparent;
-  padding: 8px 18px;
+  padding: 7px 16px;
   border-radius: var(--md-sys-shape-corner-extra-large);
   cursor: pointer;
+  font-family: inherit;
+  font-size: var(--md-sys-typescale-label-large-size);
   color: var(--md-sys-color-on-surface-variant);
+  transition: all var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard);
+}
+.seg:hover {
+  color: var(--md-sys-color-on-surface);
 }
 .seg.active {
   background: var(--md-sys-color-secondary-container);
   color: var(--md-sys-color-on-secondary-container);
+  font-weight: 600;
 }
-.setting-row {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-bottom: 10px;
-}
-.setting-row input[type="range"] {
-  flex: 1;
-}
-.row-btn {
-  width: 100%;
-  padding: 10px;
-  margin-top: 6px;
-  border: 1px solid var(--md-sys-color-outline);
-  background: transparent;
-  border-radius: var(--md-sys-shape-corner-small);
-  cursor: pointer;
-  color: var(--md-sys-color-on-surface);
-}
-.hint {
-  font-size: 13px;
-  color: var(--md-sys-color-on-surface-variant);
-  margin-bottom: 12px;
-}
+
 .dir-list {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 .dir-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
+  gap: 10px;
+  padding: 8px 8px 8px 12px;
   background: var(--md-sys-color-surface-container-high);
-  border-radius: var(--md-sys-shape-corner-small);
+  border-radius: var(--md-sys-shape-corner-medium);
+}
+.dir-item > .material-symbols-outlined {
+  font-size: 19px;
+  color: var(--md-sys-color-on-surface-variant);
+}
+.dir-item.override {
+  margin-bottom: 12px;
 }
 .dir-path {
-  font-size: 13px;
-  font-family: monospace;
+  flex: 1;
+  min-width: 0;
+  font-size: var(--md-sys-typescale-body-small-size);
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
-  flex: 1;
-  margin-right: 8px;
+  direction: rtl;
+  text-align: left;
 }
-.dir-remove {
-  border: none;
-  background: transparent;
+.lm-icon-btn.small {
+  width: 30px;
+  height: 30px;
+}
+.lm-icon-btn.small .material-symbols-outlined {
+  font-size: 17px;
+}
+.lm-icon-btn.danger:hover {
+  background: var(--md-sys-color-error-container);
   color: var(--md-sys-color-error);
-  cursor: pointer;
-  padding: 2px 6px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
-.dir-remove .material-symbols-outlined {
+
+.notice {
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  font-size: var(--md-sys-typescale-body-small-size);
+  color: var(--md-sys-color-on-surface-variant);
+  background: var(--md-sys-color-surface-container-high);
+  border-radius: var(--md-sys-shape-corner-medium);
+}
+
+.status {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  border-radius: var(--md-sys-shape-corner-medium);
+}
+.status.ok {
+  background: color-mix(in srgb, var(--md-sys-color-primary) 12%, transparent);
+  color: var(--md-sys-color-on-surface);
+}
+.status.warn {
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+}
+.status > .material-symbols-outlined {
+  font-size: 22px;
+}
+.status-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  font-size: var(--md-sys-typescale-body-small-size);
+}
+.status-text .mono {
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  word-break: break-all;
+  opacity: 0.85;
+}
+.status-text .version,
+.status-text .source {
+  opacity: 0.7;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+.actions .material-symbols-outlined {
   font-size: 18px;
 }
-.dir-remove:hover {
-  background: var(--md-sys-color-error-container);
-}
-.global-hint {
-  font-size: 13px;
-  color: var(--md-sys-color-on-surface-variant);
-  padding: 10px 12px;
-  background: var(--md-sys-color-surface-container-high);
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 90px;
+  transform: translateX(-50%);
+  padding: 12px 20px;
   border-radius: var(--md-sys-shape-corner-small);
-  margin-bottom: 10px;
+  background: var(--md-sys-color-inverse-surface);
+  color: var(--md-sys-color-inverse-on-surface);
+  box-shadow: var(--md-elevation-3);
+  font-size: var(--md-sys-typescale-body-medium-size);
+  z-index: 100;
 }
-.dir-actions {
-  display: flex;
-  gap: 8px;
+.toast-enter-active,
+.toast-leave-active {
+  transition: all 240ms var(--md-sys-motion-easing-emphasized-decelerate);
 }
-.dir-actions .row-btn {
-  flex: 1;
-  margin-top: 0;
-}
-.danger {
-  color: var(--md-sys-color-error);
-  border-color: var(--md-sys-color-error);
+.toast-enter-from,
+.toast-leave-to {
+  opacity: 0;
+  transform: translate(-50%, 12px);
 }
 </style>

@@ -1,104 +1,147 @@
 <script setup lang="ts">
-import { onMounted, ref, onBeforeUnmount } from "vue";
+import { computed, onActivated, onMounted, ref } from "vue";
+import { useRouter } from "vue-router";
+import LibraryToolbar from "@/components/LibraryToolbar.vue";
+import MediaGrid from "@/components/MediaGrid.vue";
+import EmptyState from "@/components/EmptyState.vue";
 import { useLibraryStore } from "@/stores/library";
 import { useSettingsStore } from "@/stores/settings";
 import { capabilities } from "@/capabilities";
 import { translate } from "@shared/i18n";
+import type { FfmpegStatus, MediaEntry } from "@shared/types";
 
 const library = useLibraryStore();
 const settings = useSettingsStore();
-let cancelled = false;
+const router = useRouter();
+
+const items = computed(() => library.entries("video"));
+const hasScanDirs = computed(() => settings.scanDirs.length > 0);
+const ffmpeg = ref<FfmpegStatus | null>(null);
+const bannerDismissed = ref(false);
 
 function t(key: string) {
   return translate(settings.lang, key);
 }
 
-onMounted(() => library.refresh("video"));
+function load() {
+  return library.refresh("video");
+}
 
-onBeforeUnmount(() => {
-  cancelled = true;
+onMounted(async () => {
+  await load();
+  // 缩略图与时长都依赖 ffmpeg，缺失时给出明确指引
+  ffmpeg.value = await capabilities.ffmpegStatus();
 });
 
-function openFile(path: string) {
-  capabilities.openFile(path);
+onActivated(() => {
+  if (!items.value.length) void load();
+});
+
+function open(item: MediaEntry) {
+  void capabilities.openFile(item.path);
+}
+
+function clearSearch() {
+  library.search = "";
+  void load();
 }
 </script>
 
 <template>
-  <div class="media-grid-view">
-    <div class="toolbar">
-      <button class="scan-btn" @click="library.startScan()">
-        {{ library.scanning ? t("library.scanning") : t("actions.scan") }}
+  <div class="view">
+    <LibraryToolbar :count="items.length" @changed="load" />
+
+    <div
+      v-if="ffmpeg && !ffmpeg.available && !bannerDismissed"
+      class="ffmpeg-banner"
+    >
+      <span class="material-symbols-outlined">info</span>
+      <div class="text">
+        <strong>未检测到 FFmpeg</strong>
+        <span>视频缩略图、时长与分辨率需要 FFmpeg 支持。可在设置中指定其安装目录。</span>
+      </div>
+      <button class="lm-btn lm-btn--text" @click="router.push('/settings')">
+        前往设置
+      </button>
+      <button class="lm-icon-btn" @click="bannerDismissed = true">
+        <span class="material-symbols-outlined">close</span>
       </button>
     </div>
-    <div v-if="!library.files.length" class="empty">
-      <div class="empty-icon"><span class="material-symbols-outlined">movie</span></div>
-      <p>{{ t("library.empty") }}</p>
-    </div>
-    <div v-else class="grid">
-      <div v-for="f in library.files" :key="f.id" class="cell" @click="openFile(f.path)">
-        <div class="thumb"><span class="material-symbols-outlined">movie</span></div>
-        <div class="name">{{ f.path.split(/[\\/]/).pop() }}</div>
-      </div>
-    </div>
+
+    <MediaGrid
+      v-if="library.loading || items.length"
+      :items="items"
+      :loading="library.loading"
+      aspect="16/9"
+      :min-width="260"
+      subtitle="resolution"
+      @open="open"
+      @favorite="library.toggleFavorite"
+    />
+
+    <EmptyState
+      v-else-if="library.search"
+      icon="search_off"
+      :title="`未找到与「${library.search}」匹配的视频`"
+      description="试试其它关键词，或清除搜索条件。"
+      action-label="清除搜索"
+      @action="clearSearch"
+    />
+
+    <EmptyState
+      v-else
+      icon="movie"
+      :title="t('library.empty')"
+      :description="
+        hasScanDirs
+          ? '已配置扫描目录，点击开始扫描以建立视频索引。'
+          : '尚未配置扫描目录。请先在设置中添加要索引的文件夹。'
+      "
+      :action-label="hasScanDirs ? t('actions.scan') : ''"
+      secondary-label="前往设置"
+      @action="library.startScan()"
+      @secondary="router.push('/settings')"
+    />
   </div>
 </template>
 
 <style scoped>
-.toolbar {
-  margin-bottom: 16px;
+.view {
+  min-height: 100%;
 }
-.scan-btn {
-  padding: 8px 20px;
-  border: none;
-  background: var(--md-sys-color-primary);
-  color: var(--md-sys-color-on-primary);
-  border-radius: var(--md-sys-shape-corner-extra-large);
-  cursor: pointer;
-  font-weight: 600;
-}
-.empty {
-  text-align: center;
-  margin-top: 80px;
-  color: var(--md-sys-color-on-surface-variant);
-}
-.empty-icon {
-  font-size: 60px;
-  margin-bottom: 16px;
-}
-.empty-icon .material-symbols-outlined {
-  font-size: 60px;
-}
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 16px;
-}
-.cell {
-  border-radius: var(--md-sys-shape-corner-medium);
-  overflow: hidden;
-  background: var(--md-sys-color-surface-container-low);
-  cursor: pointer;
-  transition: transform var(--md-sys-motion-duration-short);
-}
-.cell:hover {
-  transform: scale(1.02);
-}
-.thumb {
-  aspect-ratio: 16/9;
+.ffmpeg-banner {
   display: flex;
   align-items: center;
-  justify-content: center;
-  background: var(--md-sys-color-surface-container-high);
+  gap: 12px;
+  padding: 12px 12px 12px 16px;
+  margin-bottom: 20px;
+  border-radius: var(--md-sys-shape-corner-large);
+  background: var(--md-sys-color-tertiary-container);
+  color: var(--md-sys-color-on-tertiary-container);
+  animation: lm-rise 320ms var(--md-sys-motion-easing-emphasized-decelerate) both;
 }
-.thumb .material-symbols-outlined {
-  font-size: 48px;
+.ffmpeg-banner > .material-symbols-outlined {
+  font-size: 22px;
 }
-.name {
-  padding: 8px 10px;
-  font-size: 12px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.ffmpeg-banner .text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  font-size: var(--md-sys-typescale-body-small-size);
+}
+.ffmpeg-banner .text strong {
+  font-size: var(--md-sys-typescale-body-medium-size);
+}
+.ffmpeg-banner .lm-btn--text {
+  color: inherit;
+}
+.ffmpeg-banner .lm-icon-btn {
+  color: inherit;
+  width: 32px;
+  height: 32px;
+}
+.ffmpeg-banner .lm-icon-btn .material-symbols-outlined {
+  font-size: 18px;
 }
 </style>

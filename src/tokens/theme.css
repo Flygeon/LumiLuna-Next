@@ -105,11 +105,22 @@
   --md-sys-motion-easing-standard: cubic-bezier(0.2, 0, 0, 1);
   --md-sys-motion-easing-emphasized: cubic-bezier(0.2, 0, 0, 1);
   --md-sys-motion-easing-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+  /* M3 Expressive 弹簧曲线：取代机械的匀速减速感 */
+  --md-sys-motion-spring: cubic-bezier(0.3, 1.4, 0.5, 1);
+  --md-sys-motion-spring-soft: cubic-bezier(0.34, 1.2, 0.64, 1);
 
   /* ---- 应用级令牌 ---- */
   --md-elevation-1: 0 1px 3px rgba(0, 0, 0, 0.2);
   --md-elevation-2: 0 2px 6px rgba(0, 0, 0, 0.2);
   --md-elevation-3: 0 8px 24px rgba(0, 0, 0, 0.25);
+
+  /* 毛玻璃表面与发丝分隔线（设计指南 0.1「内容即英雄」） */
+  --lm-scrim-surface: rgba(252, 252, 252, 0.72);
+  --lm-hairline: rgba(0, 0, 0, 0.08);
+  --lm-nav-width: 88px;
+  --lm-topbar-height: 60px;
+  --lm-miniplayer-height: 72px;
+  --lm-content-pad: 24px;
 
   /* 播放器令牌（Apple Music 蓝本，写死勿改） */
   --am-ease-out-back: cubic-bezier(0.25, 0.8, 0.25, 1);
@@ -155,6 +166,8 @@
   --md-sys-color-scrim: rgba(0, 0, 0, 0.85);
   --md-sys-color-on-background: #E2E2E5;
   --md-sys-color-background: #0F0F11;
+  --lm-scrim-surface: rgba(20, 20, 23, 0.72);
+  --lm-hairline: rgba(255, 255, 255, 0.09);
 }
 
 /* 暗色模式 Grade 轴微调：减细笔画提升夜间阅读舒适度 */
@@ -215,14 +228,157 @@ body {
 
 /* 自定义沉浸式滚动条 */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 10px;
+  height: 10px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--md-sys-color-surface-container-highest);
-  border-radius: 3px;
-  transition: opacity 0.3s ease;
+  background: transparent;
+  border-radius: 6px;
+  border: 3px solid transparent;
+  background-clip: content-box;
 }
+/* 悬停容器时滚动条才显形，保持内容优先 */
+*:hover > ::-webkit-scrollbar-thumb,
+::-webkit-scrollbar-thumb:hover {
+  background: var(--md-sys-color-outline-variant);
+  background-clip: content-box;
+}
+:hover::-webkit-scrollbar-thumb {
+  background: var(--md-sys-color-outline-variant);
+  background-clip: content-box;
+}
+
+/* ===== 共用组件基元 ===== */
+
+/* M3 毛玻璃表面 */
+.lm-glass {
+  background: var(--lm-scrim-surface);
+  backdrop-filter: blur(24px) saturate(1.8);
+  -webkit-backdrop-filter: blur(24px) saturate(1.8);
+}
+
+/* 填充态图标（导航选中项） */
+.material-symbols-outlined.filled {
+  font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+}
+
+/* M3 按钮基元 */
+.lm-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 20px;
+  border: none;
+  border-radius: var(--md-sys-shape-corner-extra-large);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: var(--md-sys-typescale-label-large-weight);
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard),
+    transform 120ms var(--md-sys-motion-spring),
+    box-shadow var(--md-sys-motion-duration-short);
+}
+.lm-btn:active {
+  transform: scale(0.96);
+}
+.lm-btn:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+.lm-btn--filled {
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+}
+.lm-btn--filled:hover {
+  box-shadow: var(--md-elevation-1);
+  filter: brightness(1.08);
+}
+.lm-btn--tonal {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+.lm-btn--tonal:hover {
+  filter: brightness(1.05);
+}
+.lm-btn--text {
+  background: transparent;
+  color: var(--md-sys-color-primary);
+  padding: 0 12px;
+}
+.lm-btn--text:hover {
+  background: color-mix(in srgb, var(--md-sys-color-primary) 10%, transparent);
+}
+.lm-btn--outlined {
+  background: transparent;
+  color: var(--md-sys-color-on-surface);
+  border: 1px solid var(--md-sys-color-outline-variant);
+}
+.lm-btn--outlined:hover {
+  background: var(--md-sys-color-surface-container-high);
+}
+.lm-btn:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* 图标按钮 */
+.lm-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  cursor: pointer;
+  transition: background var(--md-sys-motion-duration-short),
+    transform 120ms var(--md-sys-motion-spring);
+}
+.lm-icon-btn:hover {
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+}
+.lm-icon-btn:active {
+  transform: scale(0.92);
+}
+
+/* 骨架屏微光 */
+@keyframes lm-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.lm-skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--md-sys-color-surface-container) 25%,
+    var(--md-sys-color-surface-container-high) 50%,
+    var(--md-sys-color-surface-container) 75%
+  );
+  background-size: 200% 100%;
+  animation: lm-shimmer 1.4s ease-in-out infinite;
+}
+
+/* 列表项入场：父子错开 20-35ms 由组件用 --i 变量驱动 */
+@keyframes lm-rise {
+  from { opacity: 0; transform: translateY(10px) scale(0.985); }
+  to   { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+

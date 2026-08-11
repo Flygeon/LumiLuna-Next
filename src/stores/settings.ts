@@ -3,6 +3,7 @@ import { ref, watch } from "vue";
 import { LazyStore } from "@tauri-apps/plugin-store";
 
 export type ThemeMode = "system" | "light" | "dark";
+export type MusicLayout = "list" | "grid";
 
 const store = new LazyStore("settings.json");
 
@@ -15,6 +16,9 @@ const DEFAULTS = {
   lyricBlur: true,
   scanDirs: [] as string[],
   gridColumns: 6,
+  musicLayout: "list" as MusicLayout,
+  /** 用户手动指定的 ffmpeg 目录；空串表示自动探测 PATH */
+  ffmpegDir: "",
 };
 
 export const useSettingsStore = defineStore("settings", () => {
@@ -24,22 +28,36 @@ export const useSettingsStore = defineStore("settings", () => {
   const lyricLineHeight = ref(DEFAULTS.lyricLineHeight);
   const bgBlur = ref(DEFAULTS.bgBlur);
   const lyricBlur = ref(DEFAULTS.lyricBlur);
-  const scanDirs = ref<string[]>(DEFAULTS.scanDirs);
+  const scanDirs = ref<string[]>([...DEFAULTS.scanDirs]);
   const gridColumns = ref(DEFAULTS.gridColumns);
+  const musicLayout = ref<MusicLayout>(DEFAULTS.musicLayout);
+  const ffmpegDir = ref(DEFAULTS.ffmpegDir);
   const loaded = ref(false);
+
+  // 单一注册表：新增设置项只需在此加一行，load/save 自动覆盖
+  const fields = {
+    theme,
+    lang,
+    lyricFontSize,
+    lyricLineHeight,
+    bgBlur,
+    lyricBlur,
+    scanDirs,
+    gridColumns,
+    musicLayout,
+    ffmpegDir,
+  } as const;
 
   async function load() {
     try {
       const saved = await store.get<Record<string, unknown>>("settings");
       if (saved) {
-        if (saved.theme !== undefined) theme.value = saved.theme as ThemeMode;
-        if (saved.lang !== undefined) lang.value = saved.lang as "zh" | "en";
-        if (saved.lyricFontSize !== undefined) lyricFontSize.value = saved.lyricFontSize as number;
-        if (saved.lyricLineHeight !== undefined) lyricLineHeight.value = saved.lyricLineHeight as number;
-        if (saved.bgBlur !== undefined) bgBlur.value = saved.bgBlur as boolean;
-        if (saved.lyricBlur !== undefined) lyricBlur.value = saved.lyricBlur as boolean;
-        if (saved.scanDirs !== undefined) scanDirs.value = saved.scanDirs as string[];
-        if (saved.gridColumns !== undefined) gridColumns.value = saved.gridColumns as number;
+        for (const [key, refObj] of Object.entries(fields)) {
+          const value = saved[key];
+          if (value !== undefined && value !== null) {
+            (refObj as { value: unknown }).value = value;
+          }
+        }
       }
     } catch (e) {
       console.warn("Failed to load settings:", e);
@@ -49,48 +67,48 @@ export const useSettingsStore = defineStore("settings", () => {
 
   async function save() {
     try {
-      await store.set("settings", {
-        theme: theme.value,
-        lang: lang.value,
-        lyricFontSize: lyricFontSize.value,
-        lyricLineHeight: lyricLineHeight.value,
-        bgBlur: bgBlur.value,
-        lyricBlur: lyricBlur.value,
-        scanDirs: scanDirs.value,
-        gridColumns: gridColumns.value,
-      });
+      const payload: Record<string, unknown> = {};
+      for (const [key, refObj] of Object.entries(fields)) {
+        payload[key] = (refObj as { value: unknown }).value;
+      }
+      await store.set("settings", payload);
       await store.save();
     } catch (e) {
       console.warn("Failed to save settings:", e);
     }
   }
 
-  function applyTheme(mode: ThemeMode) {
-    theme.value = mode;
-    const root = document.documentElement;
-    const systemDark =
-      window.matchMedia("(prefers-color-scheme: dark)").matches;
+  let mediaQuery: MediaQueryList | null = null;
+  function resolveTheme() {
     const dark =
-      mode === "dark" || (mode === "system" && systemDark);
-    root.setAttribute("data-theme", dark ? "dark" : "light");
+      theme.value === "dark" ||
+      (theme.value === "system" &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches);
+    document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
   }
 
-  // Auto-save on any change
+  function applyTheme(mode: ThemeMode) {
+    theme.value = mode;
+    resolveTheme();
+    // 跟随系统时需要监听系统切换
+    if (!mediaQuery) {
+      mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+      mediaQuery.addEventListener("change", () => {
+        if (theme.value === "system") resolveTheme();
+      });
+    }
+  }
+
   watch(
-    [theme, lang, lyricFontSize, lyricLineHeight, bgBlur, lyricBlur, scanDirs, gridColumns],
-    () => { if (loaded.value) save(); },
-    { deep: true }
+    Object.values(fields),
+    () => {
+      if (loaded.value) void save();
+    },
+    { deep: true },
   );
 
   return {
-    theme,
-    lang,
-    lyricFontSize,
-    lyricLineHeight,
-    bgBlur,
-    lyricBlur,
-    scanDirs,
-    gridColumns,
+    ...fields,
     loaded,
     load,
     save,

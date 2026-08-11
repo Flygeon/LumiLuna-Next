@@ -1,108 +1,120 @@
 /**
  * 统一 Capabilities 前端接口。
- * 所有原生能力经 invoke（请求/响应）+ listen/emit（事件推送）调用 Rust Command。
+ * 所有原生能力经 invoke（请求/响应）+ listen（事件推送）调用 Rust Command。
  * 前端不直接触碰磁盘/数据库/原生资源。
  */
 import { invoke } from "@tauri-apps/api/core";
-import { openPath } from "@tauri-apps/plugin-opener";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { openPath, openUrl } from "@tauri-apps/plugin-opener";
 import { open as dialogOpen } from "@tauri-apps/plugin-dialog";
 import type {
-  MediaFile,
+  FfmpegStatus,
+  ListQuery,
+  MediaEntry,
   MediaMetadata,
   ScanConfig,
   ScanProgress,
   Song,
 } from "@shared/types";
+import { mockInvoke } from "./mock";
 
 /** 在 Tauri 环境下调用；非 Tauri（纯 Web 预览）时降级为 mock。 */
-const isTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+export const isTauri =
+  typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
-async function safeInvoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
-  if (!isTauri) {
-    return mockInvoke<T>(cmd, args);
-  }
+async function safeInvoke<T>(
+  cmd: string,
+  args?: Record<string, unknown>,
+): Promise<T> {
+  if (!isTauri) return mockInvoke<T>(cmd, args);
   return invoke<T>(cmd, args);
 }
 
-// ---- mock 实现（仅用于纯浏览器预览 demo）----
-let mockFiles: MediaFile[] = [
-  {
-    id: "demo1",
-    path: "demo/夜曲.flac",
-    type: "audio",
-    size: 0,
-    mtime: 0,
-    scanned_at: 0,
-    deleted: 0,
-  },
-];
-function mockInvoke<T>(cmd: string, _args?: Record<string, unknown>): Promise<T> {
-  switch (cmd) {
-    case "scan_start":
-      return Promise.resolve({ jobId: "mock" } as T);
-    case "scan_status":
-      return Promise.resolve({
-        jobId: "mock",
-        stage: "done",
-        done: 1,
-        total: 1,
-        percent: 100,
-      } as T);
-    case "list_files":
-      return Promise.resolve(mockFiles as T);
-    case "get_metadata":
-      return Promise.resolve({
-        file_id: "demo1",
-        title: "夜曲",
-        artist: "周杰伦",
-        album: "十一月的萧邦",
-        duration_ms: 231000,
-      } as T);
-    default:
-      return Promise.resolve({} as T);
-  }
-}
-
 export const capabilities = {
-  /** 启动扫描任务，返回 jobId */
+  // ---- 扫描 ----
   scanStart(config: ScanConfig): Promise<{ jobId: string }> {
     return safeInvoke("scan_start", { config });
   },
   scanCancel(jobId: string): Promise<void> {
     return safeInvoke("scan_cancel", { jobId });
   },
-  scanStatus(jobId: string): Promise<ScanProgress> {
+  scanStatus(jobId: string): Promise<ScanProgress | null> {
     return safeInvoke("scan_status", { jobId });
   },
-  /** 查询某类型媒体文件列表 */
-  listFiles(type?: string): Promise<MediaFile[]> {
-    return safeInvoke("list_files", { type });
+  /** 订阅扫描进度事件；返回取消订阅函数 */
+  async onScanProgress(handler: (p: ScanProgress) => void): Promise<UnlistenFn> {
+    if (!isTauri) return () => {};
+    return listen<ScanProgress>("scan:progress", (e) => handler(e.payload));
+  },
+
+  // ---- 媒体库 ----
+  listFiles(query?: ListQuery): Promise<MediaEntry[]> {
+    return safeInvoke("list_files", { query: query ?? null });
+  },
+  libraryCounts(): Promise<Record<string, number>> {
+    return safeInvoke("library_counts");
   },
   getMetadata(fileId: string): Promise<MediaMetadata> {
     return safeInvoke("get_metadata", { fileId });
   },
-  /** 获取歌曲（音频+元数据+封面+歌词） */
   getSong(fileId: string): Promise<Song> {
     return safeInvoke("get_song", { fileId });
   },
-  /** 获取缩略图/封面（返回 data url 或路径） */
-  getThumbnail(fileId: string, size?: number): Promise<string> {
+  /** 缩略图 data URL；无法生成时返回 null（调用方显示类型占位图） */
+  getThumbnail(fileId: string, size = 320): Promise<string | null> {
     return safeInvoke("get_thumbnail", { fileId, size });
   },
-  /** 用系统默认应用打开文件 */
+  clearThumbnailCache(): Promise<number> {
+    return safeInvoke("clear_thumbnail_cache");
+  },
+
+  // ---- 收藏 / 历史 / 回收站 ----
+  toggleFavorite(fileId: string): Promise<boolean> {
+    return safeInvoke("toggle_favorite", { fileId });
+  },
+  listFavorites(): Promise<MediaEntry[]> {
+    return safeInvoke("list_favorites");
+  },
+  recordPlay(fileId: string): Promise<void> {
+    return safeInvoke("record_play", { fileId });
+  },
+  listHistory(): Promise<MediaEntry[]> {
+    return safeInvoke("list_history");
+  },
+  listTrash(): Promise<MediaEntry[]> {
+    return safeInvoke("list_trash");
+  },
+  emptyTrash(): Promise<number> {
+    return safeInvoke("empty_trash");
+  },
+
+  // ---- FFmpeg ----
+  ffmpegStatus(): Promise<FfmpegStatus> {
+    return safeInvoke("ffmpeg_status");
+  },
+  /** 传 null 清除手动路径，回落到系统 PATH 探测 */
+  ffmpegSetPath(dir: string | null): Promise<FfmpegStatus> {
+    return safeInvoke("ffmpeg_set_path", { dir });
+  },
+  async openFfmpegDownloadPage(): Promise<void> {
+    const url = await safeInvoke<string>("ffmpeg_download_url");
+    if (isTauri) await openUrl(url);
+    else window.open(url, "_blank");
+  },
+
+  // ---- 系统 ----
   async openFile(path: string): Promise<void> {
-    if (isTauri) {
-      // 规范化路径分隔符（Windows 反斜杠 → 正斜杠）
-      const normalizedPath = path.replace(/\\/g, "/");
-      await openPath(normalizedPath);
-    }
+    if (!isTauri) return;
+    await openPath(path.replace(/\\/g, "/"));
   },
   /** 选择目录，返回路径或 null */
   async pickDirectory(): Promise<string | null> {
     if (!isTauri) return null;
     const result = await dialogOpen({ directory: true, multiple: false });
     if (typeof result === "string") return result;
-    if (result && typeof result === "object" && "path" in result) return (result as any).path;
+    if (result && typeof result === "object" && "path" in result) {
+      return (result as { path: string }).path;
+    }
     return null;
   },
 };

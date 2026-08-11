@@ -1,116 +1,223 @@
 import { defineStore } from "pinia";
-import { ref } from "vue";
+import { computed, ref, shallowRef } from "vue";
+import type { UnlistenFn } from "@tauri-apps/api/event";
 import { capabilities } from "@/capabilities";
 import { useSettingsStore } from "@/stores/settings";
-import type { MediaFile, MediaMetadata, ScanProgress } from "@shared/types";
+import type { ListQuery, MediaEntry, ScanProgress } from "@shared/types";
+
+export type SortKey = NonNullable<ListQuery["sortBy"]>;
+
+/** 缩略图内存缓存上限，防止大图库把渲染进程撑爆 */
+const THUMB_CACHE_LIMIT = 1200;
 
 export const useLibraryStore = defineStore("library", () => {
-  // 按类型缓存文件列表
-  const filesByType = ref<Record<string, MediaFile[]>>({});
-  const metaMap = ref<Record<string, MediaMetadata>>({});
-  const thumbCache = ref<Record<string, string>>({});
+  /** 按类型缓存列表 */
+  const entriesByType = ref<Record<string, MediaEntry[]>>({});
+  const counts = ref<Record<string, number>>({});
   const loading = ref(false);
+  const error = ref<string | null>(null);
+
+  // 缩略图不需要深响应，用 shallowRef + 版本号手动触发，避免大对象 proxy 开销
+  const thumbCache = shallowRef<Map<string, string>>(new Map());
+  const thumbVersion = ref(0);
+
   const scanning = ref(false);
   const progress = ref<ScanProgress | null>(null);
-  const scanLogs = ref<string[]>([]);
-  const loadedTypes = ref<Set<string>>(new Set());
+  const currentJobId = ref<string | null>(null);
+  let unlistenScan: UnlistenFn | null = null;
 
-  /** 当前活跃类型（供模板用） */
-  const files = ref<MediaFile[]>([]);
+  // ---- 视图状态（搜索/排序，各类型共用）----
+  const search = ref("");
+  const sortBy = ref<SortKey>("name");
+  const sortDesc = ref(false);
 
-  async function refresh(type?: string, force = false) {
-    const key = type || "__all__";
-    // 如果已有该类型缓存且不强制刷新，直接返回
-    if (!force && loadedTypes.value.has(key) && filesByType.value[key]?.length >= 0) {
-      files.value = filesByType.value[key] || [];
-      return;
+  function getThumb(id: string): string | undefined {
+    void thumbVersion.value; // 建立依赖，缓存更新时重新求值
+    return thumbCache.value.get(id);
+  }
+
+  function setThumb(id: string, url: string) {
+    const cache = thumbCache.value;
+    if (cache.size >= THUMB_CACHE_LIMIT) {
+      // Map 保持插入序，删最早的一批
+      const drop = Math.floor(THUMB_CACHE_LIMIT * 0.2);
+      let i = 0;
+      for (const key of cache.keys()) {
+        if (i++ >= drop) break;
+        cache.delete(key);
+      }
     }
+    cache.set(id, url);
+    thumbVersion.value++;
+  }
+
+  function entries(type: string): MediaEntry[] {
+    return entriesByType.value[type] ?? [];
+  }
+
+  /** 拉取某类型列表。搜索与排序下推到 SQL，不在前端做。 */
+  async function refresh(type: string) {
     loading.value = true;
+    error.value = null;
     try {
-      const list = await capabilities.listFiles(type);
-      filesByType.value[key] = list;
-      files.value = list;
-      // 批量获取元数据（仅获取尚未缓存的）
-      const missing = list.filter((f) => !metaMap.value[f.id]);
-      const metas = await Promise.all(
-        missing.slice(0, 200).map((f) => capabilities.getMetadata(f.id)),
-      );
-      metas.forEach((m) => {
-        metaMap.value[m.file_id] = m;
+      const list = await capabilities.listFiles({
+        type,
+        search: search.value || undefined,
+        sortBy: sortBy.value,
+        desc: sortDesc.value,
       });
-      loadedTypes.value.add(key);
+      entriesByType.value = { ...entriesByType.value, [type]: list };
+    } catch (e) {
+      error.value = String(e);
+      entriesByType.value = { ...entriesByType.value, [type]: [] };
     } finally {
       loading.value = false;
     }
   }
 
-  /** 异步增量加载缩略图（带缓存 + 并发控制） */
-  async function loadThumbnails(
-    type: string,
-    onThumb: (id: string, dataUrl: string) => void,
-    concurrency = 6,
-  ) {
-    const list = filesByType.value[type] || files.value;
-    let index = 0;
-    async function worker() {
-      while (index < list.length) {
-        const i = index++;
-        const f = list[i];
-        if (thumbCache.value[f.id]) {
-          onThumb(f.id, thumbCache.value[f.id]);
-          continue;
-        }
-        try {
-          const dataUrl = await capabilities.getThumbnail(f.id, 300);
-          if (dataUrl) {
-            thumbCache.value[f.id] = dataUrl;
-            onThumb(f.id, dataUrl);
-          }
-        } catch {}
-      }
+  async function refreshCounts() {
+    try {
+      counts.value = await capabilities.libraryCounts();
+    } catch {
+      /* 角标失败不影响主流程 */
     }
+  }
+
+  /**
+   * 按需加载缩略图（供虚拟滚动只请求可视区）。
+   * 并发受限，已缓存的直接跳过。
+   */
+  async function loadThumbnails(ids: string[], concurrency = 6) {
+    const pending = ids.filter((id) => id && !thumbCache.value.has(id));
+    if (!pending.length) return;
+
+    let cursor = 0;
+    const worker = async () => {
+      while (cursor < pending.length) {
+        const id = pending[cursor++];
+        if (thumbCache.value.has(id)) continue;
+        try {
+          const url = await capabilities.getThumbnail(id, 320);
+          if (url) setThumb(id, url);
+        } catch {
+          /* 单张失败不影响其它 */
+        }
+      }
+    };
     await Promise.all(
-      Array.from({ length: Math.min(concurrency, list.length) }, () => worker()),
+      Array.from({ length: Math.min(concurrency, pending.length) }, worker),
     );
   }
 
+  /** 扫描完成后所有缓存都失效 */
+  function invalidate() {
+    entriesByType.value = {};
+    thumbCache.value = new Map();
+    thumbVersion.value++;
+  }
+
   async function startScan(dirs?: string[]) {
+    if (scanning.value) return;
+    const settings = useSettingsStore();
+    const scanDirs = dirs?.length ? dirs : settings.scanDirs;
+    if (!scanDirs.length) {
+      error.value = "empty-dirs";
+      return;
+    }
+
     scanning.value = true;
-    scanLogs.value = [];
+    error.value = null;
+    progress.value = null;
+
+    // 事件驱动进度，替代旧的 500ms 轮询
+    unlistenScan?.();
+    unlistenScan = await capabilities.onScanProgress((p) => {
+      if (p.jobId !== currentJobId.value) return;
+      progress.value = p;
+      if (p.stage === "done" || p.stage === "cancelled" || p.stage === "error") {
+        void finishScan(p);
+      }
+    });
+
     try {
-      const settings = useSettingsStore();
-      const scanDirs = dirs && dirs.length ? dirs : (settings.scanDirs.length ? settings.scanDirs : ["/"]);
       const { jobId } = await capabilities.scanStart({ dirs: scanDirs });
-      const poll = setInterval(async () => {
-        const p = await capabilities.scanStatus(jobId);
-        progress.value = p;
-        if (p.stage === "done") {
-          clearInterval(poll);
-          scanning.value = false;
-          // 扫描完成后强制刷新所有类型
-          loadedTypes.value.clear();
-          thumbCache.value = {};
-          filesByType.value = {};
-          await refresh();
-        }
-      }, 500);
+      currentJobId.value = jobId;
+      // 浏览器 mock 无事件通道，回落到一次性查询
+      await pollIfNoEvents(jobId);
     } catch (e) {
+      error.value = String(e);
       scanning.value = false;
-      scanLogs.value.push(`扫描失败: ${e}`);
+      unlistenScan?.();
+      unlistenScan = null;
     }
   }
 
+  /** mock / 事件缺失场景的兜底：任务已是终态时直接收尾 */
+  async function pollIfNoEvents(jobId: string) {
+    const status = await capabilities.scanStatus(jobId);
+    if (status && ["done", "cancelled", "error"].includes(status.stage)) {
+      progress.value = status;
+      await finishScan(status);
+    }
+  }
+
+  async function finishScan(p: ScanProgress) {
+    scanning.value = false;
+    currentJobId.value = null;
+    unlistenScan?.();
+    unlistenScan = null;
+    if (p.stage === "error") {
+      error.value = p.error ?? "scan-failed";
+      return;
+    }
+    invalidate();
+    await refreshCounts();
+  }
+
+  async function cancelScan() {
+    if (currentJobId.value) {
+      await capabilities.scanCancel(currentJobId.value);
+    }
+  }
+
+  async function toggleFavorite(entry: MediaEntry) {
+    const next = await capabilities.toggleFavorite(entry.id);
+    // 就地更新所有列表里的同一条目
+    for (const list of Object.values(entriesByType.value)) {
+      const hit = list.find((e) => e.id === entry.id);
+      if (hit) hit.favorite = next;
+    }
+    entriesByType.value = { ...entriesByType.value };
+  }
+
+  const scanLabel = computed(() => {
+    const p = progress.value;
+    if (!p) return "";
+    if (p.stage === "enumerate") return `正在枚举 ${p.done}`;
+    if (p.stage === "store") return `正在入库 ${p.done}/${p.total}`;
+    if (p.stage === "parse") return `正在解析 ${p.done}/${p.total}`;
+    return "";
+  });
+
   return {
-    files,
-    filesByType,
-    metaMap,
-    thumbCache,
+    entriesByType,
+    counts,
     loading,
+    error,
     scanning,
     progress,
-    scanLogs,
+    scanLabel,
+    search,
+    sortBy,
+    sortDesc,
+    entries,
+    getThumb,
     refresh,
+    refreshCounts,
     loadThumbnails,
+    invalidate,
     startScan,
+    cancelScan,
+    toggleFavorite,
   };
 });

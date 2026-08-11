@@ -1,116 +1,145 @@
 <script setup lang="ts">
-import { onMounted, computed } from "vue";
-import { useRouter, useRoute } from "vue-router";
+import { computed, onMounted } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { useSettingsStore } from "@/stores/settings";
 import { usePlayerStore } from "@/stores/player";
+import { useLibraryStore } from "@/stores/library";
 import MiniPlayer from "@/components/MiniPlayer.vue";
 import { translate } from "@shared/i18n";
 
 const settings = useSettingsStore();
 const player = usePlayerStore();
+const library = useLibraryStore();
 const router = useRouter();
 const route = useRoute();
 
 const navItems = [
-  { key: "images", path: "/images" },
-  { key: "videos", path: "/videos" },
-  { key: "music", path: "/music" },
-  { key: "books", path: "/books" },
-  { key: "folders", path: "/folders" },
+  { key: "images", path: "/images", icon: "image", type: "image" },
+  { key: "videos", path: "/videos", icon: "movie", type: "video" },
+  { key: "music", path: "/music", icon: "music_note", type: "audio" },
+  { key: "books", path: "/books", icon: "menu_book", type: "book" },
+  { key: "folders", path: "/folders", icon: "folder", type: null },
 ];
 const bottomItems = [
-  { key: "favorites", path: "/favorites" },
-  { key: "history", path: "/history" },
-  { key: "trash", path: "/trash" },
-  { key: "settings", path: "/settings" },
+  { key: "favorites", path: "/favorites", icon: "favorite" },
+  { key: "history", path: "/history", icon: "history" },
+  { key: "trash", path: "/trash", icon: "delete" },
+  { key: "settings", path: "/settings", icon: "settings" },
 ];
-
-const icons: Record<string, string> = {
-  images: "image",
-  videos: "movie",
-  music: "music_note",
-  books: "library_books",
-  folders: "folder",
-  favorites: "star",
-  history: "history",
-  trash: "delete",
-  settings: "settings",
-};
 
 function t(key: string) {
   return translate(settings.lang, key);
 }
 
-function go(path: string) {
-  router.push(path);
+const isPlayerPage = computed(() => route.path === "/music/player");
+const currentTab = computed(() => route.path.split("/")[1] || "images");
+
+function isActive(path: string) {
+  return route.path === path;
 }
 
-const isPlayerPage = () => route.path === "/music/player";
-const currentTab = computed(() => {
-  const p = route.path.split("/")[1];
-  return p || "images";
-});
+function countOf(type: string | null): number {
+  return type ? (library.counts[type] ?? 0) : 0;
+}
+
+const themeIcon = computed(() =>
+  settings.theme === "dark"
+    ? "dark_mode"
+    : settings.theme === "light"
+      ? "light_mode"
+      : "brightness_auto",
+);
+
+/** 三态循环：跟随系统 → 浅色 → 深色 */
+function cycleTheme() {
+  const order = ["system", "light", "dark"] as const;
+  const next = order[(order.indexOf(settings.theme) + 1) % order.length];
+  settings.applyTheme(next);
+}
 
 onMounted(async () => {
   await settings.load();
   settings.applyTheme(settings.theme);
+  void library.refreshCounts();
 });
 </script>
 
 <template>
-  <div class="app-shell">
+  <div class="app-shell" :class="{ 'has-player': player.song && !isPlayerPage }">
     <!-- 左侧导航 Rail -->
-    <nav class="nav-rail" v-if="!isPlayerPage()">
-      <div class="nav-brand">{{ t("app.name") }}</div>
-      <div class="nav-main">
-        <div
+    <nav v-if="!isPlayerPage" class="nav-rail lm-glass">
+      <div class="brand">
+        <span class="material-symbols-outlined brand-mark">blur_on</span>
+        <span class="brand-name">{{ t("app.name") }}</span>
+      </div>
+
+      <div class="nav-group">
+        <button
           v-for="item in navItems"
           :key="item.key"
           class="nav-item"
-          :class="{ active: route.path === item.path }"
-          @click="go(item.path)"
+          :class="{ active: isActive(item.path) }"
+          @click="router.push(item.path)"
         >
-          <span class="nav-icon"><span class="material-symbols-outlined">{{ icons[item.key] }}</span></span>
-          <span class="nav-label">{{ t("nav." + item.key) }}</span>
-        </div>
+          <span class="indicator">
+            <span
+              class="material-symbols-outlined"
+              :class="{ filled: isActive(item.path) }"
+            >{{ item.icon }}</span>
+            <span
+              v-if="countOf(item.type)"
+              class="badge tabular-nums"
+            >{{ countOf(item.type) > 999 ? "999+" : countOf(item.type) }}</span>
+          </span>
+          <span class="label">{{ t("nav." + item.key) }}</span>
+        </button>
       </div>
-      <div class="nav-bottom">
-        <div
+
+      <div class="nav-group bottom">
+        <button
           v-for="item in bottomItems"
           :key="item.key"
           class="nav-item"
-          :class="{ active: route.path === item.path }"
-          @click="go(item.path)"
+          :class="{ active: isActive(item.path) }"
+          @click="router.push(item.path)"
         >
-          <span class="nav-icon"><span class="material-symbols-outlined">{{ icons[item.key] }}</span></span>
-          <span class="nav-label">{{ t("nav." + item.key) }}</span>
-        </div>
+          <span class="indicator">
+            <span
+              class="material-symbols-outlined"
+              :class="{ filled: isActive(item.path) }"
+            >{{ item.icon }}</span>
+          </span>
+          <span class="label">{{ t("nav." + item.key) }}</span>
+        </button>
       </div>
     </nav>
 
     <!-- 内容区 -->
     <div class="content">
-      <header class="topbar" v-if="!isPlayerPage()">
-        <div class="topbar-title">{{ t("nav." + currentTab) }}</div>
-        <div class="topbar-search">
-          <input type="text" :placeholder="t('actions.search')" />
-        </div>
-        <button class="theme-btn" @click="settings.applyTheme(settings.theme === 'dark' ? 'light' : 'dark')">
-          <span class="material-symbols-outlined">{{ settings.theme === "dark" ? "dark_mode" : "light_mode" }}</span>
+      <header v-if="!isPlayerPage" class="topbar lm-glass">
+        <h1 class="title">{{ t("nav." + currentTab) }}</h1>
+        <div class="spacer"></div>
+        <button
+          class="lm-icon-btn"
+          :title="t('settings.theme')"
+          @click="cycleTheme"
+        >
+          <span class="material-symbols-outlined">{{ themeIcon }}</span>
         </button>
       </header>
 
       <main class="main-content">
         <router-view v-slot="{ Component }">
-          <keep-alive :exclude="['PlayerView']">
-            <component :is="Component" />
-          </keep-alive>
+          <transition name="page" mode="out-in">
+            <keep-alive :exclude="['PlayerView']">
+              <component :is="Component" />
+            </keep-alive>
+          </transition>
         </router-view>
       </main>
     </div>
 
-    <!-- 迷你播放条 -->
-    <MiniPlayer v-if="!isPlayerPage() && player.song" />
+    <MiniPlayer v-if="player.song && !isPlayerPage" />
   </div>
 </template>
 
@@ -119,111 +148,178 @@ onMounted(async () => {
   display: flex;
   height: 100vh;
   width: 100vw;
+  overflow: hidden;
   background: var(--md-sys-color-background);
 }
+
+/* ---- 导航 Rail ---- */
 .nav-rail {
-  width: 80px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 12px 0;
-  background: var(--md-sys-color-surface-container-low);
-  border-right: 1px solid var(--md-sys-color-outline);
-  gap: 8px;
+  gap: 4px;
+  width: var(--lm-nav-width);
+  flex: none;
+  padding: 14px 8px 12px;
+  border-right: 1px solid var(--lm-hairline);
+  z-index: 10;
 }
-.nav-brand {
-  font-weight: 700;
-  font-size: 13px;
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin-bottom: 14px;
   color: var(--md-sys-color-primary);
-  margin-bottom: 12px;
-  letter-spacing: 0.5px;
 }
-.nav-main {
-  flex: 1;
+.brand-mark {
+  font-size: 26px;
+  font-variation-settings: 'FILL' 1, 'wght' 500;
+}
+.brand-name {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+}
+
+.nav-group {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  width: 100%;
   align-items: center;
-}
-.nav-bottom {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   width: 100%;
-  align-items: center;
 }
+.nav-group.bottom {
+  margin-top: auto;
+}
+
 .nav-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  width: 64px;
-  padding: 8px 0;
-  border-radius: var(--md-sys-shape-corner-medium);
+  gap: 4px;
+  width: 100%;
+  padding: 6px 0 7px;
+  border: none;
+  background: transparent;
   color: var(--md-sys-color-on-surface-variant);
+  font-family: inherit;
   cursor: pointer;
-  transition: background var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard);
+  border-radius: var(--md-sys-shape-corner-medium);
 }
-.nav-item:hover {
+.nav-item:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: -2px;
+}
+
+/* M3 药丸形状选中指示器 */
+.indicator {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 32px;
+  border-radius: 16px;
+  transition:
+    background var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard),
+    transform 200ms var(--md-sys-motion-spring);
+}
+.nav-item:hover .indicator {
   background: var(--md-sys-color-surface-container-high);
 }
-.nav-item.active {
+.nav-item.active .indicator {
   background: var(--md-sys-color-secondary-container);
   color: var(--md-sys-color-on-secondary-container);
 }
-.nav-icon {
-  font-size: 20px;
+.nav-item:active .indicator {
+  transform: scale(0.9);
+}
+.indicator .material-symbols-outlined {
+  font-size: 22px;
+}
+
+.badge {
+  position: absolute;
+  top: -3px;
+  right: 4px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+  font-size: 10px;
+  font-weight: 600;
   line-height: 1;
 }
-.nav-label {
+
+.label {
   font-size: 11px;
-  margin-top: 3px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
 }
+.nav-item.active .label {
+  color: var(--md-sys-color-on-surface);
+  font-weight: 600;
+}
+
+/* ---- 内容区 ---- */
 .content {
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-width: 0;
   overflow: hidden;
 }
+
 .topbar {
-  height: 56px;
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 0 20px;
-  background: var(--md-sys-color-surface-container-low);
-  border-bottom: 1px solid var(--md-sys-color-outline);
+  height: var(--lm-topbar-height);
+  flex: none;
+  padding: 0 var(--lm-content-pad);
+  border-bottom: 1px solid var(--lm-hairline);
+  z-index: 5;
 }
-.topbar-title {
-  font-size: var(--md-sys-typescale-title-size);
-  font-weight: var(--md-sys-typescale-title-weight);
-}
-.topbar-search input {
-  width: 280px;
-  padding: 8px 14px;
-  border-radius: var(--md-sys-shape-corner-extra-large);
-  border: 1px solid var(--md-sys-color-outline);
-  background: var(--md-sys-color-surface);
-  color: var(--md-sys-color-on-surface);
-  outline: none;
-}
-.theme-btn {
-  margin-left: auto;
-  border: none;
-  background: var(--md-sys-color-surface-container-high);
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.title {
+  font-size: var(--md-sys-typescale-title-large-size);
+  font-weight: var(--md-sys-typescale-title-large-weight);
   color: var(--md-sys-color-on-surface);
 }
+.spacer {
+  flex: 1;
+}
+
 .main-content {
   flex: 1;
   overflow-y: auto;
-  padding: 20px;
+  padding: var(--lm-content-pad);
+  /* 迷你播放条不遮挡末行内容 */
+  padding-bottom: var(--lm-content-pad);
+}
+.has-player .main-content {
+  padding-bottom: calc(var(--lm-miniplayer-height) + var(--lm-content-pad));
+}
+
+/* 路由切换：淡入上浮 */
+.page-enter-active,
+.page-leave-active {
+  transition:
+    opacity 180ms var(--md-sys-motion-easing-standard),
+    transform 180ms var(--md-sys-motion-easing-emphasized-decelerate);
+}
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+.page-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
 }
 </style>
