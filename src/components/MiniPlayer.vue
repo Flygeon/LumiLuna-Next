@@ -29,13 +29,13 @@ function seek(e: MouseEvent) {
 
     <div class="body" @click="router.push('/music/player')">
       <div class="cover">
-        <img v-if="player.song?.coverBase64" :src="player.song.coverBase64" alt="" />
+        <img v-if="player.song?.cover" :src="player.song.cover" alt="" />
         <span v-else class="material-symbols-outlined">music_note</span>
       </div>
 
       <div class="info">
-        <div class="title">{{ player.song?.meta.title || "—" }}</div>
-        <div class="artist">{{ player.song?.meta.artist || "未知艺术家" }}</div>
+        <div class="title">{{ player.song?.title || "—" }}</div>
+        <div class="artist">{{ player.song?.artist || "未知艺术家" }}</div>
       </div>
 
       <div class="time tabular-nums">

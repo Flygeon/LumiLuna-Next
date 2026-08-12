@@ -8,9 +8,13 @@
 //! set_position 等接口。该依赖只在 Windows 编译（Cargo.toml 里 target 门控），
 //! 因此其他平台的命令仍是空操作，前端无需特判平台。
 //!
-//! 封面接口只接受 URL：这里把内嵌封面（或同目录 cover.jpg）提取出来落到 app cache
-//! 下的固定文件 smtc_cover.jpg，再用百分号编码转成 file:/// URI。路径含中文/空格
-//! 也能正常解析。
+//! # 封面
+//! SMTC 的 `RandomAccessStreamReference::CreateFromUri` 不接受 file:// URI，
+//! 所以封面一律走 http(s)：
+//! - 在线歌曲：直接使用平台返回的 pic URL（http(s)）。
+//! - 本地歌曲：提取内嵌封面（或同目录 cover.jpg），归一化成 ≤512px JPEG，
+//!   交给一个绑在 127.0.0.1 随机端口的 tiny_http 服务按需提供。
+//!   每个版本号 `?v=N` 破坏系统侧缓存，避免换歌后封面残留旧图。
 
 use serde::Serialize;
 
@@ -30,43 +34,40 @@ pub fn setup(app: &tauri::AppHandle) {
     let _ = app;
 }
 
-/// 推入歌曲元数据（换歌时调用一次）。封面在 Rust 侧从文件提取，前端无需传图。
+/// 推入歌曲元数据（换歌时调用一次）。
+/// - 本地歌曲：传 file_path，Rust 侧提取封面并提供本地 http 服务。
+/// - 在线歌曲：传 cover_url（http(s) 封面直连）。
 #[tauri::command]
 #[allow(unused_variables)]
 pub fn smtc_set_media(
-    app: tauri::AppHandle,
     title: String,
     artist: Option<String>,
     album: Option<String>,
     duration_ms: u64,
     file_path: String,
+    cover_url: Option<String>,
 ) -> Result<(), String> {
     #[cfg(windows)]
-    imp::set_media(&app, &title, artist, album, duration_ms, &file_path);
+    imp::set_media(&title, artist, album, duration_ms, &file_path, cover_url);
     Ok(())
 }
 
 /// 推入播放状态 + 进度（播放/暂停/拖动时调用，也可由前端节流周期调用）。
 #[tauri::command]
 #[allow(unused_variables)]
-pub fn smtc_set_playback(
-    app: tauri::AppHandle,
-    playing: bool,
-    position_ms: u64,
-    duration_ms: u64,
-) -> Result<(), String> {
+pub fn smtc_set_playback(playing: bool, position_ms: u64, duration_ms: u64) -> Result<(), String> {
     #[cfg(windows)]
-    imp::set_playback(&app, playing, position_ms, duration_ms);
+    imp::set_playback(playing, position_ms, duration_ms);
     Ok(())
 }
 
 #[cfg(windows)]
 mod imp {
-    use std::path::Path;
+    use std::sync::atomic::{AtomicU64, Ordering};
     use std::sync::{Mutex, OnceLock};
 
     use smtc_tokio::{WindowsMediaEvent, WindowsMediaManager};
-    use tauri::{Emitter, Manager};
+    use tauri::Emitter;
 
     use super::SmtcCommand;
 
@@ -83,6 +84,13 @@ mod imp {
     }
 
     static INNER: OnceLock<Mutex<Inner>> = OnceLock::new();
+
+    /// 最近一次本地封面字节（已归一化的 JPEG），tiny_http 线程按需读取
+    static COVER_BYTES: Mutex<Vec<u8>> = Mutex::new(Vec::new());
+    /// 本地封面服务基址（127.0.0.1 随机端口），首次需要封面时惰性启动
+    static COVER_BASE_URL: OnceLock<String> = OnceLock::new();
+    /// 封面版本号，追加到 URL 以绕过系统侧缓存
+    static COVER_VERSION: AtomicU64 = AtomicU64::new(0);
 
     fn inner() -> Option<&'static Mutex<Inner>> {
         INNER.get()
@@ -146,12 +154,12 @@ mod imp {
     }
 
     pub fn set_media(
-        app: &tauri::AppHandle,
         title: &str,
         artist: Option<String>,
         album: Option<String>,
         duration_ms: u64,
         file_path: &str,
+        cover_url: Option<String>,
     ) {
         let Some(guard) = inner() else { return };
         let mut g = match guard.lock() {
@@ -159,7 +167,11 @@ mod imp {
             Err(_) => return,
         };
 
-        let art_url = cover_uri(app, file_path);
+        // 在线歌曲直连 http(s) 封面；本地歌曲提取内嵌封面经本地 http 服务提供
+        let art_url = match cover_url.filter(|u| !u.is_empty()) {
+            Some(u) => Some(u),
+            None => cover_from_file(file_path),
+        };
         let artists: Vec<String> = artist.iter().cloned().collect();
         let album = album.unwrap_or_default();
 
@@ -171,12 +183,7 @@ mod imp {
         g.last_duration_ms = duration_ms;
     }
 
-    pub fn set_playback(
-        _app: &tauri::AppHandle,
-        playing: bool,
-        position_ms: u64,
-        duration_ms: u64,
-    ) {
+    pub fn set_playback(playing: bool, position_ms: u64, duration_ms: u64) {
         let Some(guard) = inner() else { return };
         let mut g = match guard.lock() {
             Ok(g) => g,
@@ -206,30 +213,52 @@ mod imp {
         g.manager.set_position(position_ms);
     }
 
-    /// 提取封面字节并落盘，返回 file:/// URI；无封面时返回 None（元数据照常展示）。
-    fn cover_uri(app: &tauri::AppHandle, file_path: &str) -> Option<String> {
-        let bytes = crate::commands::thumbnail::embedded_cover(file_path)
+    /// 从音频文件提取封面并归一化，落进本地服务缓冲，返回带版本的 http:// URL。
+    fn cover_from_file(file_path: &str) -> Option<String> {
+        let raw = crate::commands::thumbnail::embedded_cover(file_path)
             .or_else(|| crate::commands::thumbnail::sidecar_cover(file_path))?;
-        let dir = app.path().app_cache_dir().ok()?;
-        std::fs::create_dir_all(&dir).ok()?;
-        let path = dir.join("smtc_cover.jpg");
-        std::fs::write(&path, &bytes).ok()?;
-        Some(file_uri(&path))
+        let jpeg = normalize_jpeg(&raw)?;
+        *COVER_BYTES.lock().unwrap() = jpeg;
+        let ver = COVER_VERSION.fetch_add(1, Ordering::Relaxed) + 1;
+        Some(format!("{}/cover.jpg?v={ver}", cover_base_url()))
     }
 
-    /// 本地路径 → file:/// URI。保留 ASCII 字母数字与 `/-_.:@`，其余（中文/空格/保留符）百分号编码。
-    fn file_uri(path: &Path) -> String {
-        let raw = path.to_string_lossy().replace('\\', "/");
-        let mut uri = String::from("file:///");
-        for b in raw.bytes() {
-            if b.is_ascii_alphanumeric()
-                || matches!(b, b'-' | b'_' | b'.' | b'~' | b'/' | b':' | b'@')
-            {
-                uri.push(b as char);
-            } else {
-                uri.push_str(&format!("%{b:02X}"));
+    fn cover_base_url() -> &'static str {
+        COVER_BASE_URL.get_or_init(start_cover_server)
+    }
+
+    /// 启动 127.0.0.1 随机端口的单线程 HTTP 服务，每次请求返回当前封面字节。
+    fn start_cover_server() -> String {
+        let server = match tiny_http::Server::http("127.0.0.1:0") {
+            Ok(s) => s,
+            Err(e) => {
+                eprintln!("[SMTC] 封面本地服务启动失败: {e}");
+                return String::new();
             }
-        }
-        uri
+        };
+        let port = server.server_addr().to_ip().map(|a| a.port()).unwrap_or(0);
+        let srv = std::sync::Arc::new(server);
+        let srv2 = srv.clone();
+        std::thread::spawn(move || {
+            for request in srv2.incoming_requests() {
+                let bytes = COVER_BYTES.lock().unwrap().clone();
+                let mut resp = tiny_http::Response::from_data(bytes);
+                if let Ok(h) = "Content-Type: image/jpeg".parse::<tiny_http::Header>() {
+                    resp.add_header(h);
+                }
+                let _ = request.respond(resp);
+            }
+        });
+        format!("http://127.0.0.1:{port}")
+    }
+
+    /// 内嵌封面归一化为 ≤512px 的 JPEG：超大封面（常见于 FLAC）会卡住系统解码。
+    fn normalize_jpeg(raw: &[u8]) -> Option<Vec<u8>> {
+        let img = image::load_from_memory(raw).ok()?;
+        let thumb = img.thumbnail(512, 512);
+        let rgb = image::DynamicImage::ImageRgb8(thumb.to_rgb8());
+        let mut buf = std::io::Cursor::new(Vec::new());
+        rgb.write_to(&mut buf, image::ImageFormat::Jpeg).ok()?;
+        Some(buf.into_inner())
     }
 }

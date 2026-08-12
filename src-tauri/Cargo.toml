@@ -41,6 +41,9 @@ chrono = "0.4"
 # 仅在 Windows 编译，Linux/macOS 构建不受影响。
 [target.'cfg(windows)'.dependencies]
 smtc-tokio = "0.1"
+# SMTC 封面用：本地提取的内嵌封面经本地 HTTP 服务以 http://127.0.0.1 形式喂给系统
+# （Windows 的 RandomAccessStreamReference 不接受 file:// URI）
+tiny_http = "0.12"
 
 [profile.release]
 codegen-units = 1

@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { ref, watch } from "vue";
 import { LazyStore } from "@tauri-apps/plugin-store";
+import type { MusicServer, OnlinePlaylistEntry } from "@shared/types";
 
 export type ThemeMode = "system" | "light" | "dark";
 export type PdfReadMode = "single" | "dual" | "scroll";
@@ -49,6 +50,12 @@ const DEFAULTS = {
   readerParaSpacing: 0,
   /** 用户手动指定的 ffmpeg 目录；空串表示自动探测 PATH */
   ffmpegDir: "",
+  /** 实验性：启用在线音乐（meting API 搜索/歌单） */
+  enableOnlineMusic: false,
+  /** 在线音乐平台 */
+  musicServer: "netease" as MusicServer,
+  /** 用户自添加的在线歌单 */
+  onlinePlaylists: [] as OnlinePlaylistEntry[],
 };
 
 export const useSettingsStore = defineStore("settings", () => {
@@ -72,6 +79,9 @@ export const useSettingsStore = defineStore("settings", () => {
   const readerLineHeight = ref(DEFAULTS.readerLineHeight);
   const readerParaSpacing = ref(DEFAULTS.readerParaSpacing);
   const ffmpegDir = ref(DEFAULTS.ffmpegDir);
+  const enableOnlineMusic = ref(DEFAULTS.enableOnlineMusic);
+  const musicServer = ref<MusicServer>(DEFAULTS.musicServer);
+  const onlinePlaylists = ref<OnlinePlaylistEntry[]>([...DEFAULTS.onlinePlaylists]);
   const loaded = ref(false);
 
   // 单一注册表：新增设置项只需在此加一行，load/save 自动覆盖
@@ -96,6 +106,9 @@ export const useSettingsStore = defineStore("settings", () => {
     readerLineHeight,
     readerParaSpacing,
     ffmpegDir,
+    enableOnlineMusic,
+    musicServer,
+    onlinePlaylists,
   } as const;
 
   async function load() {

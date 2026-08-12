@@ -2,7 +2,14 @@ import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { capabilities, isTauri } from "@/capabilities";
-import type { MediaEntry, Song, LyricLine } from "@shared/types";
+import type {
+  MediaEntry,
+  NowPlaying,
+  OnlineSong,
+  QueueItem,
+  Song,
+  LyricLine,
+} from "@shared/types";
 
 /** 浏览器预览下没有 Tauri 协议，直接返回原路径避免抛错 */
 function toMediaSrc(path: string): string {
@@ -159,13 +166,13 @@ export function getDominantColors(
 export type RepeatMode = "off" | "all" | "one";
 
 export const usePlayerStore = defineStore("player", () => {
-  const song = ref<Song | null>(null);
+  const song = ref<NowPlaying | null>(null);
   const playing = ref(false);
   const currentTime = ref(0);
   const duration = ref(0);
   const currentIndex = ref(0);
-  /** 队列只存轻量条目；完整 Song（封面/歌词）在切歌时按需拉取 */
-  const queue = ref<MediaEntry[]>([]);
+  /** 队列只存轻量条目（本地 MediaEntry / 在线 OnlineSong）；切歌时按需拉全量 */
+  const queue = ref<QueueItem[]>([]);
   const loadingSong = ref(false);
   const lastError = ref<string | null>(null);
   const shuffleMode = ref(false);
@@ -219,7 +226,7 @@ export const usePlayerStore = defineStore("player", () => {
     });
     el.addEventListener("error", () => {
       playing.value = false;
-      lastError.value = `无法播放：${song.value?.file.name ?? ""}`;
+      lastError.value = `无法播放：${song.value?.title ?? ""}`;
     });
     audioEl.value = el;
     return el;
@@ -271,10 +278,41 @@ export const usePlayerStore = defineStore("player", () => {
     shuffledIndices.value = indices;
   }
 
-  /** 应用一首已取回的完整 Song（解析歌词、提取封面主色） */
+  // ---- 队列项工具（本地 / 在线统一取展示字段）----
+
+  function isOnline(item: QueueItem): item is OnlineSong {
+    return "url" in item;
+  }
+
+  function queueTitle(item: QueueItem): string {
+    return isOnline(item) ? item.name : item.title || item.name;
+  }
+
+  function queueArtist(item: QueueItem): string {
+    return isOnline(item) ? item.artist : item.artist || "未知艺术家";
+  }
+
+  function queueDuration(item: QueueItem): number | null {
+    return isOnline(item) ? null : item.durationMs ?? null;
+  }
+
+  /** 应用一首已取回的本地完整 Song（解析歌词、提取封面主色、推送 SMTC） */
   async function loadSong(s: Song) {
-    song.value = s;
-    lyrics.value = s.lyrics ? parseLrc(s.lyrics) : [];
+    const title = s.meta.title ?? s.file.name.replace(/\.[^.]+$/, "");
+    const artist = s.meta.artist ?? "";
+    const album = s.meta.album ?? "";
+    song.value = {
+      id: s.file.id,
+      title,
+      artist,
+      album,
+      cover: s.coverBase64 ?? "",
+      src: toMediaSrc(s.file.path),
+      lyrics: s.lyrics ? parseLrc(s.lyrics) : [],
+      filePath: s.file.path,
+      durationMs: s.meta.durationMs ?? undefined,
+      kind: "local",
+    };
     activeLine.value = -1;
     coverColors.value = [];
     currentTime.value = 0;
@@ -289,22 +327,23 @@ export const usePlayerStore = defineStore("player", () => {
     // 推送元数据给 Windows 系统媒体控件；真实时长由 loadedmetadata 后的 syncSmtc 兜底
     void capabilities
       .smtcSetMedia({
-        title: s.meta.title ?? s.file.name.replace(/\.[^.]+$/, ""),
-        artist: s.meta.artist ?? null,
-        album: s.meta.album ?? null,
+        title,
+        artist: artist || null,
+        album: album || null,
         durationMs: Math.round(s.meta.durationMs ?? 0),
         filePath: s.file.path,
+        coverUrl: null,
       })
       .catch(() => {});
   }
 
   /** 唯一的起播路径：设源 → load → play */
   async function startPlayback() {
-    const path = song.value?.file?.path;
-    if (!path) return;
+    const src = song.value?.src;
+    if (!src) return;
     const el = ensureAudio();
     lastError.value = null;
-    el.src = toMediaSrc(path);
+    el.src = src;
     el.load();
     try {
       await el.play();
@@ -329,6 +368,63 @@ export const usePlayerStore = defineStore("player", () => {
     }
   }
 
+  /** 播放在线歌曲：拉歌词、取封面主色、推 SMTC（封面直连 pic URL） */
+  async function loadOnlineSong(item: OnlineSong) {
+    loadingSong.value = true;
+    try {
+      let parsed: LyricLine[] = [];
+      try {
+        const res = await fetch(item.lrc);
+        if (res.ok) parsed = parseLrc(await res.text());
+      } catch {
+        /* 在线歌词拉取失败不阻塞播放 */
+      }
+      song.value = {
+        id: item.id,
+        title: item.name,
+        artist: item.artist,
+        album: item.album ?? "",
+        cover: item.pic,
+        src: item.url,
+        lyrics: parsed,
+        coverUrl: item.pic,
+        kind: "online",
+      };
+      activeLine.value = -1;
+      coverColors.value = [];
+      currentTime.value = 0;
+      duration.value = 0;
+      // 封面主色：在线图需 CORS，加载失败则由 getDominantColors 内部兜底
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        coverColors.value = getDominantColors(img);
+      };
+      img.src = item.pic;
+      await startPlayback();
+      void capabilities
+        .smtcSetMedia({
+          title: item.name,
+          artist: item.artist || null,
+          album: item.album ?? null,
+          durationMs: 0,
+          filePath: "",
+          coverUrl: item.pic,
+        })
+        .catch(() => {});
+    } finally {
+      loadingSong.value = false;
+    }
+  }
+
+  /** 播放在线歌曲列表（搜索/歌单结果）入队并起播，index 为起播项 */
+  async function playOnline(songs: OnlineSong[], index: number) {
+    queue.value = songs;
+    currentIndex.value = index;
+    if (shuffleMode.value) generateShuffleOrder();
+    await playFromQueue(index);
+  }
+
   /**
    * PlayerView 挂载后调用。歌曲已在播放则不打断，
    * 仅在音频尚未起播时补一次（如刷新后直接进入播放器页）。
@@ -343,7 +439,12 @@ export const usePlayerStore = defineStore("player", () => {
   async function playFromQueue(index: number) {
     if (index < 0 || index >= queue.value.length) return;
     currentIndex.value = index;
-    await loadById(queue.value[index].id);
+    const item = queue.value[index];
+    if (isOnline(item)) {
+      await loadOnlineSong(item);
+    } else {
+      await loadById(item.id);
+    }
   }
 
   async function next() {
@@ -501,6 +602,8 @@ export const usePlayerStore = defineStore("player", () => {
     detachAudio,
     loadSong,
     loadById,
+    loadOnlineSong,
+    playOnline,
     initAudio,
     togglePlay,
     setIndex,
@@ -513,5 +616,9 @@ export const usePlayerStore = defineStore("player", () => {
     cycleRepeat,
     setQueue,
     playFromQueue,
+    isOnline,
+    queueTitle,
+    queueArtist,
+    queueDuration,
   };
 });

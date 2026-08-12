@@ -402,6 +402,28 @@ async function clearCache() {
       </label>
     </section>
 
+    <!-- 实验性：在线音乐 -->
+    <section class="card">
+      <h3>{{ t("settings.online") }}</h3>
+      <p class="hint">{{ t("settings.onlineHint") }}</p>
+      <label class="row switch-row">
+        <span class="row-label">{{ t("settings.onlineEnable") }}</span>
+        <input type="checkbox" v-model="settings.enableOnlineMusic" />
+      </label>
+      <div v-if="settings.enableOnlineMusic" class="row">
+        <div class="row-label"><span>{{ t("settings.onlineServer") }}</span></div>
+        <div class="segmented">
+          <button
+            v-for="s in (['netease', 'tencent'] as const)"
+            :key="s"
+            class="seg"
+            :class="{ active: settings.musicServer === s }"
+            @click="settings.musicServer = s"
+          >{{ t("settings.onlineServer_" + s) }}</button>
+        </div>
+      </div>
+    </section>
+
     <!-- 关于 -->
     <section class="card">
       <h3>{{ t("settings.about") }}</h3>

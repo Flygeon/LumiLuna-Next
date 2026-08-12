@@ -161,8 +161,10 @@ export interface SmtcMedia {
   artist?: string | null;
   album?: string | null;
   durationMs: number;
-  /** 音频文件路径，Rust 侧据此提取封面 */
+  /** 音频文件路径，Rust 侧据此提取封面（在线歌曲传空串） */
   filePath: string;
+  /** 在线歌曲封面 URL（http(s)）；提供时优先使用 */
+  coverUrl?: string | null;
 }
 
 /** SMTC 播放状态（播放/暂停 + 进度） */
@@ -177,4 +179,50 @@ export interface SmtcCommand {
   kind: "play" | "pause" | "next" | "prev" | "stop" | "seek";
   /** kind 为 seek 时的目标位置（毫秒） */
   positionMs?: number;
+}
+
+/** 在线音乐平台 */
+export type MusicServer = "netease" | "tencent";
+
+/** 在线歌曲（meting API 返回） */
+export interface OnlineSong {
+  id: string;
+  name: string;
+  artist: string;
+  /** 可播放音频 URL */
+  url: string;
+  /** 封面图片 URL */
+  pic: string;
+  /** 歌词文本 URL */
+  lrc: string;
+  album?: string;
+}
+
+/** 播放队列项：本地文件或在线歌曲 */
+export type QueueItem = MediaEntry | OnlineSong;
+
+/** 当前播放曲目（本地/在线统一形态，供播放器与迷你播放器渲染） */
+export interface NowPlaying {
+  id: string;
+  title: string;
+  artist: string;
+  album: string;
+  /** 封面：本地为 dataURL，在线为 http(s) URL */
+  cover: string;
+  /** 音频源：本地为 asset:// 转换结果，在线为 http(s) URL */
+  src: string;
+  lyrics: LyricLine[];
+  /** 本地歌曲的磁盘路径（SMTC 提取封面用） */
+  filePath?: string;
+  /** 在线歌曲的封面 URL（SMTC 直接使用） */
+  coverUrl?: string;
+  durationMs?: number;
+  kind: "local" | "online";
+}
+
+/** 在线歌单（用户自添加） */
+export interface OnlinePlaylistEntry {
+  server: MusicServer;
+  id: string;
+  name: string;
 }

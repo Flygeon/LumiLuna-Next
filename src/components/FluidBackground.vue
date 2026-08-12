@@ -38,7 +38,7 @@ let visibilityHandler: (() => void) | null = null;
 const mode = computed(() => settings.playerBg);
 /** 静态模式下用作 CSS 背景的封面 */
 const coverBg = computed(
-  () => `url("${player.song?.coverBase64 || "/default.svg"}")`,
+  () => `url("${player.song?.cover || "/default.svg"}")`,
 );
 
 function stopLoop() {
@@ -147,7 +147,7 @@ function startLoop() {
 }
 
 function loadCover() {
-  const src = player.song?.coverBase64 || "/default.svg";
+  const src = player.song?.cover || "/default.svg";
   const im = new Image();
   im.onload = () => {
     img = im;
@@ -165,7 +165,7 @@ async function applyMode() {
 
 watch(mode, applyMode);
 watch(
-  () => player.song?.coverBase64,
+  () => player.song?.cover,
   () => {
     if (mode.value === "animated") loadCover();
   },

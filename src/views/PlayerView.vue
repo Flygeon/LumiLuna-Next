@@ -66,16 +66,16 @@ onBeforeUnmount(() => {
       <!-- 左栏：封面 + 信息 + 进度 + 控制 -->
       <div class="left-col">
         <div class="cover-wrap" :class="{ hover: player.playing }">
-          <div class="cover" v-if="player.song?.coverBase64">
-            <img :src="player.song.coverBase64" alt="" />
+          <div class="cover" v-if="player.song?.cover">
+            <img :src="player.song.cover" alt="" />
           </div>
           <div class="cover default" v-else><span class="material-symbols-outlined">music_note</span></div>
         </div>
 
         <div class="song-info">
-          <div class="title">{{ player.song?.meta.title || "—" }}</div>
+          <div class="title">{{ player.song?.title || "—" }}</div>
           <div class="artist">
-            {{ player.song?.meta.artist || "" }}<span v-if="player.song?.meta.album"> · </span>{{ player.song?.meta.album || "" }}
+            {{ player.song?.artist || "" }}<span v-if="player.song?.album"> · </span>{{ player.song?.album || "" }}
           </div>
         </div>
 
@@ -149,7 +149,7 @@ onBeforeUnmount(() => {
           <div v-else-if="player.queue.length" class="queue-list">
             <button
               v-for="(item, i) in player.queue"
-              :key="item.id"
+              :key="player.queueTitle(item) + item.id"
               class="queue-item"
               :class="{ current: i === player.currentIndex }"
               @click="player.playFromQueue(i)"
@@ -159,10 +159,12 @@ onBeforeUnmount(() => {
                 <span v-else class="material-symbols-outlined">equalizer</span>
               </span>
               <span class="q-names">
-                <span class="q-title">{{ item.title || item.name }}</span>
-                <span class="q-artist">{{ item.artist || "未知艺术家" }}</span>
+                <span class="q-title">{{ player.queueTitle(item) }}</span>
+                <span class="q-artist">{{ player.queueArtist(item) }}</span>
               </span>
-              <span class="q-time tabular-nums">{{ formatDuration(item.durationMs) }}</span>
+              <span class="q-time tabular-nums">
+                {{ formatDuration(player.queueDuration(item)) }}
+              </span>
             </button>
           </div>
           <div v-else class="queue-empty">{{ t("actions.queue") }}</div>
