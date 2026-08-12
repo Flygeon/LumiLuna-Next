@@ -37,13 +37,13 @@ const READER_FONTS: Record<ReaderFontKey, { label: string; value: string }> = {
   system: {
     label: "默认",
     value:
-      '"SFPro-Regular","PingFangSC-Regular","Helvetica Neue","PingFang TC","Microsoft YaHei",system-ui,sans-serif',
+      '"SarasaGothicSC-Regular","SFPro-Regular","Helvetica Neue","Microsoft YaHei",system-ui,sans-serif',
   },
   serif: { label: "宋体", value: 'Georgia,"Songti SC","SimSun",serif' },
   sans: {
     label: "黑体",
     value:
-      '"Helvetica Neue","PingFang SC","Microsoft YaHei","Hiragino Sans GB",sans-serif',
+      '"Helvetica Neue","Microsoft YaHei","Hiragino Sans GB",sans-serif',
   },
   kai: { label: "楷体", value: '"KaiTi","STKaiti","Kai",cursive' },
   yuan: {

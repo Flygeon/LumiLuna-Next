@@ -3,16 +3,13 @@
    组件外观统一由令牌驱动，禁止魔法色值。 */
 
 @font-face {
+  src: url("../assets/fonts/SarasaGothicSC-Regular.woff") format("woff");
+  font-family: "SarasaGothicSC-Regular";
+  font-display: swap;
+}
+@font-face {
   src: url("../assets/fonts/sf-pro-display_regular.woff2");
   font-family: "SFPro-Regular";
-}
-@font-face {
-  src: url("../assets/fonts/PingFangSC-Regular.woff2");
-  font-family: "PingFangSC-Regular";
-}
-@font-face {
-  src: url("../assets/fonts/PingFangTC-Regular.woff2");
-  font-family: "PingFangTC-Regular";
 }
 @font-face {
   src: url("../assets/fonts/SFProJP_regular.woff2");
@@ -189,8 +186,8 @@ body,
 }
 
 body {
-  font-family: "SFPro-Regular", "PingFangSC-Regular", "Helvetica Neue",
-    "PingFang TC", "Microsoft YaHei", system-ui, sans-serif;
+  font-family: "SarasaGothicSC-Regular", "SFPro-Regular", "Helvetica Neue",
+    "Microsoft YaHei", system-ui, sans-serif;
   background: var(--md-sys-color-background);
   color: var(--md-sys-color-on-background);
   font-size: var(--md-sys-typescale-body-medium-size);
