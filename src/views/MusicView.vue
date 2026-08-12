@@ -7,6 +7,9 @@ import EmptyState from "@/components/EmptyState.vue";
 import { useLibraryStore } from "@/stores/library";
 import { usePlayerStore } from "@/stores/player";
 import { useSettingsStore } from "@/stores/settings";
+import { capabilities } from "@/capabilities";
+import { openContextMenu } from "@/composables/useContextMenu";
+import { promptText } from "@/composables/useTextPrompt";
 import { translate } from "@shared/i18n";
 import {
   CURATED_PLAYLISTS,
@@ -28,9 +31,17 @@ const router = useRouter();
 const items = computed(() => library.entries("audio"));
 const hasScanDirs = computed(() => settings.scanDirs.length > 0);
 const error = ref("");
+const toast = ref("");
+let toastTimer: number | null = null;
 
 function t(key: string) {
   return translate(settings.lang, key);
+}
+
+function notify(message: string) {
+  toast.value = message;
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => (toast.value = ""), 2600);
 }
 
 function load() {
@@ -199,6 +210,65 @@ function removePlaylist(id: string) {
   );
 }
 
+// ---- 右键菜单：歌单重命名 / 歌曲下载 ----
+
+/** 用户自添加的歌单可右键重命名；预设与本地歌单无菜单 */
+function onPlaylistContext(e: MouseEvent, card: (typeof playlistCards.value)[number]) {
+  if (!card.id || !card.key.startsWith("user:")) return;
+  openContextMenu(
+    e,
+    [{ id: "rename", label: t("context.renamePlaylist"), icon: "edit" }],
+    (id) => {
+      if (id === "rename") void renamePlaylist(card);
+    },
+  );
+}
+
+async function renamePlaylist(card: (typeof playlistCards.value)[number]) {
+  const name = await promptText(t("context.renamePlaylist"), card.name);
+  if (!name) return;
+  const hit = settings.onlinePlaylists.find(
+    (p) => p.server === settings.musicServer && p.id === card.id,
+  );
+  if (hit) hit.name = name;
+}
+
+function onSongContext(e: MouseEvent, song: OnlineSong) {
+  openContextMenu(
+    e,
+    [
+      { id: "downloadAudio", label: t("context.downloadAudio"), icon: "download" },
+      { id: "downloadCover", label: t("context.downloadCover"), icon: "image" },
+    ],
+    (id) => {
+      if (id === "downloadAudio") void downloadAudio(song);
+      else if (id === "downloadCover") void downloadCover(song);
+    },
+  );
+}
+
+async function downloadAudio(song: OnlineSong) {
+  const path = await capabilities.pickSavePath(`${song.name} - ${song.artist}.mp3`);
+  if (!path) return;
+  try {
+    await capabilities.downloadTo(song.url, path);
+    notify(`${song.name} ${t("context.downloaded")}`);
+  } catch (e) {
+    notify(`${t("context.downloadFailed")}：${e instanceof Error ? e.message : String(e)}`);
+  }
+}
+
+async function downloadCover(song: OnlineSong) {
+  const path = await capabilities.pickSavePath(`${song.name}.jpg`);
+  if (!path) return;
+  try {
+    await capabilities.downloadTo(song.pic, path);
+    notify(`${song.name} ${t("context.downloaded")}`);
+  } catch (e) {
+    notify(`${t("context.downloadFailed")}：${e instanceof Error ? e.message : String(e)}`);
+  }
+}
+
 /** 在线歌曲入队并跳转全屏播放器 */
 function playOnlineSongs(songs: OnlineSong[], index: number) {
   error.value = "";
@@ -264,6 +334,7 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
           :key="c.key"
           class="song-card"
           @click="openPlaylist(c)"
+          @contextmenu="onPlaylistContext($event, c)"
         >
           <button
             v-if="c.key.startsWith('user:')"
@@ -343,6 +414,7 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
           :key="song.id"
           class="song-card"
           @click="playOnlineSongs(detail.songs, i)"
+          @contextmenu="onSongContext($event, song)"
         >
           <div class="thumb">
             <img :src="song.pic" :alt="song.name" loading="lazy" decoding="async" />
@@ -403,6 +475,10 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
         @secondary="router.push('/settings')"
       />
     </template>
+
+    <transition name="toast">
+      <div v-if="toast" class="toast">{{ toast }}</div>
+    </transition>
   </div>
 </template>
 
@@ -613,5 +689,28 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
 }
 .error-bar .lm-icon-btn .material-symbols-outlined {
   font-size: 17px;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 96px;
+  transform: translateX(-50%);
+  padding: 12px 20px;
+  border-radius: var(--md-sys-shape-corner-small);
+  background: var(--md-sys-color-inverse-surface);
+  color: var(--md-sys-color-inverse-on-surface);
+  box-shadow: var(--md-elevation-3);
+  font-size: var(--md-sys-typescale-body-medium-size);
+  z-index: 100;
+}
+.toast-enter-active,
+.toast-leave-active {
+  transition: all 240ms var(--md-sys-motion-easing-emphasized-decelerate);
+}
+.toast-enter-from,
+.toast-leave-to {
+  opacity: 0;
+  transform: translate(-50%, 12px);
 }
 </style>

@@ -10,12 +10,16 @@
  */
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useLibraryStore } from "@/stores/library";
+import { useSettingsStore } from "@/stores/settings";
+import { capabilities } from "@/capabilities";
+import { openContextMenu } from "@/composables/useContextMenu";
 import {
   TYPE_ICONS,
   formatDuration,
   formatResolution,
   formatSize,
 } from "@/utils/format";
+import { translate } from "@shared/i18n";
 import type { MediaEntry } from "@shared/types";
 
 const props = withDefaults(
@@ -45,6 +49,22 @@ const emit = defineEmits<{
 }>();
 
 const library = useLibraryStore();
+const settings = useSettingsStore();
+
+function t(key: string) {
+  return translate(settings.lang, key);
+}
+
+/** 右键卡片：定位到文件位置 */
+function onContextMenu(e: MouseEvent, item: MediaEntry) {
+  openContextMenu(
+    e,
+    [{ id: "reveal", label: t("context.revealInExplorer"), icon: "folder_open" }],
+    (id) => {
+      if (id === "reveal") void capabilities.revealInExplorer(item.path);
+    },
+  );
+}
 
 const GAP_X = 16;
 const GAP_Y = 20;
@@ -221,6 +241,7 @@ function subtitleOf(item: MediaEntry): string {
         :style="cellStyle(v.index)"
         tabindex="0"
         @click="emit('open', v.item, v.index)"
+        @contextmenu="onContextMenu($event, v.item)"
         @keydown.enter="emit('open', v.item, v.index)"
         @keydown.space.prevent="emit('open', v.item, v.index)"
       >

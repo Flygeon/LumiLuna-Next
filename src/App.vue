@@ -5,6 +5,8 @@ import { useSettingsStore } from "@/stores/settings";
 import { usePlayerStore } from "@/stores/player";
 import { useLibraryStore } from "@/stores/library";
 import MiniPlayer from "@/components/MiniPlayer.vue";
+import ContextMenu from "@/components/ContextMenu.vue";
+import TextPrompt from "@/components/TextPrompt.vue";
 import { translate } from "@shared/i18n";
 
 const settings = useSettingsStore();
@@ -140,6 +142,10 @@ onMounted(async () => {
     </div>
 
     <MiniPlayer v-if="player.song && !isPlayerPage" />
+
+    <!-- 全局 M3 右键菜单与文本输入框（Teleport 到 body） -->
+    <ContextMenu />
+    <TextPrompt />
   </div>
 </template>
 

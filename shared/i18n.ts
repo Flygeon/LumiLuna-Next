@@ -49,6 +49,14 @@ export const messages = {
       empty: "暂无媒体，请先扫描目录",
       scanning: "正在扫描…",
     },
+    context: {
+      revealInExplorer: "定位到文件位置",
+      downloadAudio: "下载音频到本地",
+      downloadCover: "下载封面图",
+      renamePlaylist: "重命名歌单",
+      downloaded: "已下载",
+      downloadFailed: "下载失败",
+    },
     settings: {
       title: "设置",
       theme: "主题",
@@ -179,6 +187,14 @@ export const messages = {
     library: {
       empty: "No media yet. Please scan a directory.",
       scanning: "Scanning…",
+    },
+    context: {
+      revealInExplorer: "Show in Explorer",
+      downloadAudio: "Download audio",
+      downloadCover: "Download cover image",
+      renamePlaylist: "Rename playlist",
+      downloaded: "Downloaded",
+      downloadFailed: "Download failed",
     },
     settings: {
       title: "Settings",

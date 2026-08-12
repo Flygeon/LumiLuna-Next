@@ -5,8 +5,9 @@
  */
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import { openPath, openUrl } from "@tauri-apps/plugin-opener";
-import { open as dialogOpen } from "@tauri-apps/plugin-dialog";
+import { openPath, openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
+import { open as dialogOpen, save as dialogSave } from "@tauri-apps/plugin-dialog";
+import { writeFile } from "@tauri-apps/plugin-fs";
 import type {
   FfmpegStatus,
   ListQuery,
@@ -149,6 +150,11 @@ export const capabilities = {
     if (!isTauri) return;
     await openPath(path.replace(/\\/g, "/"));
   },
+  /** 在系统文件管理器中定位并选中文件 */
+  async revealInExplorer(path: string): Promise<void> {
+    if (!isTauri) return;
+    await revealItemInDir(path.replace(/\\/g, "/"));
+  },
   /** 选择目录，返回路径或 null */
   async pickDirectory(): Promise<string | null> {
     if (!isTauri) return null;
@@ -158,5 +164,19 @@ export const capabilities = {
       return (result as { path: string }).path;
     }
     return null;
+  },
+  /** 保存文件对话框，返回目标路径或 null（用户取消） */
+  async pickSavePath(defaultName: string): Promise<string | null> {
+    if (!isTauri) return null;
+    const result = await dialogSave({ defaultPath: defaultName });
+    return typeof result === "string" ? result : null;
+  },
+  /** 下载 URL 字节到本地路径（走系统网络栈，无 CORS 限制） */
+  async downloadTo(url: string, dest: string): Promise<void> {
+    if (!isTauri) return;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`下载失败 (HTTP ${res.status})`);
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    await writeFile(dest, bytes);
   },
 };
