@@ -39,6 +39,7 @@ cd src-tauri && cargo check
 - **Music player**: FluidBackground uses 4-quadrant rotating canvas + `screen` blend + `blur(30px) saturate(2.5) brightness(0.5) scale(1.5)`. Magic numbers from Apple Music reference — do not change.
 - **Lyric parser**: `parseLrc()` in `player.ts` supports dual-language (same-timestamp lines or `[tr:]` tags). LyricLine has `text` + `translation` fields.
 - **Audio playback**: Use `convertFileSrc()` from `@tauri-apps/api/core` to convert file paths. Audio element must be bound via `bindAudio()` then `initAudio()` called after mount.
+- **Windows SMTC**: `commands/smtc.rs` registers the app as a system media session (Windows-only dep `smtc-tokio`, target-gated in Cargo.toml). Frontend pushes metadata via `capabilities.smtcSetMedia()` in `loadSong()` and throttled state via `syncSmtc()` in the player store; OS media keys arrive as `smtc:command` events, dispatched in the player store. Commands no-op on non-Windows.
 - **Thumbnails**: Cached in `library.thumbCache`. Loaded via `loadThumbnails()` with 6-concurrent worker pool.
 - **Settings persistence**: `settings.ts` uses `LazyStore` from `@tauri-apps/plugin-store`. Auto-saves on any `watch()` change. Load on app start in `App.vue` `onMounted`.
 

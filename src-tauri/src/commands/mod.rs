@@ -1,6 +1,7 @@
 pub mod ffmpeg;
 pub mod metadata;
 pub mod scan;
+pub mod smtc;
 pub mod song;
 pub mod thumbnail;
 

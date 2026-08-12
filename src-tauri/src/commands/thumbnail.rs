@@ -58,7 +58,8 @@ const COVER_NAMES: &[&str] = &[
     "cover.jpg", "cover.jpeg", "cover.png", "folder.jpg", "folder.png", "front.jpg", "album.jpg",
 ];
 
-fn sidecar_cover(path: &str) -> Option<Vec<u8>> {
+/// 同目录封面（SMTC 也用它给系统浮层配图）
+pub(crate) fn sidecar_cover(path: &str) -> Option<Vec<u8>> {
     let dir = std::path::Path::new(path).parent()?;
     for name in COVER_NAMES {
         let candidate = dir.join(name);

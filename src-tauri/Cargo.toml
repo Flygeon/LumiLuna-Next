@@ -37,6 +37,11 @@ base64 = "0.22"
 getrandom = "0.2"
 chrono = "0.4"
 
+# Windows 系统媒体控件（SMTC）：把本应用注册为系统媒体会话。
+# 仅在 Windows 编译，Linux/macOS 构建不受影响。
+[target.'cfg(windows)'.dependencies]
+smtc-tokio = "0.1"
+
 [profile.release]
 codegen-units = 1
 lto = true

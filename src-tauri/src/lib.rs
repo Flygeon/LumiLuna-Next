@@ -113,6 +113,8 @@ pub fn run() {
             app.manage(commands::JobState(std::sync::Mutex::new(
                 std::collections::HashMap::new(),
             )));
+            // Windows 系统媒体控件（SMTC）会话
+            commands::smtc::setup(app.handle());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -129,6 +131,8 @@ pub fn run() {
             commands::song::list_history,
             commands::song::list_trash,
             commands::song::empty_trash,
+            commands::smtc::smtc_set_media,
+            commands::smtc::smtc_set_playback,
             commands::thumbnail::get_thumbnail,
             commands::thumbnail::thumbnail_cache_path,
             commands::thumbnail::save_thumbnail,

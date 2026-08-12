@@ -14,6 +14,9 @@ import type {
   MediaMetadata,
   ScanConfig,
   ScanProgress,
+  SmtcCommand,
+  SmtcMedia,
+  SmtcPlayback,
   Song,
 } from "@shared/types";
 import { mockInvoke } from "./mock";
@@ -126,6 +129,19 @@ export const capabilities = {
     const url = await safeInvoke<string>("ffmpeg_download_url");
     if (isTauri) await openUrl(url);
     else window.open(url, "_blank");
+  },
+
+  // ---- Windows 系统媒体控件 (SMTC) ----
+  smtcSetMedia(media: SmtcMedia): Promise<void> {
+    return safeInvoke("smtc_set_media", { ...media });
+  },
+  smtcSetPlayback(state: SmtcPlayback): Promise<void> {
+    return safeInvoke("smtc_set_playback", { ...state });
+  },
+  /** 订阅系统媒体键（播放/暂停/上一首/下一首/拖动进度）；返回取消订阅函数 */
+  async onSmtcCommand(handler: (cmd: SmtcCommand) => void): Promise<UnlistenFn> {
+    if (!isTauri) return () => {};
+    return listen<SmtcCommand>("smtc:command", (e) => handler(e.payload));
   },
 
   // ---- 系统 ----

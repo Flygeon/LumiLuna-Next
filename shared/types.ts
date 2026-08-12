@@ -154,3 +154,27 @@ export interface BookProgress {
   percent: number;
   updated_at: number;
 }
+
+/** SMTC 媒体信息（推送 Windows 系统媒体控件，换歌时调用） */
+export interface SmtcMedia {
+  title: string;
+  artist?: string | null;
+  album?: string | null;
+  durationMs: number;
+  /** 音频文件路径，Rust 侧据此提取封面 */
+  filePath: string;
+}
+
+/** SMTC 播放状态（播放/暂停 + 进度） */
+export interface SmtcPlayback {
+  playing: boolean;
+  positionMs: number;
+  durationMs: number;
+}
+
+/** SMTC 系统媒体键命令（事件 `smtc:command` 载荷） */
+export interface SmtcCommand {
+  kind: "play" | "pause" | "next" | "prev" | "stop" | "seek";
+  /** kind 为 seek 时的目标位置（毫秒） */
+  positionMs?: number;
+}

@@ -180,6 +180,9 @@ export const usePlayerStore = defineStore("player", () => {
   const activeLine = ref(-1);
   const coverColors = ref<string[]>([]);
 
+  /** Windows SMTC 状态推送节流：上次同步时间戳（毫秒） */
+  let lastSmtcSync = 0;
+
   /**
    * 全局唯一的 audio 元素，由 store 持有而非某个组件。
    * PlayerView 会被路由销毁，若音频挂在它身上，返回列表页后
@@ -194,15 +197,22 @@ export const usePlayerStore = defineStore("player", () => {
     el.addEventListener("timeupdate", () => {
       currentTime.value = el.currentTime;
       updateActiveLine();
+      syncSmtc();
     });
     el.addEventListener("loadedmetadata", () => {
       duration.value = el.duration;
+      syncSmtc(true);
     });
     el.addEventListener("play", () => {
       playing.value = true;
+      syncSmtc(true);
     });
     el.addEventListener("pause", () => {
       playing.value = false;
+      syncSmtc(true);
+    });
+    el.addEventListener("seeked", () => {
+      syncSmtc(true);
     });
     el.addEventListener("ended", () => {
       void next();
@@ -237,6 +247,21 @@ export const usePlayerStore = defineStore("player", () => {
     activeLine.value = idx;
   }
 
+  /** 推送播放状态给 Windows 系统媒体控件；默认节流 500ms，关键节点用 force 立即同步 */
+  function syncSmtc(force = false) {
+    if (!isTauri || !song.value) return;
+    const now = Date.now();
+    if (!force && now - lastSmtcSync < 500) return;
+    lastSmtcSync = now;
+    void capabilities
+      .smtcSetPlayback({
+        playing: playing.value,
+        positionMs: Math.round(currentTime.value * 1000),
+        durationMs: Math.round(duration.value * 1000),
+      })
+      .catch(() => {});
+  }
+
   function generateShuffleOrder() {
     const indices = Array.from({ length: queue.value.length }, (_, i) => i);
     for (let i = indices.length - 1; i > 0; i--) {
@@ -261,6 +286,16 @@ export const usePlayerStore = defineStore("player", () => {
       };
       img.src = s.coverBase64;
     }
+    // 推送元数据给 Windows 系统媒体控件；真实时长由 loadedmetadata 后的 syncSmtc 兜底
+    void capabilities
+      .smtcSetMedia({
+        title: s.meta.title ?? s.file.name.replace(/\.[^.]+$/, ""),
+        artist: s.meta.artist ?? null,
+        album: s.meta.album ?? null,
+        durationMs: Math.round(s.meta.durationMs ?? 0),
+        filePath: s.file.path,
+      })
+      .catch(() => {});
   }
 
   /** 唯一的起播路径：设源 → load → play */
@@ -329,6 +364,7 @@ export const usePlayerStore = defineStore("player", () => {
           nextIndex = shuffledIndices.value[0];
         } else {
           playing.value = false;
+          syncSmtc(true);
           return;
         }
       } else {
@@ -341,6 +377,7 @@ export const usePlayerStore = defineStore("player", () => {
           nextIndex = 0;
         } else {
           playing.value = false;
+          syncSmtc(true);
           return;
         }
       }
@@ -415,6 +452,35 @@ export const usePlayerStore = defineStore("player", () => {
     if (i < 0 || i >= lyrics.value.length) return;
     seek(lyrics.value[i].time);
   }
+
+  // ---- Windows 系统媒体键（SMTC）----
+  // 系统浮层/键盘媒体键触发的命令统一在这里分发到现有播放器动作
+  void capabilities
+    .onSmtcCommand((cmd) => {
+      if (!song.value) return;
+      switch (cmd.kind) {
+        case "play":
+          if (!playing.value) togglePlay();
+          break;
+        case "pause":
+          if (playing.value) togglePlay();
+          break;
+        case "next":
+          void next();
+          break;
+        case "prev":
+          void previous();
+          break;
+        case "stop":
+          if (playing.value) togglePlay();
+          break;
+        case "seek":
+          seek((cmd.positionMs ?? 0) / 1000);
+          syncSmtc(true);
+          break;
+      }
+    })
+    .catch(() => {});
 
   return {
     song,

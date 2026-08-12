@@ -192,6 +192,10 @@ export function mockInvoke<T>(
       return as<FfmpegStatus>({ available: false, source: "none" });
     case "ffmpeg_download_url":
       return as("https://ffmpeg.org/download.html");
+    case "smtc_set_media":
+    case "smtc_set_playback":
+      // 浏览器预览没有系统媒体控件，直接静默成功
+      return as(undefined);
     default:
       return as(null);
   }
