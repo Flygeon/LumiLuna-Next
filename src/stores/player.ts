@@ -24,7 +24,9 @@ function toMediaSrc(path: string): string {
  *    [00:12.34]你好世界
  * 2. [tr:翻译] 标签
  *    [00:12.34]Hello World [tr:你好世界]
- * 3. 单语歌词（向后兼容）
+ * 3. 同行尾部括号译文（meting 歌词常见格式）
+ *    [00:12.34]鉄の弾が (铁铸的子弹)
+ * 4. 单语歌词（向后兼容）
  */
 const LRC_TIME_RE = /\[(\d{2}):(\d{2})(?:\.(\d{2,3}))?\]/g;
 const LRC_TR_RE = /\[tr:(.*?)\]/g;
@@ -64,6 +66,17 @@ export function parseLrc(text: string): LyricLine[] {
       .replace(/\[al:.*?\]/g, "")
       .replace(/\[by:.*?\]/g, "")
       .trim();
+
+    if (!content) continue;
+
+    // 同行尾部括号译文：如 "原文 (译文)" / "原文 （译文）"（meting 歌词常见格式）
+    if (!translation) {
+      const m = content.match(/\s*[（(]([^（）()]*)[）)]\s*$/);
+      if (m && content.slice(0, content.length - m[0].length).trim()) {
+        translation = m[1].trim();
+        content = content.slice(0, content.length - m[0].length).trim();
+      }
+    }
 
     if (!content) continue;
 
@@ -374,8 +387,14 @@ export const usePlayerStore = defineStore("player", () => {
     try {
       let parsed: LyricLine[] = [];
       try {
-        const res = await fetch(item.lrc);
-        if (res.ok) parsed = parseLrc(await res.text());
+        // lrc 字段可能是 URL（需拉取），也可能是内嵌歌词文本
+        const lrc = item.lrc || "";
+        const text = lrc.startsWith("http")
+          ? await (await fetch(lrc)).text()
+          : lrc.includes("[")
+            ? lrc
+            : "";
+        if (text.trim()) parsed = parseLrc(text);
       } catch {
         /* 在线歌词拉取失败不阻塞播放 */
       }
@@ -391,6 +410,8 @@ export const usePlayerStore = defineStore("player", () => {
         kind: "online",
       };
       activeLine.value = -1;
+      // 与 loadSong 一致：歌词挂在 store 的 lyrics ref 上，LyricsView 读它
+      lyrics.value = parsed;
       coverColors.value = [];
       currentTime.value = 0;
       duration.value = 0;

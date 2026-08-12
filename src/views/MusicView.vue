@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onActivated, onMounted, ref, watch } from "vue";
+import { computed, onActivated, onMounted, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import LibraryToolbar from "@/components/LibraryToolbar.vue";
 import MediaGrid from "@/components/MediaGrid.vue";
@@ -57,6 +57,58 @@ const searchQuery = ref("");
 const addName = ref("");
 const addId = ref("");
 
+/** 歌单歌曲缓存（key = server:id），用于卡片首曲封面、数量展示与秒开 */
+const playlistCache = reactive(new Map<string, OnlineSong[]>());
+
+function keyOf(card: { server?: MusicServer; id?: string }): string {
+  return `${card.server}:${card.id}`;
+}
+
+function songsOf(card: { server?: MusicServer; id?: string }): OnlineSong[] | null {
+  if (!card.id) return null;
+  return playlistCache.get(keyOf(card)) ?? null;
+}
+
+/** 歌单卡片封面 = 歌单内首曲封面 */
+function coverOf(card: { server?: MusicServer; id?: string }): string | undefined {
+  return songsOf(card)?.[0]?.pic;
+}
+
+function subtitleOf(card: (typeof playlistCards.value)[number]): string {
+  if (card.key === "local") return `${items.value.length} ${t("online.tracks")}`;
+  const songs = songsOf(card);
+  return songs ? `${songs.length} ${t("online.tracks")}` : t("online.playlists");
+}
+
+/** 预取当前平台所有在线歌单（封面/数量/点击秒开），单个失败不影响其它 */
+async function prefetchPlaylists() {
+  const cards = playlistCards.value.filter((c) => c.id);
+  await Promise.all(
+    cards.map(async (c) => {
+      const key = keyOf(c);
+      if (playlistCache.has(key)) return;
+      try {
+        playlistCache.set(key, await metingPlaylist(c.server!, c.id!));
+      } catch {
+        /* 单个歌单拉取失败不影响其它 */
+      }
+    }),
+  );
+}
+
+watch(
+  () => [
+    onlineMode.value,
+    tab.value,
+    settings.musicServer,
+    settings.onlinePlaylists.map((p) => p.id).join(","),
+  ],
+  () => {
+    if (onlineMode.value && tab.value === "playlists") void prefetchPlaylists();
+  },
+  { immediate: true },
+);
+
 // 关闭在线功能时清掉在线详情，确保回到原模式
 watch(
   () => settings.enableOnlineMusic,
@@ -93,10 +145,17 @@ async function openPlaylist(card: (typeof playlistCards.value)[number]) {
     detail.value = { type: "local" };
     return;
   }
+  const key = keyOf(card);
+  const cached = playlistCache.get(key);
+  if (cached) {
+    detail.value = { type: "online", title: card.name, songs: cached };
+    return;
+  }
   onlineLoading.value = true;
   onlineError.value = "";
   try {
     const songs = await metingPlaylist(card.server!, card.id);
+    playlistCache.set(key, songs);
     detail.value = { type: "online", title: card.name, songs };
   } catch (e) {
     onlineError.value = e instanceof Error ? e.message : String(e);
@@ -175,7 +234,7 @@ function clearSearch() {
 }
 
 const showLocal = computed(
-  () => !onlineMode.value || !detail.value || detail.value.type === "local",
+  () => !onlineMode.value || detail.value?.type === "local",
 );
 const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
 </script>
@@ -199,11 +258,11 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
     <!-- 歌单根列表 -->
     <template v-if="showOnlineRoot && tab === 'playlists'">
       <p class="online-hint">{{ t("online.hint") }}</p>
-      <div class="playlist-grid">
+      <div class="online-grid">
         <button
           v-for="c in playlistCards"
           :key="c.key"
-          class="playlist-card"
+          class="song-card"
           @click="openPlaylist(c)"
         >
           <button
@@ -214,13 +273,15 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
           >
             <span class="material-symbols-outlined">close</span>
           </button>
-          <div class="p-cover">
-            <span v-if="c.key === 'local'" class="material-symbols-outlined">library_music</span>
-            <span v-else class="material-symbols-outlined">queue_music</span>
+          <div class="thumb">
+            <img v-if="coverOf(c)" :src="coverOf(c)" :alt="c.name" loading="lazy" />
+            <span v-else class="placeholder material-symbols-outlined">
+              {{ c.key === "local" ? "library_music" : "queue_music" }}
+            </span>
           </div>
-          <div class="p-name">{{ c.name }}</div>
-          <div v-if="c.key === 'local'" class="p-count tabular-nums">
-            {{ items.length }} {{ t("online.tracks") }}
+          <div class="s-meta">
+            <div class="s-title" :title="c.name">{{ c.name }}</div>
+            <div class="s-artist">{{ subtitleOf(c) }}</div>
           </div>
         </button>
       </div>
@@ -283,7 +344,9 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
           class="song-card"
           @click="playOnlineSongs(detail.songs, i)"
         >
-          <img :src="song.pic" :alt="song.name" loading="lazy" decoding="async" />
+          <div class="thumb">
+            <img :src="song.pic" :alt="song.name" loading="lazy" decoding="async" />
+          </div>
           <div class="s-meta">
             <div class="s-title" :title="song.name">{{ song.name }}</div>
             <div class="s-artist" :title="song.artist">{{ song.artist }}</div>
@@ -380,58 +443,6 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
   color: var(--md-sys-color-on-surface-variant);
 }
 
-.playlist-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 16px;
-}
-.playlist-card {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  padding: 18px 12px 14px;
-  border: none;
-  border-radius: var(--md-sys-shape-corner-large);
-  background: var(--md-sys-color-surface-container-low);
-  box-shadow: inset 0 0 0 1px var(--lm-hairline);
-  color: var(--md-sys-color-on-surface);
-  font-family: inherit;
-  cursor: pointer;
-  transition: transform 200ms var(--md-sys-motion-spring-soft), box-shadow 200ms;
-}
-.playlist-card:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--md-elevation-2), inset 0 0 0 1px var(--lm-hairline);
-}
-.p-cover {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 72px;
-  height: 72px;
-  border-radius: var(--md-sys-shape-corner-medium);
-  background: linear-gradient(135deg, var(--md-sys-color-primary-container), var(--md-sys-color-tertiary-container));
-  color: var(--md-sys-color-on-primary-container);
-}
-.p-cover .material-symbols-outlined {
-  font-size: 34px;
-}
-.p-name {
-  font-size: var(--md-sys-typescale-body-medium-size);
-  font-weight: 600;
-  text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-}
-.p-count {
-  font-size: var(--md-sys-typescale-body-small-size);
-  color: var(--md-sys-color-on-surface-variant);
-}
-
 .add-playlist {
   display: flex;
   flex-wrap: wrap;
@@ -473,7 +484,7 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
   opacity: 0;
   transition: opacity var(--md-sys-motion-duration-short), background 160ms;
 }
-.playlist-card:hover .p-remove {
+.song-card:hover .p-remove {
   opacity: 1;
 }
 .p-remove:hover {
@@ -521,6 +532,7 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
   gap: 16px;
 }
 .song-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -532,16 +544,30 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
   text-align: left;
   cursor: pointer;
 }
-.song-card img {
+.song-card .thumb {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
   aspect-ratio: 1;
-  object-fit: cover;
   border-radius: var(--md-sys-shape-corner-medium);
+  overflow: hidden;
   background: var(--md-sys-color-surface-container);
   box-shadow: inset 0 0 0 1px var(--lm-hairline);
   transition: transform 200ms var(--md-sys-motion-spring-soft), box-shadow 200ms;
 }
-.song-card:hover img {
+.song-card .thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.song-card .thumb .placeholder {
+  font-size: 44px;
+  color: var(--md-sys-color-outline);
+  opacity: 0.7;
+}
+.song-card:hover .thumb {
   transform: translateY(-3px);
   box-shadow: var(--md-elevation-2), inset 0 0 0 1px var(--lm-hairline);
 }

@@ -2,9 +2,14 @@
  * meting API 客户端（在线音乐）。
  *
  * 接口：GET {API_BASE}/api?server=netease&type=search&id=关键词
- * 返回：[{ name, artist, url, pic, lrc, id }]
+ * 返回数组元素示例：
+ *   { "title": "夜雨晚风", "author": "芝麻Mochi", "pic": "https://...jpg",
+ *     "url": ".../api?server=netease&type=url&id=xxx",
+ *     "lrc": ".../api?server=netease&type=lrc&id=xxx" }
  * - url / pic / lrc 均为指向 API 的资源端点：url 可直接作 <audio> 源，
  *   pic 可作封面图，lrc 请求返回歌词文本。
+ *
+ * 注意：不同实例字段名有出入（name/artist 或 title/author），这里统一归一化。
  */
 import type { MusicServer, OnlineSong } from "@shared/types";
 
@@ -24,6 +29,38 @@ export const CURATED_PLAYLISTS: CuratedPlaylist[] = [
   { server: "tencent", id: "7326220405", name: "QQ音乐热歌榜" },
 ];
 
+interface RawSong {
+  id?: string;
+  title?: string;
+  name?: string;
+  author?: string;
+  artist?: string;
+  album?: string;
+  url?: string;
+  pic?: string;
+  lrc?: string;
+}
+
+/** 从 url/lrc/pic 里兜底提取 id（部分实例不返回顶层 id） */
+function extractId(raw: RawSong): string {
+  if (raw.id) return String(raw.id);
+  const m = (raw.url || raw.lrc || raw.pic || "").match(/[?&]id=(\d+)/);
+  return m ? m[1] : "";
+}
+
+/** 归一化：兼容 name/artist 与 title/author 两种字段命名 */
+function normalizeSong(raw: RawSong): OnlineSong {
+  return {
+    id: extractId(raw),
+    name: raw.title || raw.name || "",
+    artist: raw.author || raw.artist || "",
+    album: raw.album || undefined,
+    url: raw.url ?? "",
+    pic: raw.pic ?? "",
+    lrc: raw.lrc ?? "",
+  };
+}
+
 async function request(
   server: MusicServer,
   type: string,
@@ -40,7 +77,7 @@ async function request(
     const msg = (data as { message?: string }).message;
     throw new Error(msg || "接口返回异常");
   }
-  return data as OnlineSong[];
+  return (data as RawSong[]).map(normalizeSong);
 }
 
 /** 按关键词搜索歌曲 */
