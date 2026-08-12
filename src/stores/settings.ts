@@ -8,6 +8,10 @@ export type PdfReadMode = "single" | "dual" | "scroll";
 export type ReaderThemeKey = "dark" | "light" | "sepia" | "green";
 /** 阅读器正文字体 */
 export type ReaderFontKey = "system" | "serif" | "sans" | "kai" | "yuan";
+/** 歌词字体 */
+export type LyricFontKey = "system" | "sans" | "serif" | "kai" | "yuan";
+/** 播放器背景模式：animated 动态模糊 / image 仅图片模糊 / off 不启用 */
+export type PlayerBgMode = "animated" | "image" | "off";
 
 const store = new LazyStore("settings.json");
 
@@ -16,11 +20,16 @@ const DEFAULTS = {
   lang: "zh" as "zh" | "en",
   lyricFontSize: 30,
   lyricLineHeight: 2.5,
+  /** 行间间距：相邻歌词行之间的竖直间距（px） */
+  lyricLineGap: 20,
+  /** 歌词字体 */
+  lyricFont: "system" as LyricFontKey,
   /** 歌词翻译字号（相对主歌词字号的百分比） */
   lyricTranslationSize: 62,
   /** 歌词与翻译之间的间距（px） */
   lyricTranslationGap: 4,
-  bgBlur: true,
+  /** 播放器背景：动态模糊 / 仅图片模糊 / 关闭 */
+  playerBg: "animated" as PlayerBgMode,
   lyricBlur: true,
   scanDirs: [] as string[],
   gridColumns: 6,
@@ -47,9 +56,11 @@ export const useSettingsStore = defineStore("settings", () => {
   const lang = ref<"zh" | "en">(DEFAULTS.lang);
   const lyricFontSize = ref(DEFAULTS.lyricFontSize);
   const lyricLineHeight = ref(DEFAULTS.lyricLineHeight);
+  const lyricLineGap = ref(DEFAULTS.lyricLineGap);
+  const lyricFont = ref<LyricFontKey>(DEFAULTS.lyricFont);
   const lyricTranslationSize = ref(DEFAULTS.lyricTranslationSize);
   const lyricTranslationGap = ref(DEFAULTS.lyricTranslationGap);
-  const bgBlur = ref(DEFAULTS.bgBlur);
+  const playerBg = ref<PlayerBgMode>(DEFAULTS.playerBg);
   const lyricBlur = ref(DEFAULTS.lyricBlur);
   const scanDirs = ref<string[]>([...DEFAULTS.scanDirs]);
   const gridColumns = ref(DEFAULTS.gridColumns);
@@ -69,9 +80,11 @@ export const useSettingsStore = defineStore("settings", () => {
     lang,
     lyricFontSize,
     lyricLineHeight,
+    lyricLineGap,
+    lyricFont,
     lyricTranslationSize,
     lyricTranslationGap,
-    bgBlur,
+    playerBg,
     lyricBlur,
     scanDirs,
     gridColumns,

@@ -1,10 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
-import {
-  useSettingsStore,
-  type PdfReadMode,
-  type ThemeMode,
-} from "@/stores/settings";
+import { useSettingsStore, type PdfReadMode, type ThemeMode, type PlayerBgMode, type LyricFontKey } from "@/stores/settings";
 import { useLibraryStore } from "@/stores/library";
 import { capabilities } from "@/capabilities";
 import { formatSize } from "@/utils/format";
@@ -21,6 +17,8 @@ const toast = ref("");
 function t(key: string) {
   return translate(settings.lang, key);
 }
+
+const LYRIC_FONT_KEYS: LyricFontKey[] = ["system", "sans", "serif", "kai", "yuan"];
 
 function notify(message: string) {
   toast.value = message;
@@ -316,6 +314,20 @@ async function clearCache() {
     <section class="card">
       <h3>{{ t("settings.lyrics") }}</h3>
       <div class="row">
+        <div class="row-label"><span>{{ t("settings.lyricFont") }}</span></div>
+        <div class="presets inline">
+          <button
+            v-for="k in LYRIC_FONT_KEYS"
+            :key="k"
+            class="chip"
+            :class="{ active: settings.lyricFont === k }"
+            @click="settings.lyricFont = k"
+          >
+            {{ t("settings.lyricFont_" + k) }}
+          </button>
+        </div>
+      </div>
+      <div class="row">
         <div class="row-label"><span>{{ t("settings.lyricFontSize") }}</span></div>
         <input type="range" min="16" max="48" v-model.number="settings.lyricFontSize" />
         <span class="value tabular-nums">{{ settings.lyricFontSize }}px</span>
@@ -329,7 +341,18 @@ async function clearCache() {
           step="0.1"
           v-model.number="settings.lyricLineHeight"
         />
-        <span class="value tabular-nums">{{ settings.lyricLineHeight }}</span>
+        <span class="value tabular-nums">{{ settings.lyricLineHeight.toFixed(1) }}</span>
+      </div>
+      <div class="row">
+        <div class="row-label"><span>{{ t("settings.lyricLineGap") }}</span></div>
+        <input
+          type="range"
+          min="0"
+          max="64"
+          step="1"
+          v-model.number="settings.lyricLineGap"
+        />
+        <span class="value tabular-nums">{{ settings.lyricLineGap }}px</span>
       </div>
       <div class="row">
         <div class="row-label"><span>{{ t("settings.lyricTranslationSize") }}</span></div>
@@ -358,10 +381,21 @@ async function clearCache() {
     <!-- 播放器 -->
     <section class="card">
       <h3>{{ t("settings.playback") }}</h3>
-      <label class="row switch-row">
-        <span class="row-label">{{ t("settings.bgBlur") }}</span>
-        <input type="checkbox" v-model="settings.bgBlur" />
-      </label>
+      <p class="hint">{{ t("settings.playerBgHint") }}</p>
+      <div class="row">
+        <div class="row-label"><span>{{ t("settings.playerBg") }}</span></div>
+        <div class="segmented">
+          <button
+            v-for="m in (['animated', 'image', 'off'] as PlayerBgMode[])"
+            :key="m"
+            class="seg"
+            :class="{ active: settings.playerBg === m }"
+            @click="settings.playerBg = m"
+          >
+            {{ t("settings.playerBg_" + m) }}
+          </button>
+        </div>
+      </div>
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.lyricBlur") }}</span>
         <input type="checkbox" v-model="settings.lyricBlur" />
@@ -579,6 +613,14 @@ async function clearCache() {
   flex-wrap: wrap;
   gap: 6px;
   margin-top: 12px;
+}
+/* 放在 .row 里的选择芯片：去掉上边距，与标签对齐 */
+.presets.inline {
+  margin-top: 0;
+}
+.presets.inline .chip {
+  height: 30px;
+  padding: 0 12px;
 }
 .presets .chip {
   height: 32px;

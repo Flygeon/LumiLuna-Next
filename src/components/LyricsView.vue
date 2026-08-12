@@ -13,7 +13,7 @@
  */
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { usePlayerStore } from "@/stores/player";
-import { useSettingsStore } from "@/stores/settings";
+import { useSettingsStore, type LyricFontKey } from "@/stores/settings";
 import { translate } from "@shared/i18n";
 
 const player = usePlayerStore();
@@ -22,8 +22,17 @@ const settings = useSettingsStore();
 const containerRef = ref<HTMLDivElement | null>(null);
 const lineRefs = ref<HTMLDivElement[]>([]);
 
-/** 参考实现的行间距常量 */
-const LINE_HEIGHT = 20;
+/** 歌词字体栈（与阅读器字体一致） */
+const LYRIC_FONTS: Record<LyricFontKey, string> = {
+  system: "inherit",
+  sans: '"Helvetica Neue","PingFang SC","Microsoft YaHei","Hiragino Sans GB",sans-serif',
+  serif: 'Georgia,"Songti SC","SimSun",serif',
+  kai: '"KaiTi","STKaiti","Kai",cursive',
+  yuan: '"Yuanti SC","YouYuan","Microsoft JhengHei UI",sans-serif',
+};
+const lyricFontFamily = computed(
+  () => LYRIC_FONTS[settings.lyricFont] ?? LYRIC_FONTS.system,
+);
 
 /**
  * 当前行停靠高度。参考用 innerHeight/3.5；这里按容器高度计算以适应分栏布局。
@@ -45,14 +54,15 @@ function setLineRef(el: any, index: number) {
 /** 第 to 行相对当前行 now 的目标位移（复刻 GetLyricsLayout） */
 function getLayout(now: number, to: number): number {
   const lines = lineRefs.value;
+  const lineGap = settings.lyricLineGap;
   let res = 0;
   if (to > now) {
     for (let i = now; i < to; i++) {
-      res += (lines[i]?.offsetHeight ?? 0) + LINE_HEIGHT;
+      res += (lines[i]?.offsetHeight ?? 0) + lineGap;
     }
   } else {
     for (let i = now; i > to; i--) {
-      res -= (lines[i - 1]?.offsetHeight ?? 0) + LINE_HEIGHT;
+      res -= (lines[i - 1]?.offsetHeight ?? 0) + lineGap;
     }
   }
   return res + lyricsOffset();
@@ -123,11 +133,12 @@ watch(
 
 watch(() => player.lyrics, resetLayout);
 
-// 字号/行距/翻译字号/翻译间距改变会影响每行高度，需要重新计算位移
+// 字号/行高/行间距/翻译字号/翻译间距改变会影响每行高度，需要重新计算位移
 watch(
   () => [
     settings.lyricFontSize,
     settings.lyricLineHeight,
+    settings.lyricLineGap,
     settings.lyricTranslationSize,
     settings.lyricTranslationGap,
   ],
@@ -167,6 +178,7 @@ const hasLyrics = computed(() => player.lyrics.length > 0);
         :style="{
           fontSize: settings.lyricFontSize + 'px',
           lineHeight: settings.lyricLineHeight,
+          fontFamily: lyricFontFamily,
         }"
         @click="player.seekToLyric(i)"
       >
