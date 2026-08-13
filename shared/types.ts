@@ -144,6 +144,8 @@ export interface LyricLine {
   translation?: string;
   /** 逐字时间轴（可选）：无则整行一次性高亮 */
   units?: WordUnit[];
+  /** 前奏/间奏的省略标记行（三点），不是真实歌词 */
+  instrumental?: boolean;
 }
 
 /** FFmpeg 探测状态 */

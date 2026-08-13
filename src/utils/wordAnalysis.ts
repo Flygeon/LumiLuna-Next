@@ -101,7 +101,8 @@ export async function analyzeSongWords(
       end: estimateEnd(lines, idx),
       count: l.units?.length ?? 0,
     }))
-    .filter((j) => j.count > 0);
+    // 跳过前奏/间奏标记行（三点无需起音分析，保持均分）
+    .filter((j) => j.count > 0 && !lines[j.idx]?.instrumental);
   if (!jobs.length) return [];
 
   const result = await runWorker(mono, sampleRate, jobs);

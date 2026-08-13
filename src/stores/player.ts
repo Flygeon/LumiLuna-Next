@@ -3,7 +3,7 @@ import { ref, computed } from "vue";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { capabilities, isTauri } from "@/capabilities";
 import { useSettingsStore } from "@/stores/settings";
-import { attachRoughTimeline } from "@/utils/lyricTimeline";
+import { buildLyricSequence } from "@/utils/lyricTimeline";
 import {
   applyPreciseWordTimes,
   getPreciseWordTimes,
@@ -103,9 +103,8 @@ export function parseLrc(text: string): LyricLine[] {
   }
 
   const sorted = Array.from(map.values()).sort((a, b) => a.time - b.time);
-  // 逐字时间轴：Phase 1 用比例粗排（播放即用），Phase 2 用缓存精确轴覆盖
-  attachRoughTimeline(sorted);
-  return sorted;
+  // 前奏/间奏识别（隐藏作词/作曲/编曲，插入三点）+ 逐字粗排时间轴
+  return buildLyricSequence(sorted);
 }
 
 export function decodeBuffer(buffer: ArrayBuffer): string {
