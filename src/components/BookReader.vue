@@ -293,14 +293,36 @@ function isTocActive(item: { href: string }): boolean {
   return cur === item.href || cur.startsWith(item.href) || item.href.startsWith(cur);
 }
 
+/** 根据 TOC href 找 spine 索引（处理相对路径/编码/目录前缀差异），找不到返回 -1 */
+function findSpineIndex(href: string): number {
+  const items = book.value?.spine?.items;
+  if (!items?.length) return -1;
+  const clean = href.split("#")[0];
+  const tBase = clean.split("/").pop() ?? "";
+  for (let i = 0; i < items.length; i++) {
+    const h = items[i].href ?? "";
+    const hClean = h.split("#")[0];
+    if (h === clean || h === decodeURI(clean) || decodeURI(h) === clean) return i;
+    // 文件名相等兜底（目录前缀不同也能跳）
+    if (tBase && (hClean.split("/").pop() ?? "") === tBase) return i;
+  }
+  return -1;
+}
+
 /** 点击目录跳转到指定章节 */
 async function goToChapter(item: { href: string }) {
   sidebarOpen.value = false;
   if (!item.href) return;
+  const r = rendition.value;
+  if (!r) return;
+  const idx = findSpineIndex(item.href);
   try {
-    await rendition.value.display(item.href);
+    // display 内部用 spine.get() 精确匹配 href，TOC 与 spine 路径格式不一致会
+    // 查不到而 reject；用数字索引（必然命中）最稳
+    if (idx >= 0) await r.display(idx);
+    else await r.display(item.href);
   } catch {
-    /* 跳转失败忽略 */
+    /* 跳转失败忽略（保留原位置） */
   }
 }
 
