@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { capabilities, isTauri } from "@/capabilities";
+import { attachRoughTimeline } from "@/utils/lyricTimeline";
 import type {
   MediaEntry,
   NowPlaying,
@@ -96,7 +97,10 @@ export function parseLrc(text: string): LyricLine[] {
     }
   }
 
-  return Array.from(map.values()).sort((a, b) => a.time - b.time);
+  const sorted = Array.from(map.values()).sort((a, b) => a.time - b.time);
+  // 逐字时间轴：Phase 1 用比例粗排（播放即用），Phase 2 用缓存精确轴覆盖
+  attachRoughTimeline(sorted);
+  return sorted;
 }
 
 export function decodeBuffer(buffer: ArrayBuffer): string {

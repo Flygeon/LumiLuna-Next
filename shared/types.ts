@@ -130,11 +130,20 @@ export interface Song {
   lyrics?: string | null;
 }
 
+/** 逐字单元：一个字/词的起止时间（秒） */
+export interface WordUnit {
+  text: string;
+  start: number;
+  end: number;
+}
+
 /** 歌词行 */
 export interface LyricLine {
   time: number;
   text: string;
   translation?: string;
+  /** 逐字时间轴（可选）：无则整行一次性高亮 */
+  units?: WordUnit[];
 }
 
 /** FFmpeg 探测状态 */

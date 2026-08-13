@@ -164,6 +164,21 @@ onBeforeUnmount(() => {
 });
 
 const hasLyrics = computed(() => player.lyrics.length > 0);
+
+/**
+ * 当前行「已唱到第几个字」。
+ * 依赖 currentTime + activeLine + lyrics；值不变时 Vue computed 缓存，
+ * 不会每个 timeupdate 都重渲染，只在跨字边界时刷新。
+ */
+const sungWordIndex = computed(() => {
+  const line = player.lyrics[player.activeLine];
+  if (!line?.units?.length) return -1;
+  const t = player.currentTime;
+  for (let i = 0; i < line.units.length; i++) {
+    if (t < line.units[i].start) return i;
+  }
+  return line.units.length;
+});
 </script>
 
 <template>
@@ -182,7 +197,17 @@ const hasLyrics = computed(() => player.lyrics.length > 0);
         }"
         @click="player.seekToLyric(i)"
       >
-        <p class="lyric-text">{{ line.text }}</p>
+        <p class="lyric-text">
+          <template v-if="line.units?.length">
+            <span
+              v-for="(u, wi) in line.units"
+              :key="wi"
+              class="word"
+              :class="{ sung: i === player.activeLine && wi < sungWordIndex }"
+            >{{ u.text }}</span>
+          </template>
+          <template v-else>{{ line.text }}</template>
+        </p>
         <p
           v-if="line.translation"
           class="lyric-translation"
@@ -262,6 +287,17 @@ const hasLyrics = computed(() => player.lyrics.length > 0);
 .lyric-text {
   word-wrap: break-word;
   text-shadow: 0 1px 12px rgba(0, 0, 0, 0.35);
+}
+
+/* 逐字高亮：当前行里未唱的字半透明，已唱的全亮，颜色平滑过渡 */
+.word {
+  transition: color 0.3s ease;
+}
+.lyric-item.active .word:not(.sung) {
+  color: rgba(255, 255, 255, 0.35);
+}
+.lyric-item.active .word.sung {
+  color: rgba(255, 255, 255, 1);
 }
 
 .lyric-translation {
