@@ -37,7 +37,7 @@ function toMediaSrc(path: string): string {
 const LRC_TIME_RE = /\[(\d{2}):(\d{2})(?:\.(\d{2,3}))?\]/g;
 const LRC_TR_RE = /\[tr:(.*?)\]/g;
 
-export function parseLrc(text: string): LyricLine[] {
+export function parseLrc(text: string, detectInstrumental = true): LyricLine[] {
   const lines = text.trim().split("\n");
   const map = new Map<number, LyricLine>();
 
@@ -104,7 +104,7 @@ export function parseLrc(text: string): LyricLine[] {
 
   const sorted = Array.from(map.values()).sort((a, b) => a.time - b.time);
   // 前奏/间奏识别（隐藏作词/作曲/编曲，插入三点）+ 逐字粗排时间轴
-  return buildLyricSequence(sorted);
+  return buildLyricSequence(sorted, detectInstrumental);
 }
 
 export function decodeBuffer(buffer: ArrayBuffer): string {
@@ -352,7 +352,9 @@ export const usePlayerStore = defineStore("player", () => {
     const title = s.meta.title ?? s.file.name.replace(/\.[^.]+$/, "");
     const artist = s.meta.artist ?? "";
     const album = s.meta.album ?? "";
-    const parsed = s.lyrics ? parseLrc(s.lyrics) : [];
+    const parsed = s.lyrics
+      ? parseLrc(s.lyrics, useSettingsStore().detectInstrumental)
+      : [];
     song.value = {
       id: s.file.id,
       title,
@@ -439,7 +441,7 @@ export const usePlayerStore = defineStore("player", () => {
           : lrc.includes("[")
             ? lrc
             : "";
-        if (text.trim()) parsed = parseLrc(text);
+        if (text.trim()) parsed = parseLrc(text, useSettingsStore().detectInstrumental);
       } catch {
         /* 在线歌词拉取失败不阻塞播放 */
       }

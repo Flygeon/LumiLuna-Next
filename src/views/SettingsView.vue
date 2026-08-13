@@ -318,6 +318,11 @@ async function clearCache() {
         <input type="checkbox" v-model="settings.wordLyrics" />
       </label>
       <p class="hint">{{ t("settings.wordLyricsHint") }}</p>
+      <label class="row switch-row">
+        <span class="row-label">{{ t("settings.detectInstrumental") }}</span>
+        <input type="checkbox" v-model="settings.detectInstrumental" />
+      </label>
+      <p class="hint">{{ t("settings.detectInstrumentalHint") }}</p>
       <div class="row">
         <div class="row-label"><span>{{ t("settings.lyricFont") }}</span></div>
         <div class="presets inline">

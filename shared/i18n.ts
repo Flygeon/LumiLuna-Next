@@ -78,6 +78,8 @@ export const messages = {
       lyricTranslationGap: "歌词与翻译间距",
       wordLyrics: "逐字歌词",
       wordLyricsHint: "逐字填充 + 唱完上浮（Apple Music 风格）。关闭则整行歌词一次性高亮。",
+      detectInstrumental: "自动识别前奏/间奏",
+      detectInstrumentalHint: "将开头作词/作曲/编曲信息替换为三点前奏，长间奏插入三点等待。",
       playback: "播放器",
       playerBg: "播放器背景",
       playerBgHint: "动态背景最耗 GPU；仅图片模糊显示静态模糊封面，关闭则纯色背景。",
@@ -219,6 +221,8 @@ export const messages = {
       lyricTranslationGap: "Lyric-Translation Spacing",
       wordLyrics: "Word-by-word lyrics",
       wordLyricsHint: "Fill each word with a gradient and lift it up when sung (Apple Music style). Off = highlight the whole line at once.",
+      detectInstrumental: "Auto-detect intro & interlude",
+      detectInstrumentalHint: "Replace leading credits (作词/作曲/编曲) with a 3-dot intro and insert 3-dot waits for long interludes.",
       playback: "Playback",
       playerBg: "Player Background",
       playerBgHint:

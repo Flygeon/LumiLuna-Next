@@ -211,7 +211,7 @@ function rafLoop() {
         :key="i"
         :ref="(el) => setLineRef(el, i)"
         class="lyric-item"
-        :class="{ active: i === player.activeLine }"
+        :class="{ active: i === player.activeLine, instrumental: line.instrumental }"
         :style="{
           fontSize: settings.lyricFontSize + 'px',
           lineHeight: settings.lyricLineHeight,
@@ -343,6 +343,16 @@ function rafLoop() {
 }
 .lyric-item.active .word.sung {
   transform: translateY(-2px);
+}
+
+/* 前奏/间奏三点：放大一点，不影响其他歌词尺寸（scale 不改布局） */
+.lyric-item.active.instrumental .word {
+  transform-origin: center;
+  transform: scale(1.5);
+  margin: 0 4px; /* 放大后相邻点不重叠 */
+}
+.lyric-item.active.instrumental .word.sung {
+  transform: translateY(-2px) scale(1.5);
 }
 
 /* 行级入场弹簧：切到当前行时一次 scale 回弹（单次动画，不顿） */

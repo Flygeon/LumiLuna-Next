@@ -31,6 +31,8 @@ const DEFAULTS = {
   lyricTranslationGap: 4,
   /** 逐字歌词（Apple Music 式逐字填充 + 唱完上浮） */
   wordLyrics: true,
+  /** 自动识别前奏/间奏：隐藏作词/作曲/编曲为三点，长间奏插入三点 */
+  detectInstrumental: true,
   /** 播放器背景：动态模糊 / 仅图片模糊 / 关闭 */
   playerBg: "animated" as PlayerBgMode,
   lyricBlur: true,
@@ -72,6 +74,7 @@ export const useSettingsStore = defineStore("settings", () => {
   const lyricTranslationSize = ref(DEFAULTS.lyricTranslationSize);
   const lyricTranslationGap = ref(DEFAULTS.lyricTranslationGap);
   const wordLyrics = ref(DEFAULTS.wordLyrics);
+  const detectInstrumental = ref(DEFAULTS.detectInstrumental);
   const playerBg = ref<PlayerBgMode>(DEFAULTS.playerBg);
   const lyricBlur = ref(DEFAULTS.lyricBlur);
   const scanDirs = ref<string[]>([...DEFAULTS.scanDirs]);
@@ -101,6 +104,7 @@ export const useSettingsStore = defineStore("settings", () => {
     lyricTranslationSize,
     lyricTranslationGap,
     wordLyrics,
+    detectInstrumental,
     playerBg,
     lyricBlur,
     scanDirs,

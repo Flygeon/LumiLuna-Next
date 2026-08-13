@@ -114,11 +114,19 @@ function makeDotsLine(start: number, end: number): LyricLine {
 
 /**
  * 构建最终歌词序列：
- * 1. 隐藏作词/作曲/编曲等元数据行，改为前奏三点
- * 2. 相邻真实歌词行间隔超过阈值 → 中间插入间奏三点
- * 3. 真实歌词行附加粗排 units（行演唱窗口 = [start, 演唱结束]）
+ * - detectInstrumental=false：保留作词/作曲/编曲原文、不插点，仅附粗排 units
+ * - detectInstrumental=true：隐藏元数据为前奏三点；长纯停顿插入间奏三点
  */
-export function buildLyricSequence(rawLines: LyricLine[]): LyricLine[] {
+export function buildLyricSequence(rawLines: LyricLine[], detectInstrumental = true): LyricLine[] {
+  if (!detectInstrumental) {
+    for (let i = 0; i < rawLines.length; i++) {
+      const l = rawLines[i];
+      const nextStart = rawLines[i + 1]?.time ?? l.time + estimateLineEnd(l.text);
+      l.units = buildRoughUnits(l.text, l.time, nextStart);
+    }
+    return rawLines;
+  }
+
   const meta: LyricLine[] = [];
   const lyrics: LyricLine[] = [];
   for (const l of rawLines) {
