@@ -76,6 +76,8 @@ export const messages = {
       lyricFont_yuan: "圆体",
       lyricTranslationSize: "歌词翻译字号",
       lyricTranslationGap: "歌词与翻译间距",
+      wordLyrics: "逐字歌词",
+      wordLyricsHint: "逐字填充 + 唱完上浮（Apple Music 风格）。关闭则整行歌词一次性高亮。",
       playback: "播放器",
       playerBg: "播放器背景",
       playerBgHint: "动态背景最耗 GPU；仅图片模糊显示静态模糊封面，关闭则纯色背景。",
@@ -215,6 +217,8 @@ export const messages = {
       lyricFont_yuan: "Rounded",
       lyricTranslationSize: "Lyric Translation Size",
       lyricTranslationGap: "Lyric-Translation Spacing",
+      wordLyrics: "Word-by-word lyrics",
+      wordLyricsHint: "Fill each word with a gradient and lift it up when sung (Apple Music style). Off = highlight the whole line at once.",
       playback: "Playback",
       playerBg: "Player Background",
       playerBgHint:

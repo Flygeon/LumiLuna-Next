@@ -176,6 +176,7 @@ const hasLyrics = computed(() => player.lyrics.length > 0);
 // rAF 只改 style/class，不触发 Vue 重渲染。
 
 function updateWordFill() {
+  if (!settings.wordLyrics) return;
   const idx = player.activeLine;
   const line = player.lyrics[idx];
   if (!line?.units?.length) return;
@@ -190,7 +191,8 @@ function updateWordFill() {
     if (t >= u.end) pct = 100;
     else if (t > u.start) pct = ((t - u.start) / (u.end - u.start)) * 100;
     el.style.backgroundPosition = `${(100 - pct).toFixed(2)}% 0`;
-    el.classList.toggle("current", t >= u.start && t < u.end);
+    // Apple Music 式：唱完的字上浮并保持，直到行结束（下一行激活后随行重置）
+    el.classList.toggle("sung", t >= u.end);
   });
 }
 
@@ -218,7 +220,7 @@ function rafLoop() {
         @click="player.seekToLyric(i)"
       >
         <p class="lyric-text" :class="{ pop: i === player.activeLine }">
-          <template v-if="i === player.activeLine && line.units?.length">
+          <template v-if="settings.wordLyrics && i === player.activeLine && line.units?.length">
             <span
               v-for="(u, wi) in line.units"
               :key="wi"
@@ -317,12 +319,11 @@ function rafLoop() {
 /* 逐字填充：Apple Music 式。
  * 固定结构渐变（sung→unsung 47%/53% 软边）+ 移动 background-position，
  * 比每帧改渐变 stop 更平滑省资源。非当前行整行纯文本渲染。
- * 逐字弹跳：正在唱的字 scale 放大 + 弹簧曲线过渡。
+ * 唱完的字 translateY 上浮并保持（不回弹），直到行结束随行重置。
  */
 .word {
   display: inline-block;
   white-space: pre; /* 保留英文词间空格（空格已并入词尾） */
-  transform-origin: left center;
   transition: transform 0.5s cubic-bezier(0.34, 1.2, 0.64, 1);
 }
 .lyric-item.active .word {
@@ -340,8 +341,8 @@ function rafLoop() {
   -webkit-background-clip: text;
   background-clip: text;
 }
-.lyric-item.active .word.current {
-  transform: scale(1.06);
+.lyric-item.active .word.sung {
+  transform: translateY(-6px);
 }
 
 /* 行级入场弹簧：切到当前行时一次 scale 回弹（单次动画，不顿） */

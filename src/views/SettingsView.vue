@@ -313,6 +313,11 @@ async function clearCache() {
     <!-- 歌词 -->
     <section class="card">
       <h3>{{ t("settings.lyrics") }}</h3>
+      <label class="row switch-row">
+        <span class="row-label">{{ t("settings.wordLyrics") }}</span>
+        <input type="checkbox" v-model="settings.wordLyrics" />
+      </label>
+      <p class="hint">{{ t("settings.wordLyricsHint") }}</p>
       <div class="row">
         <div class="row-label"><span>{{ t("settings.lyricFont") }}</span></div>
         <div class="presets inline">

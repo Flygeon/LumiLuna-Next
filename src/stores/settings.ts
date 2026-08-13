@@ -29,6 +29,8 @@ const DEFAULTS = {
   lyricTranslationSize: 62,
   /** 歌词与翻译之间的间距（px） */
   lyricTranslationGap: 4,
+  /** 逐字歌词（Apple Music 式逐字填充 + 唱完上浮） */
+  wordLyrics: true,
   /** 播放器背景：动态模糊 / 仅图片模糊 / 关闭 */
   playerBg: "animated" as PlayerBgMode,
   lyricBlur: true,
@@ -69,6 +71,7 @@ export const useSettingsStore = defineStore("settings", () => {
   const lyricFont = ref<LyricFontKey>(DEFAULTS.lyricFont);
   const lyricTranslationSize = ref(DEFAULTS.lyricTranslationSize);
   const lyricTranslationGap = ref(DEFAULTS.lyricTranslationGap);
+  const wordLyrics = ref(DEFAULTS.wordLyrics);
   const playerBg = ref<PlayerBgMode>(DEFAULTS.playerBg);
   const lyricBlur = ref(DEFAULTS.lyricBlur);
   const scanDirs = ref<string[]>([...DEFAULTS.scanDirs]);
@@ -97,6 +100,7 @@ export const useSettingsStore = defineStore("settings", () => {
     lyricFont,
     lyricTranslationSize,
     lyricTranslationGap,
+    wordLyrics,
     playerBg,
     lyricBlur,
     scanDirs,
