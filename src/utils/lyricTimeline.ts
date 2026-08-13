@@ -91,9 +91,19 @@ const INSTRUMENTAL_THRESHOLD = 3.0;
 /** 作词/作曲/编曲等元数据行（前奏信息，隐藏原文替换为三点） */
 const META_RE = /^\s*(作词|作曲|编曲|制作人|出品人|OP|SP|监制|混音|录音|和声|母带|编曲人|制作|出品)\s*[:：]/;
 
-/** 行演唱时长估算：每字 ~0.35s，至少 1.2s */
+/**
+ * 行演唱时长估算：只把「真实演唱字符」（汉字/假名/字母/数字）按 0.3s 计，
+ * 标点与空格几乎不占演唱时长，按 0.05s 计。
+ * 否则感叹式短句（标点密集）会被高估演唱时长，间奏被吞进歌词时长里。
+ */
 function singingEstimate(text: string): number {
-  return Math.max(1.2, text.length * 0.35);
+  let sung = 0;
+  let other = 0;
+  for (const ch of text) {
+    if (/[\p{L}\p{N}]/u.test(ch)) sung++;
+    else other++;
+  }
+  return Math.max(1.2, sung * 0.3 + other * 0.05);
 }
 
 /** 生成「三点」标记行：三个实心点逐字填充 */
