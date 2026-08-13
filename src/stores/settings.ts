@@ -56,6 +56,8 @@ const DEFAULTS = {
   musicServer: "netease" as MusicServer,
   /** 用户自添加的在线歌单 */
   onlinePlaylists: [] as OnlinePlaylistEntry[],
+  /** 预设歌单的重命名覆盖（key = server:id） */
+  playlistRenames: {} as Record<string, string>,
 };
 
 export const useSettingsStore = defineStore("settings", () => {
@@ -82,6 +84,7 @@ export const useSettingsStore = defineStore("settings", () => {
   const enableOnlineMusic = ref(DEFAULTS.enableOnlineMusic);
   const musicServer = ref<MusicServer>(DEFAULTS.musicServer);
   const onlinePlaylists = ref<OnlinePlaylistEntry[]>([...DEFAULTS.onlinePlaylists]);
+  const playlistRenames = ref<Record<string, string>>({ ...DEFAULTS.playlistRenames });
   const loaded = ref(false);
 
   // 单一注册表：新增设置项只需在此加一行，load/save 自动覆盖
@@ -109,6 +112,7 @@ export const useSettingsStore = defineStore("settings", () => {
     enableOnlineMusic,
     musicServer,
     onlinePlaylists,
+    playlistRenames,
   } as const;
 
   async function load() {

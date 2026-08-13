@@ -1,12 +1,14 @@
 /**
  * 全局右键菜单（Material Design 3）。
- * - 固定在光标处，贴边自动翻转，避免溢出视口。
- * - 点击菜单外 / 右键 / Esc / 滚动 / 缩放 关闭。
- * - 支持 ↑↓ 键盘导航、Enter 选中。
- * 用 Teleport 挂到 body，避免被滚动容器的 overflow 裁剪。
+ * - 位置直接由菜单状态 menu.x/menu.y 派生（reactive → computed），
+ *   不依赖「watch + nextTick + 改 ref」的二次更新——那套在真实 WebView 里
+ *   会失效导致菜单错位到左上角。
+ * - 贴边自动翻转用 onUpdated 测量 + margin 位移，best-effort，失败停在光标处。
+ * - 点击菜单外 / Esc / 滚动 / 缩放 关闭；不用 window contextmenu 监听，
+ *   避免「刚打开又被同一事件关掉」的竞态（mousedown 已覆盖空白处右键关闭）。
  */
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, onUpdated, ref, watch } from "vue";
 import {
   closeContextMenu,
   useContextMenu,
@@ -14,30 +16,39 @@ import {
 
 const menu = useContextMenu();
 const menuRef = ref<HTMLDivElement | null>(null);
-const pos = ref({ left: 0, top: 0 });
 const activeIndex = ref(-1);
+/** 贴边翻转位移（margin 实现，避免与入场 scale 动画的 transform 冲突） */
+const flip = ref({ x: 0, y: 0 });
+
+const menuStyle = computed(() => ({
+  left: menu.x + "px",
+  top: menu.y + "px",
+  marginLeft: flip.value.x + "px",
+  marginTop: flip.value.y + "px",
+}));
+
+function measureFlip() {
+  const el = menuRef.value;
+  if (!el || !menu.visible) return;
+  const r = el.getBoundingClientRect();
+  const m = 8;
+  let x = 0;
+  let y = 0;
+  if (r.right > window.innerWidth - m) x = window.innerWidth - r.right - m;
+  if (r.bottom > window.innerHeight - m) y = window.innerHeight - r.bottom - m;
+  if (r.left < m) x = Math.max(x, m - r.left);
+  if (r.top < m) y = Math.max(y, m - r.top);
+  if (x !== flip.value.x || y !== flip.value.y) flip.value = { x, y };
+}
 
 watch(
   () => menu.visible,
-  async (v) => {
-    if (!v) return;
+  (v) => {
     activeIndex.value = -1;
-    await nextTick();
-    const el = menuRef.value;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const margin = 8;
-    let left = menu.x;
-    let top = menu.y;
-    if (left + rect.width > window.innerWidth - margin) {
-      left = Math.max(margin, window.innerWidth - rect.width - margin);
-    }
-    if (top + rect.height > window.innerHeight - margin) {
-      top = Math.max(margin, window.innerHeight - rect.height - margin);
-    }
-    pos.value = { left, top };
+    if (!v) flip.value = { x: 0, y: 0 };
   },
 );
+onUpdated(measureFlip);
 
 function select(id: string) {
   const cb = menu.onSelect;
@@ -57,7 +68,6 @@ function onKeydown(e: KeyboardEvent) {
     if (!n) return;
     const dir = e.key === "ArrowDown" ? 1 : -1;
     let next = activeIndex.value + dir;
-    // 跳过禁用的项
     for (let i = 0; i < n; i++) {
       const idx = ((next % n) + n) % n;
       if (!menu.items[idx]?.disabled) {
@@ -75,30 +85,21 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 function onGlobalMousedown(e: MouseEvent) {
-  // 点击菜单外（含左/右键）都关闭；菜单内部由 item 的 click 处理
-  if (
-    menu.visible &&
-    menuRef.value &&
-    !menuRef.value.contains(e.target as Node)
-  ) {
-    closeContextMenu();
-  }
+  if (!menu.visible) return;
+  const el = menuRef.value;
+  // 菜单内部点击不关（item 的 click 处理）；菜单外（含空白处右键）都关闭
+  if (!el || !el.contains(e.target as Node)) closeContextMenu();
 }
 
 onMounted(() => {
   window.addEventListener("mousedown", onGlobalMousedown);
   window.addEventListener("keydown", onKeydown);
-  window.addEventListener("contextmenu", () => {
-    // 在没有触发 openContextMenu 的空白处右键时，关掉已开菜单
-    if (menu.visible) closeContextMenu();
-  });
   window.addEventListener("resize", closeContextMenu);
   window.addEventListener("scroll", closeContextMenu, true);
 });
 onBeforeUnmount(() => {
   window.removeEventListener("mousedown", onGlobalMousedown);
   window.removeEventListener("keydown", onKeydown);
-  window.removeEventListener("contextmenu", closeContextMenu);
   window.removeEventListener("resize", closeContextMenu);
   window.removeEventListener("scroll", closeContextMenu, true);
 });
@@ -106,7 +107,7 @@ onBeforeUnmount(() => {
 
 <template>
   <Teleport to="body">
-    <div v-if="menu.visible" ref="menuRef" class="ctx-menu" :style="pos">
+    <div v-if="menu.visible" ref="menuRef" class="ctx-menu" :style="menuStyle">
       <button
         v-for="(item, i) in menu.items"
         :key="item.id"

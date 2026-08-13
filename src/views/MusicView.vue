@@ -139,7 +139,12 @@ const playlistCards = computed(() => {
   }[] = [{ key: "local", name: t("online.local") }];
   for (const p of CURATED_PLAYLISTS) {
     if (p.server === server) {
-      cards.push({ key: `curated:${p.id}`, name: p.name, server: p.server, id: p.id });
+      cards.push({
+        key: `curated:${p.id}`,
+        name: settings.playlistRenames[`${p.server}:${p.id}`] ?? p.name,
+        server: p.server,
+        id: p.id,
+      });
     }
   }
   for (const p of settings.onlinePlaylists) {
@@ -212,25 +217,38 @@ function removePlaylist(id: string) {
 
 // ---- 右键菜单：歌单重命名 / 歌曲下载 ----
 
-/** 用户自添加的歌单可右键重命名；预设与本地歌单无菜单 */
+/** 所有在线歌单（预设/用户）均可右键重命名；用户歌单额外可移除；本地歌单无菜单 */
 function onPlaylistContext(e: MouseEvent, card: (typeof playlistCards.value)[number]) {
-  if (!card.id || !card.key.startsWith("user:")) return;
-  openContextMenu(
-    e,
-    [{ id: "rename", label: t("context.renamePlaylist"), icon: "edit" }],
-    (id) => {
-      if (id === "rename") void renamePlaylist(card);
-    },
-  );
+  if (!card.id) return;
+  const items: { id: string; label: string; icon: string; danger?: boolean }[] = [
+    { id: "rename", label: t("context.renamePlaylist"), icon: "edit" },
+  ];
+  if (card.key.startsWith("user:")) {
+    items.push({
+      id: "remove",
+      label: t("online.removePlaylist"),
+      icon: "delete",
+      danger: true,
+    });
+  }
+  openContextMenu(e, items, (id) => {
+    if (id === "rename") void renamePlaylist(card);
+    else if (id === "remove") removePlaylist(card.id!);
+  });
 }
 
 async function renamePlaylist(card: (typeof playlistCards.value)[number]) {
   const name = await promptText(t("context.renamePlaylist"), card.name);
   if (!name) return;
-  const hit = settings.onlinePlaylists.find(
-    (p) => p.server === settings.musicServer && p.id === card.id,
-  );
-  if (hit) hit.name = name;
+  if (card.key.startsWith("user:")) {
+    const hit = settings.onlinePlaylists.find(
+      (p) => p.server === settings.musicServer && p.id === card.id,
+    );
+    if (hit) hit.name = name;
+  } else if (card.id) {
+    // 预设歌单：重命名存覆盖，跨会话保留
+    settings.playlistRenames[`${settings.musicServer}:${card.id}`] = name;
+  }
 }
 
 function onSongContext(e: MouseEvent, song: OnlineSong) {
