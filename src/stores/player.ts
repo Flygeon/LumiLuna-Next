@@ -614,6 +614,7 @@ export const usePlayerStore = defineStore("player", () => {
     currentTime,
     duration,
     currentIndex,
+    audioEl,
     queue,
     loadingSong,
     lastError,

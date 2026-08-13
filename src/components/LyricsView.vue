@@ -167,11 +167,13 @@ onBeforeUnmount(() => {
 
 const hasLyrics = computed(() => player.lyrics.length > 0);
 
-// ---- Apple Music 式逐字填充 ----
-// 用固定结构渐变 + 移动 background-position（而非每帧改渐变 stop），
-// 避免 background-clip:text 每帧重算渐变，平滑且开销低。
+// ---- Apple Music 式逐字填充 + 逐字弹跳 ----
+// 固定结构渐变 + 移动 background-position（比每帧改渐变 stop 平滑省资源）。
+// 关键：时间源用 audioEl.currentTime（实时播放位置），而非 4Hz 的 currentTime
+// ref——后者会让填充按 ~250ms 阶梯跳动，产生「顿感」。
 // background-position-x = (100 - 填充%)，100% 全暗 → 0% 全亮。
-// rAF 只改 style，不触发 Vue 重渲染。
+// 逐字弹跳也在这里按同一平滑时间切换 .current 类（弹簧 scale），与填充同步。
+// rAF 只改 style/class，不触发 Vue 重渲染。
 
 function updateWordFill() {
   const idx = player.activeLine;
@@ -180,7 +182,7 @@ function updateWordFill() {
   const lineEl = lineRefs.value[idx];
   const words = lineEl?.querySelectorAll<HTMLElement>(".word");
   if (!words?.length) return;
-  const t = player.currentTime;
+  const t = player.audioEl?.currentTime ?? player.currentTime;
   line.units.forEach((u, i) => {
     const el = words[i];
     if (!el) return;
@@ -188,6 +190,7 @@ function updateWordFill() {
     if (t >= u.end) pct = 100;
     else if (t > u.start) pct = ((t - u.start) / (u.end - u.start)) * 100;
     el.style.backgroundPosition = `${(100 - pct).toFixed(2)}% 0`;
+    el.classList.toggle("current", t >= u.start && t < u.end);
   });
 }
 
@@ -314,10 +317,13 @@ function rafLoop() {
 /* 逐字填充：Apple Music 式。
  * 固定结构渐变（sung→unsung 47%/53% 软边）+ 移动 background-position，
  * 比每帧改渐变 stop 更平滑省资源。非当前行整行纯文本渲染。
+ * 逐字弹跳：正在唱的字 scale 放大 + 弹簧曲线过渡。
  */
 .word {
   display: inline-block;
   white-space: pre; /* 保留英文词间空格（空格已并入词尾） */
+  transform-origin: left center;
+  transition: transform 0.5s cubic-bezier(0.34, 1.2, 0.64, 1);
 }
 .lyric-item.active .word {
   color: transparent;
@@ -333,6 +339,9 @@ function rafLoop() {
   background-position: 100% 0; /* 默认全暗；JS 每帧推进 */
   -webkit-background-clip: text;
   background-clip: text;
+}
+.lyric-item.active .word.current {
+  transform: scale(1.06);
 }
 
 /* 行级入场弹簧：切到当前行时一次 scale 回弹（单次动画，不顿） */
