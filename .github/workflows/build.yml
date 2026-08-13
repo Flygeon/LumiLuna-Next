@@ -94,11 +94,13 @@ jobs:
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
-          files: |
-            windows-build/*
-            linux-build/*
+          # artifact 内含 msi/、nsis/ 子目录，需递归 glob 才能匹配到安装包
+          files: release-assets/**/*
