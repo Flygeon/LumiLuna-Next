@@ -167,25 +167,11 @@ onBeforeUnmount(() => {
 
 const hasLyrics = computed(() => player.lyrics.length > 0);
 
-/**
- * 当前行「正在唱的字」下标（-1 = 未到 / 已唱完）。
- * 值只在跨字边界时变化，Vue computed 缓存，不会每个 timeupdate 都重渲染。
- */
-const currentWordIndex = computed(() => {
-  const line = player.lyrics[player.activeLine];
-  if (!line?.units?.length) return -1;
-  const t = player.currentTime;
-  for (let i = 0; i < line.units.length; i++) {
-    if (t < line.units[i].start) return -1;
-    if (t < line.units[i].end) return i;
-  }
-  return -1;
-});
-
-// ---- Apple Music 式逐字填充：rAF 每帧把当前行每个字的 --fill 推进 ----
-// 渐变 stop 由 --fill 控制（0~100），撑出平滑的线性渐变填充；弹簧动效由
-// .word.current 的 transform scale + 弹簧曲线实现。值只在字边界变化，
-// rAF 只改 style 不触发 Vue 重渲染，性能可控。
+// ---- Apple Music 式逐字填充 ----
+// 用固定结构渐变 + 移动 background-position（而非每帧改渐变 stop），
+// 避免 background-clip:text 每帧重算渐变，平滑且开销低。
+// background-position-x = (100 - 填充%)，100% 全暗 → 0% 全亮。
+// rAF 只改 style，不触发 Vue 重渲染。
 
 function updateWordFill() {
   const idx = player.activeLine;
@@ -201,7 +187,7 @@ function updateWordFill() {
     let pct = 0;
     if (t >= u.end) pct = 100;
     else if (t > u.start) pct = ((t - u.start) / (u.end - u.start)) * 100;
-    el.style.setProperty("--fill", String(pct));
+    el.style.backgroundPosition = `${(100 - pct).toFixed(2)}% 0`;
   });
 }
 
@@ -228,13 +214,12 @@ function rafLoop() {
         }"
         @click="player.seekToLyric(i)"
       >
-        <p class="lyric-text">
+        <p class="lyric-text" :class="{ pop: i === player.activeLine }">
           <template v-if="i === player.activeLine && line.units?.length">
             <span
               v-for="(u, wi) in line.units"
               :key="wi"
               class="word"
-              :class="{ current: wi === currentWordIndex }"
             >{{ u.text }}</span>
           </template>
           <template v-else>{{ line.text }}</template>
@@ -327,28 +312,41 @@ function rafLoop() {
 }
 
 /* 逐字填充：Apple Music 式。
- * 当前行每字 background-clip:text + 线性渐变，渐变 stop 由 JS 每帧推进 --fill；
- * 弹簧动效 = 正在唱的字 scale 放大 + 弹簧曲线过渡。
- * 非当前行整行纯文本渲染（省性能），不需要逐字样式。
+ * 固定结构渐变（sung→unsung 47%/53% 软边）+ 移动 background-position，
+ * 比每帧改渐变 stop 更平滑省资源。非当前行整行纯文本渲染。
  */
 .word {
   display: inline-block;
-  transform-origin: left center;
   white-space: pre; /* 保留英文词间空格（空格已并入词尾） */
-  transition: transform 0.5s cubic-bezier(0.34, 1.2, 0.64, 1);
 }
 .lyric-item.active .word {
   color: transparent;
   background-image: linear-gradient(
     to right,
-    var(--word-sung) calc(var(--fill, 0) * 1% - 3%),
-    var(--word-unsung) calc(var(--fill, 0) * 1% + 3%)
+    var(--word-sung) 0%,
+    var(--word-sung) 47%,
+    var(--word-unsung) 53%,
+    var(--word-unsung) 100%
   );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  background-position: 100% 0; /* 默认全暗；JS 每帧推进 */
   -webkit-background-clip: text;
   background-clip: text;
 }
-.lyric-item.active .word.current {
-  transform: scale(1.05);
+
+/* 行级入场弹簧：切到当前行时一次 scale 回弹（单次动画，不顿） */
+.lyric-text.pop {
+  transform-origin: left center;
+  animation: lyric-pop 0.5s cubic-bezier(0.34, 1.2, 0.64, 1);
+}
+@keyframes lyric-pop {
+  from {
+    transform: scale(0.97);
+  }
+  to {
+    transform: scale(1);
+  }
 }
 
 .lyric-translation {
