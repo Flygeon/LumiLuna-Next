@@ -342,7 +342,7 @@ function rafLoop() {
   background-clip: text;
 }
 .lyric-item.active .word.sung {
-  transform: translateY(-6px);
+  transform: translateY(-2px);
 }
 
 /* 行级入场弹簧：切到当前行时一次 scale 回弹（单次动画，不顿） */

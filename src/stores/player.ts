@@ -2,7 +2,12 @@ import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { capabilities, isTauri } from "@/capabilities";
+import { useSettingsStore } from "@/stores/settings";
 import { attachRoughTimeline } from "@/utils/lyricTimeline";
+import {
+  applyPreciseWordTimes,
+  getPreciseWordTimes,
+} from "@/utils/wordAnalysis";
 import type {
   MediaEntry,
   NowPlaying,
@@ -313,11 +318,42 @@ export const usePlayerStore = defineStore("player", () => {
     return isOnline(item) ? null : item.durationMs ?? null;
   }
 
+  /** 正在分析的歌曲 key，避免同一首重复分析 */
+  const wordAnalysisInflight = new Set<string>();
+
+  /**
+   * 后台触发逐字精排（Phase 2）：有缓存直接应用；无缓存异步分析，完成后应用。
+   * 不阻塞播放；失败静默降级为粗排。仅在开启「逐字歌词」时执行。
+   */
+  async function scheduleWordAnalysis(
+    meta: { id: string; kind: "local" | "online"; filePath?: string; url?: string },
+    lines: LyricLine[],
+  ) {
+    if (!useSettingsStore().wordLyrics) return;
+    const key = `${meta.kind}:${meta.id}`;
+    if (wordAnalysisInflight.has(key)) return;
+    wordAnalysisInflight.add(key);
+    try {
+      const precise = await getPreciseWordTimes(
+        { kind: meta.kind, filePath: meta.filePath, url: meta.url },
+        lines,
+        key,
+      );
+      // 防止分析完成时已切歌：当前歌曲仍是同一首才应用
+      if (precise && song.value?.id === meta.id) {
+        applyPreciseWordTimes(lines, precise);
+      }
+    } finally {
+      wordAnalysisInflight.delete(key);
+    }
+  }
+
   /** 应用一首已取回的本地完整 Song（解析歌词、提取封面主色、推送 SMTC） */
   async function loadSong(s: Song) {
     const title = s.meta.title ?? s.file.name.replace(/\.[^.]+$/, "");
     const artist = s.meta.artist ?? "";
     const album = s.meta.album ?? "";
+    const parsed = s.lyrics ? parseLrc(s.lyrics) : [];
     song.value = {
       id: s.file.id,
       title,
@@ -325,12 +361,13 @@ export const usePlayerStore = defineStore("player", () => {
       album,
       cover: s.coverBase64 ?? "",
       src: toMediaSrc(s.file.path),
-      lyrics: s.lyrics ? parseLrc(s.lyrics) : [],
+      lyrics: parsed,
       filePath: s.file.path,
       durationMs: s.meta.durationMs ?? undefined,
       kind: "local",
     };
     activeLine.value = -1;
+    lyrics.value = parsed;
     coverColors.value = [];
     currentTime.value = 0;
     duration.value = 0;
@@ -341,6 +378,11 @@ export const usePlayerStore = defineStore("player", () => {
       };
       img.src = s.coverBase64;
     }
+    // 后台逐字精排：缓存命中直接应用，否则分析完成后升级
+    void scheduleWordAnalysis(
+      { id: s.file.id, kind: "local", filePath: s.file.path, url: undefined },
+      parsed,
+    );
     // 推送元数据给 Windows 系统媒体控件；真实时长由 loadedmetadata 后的 syncSmtc 兜底
     void capabilities
       .smtcSetMedia({
@@ -416,6 +458,11 @@ export const usePlayerStore = defineStore("player", () => {
       activeLine.value = -1;
       // 与 loadSong 一致：歌词挂在 store 的 lyrics ref 上，LyricsView 读它
       lyrics.value = parsed;
+      // 后台逐字精排：缓存命中直接应用，否则分析完成后升级
+      void scheduleWordAnalysis(
+        { id: item.id, kind: "online", filePath: undefined, url: item.url },
+        parsed,
+      );
       coverColors.value = [];
       currentTime.value = 0;
       duration.value = 0;
