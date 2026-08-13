@@ -9,6 +9,7 @@ import { openPath, openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
 import { open as dialogOpen, save as dialogSave } from "@tauri-apps/plugin-dialog";
 import { writeFile } from "@tauri-apps/plugin-fs";
 import type {
+  BookProgress,
   FfmpegStatus,
   ListQuery,
   MediaEntry,
@@ -116,6 +117,19 @@ export const capabilities = {
   },
   emptyTrash(): Promise<number> {
     return safeInvoke("empty_trash");
+  },
+
+  // ---- 书籍阅读进度 ----
+  getBookProgress(fileId: string): Promise<BookProgress | null> {
+    return safeInvoke("get_book_progress", { fileId });
+  },
+  saveBookProgress(
+    bookId: string,
+    location: string,
+    page: number,
+    percent: number,
+  ): Promise<void> {
+    return safeInvoke("save_book_progress", { bookId, location, page, percent });
   },
 
   // ---- FFmpeg ----

@@ -186,6 +186,10 @@ export function mockInvoke<T>(
     case "empty_trash":
     case "clear_thumbnail_cache":
       return as(0);
+    case "get_book_progress":
+      return as(null);
+    case "save_book_progress":
+      return as(undefined);
     case "ffmpeg_status":
       return as<FfmpegStatus>({ available: false, source: "none" });
     case "ffmpeg_set_path":

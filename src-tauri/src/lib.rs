@@ -118,6 +118,8 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            commands::book::get_book_progress,
+            commands::book::save_book_progress,
             commands::scan::scan_start,
             commands::scan::scan_cancel,
             commands::scan::scan_status,

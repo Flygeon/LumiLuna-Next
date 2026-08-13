@@ -69,6 +69,14 @@ const totalPages = ref(0);
 const zoom = ref(1.2);
 /** 顶栏「更多设置」二级菜单是否展开 */
 const menuOpen = ref(false);
+/** 目录侧边栏是否展开（EPUB） */
+const sidebarOpen = ref(false);
+/** 展平后的 EPUB 目录 */
+const toc = ref<{ label: string; href: string; depth: number }[]>([]);
+/** 当前章节 href（高亮目录用） */
+const currentHref = ref("");
+/** 当前 CFI（进度保存用，非响应式） */
+let progressLocation = "";
 
 const kind = computed(() =>
   props.item.ext.toLowerCase() === "pdf" ? "pdf" : "epub",
@@ -232,13 +240,68 @@ async function openEpub() {
 
   const nav = await book.value.loaded.navigation;
   totalPages.value = nav?.toc?.length ?? 0;
+  toc.value = flattenToc(nav?.toc ?? []);
 
   rendition.value.on("relocated", (location: any) => {
     page.value = (location?.start?.index ?? 0) + 1;
+    currentHref.value = location?.start?.href ?? "";
+    progressLocation = location?.start?.cfi ?? "";
+    saveProgress();
   });
+
+  // 恢复上次阅读进度（CFI 精确定位）
+  try {
+    const progress = await capabilities.getBookProgress(props.item.id);
+    if (progress?.location) {
+      await rendition.value.display(progress.location);
+    }
+  } catch {
+    /* 恢复失败忽略，回到开头 */
+  }
 
   // epub.js 的 iframe 会吞掉键盘事件，需在其内部再挂一次
   rendition.value.on("keyup", onKey);
+}
+
+/** 展平 EPUB 目录（含嵌套子章节，带层级） */
+function flattenToc(
+  items: any[],
+  depth = 0,
+): { label: string; href: string; depth: number }[] {
+  const out: { label: string; href: string; depth: number }[] = [];
+  for (const it of items ?? []) {
+    out.push({ label: it.label, href: it.href ?? "", depth });
+    if (it.subitems?.length) out.push(...flattenToc(it.subitems, depth + 1));
+  }
+  return out;
+}
+
+/** 保存阅读进度（EPUB：CFI + 章节 + 粗略百分比） */
+function saveProgress() {
+  const location = progressLocation;
+  if (!location || kind.value !== "epub") return;
+  const percent = totalPages.value ? ((page.value - 1) / totalPages.value) * 100 : 0;
+  void capabilities
+    .saveBookProgress(props.item.id, location, page.value, Math.round(percent))
+    .catch(() => {});
+}
+
+/** 目录项是否为当前章节（精确匹配或 href 互为前缀） */
+function isTocActive(item: { href: string }): boolean {
+  const cur = currentHref.value;
+  if (!cur || !item.href) return false;
+  return cur === item.href || cur.startsWith(item.href) || item.href.startsWith(cur);
+}
+
+/** 点击目录跳转到指定章节 */
+async function goToChapter(item: { href: string }) {
+  sidebarOpen.value = false;
+  if (!item.href) return;
+  try {
+    await rendition.value.display(item.href);
+  } catch {
+    /* 跳转失败忽略 */
+  }
 }
 
 // ---- 通用导航 ----
@@ -288,9 +351,10 @@ function onTapZone(dir: "prev" | "next") {
 }
 
 function onKey(e: KeyboardEvent) {
-  // 菜单展开时 Esc 先收菜单，避免误关整个阅读器
+  // 菜单/侧边栏展开时 Esc 先收面板，避免误关整个阅读器
   if (e.key === "Escape") {
     if (menuOpen.value) menuOpen.value = false;
+    else if (sidebarOpen.value) sidebarOpen.value = false;
     else emit("close");
     return;
   }
@@ -319,6 +383,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  saveProgress(); // 关闭书籍时补存一次进度（应用退出也会走这里）
   window.removeEventListener("keydown", onKey);
   cancelRenders();
   rendition.value?.destroy();
@@ -383,6 +448,16 @@ const PDF_MODES = [
         </span>
       </div>
       <div class="tools">
+        <!-- 目录侧边栏（EPUB） -->
+        <button
+          v-if="kind === 'epub'"
+          class="rbtn"
+          :class="{ active: sidebarOpen }"
+          title="目录"
+          @click="sidebarOpen = !sidebarOpen"
+        >
+          <span class="material-symbols-outlined">toc</span>
+        </button>
         <!-- PDF 阅读模式切换 -->
         <div v-if="kind === 'pdf'" class="modes">
           <button
@@ -490,6 +565,33 @@ const PDF_MODES = [
           }}</span>
         </div>
       </div>
+    </transition>
+
+    <!-- 目录侧边栏（EPUB）：遮罩 + 面板 -->
+    <transition name="fade">
+      <div v-if="sidebarOpen" class="toc-backdrop" @click="sidebarOpen = false"></div>
+    </transition>
+    <transition name="slide">
+      <aside v-if="sidebarOpen" class="toc-panel">
+        <div class="toc-head">
+          <span class="material-symbols-outlined">toc</span>
+          <span class="toc-title">目录</span>
+          <span v-if="totalPages" class="toc-pct tabular-nums">
+            {{ Math.round(((page - 1) / totalPages) * 100) }}%
+          </span>
+        </div>
+        <div class="toc-list">
+          <button
+            v-for="(item, i) in toc"
+            :key="item.href + i"
+            class="toc-item"
+            :class="{ active: isTocActive(item), sub: item.depth > 0 }"
+            :style="{ paddingLeft: 14 + item.depth * 18 + 'px' }"
+            @click="goToChapter(item)"
+          >{{ item.label }}</button>
+          <p v-if="!toc.length" class="toc-empty">本书无目录</p>
+        </div>
+      </aside>
     </transition>
 
     <div class="stage">
@@ -735,6 +837,106 @@ const PDF_MODES = [
 .pop-leave-to {
   opacity: 0;
   transform: translateY(-6px);
+}
+
+/* 目录侧边栏 */
+.toc-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(0, 0, 0, 0.35);
+}
+.toc-panel {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 45;
+  width: 300px;
+  max-width: 80vw;
+  display: flex;
+  flex-direction: column;
+  background: color-mix(in srgb, var(--reader-bg) 94%, transparent);
+  backdrop-filter: blur(24px) saturate(1.6);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  border-right: 1px solid color-mix(in srgb, var(--reader-fg) 15%, transparent);
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.4);
+}
+.toc-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+  border-bottom: 1px solid color-mix(in srgb, var(--reader-fg) 12%, transparent);
+  font-size: 14px;
+  font-weight: 600;
+}
+.toc-head .material-symbols-outlined {
+  font-size: 20px;
+  opacity: 0.7;
+}
+.toc-title {
+  flex: 1;
+}
+.toc-pct {
+  font-size: 12px;
+  opacity: 0.6;
+}
+.toc-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+.toc-item {
+  display: block;
+  width: 100%;
+  padding: 9px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: color-mix(in srgb, var(--reader-fg) 78%, transparent);
+  font-family: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background 140ms;
+}
+.toc-item:hover {
+  background: color-mix(in srgb, var(--reader-fg) 12%, transparent);
+}
+.toc-item.active {
+  background: color-mix(in srgb, var(--reader-fg) 18%, transparent);
+  color: var(--reader-fg);
+  font-weight: 600;
+}
+.toc-item.sub {
+  font-size: 12px;
+  opacity: 0.85;
+}
+.toc-empty {
+  padding: 20px;
+  text-align: center;
+  font-size: 13px;
+  opacity: 0.5;
+}
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 160ms ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+.slide-enter-active,
+.slide-leave-active {
+  transition: transform 240ms var(--md-sys-motion-easing-emphasized-decelerate);
+}
+.slide-enter-from,
+.slide-leave-to {
+  transform: translateX(-100%);
 }
 
 .stage {

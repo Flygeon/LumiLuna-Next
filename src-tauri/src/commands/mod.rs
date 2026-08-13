@@ -1,3 +1,4 @@
+pub mod book;
 pub mod ffmpeg;
 pub mod metadata;
 pub mod scan;

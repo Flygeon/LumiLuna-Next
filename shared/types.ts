@@ -159,11 +159,14 @@ export interface FfmpegStatus {
 
 /** 阅读进度 */
 export interface BookProgress {
-  book_id: string;
+  bookId: string;
+  /** EPUB 用 CFI 精确定位；PDF 可为空 */
   location: string;
+  /** 章节/页码索引（从 1 起） */
   page: number;
+  /** 阅读百分比 0-100 */
   percent: number;
-  updated_at: number;
+  updatedAt: number;
 }
 
 /** SMTC 媒体信息（推送 Windows 系统媒体控件，换歌时调用） */
