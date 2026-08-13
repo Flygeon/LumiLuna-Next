@@ -9,7 +9,10 @@
  */
 import type { LyricLine, WordUnit } from "@shared/types";
 
-/** 分词：CJK 每字一个单元，连续拉丁字母/数字/撇号/连字符合并为词，空格丢弃 */
+/**
+ * 分词：CJK 每字一个单元；连续拉丁字母/数字/撇号/连字符合并为词。
+ * 空格结束当前词并并入词尾（保留英文词间分隔），渲染时不会被吞掉。
+ */
 export function tokenizeLyric(text: string): string[] {
   let parts: string[];
   if (typeof Intl !== "undefined" && "Segmenter" in Intl) {
@@ -22,24 +25,31 @@ export function tokenizeLyric(text: string): string[] {
 
   const tokens: string[] = [];
   let latin = "";
-  const flush = () => {
-    if (latin) {
-      tokens.push(latin);
-      latin = "";
-    }
+  const pushToken = (t: string) => {
+    if (t) tokens.push(t);
   };
   for (const p of parts) {
-    if (/[A-Za-z0-9'’-]/.test(p)) {
+    if (/[A-Za-z0-9'’’-]/.test(p)) {
       latin += p;
     } else if (/\s/.test(p)) {
-      flush();
+      // 空格结束当前词；空格并入词尾，避免逐字渲染时词与词粘连
+      if (latin) {
+        latin += p;
+        pushToken(latin);
+        latin = "";
+      } else if (tokens.length) {
+        tokens[tokens.length - 1] += p;
+      }
     } else {
       // CJK 单字或标点
-      flush();
-      tokens.push(p);
+      if (latin) {
+        pushToken(latin);
+        latin = "";
+      }
+      pushToken(p);
     }
   }
-  flush();
+  pushToken(latin);
   return tokens;
 }
 

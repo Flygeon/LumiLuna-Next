@@ -156,29 +156,60 @@ onMounted(async () => {
     updateLayout(Math.max(0, player.activeLine), 0),
   );
   if (containerRef.value) ro.observe(containerRef.value);
+  rafId = requestAnimationFrame(rafLoop);
 });
 
 onBeforeUnmount(() => {
   clearTimers();
   ro?.disconnect();
+  cancelAnimationFrame(rafId);
 });
 
 const hasLyrics = computed(() => player.lyrics.length > 0);
 
 /**
- * 当前行「已唱到第几个字」。
- * 依赖 currentTime + activeLine + lyrics；值不变时 Vue computed 缓存，
- * 不会每个 timeupdate 都重渲染，只在跨字边界时刷新。
+ * 当前行「正在唱的字」下标（-1 = 未到 / 已唱完）。
+ * 值只在跨字边界时变化，Vue computed 缓存，不会每个 timeupdate 都重渲染。
  */
-const sungWordIndex = computed(() => {
+const currentWordIndex = computed(() => {
   const line = player.lyrics[player.activeLine];
   if (!line?.units?.length) return -1;
   const t = player.currentTime;
   for (let i = 0; i < line.units.length; i++) {
-    if (t < line.units[i].start) return i;
+    if (t < line.units[i].start) return -1;
+    if (t < line.units[i].end) return i;
   }
-  return line.units.length;
+  return -1;
 });
+
+// ---- Apple Music 式逐字填充：rAF 每帧把当前行每个字的 --fill 推进 ----
+// 渐变 stop 由 --fill 控制（0~100），撑出平滑的线性渐变填充；弹簧动效由
+// .word.current 的 transform scale + 弹簧曲线实现。值只在字边界变化，
+// rAF 只改 style 不触发 Vue 重渲染，性能可控。
+
+function updateWordFill() {
+  const idx = player.activeLine;
+  const line = player.lyrics[idx];
+  if (!line?.units?.length) return;
+  const lineEl = lineRefs.value[idx];
+  const words = lineEl?.querySelectorAll<HTMLElement>(".word");
+  if (!words?.length) return;
+  const t = player.currentTime;
+  line.units.forEach((u, i) => {
+    const el = words[i];
+    if (!el) return;
+    let pct = 0;
+    if (t >= u.end) pct = 100;
+    else if (t > u.start) pct = ((t - u.start) / (u.end - u.start)) * 100;
+    el.style.setProperty("--fill", String(pct));
+  });
+}
+
+let rafId = 0;
+function rafLoop() {
+  rafId = requestAnimationFrame(rafLoop);
+  updateWordFill();
+}
 </script>
 
 <template>
@@ -198,12 +229,12 @@ const sungWordIndex = computed(() => {
         @click="player.seekToLyric(i)"
       >
         <p class="lyric-text">
-          <template v-if="line.units?.length">
+          <template v-if="i === player.activeLine && line.units?.length">
             <span
               v-for="(u, wi) in line.units"
               :key="wi"
               class="word"
-              :class="{ sung: i === player.activeLine && wi < sungWordIndex }"
+              :class="{ current: wi === currentWordIndex }"
             >{{ u.text }}</span>
           </template>
           <template v-else>{{ line.text }}</template>
@@ -266,6 +297,9 @@ const sungWordIndex = computed(() => {
   padding: 0 25px;
   box-sizing: border-box;
   color: rgba(255, 255, 255, 0.2);
+  /* 逐字填充色：非当前行两者同色（无填充效果，整行暗） */
+  --word-sung: rgba(255, 255, 255, 0.2);
+  --word-unsung: rgba(255, 255, 255, 0.2);
   font-weight: bold;
   letter-spacing: 0.6px;
   cursor: pointer;
@@ -277,6 +311,9 @@ const sungWordIndex = computed(() => {
 
 .lyric-item.active {
   color: rgba(255, 255, 255, 1);
+  /* 当前行：已唱纯白、未唱半透明 */
+  --word-sung: #ffffff;
+  --word-unsung: rgba(255, 255, 255, 0.35);
 }
 
 /* 换歌瞬间就位，不走过渡 */
@@ -289,15 +326,29 @@ const sungWordIndex = computed(() => {
   text-shadow: 0 1px 12px rgba(0, 0, 0, 0.35);
 }
 
-/* 逐字高亮：当前行里未唱的字半透明，已唱的全亮，颜色平滑过渡 */
+/* 逐字填充：Apple Music 式。
+ * 当前行每字 background-clip:text + 线性渐变，渐变 stop 由 JS 每帧推进 --fill；
+ * 弹簧动效 = 正在唱的字 scale 放大 + 弹簧曲线过渡。
+ * 非当前行整行纯文本渲染（省性能），不需要逐字样式。
+ */
 .word {
-  transition: color 0.3s ease;
+  display: inline-block;
+  transform-origin: left center;
+  white-space: pre; /* 保留英文词间空格（空格已并入词尾） */
+  transition: transform 0.5s cubic-bezier(0.34, 1.2, 0.64, 1);
 }
-.lyric-item.active .word:not(.sung) {
-  color: rgba(255, 255, 255, 0.35);
+.lyric-item.active .word {
+  color: transparent;
+  background-image: linear-gradient(
+    to right,
+    var(--word-sung) calc(var(--fill, 0) * 1% - 3%),
+    var(--word-unsung) calc(var(--fill, 0) * 1% + 3%)
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
 }
-.lyric-item.active .word.sung {
-  color: rgba(255, 255, 255, 1);
+.lyric-item.active .word.current {
+  transform: scale(1.05);
 }
 
 .lyric-translation {
