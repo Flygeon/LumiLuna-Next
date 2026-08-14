@@ -146,6 +146,14 @@ onMounted(async () => {
     <!-- 全局 M3 右键菜单与文本输入框（Teleport 到 body） -->
     <ContextMenu />
     <TextPrompt />
+
+    <!-- 全局回退提示（播放器 store 触发，播放页/列表页均可见） -->
+    <transition name="lyric-toast">
+      <div v-if="player.lyricNotice" class="lyric-toast">
+        <span class="material-symbols-outlined">info</span>
+        {{ player.lyricNotice }}
+      </div>
+    </transition>
   </div>
 </template>
 
@@ -327,5 +335,37 @@ onMounted(async () => {
 .page-leave-to {
   opacity: 0;
   transform: translateY(-4px);
+}
+
+/* 全局回退提示 toast */
+.lyric-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 96px;
+  transform: translateX(-50%);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(560px, 80vw);
+  padding: 11px 18px;
+  border-radius: 999px;
+  background: var(--md-sys-color-inverse-surface);
+  color: var(--md-sys-color-inverse-on-surface);
+  box-shadow: var(--md-elevation-3);
+  font-size: var(--md-sys-typescale-body-small-size);
+}
+.lyric-toast .material-symbols-outlined {
+  font-size: 17px;
+  opacity: 0.85;
+}
+.lyric-toast-enter-active,
+.lyric-toast-leave-active {
+  transition: all 240ms var(--md-sys-motion-easing-emphasized-decelerate);
+}
+.lyric-toast-enter-from,
+.lyric-toast-leave-to {
+  opacity: 0;
+  transform: translate(-50%, 12px);
 }
 </style>

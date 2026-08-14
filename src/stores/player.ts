@@ -5,7 +5,11 @@ import { capabilities, isTauri } from "@/capabilities";
 import { useSettingsStore } from "@/stores/settings";
 // parseLrc 由 @/utils/lyricTimeline 提供（原先定义在本文件，已移出供歌词源复用）
 import { META_RE, parseLrc } from "@/utils/lyricTimeline";
-import { fetchPreciseQqLyrics } from "@/utils/preciseLyrics";
+import {
+  fetchPreciseQqLyrics,
+  type QqFallbackReason,
+} from "@/utils/preciseLyrics";
+import { translate } from "@shared/i18n";
 import {
   applyPreciseWordTimes,
   getPreciseWordTimes,
@@ -295,10 +299,40 @@ export const usePlayerStore = defineStore("player", () => {
   }
 
   /**
+   * 歌词来源状态：仅当「更精确的逐字歌词」开启且当前歌曲完成一次尝试后才有值。
+   * - "qq"：已应用 QQ 官方歌词；"local"：已回退本地歌词（原因见 lyricFallbackReason）。
+   */
+  const lyricsSource = ref<"qq" | "local" | null>(null);
+  const lyricFallbackReason = ref<QqFallbackReason | null>(null);
+
+  /** 回退提示 toast（全局渲染在 App.vue），4s 自动消失 */
+  const lyricNotice = ref("");
+  let lyricNoticeTimer: ReturnType<typeof setTimeout> | null = null;
+  function showLyricNotice(message: string) {
+    lyricNotice.value = message;
+    if (lyricNoticeTimer) clearTimeout(lyricNoticeTimer);
+    lyricNoticeTimer = setTimeout(() => (lyricNotice.value = ""), 4000);
+  }
+
+  /** 记录回退：更新来源徽标状态 + console.warn + 全局 toast 提示 */
+  function completeFallback(reason: QqFallbackReason, detail?: string) {
+    lyricsSource.value = "local";
+    lyricFallbackReason.value = reason;
+    console.warn(
+      `[逐字歌词] 回退本地歌词：${reason}${detail ? `（${detail}）` : ""}`,
+    );
+    const lang = useSettingsStore().lang;
+    const reasonLabel = translate(lang, `player.lyricReason_${reason}`);
+    showLyricNotice(
+      `${translate(lang, "player.lyricFallbackToast")}（${reasonLabel}）`,
+    );
+  }
+
+  /**
    * 「更精确的逐字歌词」编排：
-   * - 设置关闭 / 无时长 → 直接走本地 FFT 精排回退；
+   * - 设置关闭 → 保持原流程（FFT 精排），不显示来源徽标；
    * - 开启 → 串行：先试 QQ 音乐官方逐字歌词（同名 + 时长差 ≤1s，含逐字 units），
-   *   成功则替换当前歌词并跳过 FFT；失败再走 FFT 回退。
+   *   成功则替换当前歌词、标记来源并跳过 FFT；失败则提示回退原因并走 FFT 回退。
    * 串行编排避免 QQ 结果与 FFT 结果互相覆盖的竞态。
    */
   async function schedulePreciseQqLyrics(
@@ -319,38 +353,62 @@ export const usePlayerStore = defineStore("player", () => {
   ) {
     const settings = useSettingsStore();
     const runFallback = () => scheduleWordAnalysis(analysisSource, fallbackLines);
-    if (!settings.preciseLyrics || !meta.durationMs) {
+    if (!settings.preciseLyrics) {
+      lyricsSource.value = null; // 功能未启用，不显示来源徽标
+      runFallback();
+      return;
+    }
+    if (!meta.durationMs) {
+      // 无时长无法做 ±1s 匹配
+      completeFallback("missing-info");
       runFallback();
       return;
     }
     const key = `${meta.kind}:${meta.id}`;
-    if (qqLyricsInflight.has(key)) return;
+    if (qqLyricsInflight.has(key)) return; // 进行中，结果到达时统一处理
     qqLyricsInflight.add(key);
     try {
-      const qqLines = await fetchPreciseQqLyrics({
+      const result = await fetchPreciseQqLyrics({
         title: meta.title,
         artist: meta.artist || undefined,
         durationMs: meta.durationMs,
       });
-      // 防止分析完成时已切歌：当前歌曲仍是同一首才应用
-      if (qqLines?.length && song.value?.id === meta.id) {
-        let applied = qqLines;
+      // 防止完成时已切歌：当前歌曲仍是同一首才应用
+      if (song.value?.id !== meta.id) {
+        console.info("[逐字歌词] 取词完成时已切歌，丢弃结果");
+        return;
+      }
+      const stillEnabled = useSettingsStore().preciseLyrics;
+      if (result.ok && stillEnabled) {
+        let applied = result.lines;
         // 与 LRC 流程一致：开启「自动识别前奏/间奏」时隐藏作词/作曲等元数据行
         if (useSettingsStore().detectInstrumental) {
-          const filtered = qqLines.filter((l) => !META_RE.test(l.text));
+          const filtered = result.lines.filter((l) => !META_RE.test(l.text));
           if (filtered.length) applied = filtered;
         }
         lyrics.value = applied;
         song.value.lyrics = applied;
         updateActiveLine();
-        return; // 已有官方逐字时间轴，跳过 FFT 精排
+        lyricsSource.value = "qq";
+        lyricFallbackReason.value = null;
+        console.info(
+          `[逐字歌词] 命中 QQ：${result.songTitle}（QQ id=${result.songId}，${applied.length} 行，${result.wordLevel ? "含逐字时间轴" : "仅逐行"}，${result.fromCache ? "来自缓存" : "在线获取"}）`,
+        );
+        return; // 已有官方时间轴，跳过 FFT 精排
       }
+      if (stillEnabled && !result.ok) {
+        completeFallback(result.reason, result.detail);
+      }
+      // 设置被关闭 / 结果不可用 → 走原 FFT 流程（设置关闭时不打扰用户）
+      runFallback();
     } catch (e) {
-      console.warn("[逐字歌词] 获取失败，回退本地分析:", e);
+      if (song.value?.id === meta.id && useSettingsStore().preciseLyrics) {
+        completeFallback("search-failed", e instanceof Error ? e.message : String(e));
+      }
+      runFallback();
     } finally {
       qqLyricsInflight.delete(key);
     }
-    runFallback();
   }
 
   /** 应用一首已取回的本地完整 Song（解析歌词、提取封面主色、推送 SMTC） */
@@ -378,6 +436,9 @@ export const usePlayerStore = defineStore("player", () => {
     coverColors.value = [];
     currentTime.value = 0;
     duration.value = 0;
+    // 新歌：清空歌词来源状态，等待本次 QQ 尝试结果
+    lyricsSource.value = null;
+    lyricFallbackReason.value = null;
     if (s.coverBase64) {
       const img = new Image();
       img.onload = () => {
@@ -473,6 +534,9 @@ export const usePlayerStore = defineStore("player", () => {
       activeLine.value = -1;
       // 与 loadSong 一致：歌词挂在 store 的 lyrics ref 上，LyricsView 读它
       lyrics.value = parsed;
+      // 新歌：清空歌词来源状态，等待本次 QQ 尝试结果
+      lyricsSource.value = null;
+      lyricFallbackReason.value = null;
       coverColors.value = [];
       currentTime.value = 0;
       duration.value = 0;
@@ -695,6 +759,9 @@ export const usePlayerStore = defineStore("player", () => {
     activeLine,
     coverColors,
     currentLyric,
+    lyricsSource,
+    lyricFallbackReason,
+    lyricNotice,
     bindAudio,
     detachAudio,
     loadSong,

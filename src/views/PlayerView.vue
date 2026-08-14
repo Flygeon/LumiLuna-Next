@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from "vue";
+import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import { usePlayerStore } from "@/stores/player";
 import { useSettingsStore } from "@/stores/settings";
 import { useRouter } from "vue-router";
@@ -18,6 +18,21 @@ const isDragging = ref(false);
 function t(key: string) {
   return translate(settings.lang, key);
 }
+
+/** 歌词来源徽标：仅「更精确的逐字歌词」开启且当前歌曲完成尝试后显示 */
+const sourceBadge = computed(() => {
+  if (!settings.preciseLyrics || !player.lyricsSource) return null;
+  if (player.lyricsSource === "qq") {
+    return { text: t("player.lyricSourceQq"), hint: t("player.lyricSourceQqHint") };
+  }
+  const reason = player.lyricFallbackReason
+    ? t(`player.lyricReason_${player.lyricFallbackReason}`)
+    : "";
+  return {
+    text: t("player.lyricSourceLocal"),
+    hint: reason ? `${t("player.lyricSourceLocal")}（${reason}）` : t("player.lyricSourceLocal"),
+  };
+});
 
 function formatTime(s: number) {
   if (Number.isNaN(s)) return "0:00";
@@ -132,17 +147,30 @@ onBeforeUnmount(() => {
 
       <!-- 右栏：歌词/队列 -->
       <div class="right-col">
-        <div class="segment">
-          <button
-            class="seg-btn"
-            :class="{ active: rightTab === 'lyrics' }"
-            @click="rightTab = 'lyrics'"
-          >{{ t("actions.lyrics") }}</button>
-          <button
-            class="seg-btn"
-            :class="{ active: rightTab === 'queue' }"
-            @click="rightTab = 'queue'"
-          >{{ t("actions.queue") }}</button>
+        <div class="right-head">
+          <div class="segment">
+            <button
+              class="seg-btn"
+              :class="{ active: rightTab === 'lyrics' }"
+              @click="rightTab = 'lyrics'"
+            >{{ t("actions.lyrics") }}</button>
+            <button
+              class="seg-btn"
+              :class="{ active: rightTab === 'queue' }"
+              @click="rightTab = 'queue'"
+            >{{ t("actions.queue") }}</button>
+          </div>
+          <span
+            v-if="sourceBadge"
+            class="source-badge"
+            :class="player.lyricsSource"
+            :title="sourceBadge.hint"
+          >
+            <span class="material-symbols-outlined">
+              {{ player.lyricsSource === "qq" ? "verified" : "info" }}
+            </span>
+            {{ sourceBadge.text }}
+          </span>
         </div>
         <div class="right-content">
           <LyricsView v-if="rightTab === 'lyrics'" />
@@ -379,6 +407,13 @@ onBeforeUnmount(() => {
   font-size: 13px;
   width: 44px;
 }
+.right-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 16px;
+}
 .segment {
   display: flex;
   gap: 6px;
@@ -386,7 +421,28 @@ onBeforeUnmount(() => {
   background: rgba(255, 255, 255, 0.12);
   border-radius: 12px;
   align-self: flex-start;
-  margin-bottom: 16px;
+}
+.source-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  white-space: nowrap;
+  background: rgba(255, 255, 255, 0.10);
+  color: rgba(255, 255, 255, 0.65);
+}
+.source-badge .material-symbols-outlined {
+  font-size: 14px;
+}
+.source-badge.qq {
+  background: rgba(76, 217, 100, 0.16);
+  color: #7cfc9b;
+}
+.source-badge.local {
+  background: rgba(255, 255, 255, 0.10);
+  color: rgba(255, 255, 255, 0.65);
 }
 .seg-btn {
   border: none;
