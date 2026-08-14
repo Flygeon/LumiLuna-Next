@@ -26,7 +26,16 @@
     "global-shortcut:allow-unregister",
     {
       "identifier": "http:default",
-      "allow": [{ "url": "https://u.y.qq.com" }]
+      "allow": [
+        { "url": "https://u.y.qq.com" },
+        { "url": "http://complexsearch.kugou.com" },
+        { "url": "http://lyrics.kugou.com" },
+        { "url": "https://lyrics.kugou.com" },
+        { "url": "http://mobiles.kugou.com" },
+        { "url": "http://msearchcdn.kugou.com" },
+        { "url": "http://mobilecdnbj.kugou.com" },
+        { "url": "http://msearch.kugou.com" }
+      ]
     }
   ]
 }

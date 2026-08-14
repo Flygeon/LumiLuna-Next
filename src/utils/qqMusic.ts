@@ -7,7 +7,7 @@
  * window.fetch（会因 CORS 失败而优雅降级，不影响播放）。
  */
 import { qrcDecrypt, qrcToRawLines, rawLinesToLyricLines, mergeQqLyrics } from "./qrc";
-import { parseLrc } from "./lyricTimeline";
+import { parseLrc, filterInstrumentalPlaceholder } from "./lyricTimeline";
 import type { LyricLine } from "@shared/types";
 
 const API_URL = "https://u.y.qq.com/cgi-bin/musicu.fcg";
@@ -215,7 +215,8 @@ async function parseTrack(encrypted: string): Promise<LyricLine[] | null> {
   if (plain.includes("[") && plain.includes("]")) {
     try {
       const parsed = parseLrc(plain, false);
-      return parsed.length ? parsed : null;
+      // 纯音乐占位文案视为无歌词
+      return parsed.length ? filterInstrumentalPlaceholder(parsed) : null;
     } catch {
       return null;
     }

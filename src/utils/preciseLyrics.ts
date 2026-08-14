@@ -1,15 +1,23 @@
 /**
  * 「更精确的逐字歌词」匹配编排。
  *
- * 流程：QQ 音乐搜索歌曲名 → 过滤「同名 + 时长差 ≤ ±1 秒」→ 按时长差升序取前 N 个候选
- * → 逐个拉取 QRC 歌词：优先返回含逐字数据的候选；全无逐字则回退第一个成功者。
+ * 流程（回退链）：优先尝试用户偏好的来源（默认 QQ）→ 失败回退另一云端来源（QQ ⇄ 酷狗）
+ * → 全部失败则交由调用方回退本地歌词。
+ * 每个来源：搜索歌曲名（忽略括号内信息）→ 过滤「同名 + 时长差 ≤ ±1 秒」→ 按时长差升序
+ * 取前 N 个候选 → 逐个拉取逐字歌词：优先含逐字数据的候选；全无逐字则回退首个逐行结果。
  *
  * 返回结构化结果（PreciseLyricsResult），调用方据此展示来源徽标/回退提示并记录日志。
- * 结果进程内缓存：成功 1h / 失败 10min，避免重复播放同一首歌反复请求网络。
+ * 结果进程内缓存：成功 1h / 失败 10min（键含来源顺序，手动切换后自动失效）。
  */
 import { qqSearchSongs, qqFetchLyrics, type QqSongInfo } from "./qqMusic";
+import { kgSearchSongs, kgFetchLyrics, type KgSongInfo } from "./kgMusic";
 import { hasWordLevel } from "./qrc";
 import type { LyricLine } from "@shared/types";
+
+/** 云端歌词来源 */
+export type LyricSource = "qq" | "kg";
+/** 歌词来源偏好（含本地） */
+export type LyricSourcePref = LyricSource | "local";
 
 /** 时长匹配容差：±1 秒 */
 const DURATION_TOLERANCE_MS = 1000;
@@ -30,10 +38,12 @@ export type QqFallbackReason =
 export type PreciseLyricsResult =
   | {
       ok: true;
+      /** 命中来源 */
+      source: LyricSource;
       lines: LyricLine[];
-      /** 命中的 QQ 歌曲 id（日志用） */
+      /** 命中的云端歌曲 id（日志用） */
       songId: string;
-      /** 命中的 QQ 歌曲标题（日志用） */
+      /** 命中的云端歌曲标题（日志用） */
       songTitle: string;
       /** 是否含官方逐字时间轴（否则仅为逐行） */
       wordLevel: boolean;
@@ -42,10 +52,19 @@ export type PreciseLyricsResult =
     }
   | { ok: false; reason: QqFallbackReason; detail?: string };
 
-/** 标题归一化：trim + 小写 + 全角→半角 + 空白折叠 */
-function normalizeTitle(t: string): string {
-  return t
-    .trim()
+const SOURCE_LABEL: Record<LyricSource, string> = { qq: "QQ 音乐", kg: "酷狗音乐" };
+
+/** 括号内容（半角/全角） */
+const BRACKET_RE = /[（(][^（）()]*[）)]/g;
+
+/** 去掉括号内的附加信息（如「夜曲 (Live)」→「夜曲」），用于搜索词与匹配比较 */
+export function stripBrackets(t: string): string {
+  return t.replace(BRACKET_RE, " ").replace(/\s+/g, " ").trim();
+}
+
+/** 标题归一化：去括号 + trim + 小写 + 全角→半角 + 空白折叠 */
+export function normalizeTitle(t: string): string {
+  return stripBrackets(t)
     .toLowerCase()
     .replace(/\u3000/g, " ")
     .replace(/[\uFF01-\uFF5E]/g, (ch) =>
@@ -54,28 +73,130 @@ function normalizeTitle(t: string): string {
     .replace(/\s+/g, " ");
 }
 
+interface TryContext {
+  title: string;
+  durationMs: number;
+}
+
+/** 尝试单个来源：搜索 → 同名+时长匹配 → 逐字优先取词 */
+async function trySource(
+  source: LyricSource,
+  opts: TryContext,
+): Promise<PreciseLyricsResult> {
+  const keyword = stripBrackets(opts.title); // 搜索词同样忽略括号内信息
+  let candidates: (QqSongInfo | KgSongInfo)[];
+  try {
+    candidates =
+      source === "qq" ? await qqSearchSongs(keyword) : await kgSearchSongs(keyword);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return {
+      ok: false,
+      reason: "search-failed",
+      detail: `${SOURCE_LABEL[source]} 搜索失败: ${msg}`,
+    };
+  }
+  if (!candidates.length) {
+    return {
+      ok: false,
+      reason: "no-match",
+      detail: `${SOURCE_LABEL[source]}：无搜索结果`,
+    };
+  }
+
+  const titleNorm = normalizeTitle(opts.title);
+  const sameName = candidates.filter((c) => normalizeTitle(c.title) === titleNorm);
+  const matched = sameName
+    .filter(
+      (c) =>
+        Math.abs((c.durationMs || 0) - opts.durationMs) <= DURATION_TOLERANCE_MS,
+    )
+    .sort(
+      (a, b) =>
+        Math.abs((a.durationMs || 0) - opts.durationMs) -
+        Math.abs((b.durationMs || 0) - opts.durationMs),
+    )
+    .slice(0, MAX_CANDIDATES);
+  if (!matched.length) {
+    return {
+      ok: false,
+      reason: "no-match",
+      detail:
+        `${SOURCE_LABEL[source]}：搜索 ${candidates.length} 条，同名 ${sameName.length} 条，时长差 ≤1s 0 条`,
+    };
+  }
+
+  let firstLineLevel: LyricLine[] | null = null;
+  let tried = 0;
+  for (const c of matched) {
+    tried++;
+    let lines: LyricLine[] | null = null;
+    try {
+      lines =
+        source === "qq"
+          ? await qqFetchLyrics(c as QqSongInfo)
+          : await kgFetchLyrics(c as KgSongInfo);
+    } catch {
+      continue; // 单候选失败不影响其它候选
+    }
+    if (!lines?.length) continue;
+    if (hasWordLevel(lines)) {
+      return {
+        ok: true,
+        source,
+        lines,
+        songId: c.id,
+        songTitle: c.title,
+        wordLevel: true,
+        fromCache: false,
+      };
+    }
+    firstLineLevel ??= lines;
+  }
+  if (firstLineLevel) {
+    return {
+      ok: true,
+      source,
+      lines: firstLineLevel,
+      songId: matched[0].id,
+      songTitle: matched[0].title,
+      wordLevel: false,
+      fromCache: false,
+    };
+  }
+  return {
+    ok: false,
+    reason: "no-lyrics",
+    detail: `${SOURCE_LABEL[source]}：尝试 ${tried} 个候选均无可用歌词`,
+  };
+}
+
 export interface PreciseLyricsOptions {
   /** 播放歌曲标题（必填；缺失直接跳过） */
   title: string;
   /** 播放歌曲时长（毫秒；缺失直接跳过，时长匹配依赖它） */
   durationMs?: number;
   artist?: string;
+  /** 用户上次手动选择的来源：优先尝试；缺省按 QQ → 酷狗 */
+  preferredSource?: LyricSource;
+  /** 手动切换时强制忽略结果缓存 */
+  force?: boolean;
 }
 
 /**
- * 按「同名 + 时长差 ≤ 1s」从 QQ 音乐取逐字歌词。
- * 成功返回歌词（含来源信息），失败返回原因；调用方据此回退并提示。
+ * 按回退链从云端取逐字歌词（偏好来源 → 另一来源）。
+ * 成功返回歌词（含来源信息），失败返回原因；调用方据此回退本地歌词并提示。
  */
-export async function fetchPreciseQqLyrics(
+export async function fetchCloudLyrics(
   opts: PreciseLyricsOptions,
 ): Promise<PreciseLyricsResult> {
   const title = (opts.title ?? "").trim();
   if (!title || !opts.durationMs || !Number.isFinite(opts.durationMs)) {
     return { ok: false, reason: "missing-info" };
   }
-  const key = `${normalizeTitle(title)}|${Math.round(opts.durationMs)}`;
+  const key = `${normalizeTitle(title)}|${Math.round(opts.durationMs)}|${opts.preferredSource ?? "auto"}`;
   const cached = resultCache.get(key);
-  if (cached) {
+  if (cached && !opts.force) {
     const ttl = cached.result.ok ? OK_TTL : FAIL_TTL;
     if (Date.now() - cached.t < ttl) {
       if (!cached.result.ok) {
@@ -88,87 +209,25 @@ export async function fetchPreciseQqLyrics(
     resultCache.delete(key);
   }
 
-  let candidates: QqSongInfo[];
-  try {
-    candidates = await qqSearchSongs(title);
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    console.warn("[逐字歌词] QQ 搜索失败:", msg);
-    const result: PreciseLyricsResult = {
-      ok: false,
-      reason: "search-failed",
-      detail: msg,
-    };
-    resultCache.set(key, { t: Date.now(), result });
-    return result;
-  }
+  const order: LyricSource[] = opts.preferredSource
+    ? [opts.preferredSource, opts.preferredSource === "qq" ? "kg" : "qq"]
+    : ["qq", "kg"];
 
-  const titleNorm = normalizeTitle(title);
-  const sameName = candidates.filter(
-    (c) => normalizeTitle(c.title) === titleNorm,
-  );
-  const matched = sameName
-    .filter(
-      (c) =>
-        Math.abs((c.durationMs || 0) - opts.durationMs!) <= DURATION_TOLERANCE_MS,
-    )
-    .sort(
-      (a, b) =>
-        Math.abs((a.durationMs || 0) - opts.durationMs!) -
-        Math.abs((b.durationMs || 0) - opts.durationMs!),
-    )
-    .slice(0, MAX_CANDIDATES);
-  if (!matched.length) {
-    const detail = `搜索 ${candidates.length} 条，同名 ${sameName.length} 条，时长差 ≤1s 0 条`;
-    console.warn(`[逐字歌词] 无匹配候选：${detail}`);
-    const result: PreciseLyricsResult = { ok: false, reason: "no-match", detail };
-    resultCache.set(key, { t: Date.now(), result });
-    return result;
-  }
-
-  let firstLineLevel: LyricLine[] | null = null;
-  let tried = 0;
-  for (const c of matched) {
-    tried++;
-    let lines: LyricLine[] | null = null;
-    try {
-      lines = await qqFetchLyrics(c);
-    } catch {
-      continue; // 单候选失败不影响其它候选
+  let lastFailure: PreciseLyricsResult | null = null;
+  for (const source of order) {
+    const r = await trySource(source, { title, durationMs: opts.durationMs });
+    if (r.ok) {
+      resultCache.set(key, { t: Date.now(), result: r });
+      return r;
     }
-    if (!lines?.length) continue;
-    if (hasWordLevel(lines)) {
-      const result: PreciseLyricsResult = {
-        ok: true,
-        lines,
-        songId: c.id,
-        songTitle: c.title,
-        wordLevel: true,
-        fromCache: false,
-      };
-      resultCache.set(key, { t: Date.now(), result });
-      return result;
-    }
-    // 记录第一个仅有逐行时间轴的结果（行时间仍比本地估算准）
-    firstLineLevel ??= lines;
+    lastFailure = r;
+    console.warn(`[逐字歌词] ${r.detail ?? r.reason}`);
   }
-  const result: PreciseLyricsResult = firstLineLevel
-    ? {
-        ok: true,
-        lines: firstLineLevel,
-        songId: matched[0].id,
-        songTitle: matched[0].title,
-        wordLevel: false,
-        fromCache: false,
-      }
-    : {
-        ok: false,
-        reason: "no-lyrics",
-        detail: `尝试 ${tried} 个候选均无可用歌词`,
-      };
-  if (!result.ok) {
-    console.warn(`[逐字歌词] ${result.detail}`);
-  }
+  const result: PreciseLyricsResult = {
+    ok: false,
+    reason: lastFailure?.reason ?? "no-lyrics",
+    detail: lastFailure?.detail,
+  };
   resultCache.set(key, { t: Date.now(), result });
   return result;
 }

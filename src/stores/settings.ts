@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import { ref, watch } from "vue";
 import { LazyStore } from "@tauri-apps/plugin-store";
 import type { MusicServer, OnlinePlaylistEntry } from "@shared/types";
+import type { LyricSourcePref } from "@/utils/preciseLyrics";
 
 export type ThemeMode = "system" | "light" | "dark";
 export type PdfReadMode = "single" | "dual" | "scroll";
@@ -31,8 +32,10 @@ const DEFAULTS = {
   lyricTranslationGap: 4,
   /** 逐字歌词（Apple Music 式逐字填充 + 唱完上浮） */
   wordLyrics: true,
-  /** 更精确的逐字歌词：播放时调用 QQ 音乐取同名且时长差 ≤1s 的官方逐字时间轴 */
+  /** 更精确的逐字歌词：播放时按 QQ → 酷狗 → 本地回退链取逐字歌词 */
   preciseLyrics: false,
+  /** 各歌曲手动选择的歌词来源偏好（key = 归一化标题|时长ms，值 = qq/kg/local） */
+  lyricSourcePrefs: {} as Record<string, LyricSourcePref>,
   /** 自动识别前奏/间奏：隐藏作词/作曲/编曲为三点，长间奏插入三点 */
   detectInstrumental: true,
   /** 播放器背景：动态模糊 / 仅图片模糊 / 关闭 */
@@ -77,6 +80,7 @@ export const useSettingsStore = defineStore("settings", () => {
   const lyricTranslationGap = ref(DEFAULTS.lyricTranslationGap);
   const wordLyrics = ref(DEFAULTS.wordLyrics);
   const preciseLyrics = ref(DEFAULTS.preciseLyrics);
+  const lyricSourcePrefs = ref<Record<string, LyricSourcePref>>({ ...DEFAULTS.lyricSourcePrefs });
   const detectInstrumental = ref(DEFAULTS.detectInstrumental);
   const playerBg = ref<PlayerBgMode>(DEFAULTS.playerBg);
   const lyricBlur = ref(DEFAULTS.lyricBlur);
@@ -108,6 +112,7 @@ export const useSettingsStore = defineStore("settings", () => {
     lyricTranslationGap,
     wordLyrics,
     preciseLyrics,
+    lyricSourcePrefs,
     detectInstrumental,
     playerBg,
     lyricBlur,

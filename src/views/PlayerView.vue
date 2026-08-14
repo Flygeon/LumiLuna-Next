@@ -19,11 +19,21 @@ function t(key: string) {
   return translate(settings.lang, key);
 }
 
-/** 歌词来源徽标：仅「更精确的逐字歌词」开启且当前歌曲完成尝试后显示 */
+/** 歌词来源徽标：仅「更精确的逐字歌词」开启且当前歌曲完成尝试后显示；点击可切换来源 */
 const sourceBadge = computed(() => {
+  const switchHint = t("player.lyricSwitchHint");
   if (!settings.preciseLyrics || !player.lyricsSource) return null;
   if (player.lyricsSource === "qq") {
-    return { text: t("player.lyricSourceQq"), hint: t("player.lyricSourceQqHint") };
+    return {
+      text: t("player.lyricSourceQq"),
+      hint: `${t("player.lyricSourceQqHint")} · ${switchHint}`,
+    };
+  }
+  if (player.lyricsSource === "kg") {
+    return {
+      text: t("player.lyricSourceKg"),
+      hint: `${t("player.lyricSourceKgHint")} · ${switchHint}`,
+    };
   }
   const reason = player.lyricFallbackReason
     ? t(`player.lyricReason_${player.lyricFallbackReason}`)
@@ -31,7 +41,7 @@ const sourceBadge = computed(() => {
   const detail = player.lyricFallbackDetail ? `：${player.lyricFallbackDetail}` : "";
   return {
     text: t("player.lyricSourceLocal"),
-    hint: reason ? `${t("player.lyricSourceLocal")}（${reason}${detail}）` : t("player.lyricSourceLocal"),
+    hint: `${reason ? `${t("player.lyricSourceLocal")}（${reason}${detail}）` : t("player.lyricSourceLocal")} · ${switchHint}`,
   };
 });
 
@@ -161,17 +171,24 @@ onBeforeUnmount(() => {
               @click="rightTab = 'queue'"
             >{{ t("actions.queue") }}</button>
           </div>
-          <span
+          <button
             v-if="sourceBadge"
             class="source-badge"
             :class="player.lyricsSource"
             :title="sourceBadge.hint"
+            @click="player.switchLyricSource()"
           >
             <span class="material-symbols-outlined">
-              {{ player.lyricsSource === "qq" ? "verified" : "info" }}
+              {{
+                player.lyricsSource === "qq"
+                  ? "verified"
+                  : player.lyricsSource === "kg"
+                    ? "graphic_eq"
+                    : "info"
+              }}
             </span>
             {{ sourceBadge.text }}
-          </span>
+          </button>
         </div>
         <div class="right-content">
           <LyricsView v-if="rightTab === 'lyrics'" />
@@ -428,11 +445,18 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 4px;
   padding: 5px 12px;
+  border: none;
   border-radius: 999px;
   font-size: 12px;
   white-space: nowrap;
+  font-family: inherit;
+  cursor: pointer;
   background: rgba(255, 255, 255, 0.10);
   color: rgba(255, 255, 255, 0.65);
+  transition: background 180ms ease;
+}
+.source-badge:hover {
+  background: rgba(255, 255, 255, 0.18);
 }
 .source-badge .material-symbols-outlined {
   font-size: 14px;
@@ -440,6 +464,10 @@ onBeforeUnmount(() => {
 .source-badge.qq {
   background: rgba(76, 217, 100, 0.16);
   color: #7cfc9b;
+}
+.source-badge.kg {
+  background: rgba(56, 160, 255, 0.18);
+  color: #7cc4ff;
 }
 .source-badge.local {
   background: rgba(255, 255, 255, 0.10);

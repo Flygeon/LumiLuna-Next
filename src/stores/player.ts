@@ -6,7 +6,10 @@ import { useSettingsStore } from "@/stores/settings";
 // parseLrc 由 @/utils/lyricTimeline 提供（原先定义在本文件，已移出供歌词源复用）
 import { META_RE, parseLrc } from "@/utils/lyricTimeline";
 import {
-  fetchPreciseQqLyrics,
+  fetchCloudLyrics,
+  normalizeTitle,
+  type LyricSource,
+  type LyricSourcePref,
   type QqFallbackReason,
 } from "@/utils/preciseLyrics";
 import { translate } from "@shared/i18n";
@@ -300,9 +303,9 @@ export const usePlayerStore = defineStore("player", () => {
 
   /**
    * 歌词来源状态：仅当「更精确的逐字歌词」开启且当前歌曲完成一次尝试后才有值。
-   * - "qq"：已应用 QQ 官方歌词；"local"：已回退本地歌词（原因见 lyricFallbackReason）。
+   * - "qq" / "kg"：已应用对应云端歌词；"local"：已回退本地歌词（原因见 lyricFallbackReason）。
    */
-  const lyricsSource = ref<"qq" | "local" | null>(null);
+  const lyricsSource = ref<"qq" | "kg" | "local" | null>(null);
   const lyricFallbackReason = ref<QqFallbackReason | null>(null);
   /** 回退的详细错误（徽标悬停展示，便于免 DevTools 排查） */
   const lyricFallbackDetail = ref<string | null>(null);
@@ -331,12 +334,58 @@ export const usePlayerStore = defineStore("player", () => {
     );
   }
 
+  /** 当前歌曲的歌词获取上下文（手动切换来源时复用） */
+  const lastLyricMeta = ref<{
+    id: string;
+    kind: "local" | "online";
+    title: string;
+    artist: string;
+    durationMs?: number;
+  } | null>(null);
+  /** 当前歌曲的本地歌词（parseLrc 结果，切回本地/回退时使用） */
+  const localLyrics = ref<LyricLine[]>([]);
+
+  /** 来源偏好 key（与匹配缓存一致：归一化标题|时长ms） */
+  function lyricPrefKey(meta: { title: string; durationMs?: number }): string | null {
+    if (!meta.durationMs) return null;
+    return `${normalizeTitle(meta.title)}|${Math.round(meta.durationMs)}`;
+  }
+
+  /** 应用云端歌词（含 META 行过滤）；返回是否应用成功 */
+  function applyCloudLyrics(result: {
+    lines: LyricLine[];
+    source: LyricSource;
+    songId: string;
+    songTitle: string;
+    wordLevel: boolean;
+    fromCache: boolean;
+  }): boolean {
+    if (!song.value || !result.lines.length) return false;
+    let applied = result.lines;
+    // 与 LRC 流程一致：开启「自动识别前奏/间奏」时隐藏作词/作曲等元数据行
+    if (useSettingsStore().detectInstrumental) {
+      const filtered = result.lines.filter((l) => !META_RE.test(l.text));
+      if (filtered.length) applied = filtered;
+    }
+    lyrics.value = applied;
+    song.value.lyrics = applied;
+    updateActiveLine();
+    lyricsSource.value = result.source;
+    lyricFallbackReason.value = null;
+    lyricFallbackDetail.value = null;
+    const srcLabel = result.source === "qq" ? "QQ" : "酷狗";
+    console.info(
+      `[逐字歌词] 命中${srcLabel}：${result.songTitle}（${srcLabel} id=${result.songId}，${applied.length} 行，${result.wordLevel ? "含逐字时间轴" : "仅逐行"}，${result.fromCache ? "来自缓存" : "在线获取"}）`,
+    );
+    return true;
+  }
+
   /**
-   * 「更精确的逐字歌词」编排：
+   * 「更精确的逐字歌词」编排（回退链 QQ → 酷狗 → 本地）：
    * - 设置关闭 → 保持原流程（FFT 精排），不显示来源徽标；
-   * - 开启 → 串行：先试 QQ 音乐官方逐字歌词（同名 + 时长差 ≤1s，含逐字 units），
-   *   成功则替换当前歌词、标记来源并跳过 FFT；失败则提示回退原因并走 FFT 回退。
-   * 串行编排避免 QQ 结果与 FFT 结果互相覆盖的竞态。
+   * - 开启 → 按用户偏好（手动切换的记忆）或默认 QQ 优先，依次尝试云端逐字歌词，
+   *   成功则替换当前歌词、标记来源并跳过 FFT；全部失败则提示回退原因并走 FFT 回退。
+   * 串行编排避免云端结果与 FFT 结果互相覆盖的竞态。
    */
   async function schedulePreciseQqLyrics(
     meta: {
@@ -367,14 +416,30 @@ export const usePlayerStore = defineStore("player", () => {
       runFallback();
       return;
     }
+    // 记忆当前歌曲上下文与本地歌词，供手动切换来源使用
+    lastLyricMeta.value = { ...meta };
+    localLyrics.value = fallbackLines;
+
     const key = `${meta.kind}:${meta.id}`;
     if (qqLyricsInflight.has(key)) return; // 进行中，结果到达时统一处理
     qqLyricsInflight.add(key);
     try {
-      const result = await fetchPreciseQqLyrics({
+      // 用户偏好：local = 直接本地；qq/kg = 对应来源优先的回退链
+      const prefKey = lyricPrefKey(meta);
+      const pref = prefKey ? settings.lyricSourcePrefs[prefKey] : undefined;
+      if (pref === "local") {
+        lyricsSource.value = "local";
+        lyricFallbackReason.value = null; // 主动选择，非回退
+        lyricFallbackDetail.value = null;
+        console.info("[逐字歌词] 按用户偏好使用本地歌词:", meta.title);
+        runFallback();
+        return;
+      }
+      const result = await fetchCloudLyrics({
         title: meta.title,
         artist: meta.artist || undefined,
         durationMs: meta.durationMs,
+        preferredSource: pref,
       });
       // 防止完成时已切歌：当前歌曲仍是同一首才应用
       if (song.value?.id !== meta.id) {
@@ -383,22 +448,7 @@ export const usePlayerStore = defineStore("player", () => {
       }
       const stillEnabled = useSettingsStore().preciseLyrics;
       if (result.ok && stillEnabled) {
-        let applied = result.lines;
-        // 与 LRC 流程一致：开启「自动识别前奏/间奏」时隐藏作词/作曲等元数据行
-        if (useSettingsStore().detectInstrumental) {
-          const filtered = result.lines.filter((l) => !META_RE.test(l.text));
-          if (filtered.length) applied = filtered;
-        }
-        lyrics.value = applied;
-        song.value.lyrics = applied;
-        updateActiveLine();
-        lyricsSource.value = "qq";
-        lyricFallbackReason.value = null;
-        lyricFallbackDetail.value = null;
-        console.info(
-          `[逐字歌词] 命中 QQ：${result.songTitle}（QQ id=${result.songId}，${applied.length} 行，${result.wordLevel ? "含逐字时间轴" : "仅逐行"}，${result.fromCache ? "来自缓存" : "在线获取"}）`,
-        );
-        return; // 已有官方时间轴，跳过 FFT 精排
+        if (applyCloudLyrics(result)) return; // 已应用官方时间轴，跳过 FFT 精排
       }
       if (stillEnabled && !result.ok) {
         completeFallback(result.reason, result.detail);
@@ -410,6 +460,80 @@ export const usePlayerStore = defineStore("player", () => {
         completeFallback("search-failed", e instanceof Error ? e.message : String(e));
       }
       runFallback();
+    } finally {
+      qqLyricsInflight.delete(key);
+    }
+  }
+
+  /**
+   * 手动切换歌词来源（播放器徽标点击）：qq → kg → local → qq 循环。
+   * 记忆偏好（下次播放同一歌曲默认使用该来源），切云端时强制重新获取。
+   */
+  async function switchLyricSource() {
+    const meta = lastLyricMeta.value;
+    const settings = useSettingsStore();
+    if (!meta || !song.value || !settings.preciseLyrics || !meta.durationMs) return;
+    const order: LyricSourcePref[] = ["qq", "kg", "local"];
+    const cur = lyricsSource.value ?? "qq";
+    const next = order[(order.indexOf(cur as LyricSourcePref) + 1) % order.length];
+    const prefKey = lyricPrefKey(meta);
+    if (prefKey) {
+      settings.lyricSourcePrefs[prefKey] = next; // 记忆偏好
+    }
+    const lang = settings.lang;
+    const labels: Record<LyricSourcePref, string> = {
+      qq: translate(lang, "player.lyricSourceQq"),
+      kg: translate(lang, "player.lyricSourceKg"),
+      local: translate(lang, "player.lyricSourceLocal"),
+    };
+
+    if (next === "local") {
+      showLyricNotice(
+        `${translate(lang, "player.lyricSourceSwitched")}${labels[next]}`,
+      );
+      // 切回本地歌词（含 FFT 精排）
+      lyrics.value = localLyrics.value;
+      song.value.lyrics = localLyrics.value;
+      updateActiveLine();
+      lyricsSource.value = "local";
+      lyricFallbackReason.value = null;
+      lyricFallbackDetail.value = null;
+      console.info("[逐字歌词] 手动切换为本地歌词:", meta.title);
+      void scheduleWordAnalysis(
+        {
+          id: meta.id,
+          kind: meta.kind,
+          filePath: meta.kind === "local" ? song.value.filePath : undefined,
+          url: meta.kind === "online" ? song.value.src : undefined,
+        },
+        localLyrics.value,
+      );
+      return;
+    }
+    // 切云端来源：该来源优先的回退链，强制忽略结果缓存
+    const key = `${meta.kind}:${meta.id}`;
+    if (qqLyricsInflight.has(key)) return; // 已有获取进行中，等待其结果
+    qqLyricsInflight.add(key);
+    showLyricNotice(
+      `${translate(lang, "player.lyricSourceSwitched")}${labels[next]}`,
+    );
+    lyricsSource.value = null; // 获取中隐藏徽标
+    try {
+      const result = await fetchCloudLyrics({
+        title: meta.title,
+        artist: meta.artist || undefined,
+        durationMs: meta.durationMs,
+        preferredSource: next,
+        force: true,
+      });
+      if (song.value?.id !== meta.id) return;
+      if (result.ok) {
+        applyCloudLyrics(result);
+        return;
+      }
+      completeFallback(result.reason, result.detail);
+    } catch (e) {
+      completeFallback("search-failed", e instanceof Error ? e.message : String(e));
     } finally {
       qqLyricsInflight.delete(key);
     }
@@ -451,8 +575,8 @@ export const usePlayerStore = defineStore("player", () => {
       };
       img.src = s.coverBase64;
     }
-    // 「更精确的逐字歌词」：先试 QQ 音乐官方逐字歌词（同名 + 时长差 ≤1s），
-    // 失败再走本地 FFT 精排回退（schedulePreciseQqLyrics 内部串行处理）
+    // 「更精确的逐字歌词」：QQ → 酷狗 → 本地回退链（同名 + 时长差 ≤1s），
+    // 云端全部失败再走本地 FFT 精排（schedulePreciseQqLyrics 内部串行处理）
     void schedulePreciseQqLyrics(
       {
         id: s.file.id,
@@ -769,6 +893,7 @@ export const usePlayerStore = defineStore("player", () => {
     lyricFallbackReason,
     lyricFallbackDetail,
     lyricNotice,
+    switchLyricSource,
     bindAudio,
     detachAudio,
     loadSong,

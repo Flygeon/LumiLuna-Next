@@ -184,7 +184,12 @@ export function buildLyricSequence(rawLines: LyricLine[], detectInstrumental = t
  *    [00:12.34]鉄の弾が (铁铸的子弹)
  * 4. 单语歌词（向后兼容）
  */
-const LRC_TIME_RE = /\[(\d{2}):(\d{2})(?:\.(\d{2,3}))?\]/g;
+/**
+ * LRC 时间戳：同时支持点号毫秒 [mm:ss.xx] / [mm:ss.xxx] 与冒号厘秒 [mm:ss:cc]
+ * （QQ 音乐的普通 LRC 使用冒号厘秒格式，此前无法解析导致整首歌词被丢弃）。
+ * 两位小数为厘秒（LRC 标准），三位为毫秒。
+ */
+const LRC_TIME_RE = /\[(\d{2}):(\d{2})(?:[:.]((?:\d{2}|\d{3})))?\]/g;
 const LRC_TR_RE = /\[tr:(.*?)\]/g;
 
 export function parseLrc(text: string, detectInstrumental = true): LyricLine[] {
@@ -199,7 +204,9 @@ export function parseLrc(text: string, detectInstrumental = true): LyricLine[] {
     while ((m = LRC_TIME_RE.exec(line)) !== null) {
       const minutes = parseInt(m[1], 10);
       const seconds = parseInt(m[2], 10);
-      const ms = m[3] ? parseInt(m[3], 10) : 0;
+      // 两位小数为厘秒（LRC 标准，×10 转毫秒），三位为毫秒
+      const raw = m[3] ? parseInt(m[3], 10) : 0;
+      const ms = m[3] ? (m[3].length === 3 ? raw : raw * 10) : 0;
       times.push(minutes * 60 + seconds + ms / 1000);
     }
     if (times.length === 0) continue;
@@ -214,7 +221,7 @@ export function parseLrc(text: string, detectInstrumental = true): LyricLine[] {
 
     // 移除所有时间戳和翻译标签，得到歌词文本
     let content = line
-      .replace(/\[\d{2}:\d{2}(?:\.\d{2,3})?\]/g, "")
+      .replace(/\[\d{2}:\d{2}(?:[:.]\d{2,3})?\]/g, "")
       .replace(/\[tr:.*?\]/g, "")
       .replace(/\[lang:.*?\]/g, "")
       .replace(/\[ar:.*?\]/g, "")
@@ -255,4 +262,19 @@ export function parseLrc(text: string, detectInstrumental = true): LyricLine[] {
   const sorted = Array.from(map.values()).sort((a, b) => a.time - b.time);
   // 前奏/间奏识别（隐藏作词/作曲/编曲，插入三点）+ 逐字粗排时间轴
   return buildLyricSequence(sorted, detectInstrumental);
+}
+
+// ---- 纯音乐占位文案过滤 ----
+
+/** 平台对无词曲目的占位文案（QQ：「此歌曲为没有填词的纯音乐，请您欣赏」等） */
+const INSTRUMENTAL_PLACEHOLDER_RE =
+  /^\s*(?:此歌曲为没有填词的纯音乐[^\n]*|没有填词[^\n]*|纯音乐[，,、]?\s*(?:请欣赏|请聆听)[^\n]*)\s*$/;
+
+/**
+ * 过滤纯音乐占位行；全部为占位时返回 null（视为无可用歌词）。
+ * QQ / 酷狗 的逐词解析共用。
+ */
+export function filterInstrumentalPlaceholder(lines: LyricLine[]): LyricLine[] | null {
+  const filtered = lines.filter((l) => !INSTRUMENTAL_PLACEHOLDER_RE.test(l.text));
+  return filtered.length ? filtered : null;
 }
