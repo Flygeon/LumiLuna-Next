@@ -195,8 +195,8 @@ export interface SmtcCommand {
   positionMs?: number;
 }
 
-/** 在线音乐平台 */
-export type MusicServer = "netease" | "tencent";
+/** 在线音乐平台（meting API；QQ 音乐平台选项已移除） */
+export type MusicServer = "netease";
 
 /** 在线歌曲（meting API 返回） */
 export interface OnlineSong {

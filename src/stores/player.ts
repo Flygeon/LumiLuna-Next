@@ -3,7 +3,9 @@ import { ref, computed } from "vue";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { capabilities, isTauri } from "@/capabilities";
 import { useSettingsStore } from "@/stores/settings";
-import { buildLyricSequence } from "@/utils/lyricTimeline";
+// parseLrc 由 @/utils/lyricTimeline 提供（原先定义在本文件，已移出供歌词源复用）
+import { META_RE, parseLrc } from "@/utils/lyricTimeline";
+import { fetchPreciseQqLyrics } from "@/utils/preciseLyrics";
 import {
   applyPreciseWordTimes,
   getPreciseWordTimes,
@@ -22,90 +24,8 @@ function toMediaSrc(path: string): string {
   return isTauri ? convertFileSrc(path) : path;
 }
 
-/**
- * 双语 LRC 解析器
- * 支持格式：
- * 1. 同时间戳双行（如网易云/QQ音乐双语歌词）
- *    [00:12.34]Hello World
- *    [00:12.34]你好世界
- * 2. [tr:翻译] 标签
- *    [00:12.34]Hello World [tr:你好世界]
- * 3. 同行尾部括号译文（meting 歌词常见格式）
- *    [00:12.34]鉄の弾が (铁铸的子弹)
- * 4. 单语歌词（向后兼容）
- */
-const LRC_TIME_RE = /\[(\d{2}):(\d{2})(?:\.(\d{2,3}))?\]/g;
-const LRC_TR_RE = /\[tr:(.*?)\]/g;
-
-export function parseLrc(text: string, detectInstrumental = true): LyricLine[] {
-  const lines = text.trim().split("\n");
-  const map = new Map<number, LyricLine>();
-
-  for (const line of lines) {
-    // 提取所有时间戳
-    const times: number[] = [];
-    let m: RegExpExecArray | null;
-    LRC_TIME_RE.lastIndex = 0;
-    while ((m = LRC_TIME_RE.exec(line)) !== null) {
-      const minutes = parseInt(m[1], 10);
-      const seconds = parseInt(m[2], 10);
-      const ms = m[3] ? parseInt(m[3], 10) : 0;
-      times.push(minutes * 60 + seconds + ms / 1000);
-    }
-    if (times.length === 0) continue;
-
-    // 提取翻译标签 [tr:xxx]
-    let translation = "";
-    LRC_TR_RE.lastIndex = 0;
-    const trMatch = LRC_TR_RE.exec(line);
-    if (trMatch) {
-      translation = trMatch[1].trim();
-    }
-
-    // 移除所有时间戳和翻译标签，得到歌词文本
-    let content = line
-      .replace(/\[\d{2}:\d{2}(?:\.\d{2,3})?\]/g, "")
-      .replace(/\[tr:.*?\]/g, "")
-      .replace(/\[lang:.*?\]/g, "")
-      .replace(/\[ar:.*?\]/g, "")
-      .replace(/\[ti:.*?\]/g, "")
-      .replace(/\[al:.*?\]/g, "")
-      .replace(/\[by:.*?\]/g, "")
-      .trim();
-
-    if (!content) continue;
-
-    // 同行尾部括号译文：如 "原文 (译文)" / "原文 （译文）"（meting 歌词常见格式）
-    if (!translation) {
-      const m = content.match(/\s*[（(]([^（）()]*)[）)]\s*$/);
-      if (m && content.slice(0, content.length - m[0].length).trim()) {
-        translation = m[1].trim();
-        content = content.slice(0, content.length - m[0].length).trim();
-      }
-    }
-
-    if (!content) continue;
-
-    for (const time of times) {
-      const key = Math.round(time * 1000); // 精确到毫秒
-      const existing = map.get(key);
-      if (existing) {
-        // 同一时间戳的第二行作为翻译
-        if (translation) {
-          existing.translation = translation;
-        } else if (!existing.translation) {
-          existing.translation = content;
-        }
-      } else {
-        map.set(key, { time, text: content, translation: translation || undefined });
-      }
-    }
-  }
-
-  const sorted = Array.from(map.values()).sort((a, b) => a.time - b.time);
-  // 前奏/间奏识别（隐藏作词/作曲/编曲，插入三点）+ 逐字粗排时间轴
-  return buildLyricSequence(sorted, detectInstrumental);
-}
+// 双语 LRC 解析器已移至 utils/lyricTimeline.ts，此处转发保持对外 API
+export { parseLrc };
 
 export function decodeBuffer(buffer: ArrayBuffer): string {
   const encodings = ["utf-8", "gbk", "big5", "shift_jis"];
@@ -347,6 +267,92 @@ export const usePlayerStore = defineStore("player", () => {
     }
   }
 
+  /** 正在获取 QQ 官方逐字歌词的歌曲 key，避免同一首重复请求 */
+  const qqLyricsInflight = new Set<string>();
+
+  /** 等待 audio 元素元数据就绪并返回时长（毫秒）；超时/不可用返回 undefined */
+  function waitAudioDuration(timeoutMs: number): Promise<number | undefined> {
+    return new Promise((resolve) => {
+      const el = audioEl.value;
+      if (!el) {
+        resolve(undefined);
+        return;
+      }
+      if (Number.isFinite(el.duration) && el.duration > 0) {
+        resolve(el.duration * 1000);
+        return;
+      }
+      const timer = setTimeout(() => {
+        el.removeEventListener("loadedmetadata", onMeta);
+        resolve(undefined);
+      }, timeoutMs);
+      const onMeta = () => {
+        clearTimeout(timer);
+        resolve(Number.isFinite(el.duration) ? el.duration * 1000 : undefined);
+      };
+      el.addEventListener("loadedmetadata", onMeta);
+    });
+  }
+
+  /**
+   * 「更精确的逐字歌词」编排：
+   * - 设置关闭 / 无时长 → 直接走本地 FFT 精排回退；
+   * - 开启 → 串行：先试 QQ 音乐官方逐字歌词（同名 + 时长差 ≤1s，含逐字 units），
+   *   成功则替换当前歌词并跳过 FFT；失败再走 FFT 回退。
+   * 串行编排避免 QQ 结果与 FFT 结果互相覆盖的竞态。
+   */
+  async function schedulePreciseQqLyrics(
+    meta: {
+      id: string;
+      kind: "local" | "online";
+      title: string;
+      artist: string;
+      durationMs?: number;
+    },
+    fallbackLines: LyricLine[],
+    analysisSource: {
+      id: string;
+      kind: "local" | "online";
+      filePath?: string;
+      url?: string;
+    },
+  ) {
+    const settings = useSettingsStore();
+    const runFallback = () => scheduleWordAnalysis(analysisSource, fallbackLines);
+    if (!settings.preciseLyrics || !meta.durationMs) {
+      runFallback();
+      return;
+    }
+    const key = `${meta.kind}:${meta.id}`;
+    if (qqLyricsInflight.has(key)) return;
+    qqLyricsInflight.add(key);
+    try {
+      const qqLines = await fetchPreciseQqLyrics({
+        title: meta.title,
+        artist: meta.artist || undefined,
+        durationMs: meta.durationMs,
+      });
+      // 防止分析完成时已切歌：当前歌曲仍是同一首才应用
+      if (qqLines?.length && song.value?.id === meta.id) {
+        let applied = qqLines;
+        // 与 LRC 流程一致：开启「自动识别前奏/间奏」时隐藏作词/作曲等元数据行
+        if (useSettingsStore().detectInstrumental) {
+          const filtered = qqLines.filter((l) => !META_RE.test(l.text));
+          if (filtered.length) applied = filtered;
+        }
+        lyrics.value = applied;
+        song.value.lyrics = applied;
+        updateActiveLine();
+        return; // 已有官方逐字时间轴，跳过 FFT 精排
+      }
+    } catch (e) {
+      console.warn("[逐字歌词] 获取失败，回退本地分析:", e);
+    } finally {
+      qqLyricsInflight.delete(key);
+    }
+    runFallback();
+  }
+
   /** 应用一首已取回的本地完整 Song（解析歌词、提取封面主色、推送 SMTC） */
   async function loadSong(s: Song) {
     const title = s.meta.title ?? s.file.name.replace(/\.[^.]+$/, "");
@@ -379,10 +385,18 @@ export const usePlayerStore = defineStore("player", () => {
       };
       img.src = s.coverBase64;
     }
-    // 后台逐字精排：缓存命中直接应用，否则分析完成后升级
-    void scheduleWordAnalysis(
-      { id: s.file.id, kind: "local", filePath: s.file.path, url: undefined },
+    // 「更精确的逐字歌词」：先试 QQ 音乐官方逐字歌词（同名 + 时长差 ≤1s），
+    // 失败再走本地 FFT 精排回退（schedulePreciseQqLyrics 内部串行处理）
+    void schedulePreciseQqLyrics(
+      {
+        id: s.file.id,
+        kind: "local",
+        title,
+        artist,
+        durationMs: s.meta.durationMs ?? undefined,
+      },
       parsed,
+      { id: s.file.id, kind: "local", filePath: s.file.path, url: undefined },
     );
     // 推送元数据给 Windows 系统媒体控件；真实时长由 loadedmetadata 后的 syncSmtc 兜底
     void capabilities
@@ -459,11 +473,6 @@ export const usePlayerStore = defineStore("player", () => {
       activeLine.value = -1;
       // 与 loadSong 一致：歌词挂在 store 的 lyrics ref 上，LyricsView 读它
       lyrics.value = parsed;
-      // 后台逐字精排：缓存命中直接应用，否则分析完成后升级
-      void scheduleWordAnalysis(
-        { id: item.id, kind: "online", filePath: undefined, url: item.url },
-        parsed,
-      );
       coverColors.value = [];
       currentTime.value = 0;
       duration.value = 0;
@@ -475,6 +484,20 @@ export const usePlayerStore = defineStore("player", () => {
       };
       img.src = item.pic;
       await startPlayback();
+      // 「更精确的逐字歌词」：在线歌曲时长来自音频元数据（未就绪则等待），
+      // 命中 QQ 官方逐字歌词则替换（并跳过 FFT）；失败回退本地分析
+      const onlineDurationMs = await waitAudioDuration(5000);
+      void schedulePreciseQqLyrics(
+        {
+          id: item.id,
+          kind: "online",
+          title: item.name,
+          artist: item.artist,
+          durationMs: onlineDurationMs,
+        },
+        parsed,
+        { id: item.id, kind: "online", filePath: undefined, url: item.url },
+      );
       void capabilities
         .smtcSetMedia({
           title: item.name,

@@ -319,6 +319,11 @@ async function clearCache() {
       </label>
       <p class="hint">{{ t("settings.wordLyricsHint") }}</p>
       <label class="row switch-row">
+        <span class="row-label">{{ t("settings.preciseLyrics") }}</span>
+        <input type="checkbox" v-model="settings.preciseLyrics" />
+      </label>
+      <p class="hint">{{ t("settings.preciseLyricsHint") }}</p>
+      <label class="row switch-row">
         <span class="row-label">{{ t("settings.detectInstrumental") }}</span>
         <input type="checkbox" v-model="settings.detectInstrumental" />
       </label>
@@ -424,7 +429,7 @@ async function clearCache() {
         <div class="row-label"><span>{{ t("settings.onlineServer") }}</span></div>
         <div class="segmented">
           <button
-            v-for="s in (['netease', 'tencent'] as const)"
+            v-for="s in (['netease'] as const)"
             :key="s"
             class="seg"
             :class="{ active: settings.musicServer === s }"

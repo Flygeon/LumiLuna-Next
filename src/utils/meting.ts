@@ -26,7 +26,6 @@ export const CURATED_PLAYLISTS: CuratedPlaylist[] = [
   { server: "netease", id: "3778678", name: "网易云热歌榜" },
   { server: "netease", id: "3779629", name: "网易云新歌榜" },
   { server: "netease", id: "19723756", name: "网易云飙升榜" },
-  { server: "tencent", id: "7326220405", name: "QQ音乐热歌榜" },
 ];
 
 interface RawSong {

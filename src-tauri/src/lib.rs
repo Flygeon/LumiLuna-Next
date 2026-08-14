@@ -106,6 +106,7 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(tauri_plugin_http::init())
         .setup(|app| {
             // 索引库落盘在 app data 目录，重启后保留扫描结果
             let conn = open_db(app.handle())?;

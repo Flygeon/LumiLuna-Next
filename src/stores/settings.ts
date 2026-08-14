@@ -31,6 +31,8 @@ const DEFAULTS = {
   lyricTranslationGap: 4,
   /** 逐字歌词（Apple Music 式逐字填充 + 唱完上浮） */
   wordLyrics: true,
+  /** 更精确的逐字歌词：播放时调用 QQ 音乐取同名且时长差 ≤1s 的官方逐字时间轴 */
+  preciseLyrics: false,
   /** 自动识别前奏/间奏：隐藏作词/作曲/编曲为三点，长间奏插入三点 */
   detectInstrumental: true,
   /** 播放器背景：动态模糊 / 仅图片模糊 / 关闭 */
@@ -74,6 +76,7 @@ export const useSettingsStore = defineStore("settings", () => {
   const lyricTranslationSize = ref(DEFAULTS.lyricTranslationSize);
   const lyricTranslationGap = ref(DEFAULTS.lyricTranslationGap);
   const wordLyrics = ref(DEFAULTS.wordLyrics);
+  const preciseLyrics = ref(DEFAULTS.preciseLyrics);
   const detectInstrumental = ref(DEFAULTS.detectInstrumental);
   const playerBg = ref<PlayerBgMode>(DEFAULTS.playerBg);
   const lyricBlur = ref(DEFAULTS.lyricBlur);
@@ -104,6 +107,7 @@ export const useSettingsStore = defineStore("settings", () => {
     lyricTranslationSize,
     lyricTranslationGap,
     wordLyrics,
+    preciseLyrics,
     detectInstrumental,
     playerBg,
     lyricBlur,
@@ -136,6 +140,15 @@ export const useSettingsStore = defineStore("settings", () => {
       }
     } catch (e) {
       console.warn("Failed to load settings:", e);
+    }
+    // 兼容旧版本：meting 在线音乐已移除 QQ 音乐平台，历史值归一化到网易云
+    if (musicServer.value !== "netease") {
+      musicServer.value = "netease";
+    }
+    if (onlinePlaylists.value.some((p) => p.server !== "netease")) {
+      onlinePlaylists.value = onlinePlaylists.value.filter(
+        (p) => p.server === "netease",
+      );
     }
     loaded.value = true;
   }

@@ -89,7 +89,7 @@ export function attachRoughTimeline(lines: LyricLine[]): void {
 /** 纯停顿超过此秒数视为间奏，插入三点等待 */
 const INSTRUMENTAL_THRESHOLD = 3.0;
 /** 作词/作曲/编曲等元数据行（前奏信息，隐藏原文替换为三点） */
-const META_RE = /^\s*(作词|作曲|编曲|制作人|出品人|OP|SP|监制|混音|录音|和声|母带|编曲人|制作|出品)\s*[:：]/;
+export const META_RE = /^\s*(作词|作曲|编曲|制作人|出品人|OP|SP|监制|混音|录音|和声|母带|编曲人|制作|出品)\s*[:：]/;
 
 /**
  * 行演唱时长估算：只把「真实演唱字符」（汉字/假名/字母/数字）按 0.3s 计，
@@ -168,4 +168,91 @@ export function buildLyricSequence(rawLines: LyricLine[], detectInstrumental = t
     }
   }
   return out;
+}
+
+// ---- LRC 解析（从 player.ts 移入，供歌词源复用）----
+
+/**
+ * 双语 LRC 解析器
+ * 支持格式：
+ * 1. 同时间戳双行（如网易云/QQ音乐双语歌词）
+ *    [00:12.34]Hello World
+ *    [00:12.34]你好世界
+ * 2. [tr:翻译] 标签
+ *    [00:12.34]Hello World [tr:你好世界]
+ * 3. 同行尾部括号译文（meting 歌词常见格式）
+ *    [00:12.34]鉄の弾が (铁铸的子弹)
+ * 4. 单语歌词（向后兼容）
+ */
+const LRC_TIME_RE = /\[(\d{2}):(\d{2})(?:\.(\d{2,3}))?\]/g;
+const LRC_TR_RE = /\[tr:(.*?)\]/g;
+
+export function parseLrc(text: string, detectInstrumental = true): LyricLine[] {
+  const lines = text.trim().split("\n");
+  const map = new Map<number, LyricLine>();
+
+  for (const line of lines) {
+    // 提取所有时间戳
+    const times: number[] = [];
+    let m: RegExpExecArray | null;
+    LRC_TIME_RE.lastIndex = 0;
+    while ((m = LRC_TIME_RE.exec(line)) !== null) {
+      const minutes = parseInt(m[1], 10);
+      const seconds = parseInt(m[2], 10);
+      const ms = m[3] ? parseInt(m[3], 10) : 0;
+      times.push(minutes * 60 + seconds + ms / 1000);
+    }
+    if (times.length === 0) continue;
+
+    // 提取翻译标签 [tr:xxx]
+    let translation = "";
+    LRC_TR_RE.lastIndex = 0;
+    const trMatch = LRC_TR_RE.exec(line);
+    if (trMatch) {
+      translation = trMatch[1].trim();
+    }
+
+    // 移除所有时间戳和翻译标签，得到歌词文本
+    let content = line
+      .replace(/\[\d{2}:\d{2}(?:\.\d{2,3})?\]/g, "")
+      .replace(/\[tr:.*?\]/g, "")
+      .replace(/\[lang:.*?\]/g, "")
+      .replace(/\[ar:.*?\]/g, "")
+      .replace(/\[ti:.*?\]/g, "")
+      .replace(/\[al:.*?\]/g, "")
+      .replace(/\[by:.*?\]/g, "")
+      .trim();
+
+    if (!content) continue;
+
+    // 同行尾部括号译文：如 "原文 (译文)" / "原文 （译文）"（meting 歌词常见格式）
+    if (!translation) {
+      const m = content.match(/\s*[（(]([^（）()]*)[）)]\s*$/);
+      if (m && content.slice(0, content.length - m[0].length).trim()) {
+        translation = m[1].trim();
+        content = content.slice(0, content.length - m[0].length).trim();
+      }
+    }
+
+    if (!content) continue;
+
+    for (const time of times) {
+      const key = Math.round(time * 1000); // 精确到毫秒
+      const existing = map.get(key);
+      if (existing) {
+        // 同一时间戳的第二行作为翻译
+        if (translation) {
+          existing.translation = translation;
+        } else if (!existing.translation) {
+          existing.translation = content;
+        }
+      } else {
+        map.set(key, { time, text: content, translation: translation || undefined });
+      }
+    }
+  }
+
+  const sorted = Array.from(map.values()).sort((a, b) => a.time - b.time);
+  // 前奏/间奏识别（隐藏作词/作曲/编曲，插入三点）+ 逐字粗排时间轴
+  return buildLyricSequence(sorted, detectInstrumental);
 }

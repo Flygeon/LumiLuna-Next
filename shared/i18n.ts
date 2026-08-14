@@ -78,6 +78,9 @@ export const messages = {
       lyricTranslationGap: "歌词与翻译间距",
       wordLyrics: "逐字歌词",
       wordLyricsHint: "逐字填充 + 唱完上浮（Apple Music 风格）。关闭则整行歌词一次性高亮。",
+      preciseLyrics: "更精确的逐字歌词",
+      preciseLyricsHint:
+        "开启后播放时调用 QQ 音乐搜索同名且时长差不超过 1 秒的逐字歌词（官方卡拉 OK 时间轴）替代估算时间轴，需要联网；未匹配到时自动回退。",
       detectInstrumental: "自动识别前奏/间奏",
       detectInstrumentalHint: "将开头作词/作曲/编曲信息替换为三点前奏，长间奏插入三点等待。",
       playback: "播放器",
@@ -125,7 +128,6 @@ export const messages = {
       onlineEnable: "启用在线音乐",
       onlineServer: "音乐平台",
       onlineServer_netease: "网易云",
-      onlineServer_tencent: "QQ音乐",
     },
     online: {
       playlists: "歌单",
@@ -221,6 +223,9 @@ export const messages = {
       lyricTranslationGap: "Lyric-Translation Spacing",
       wordLyrics: "Word-by-word lyrics",
       wordLyricsHint: "Fill each word with a gradient and lift it up when sung (Apple Music style). Off = highlight the whole line at once.",
+      preciseLyrics: "Precise word-by-word lyrics",
+      preciseLyricsHint:
+        "When enabled, the player queries QQ Music for official word-timed lyrics matching the song title and duration (±1s), replacing estimated timing. Requires network; falls back automatically.",
       detectInstrumental: "Auto-detect intro & interlude",
       detectInstrumentalHint: "Replace leading credits (作词/作曲/编曲) with a 3-dot intro and insert 3-dot waits for long interludes.",
       playback: "Playback",
@@ -269,7 +274,6 @@ export const messages = {
       onlineEnable: "Enable online music",
       onlineServer: "Platform",
       onlineServer_netease: "NetEase",
-      onlineServer_tencent: "QQ Music",
     },
     online: {
       playlists: "Playlists",
