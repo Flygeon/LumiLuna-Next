@@ -92,4 +92,6 @@ Issues and pull requests are welcome! Please open an issue first to discuss non-
 
 ## 📄 License
 
-MIT
+**GPL-3.0-only** — see [LICENSE](LICENSE) for the full text.
+
+The QQ Music QRC word-timed lyrics module is ported from [LDDC](https://github.com/chenmozhijin/LDDC) (© 沉默の金, GPL-3.0-only).

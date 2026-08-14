@@ -91,4 +91,6 @@ shared/            # 双端共享类型 / i18n
 
 ## 📄 许可证
 
-MIT
+本项目采用 **GPL-3.0-only** 许可协议，完整文本见 [LICENSE](LICENSE)。
+
+QQ 音乐 QRC 逐字歌词模块移植自 [LDDC](https://github.com/chenmozhijin/LDDC)（© 沉默の金，GPL-3.0-only）。

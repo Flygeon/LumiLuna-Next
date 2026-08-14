@@ -2,6 +2,7 @@
   "name": "lumiluna",
   "private": true,
   "version": "1.0.0",
+  "license": "GPL-3.0-only",
   "type": "module",
   "description": "LumiLuna —— 本地优先全媒体库应用（Tauri 2 + Vue 3 + Material Design 3）",
   "scripts": {
