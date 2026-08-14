@@ -24,6 +24,9 @@
     "opener:allow-reveal-item-in-dir",
     "global-shortcut:allow-register",
     "global-shortcut:allow-unregister",
-    "http:default"
+    {
+      "identifier": "http:default",
+      "allow": [{ "url": "https://u.y.qq.com" }]
+    }
   ]
 }

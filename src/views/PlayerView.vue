@@ -28,9 +28,10 @@ const sourceBadge = computed(() => {
   const reason = player.lyricFallbackReason
     ? t(`player.lyricReason_${player.lyricFallbackReason}`)
     : "";
+  const detail = player.lyricFallbackDetail ? `：${player.lyricFallbackDetail}` : "";
   return {
     text: t("player.lyricSourceLocal"),
-    hint: reason ? `${t("player.lyricSourceLocal")}（${reason}）` : t("player.lyricSourceLocal"),
+    hint: reason ? `${t("player.lyricSourceLocal")}（${reason}${detail}）` : t("player.lyricSourceLocal"),
   };
 });
 

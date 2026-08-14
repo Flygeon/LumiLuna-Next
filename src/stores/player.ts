@@ -304,6 +304,8 @@ export const usePlayerStore = defineStore("player", () => {
    */
   const lyricsSource = ref<"qq" | "local" | null>(null);
   const lyricFallbackReason = ref<QqFallbackReason | null>(null);
+  /** 回退的详细错误（徽标悬停展示，便于免 DevTools 排查） */
+  const lyricFallbackDetail = ref<string | null>(null);
 
   /** 回退提示 toast（全局渲染在 App.vue），4s 自动消失 */
   const lyricNotice = ref("");
@@ -318,6 +320,7 @@ export const usePlayerStore = defineStore("player", () => {
   function completeFallback(reason: QqFallbackReason, detail?: string) {
     lyricsSource.value = "local";
     lyricFallbackReason.value = reason;
+    lyricFallbackDetail.value = detail ?? null;
     console.warn(
       `[逐字歌词] 回退本地歌词：${reason}${detail ? `（${detail}）` : ""}`,
     );
@@ -391,6 +394,7 @@ export const usePlayerStore = defineStore("player", () => {
         updateActiveLine();
         lyricsSource.value = "qq";
         lyricFallbackReason.value = null;
+        lyricFallbackDetail.value = null;
         console.info(
           `[逐字歌词] 命中 QQ：${result.songTitle}（QQ id=${result.songId}，${applied.length} 行，${result.wordLevel ? "含逐字时间轴" : "仅逐行"}，${result.fromCache ? "来自缓存" : "在线获取"}）`,
         );
@@ -439,6 +443,7 @@ export const usePlayerStore = defineStore("player", () => {
     // 新歌：清空歌词来源状态，等待本次 QQ 尝试结果
     lyricsSource.value = null;
     lyricFallbackReason.value = null;
+    lyricFallbackDetail.value = null;
     if (s.coverBase64) {
       const img = new Image();
       img.onload = () => {
@@ -537,6 +542,7 @@ export const usePlayerStore = defineStore("player", () => {
       // 新歌：清空歌词来源状态，等待本次 QQ 尝试结果
       lyricsSource.value = null;
       lyricFallbackReason.value = null;
+      lyricFallbackDetail.value = null;
       coverColors.value = [];
       currentTime.value = 0;
       duration.value = 0;
@@ -761,6 +767,7 @@ export const usePlayerStore = defineStore("player", () => {
     currentLyric,
     lyricsSource,
     lyricFallbackReason,
+    lyricFallbackDetail,
     lyricNotice,
     bindAudio,
     detachAudio,
