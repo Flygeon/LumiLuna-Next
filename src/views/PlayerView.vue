@@ -15,6 +15,22 @@ const rightTab = ref<"lyrics" | "queue">("lyrics");
 const speed = ref(1);
 const isDragging = ref(false);
 
+/** 当前歌曲是否有翻译/罗马音副行（无则切换按钮置灰） */
+const hasSubLine = computed(() =>
+  player.lyrics.some((l) => l.translation || l.romaji),
+);
+
+/** 副行显示模式按钮：翻译 ⇄ 罗马音 */
+const subModeLabel = computed(() =>
+  settings.lyricSubMode === "translation"
+    ? t("player.translation")
+    : t("player.romaji"),
+);
+function cycleSubMode() {
+  settings.lyricSubMode =
+    settings.lyricSubMode === "translation" ? "romaji" : "translation";
+}
+
 function t(key: string) {
   return translate(settings.lang, key);
 }
@@ -188,6 +204,18 @@ onBeforeUnmount(() => {
               }}
             </span>
             {{ sourceBadge.text }}
+          </button>
+          <button
+            v-if="hasSubLine"
+            class="source-badge sub"
+            :class="{ disabled: !hasSubLine }"
+            :title="t('player.lyricSubModeSwitch')"
+            @click="cycleSubMode"
+          >
+            <span class="material-symbols-outlined">
+              {{ settings.lyricSubMode === "translation" ? "translate" : "abc" }}
+            </span>
+            {{ subModeLabel }}
           </button>
         </div>
         <div class="right-content">
@@ -472,6 +500,14 @@ onBeforeUnmount(() => {
 .source-badge.local {
   background: rgba(255, 255, 255, 0.10);
   color: rgba(255, 255, 255, 0.65);
+}
+.source-badge.sub {
+  background: rgba(255, 255, 255, 0.10);
+  color: rgba(255, 255, 255, 0.75);
+}
+.source-badge.sub.disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 .seg-btn {
   border: none;

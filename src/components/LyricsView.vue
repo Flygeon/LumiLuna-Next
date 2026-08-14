@@ -19,6 +19,13 @@ import { translate } from "@shared/i18n";
 const player = usePlayerStore();
 const settings = useSettingsStore();
 
+/** 副行文本：按设置的模式取翻译或罗马音（无则空串） */
+function subText(line: { translation?: string; romaji?: string }): string {
+  return settings.lyricSubMode === "translation"
+    ? (line.translation ?? "")
+    : (line.romaji ?? "");
+}
+
 const containerRef = ref<HTMLDivElement | null>(null);
 const lineRefs = ref<HTMLDivElement[]>([]);
 
@@ -230,14 +237,14 @@ function rafLoop() {
           <template v-else>{{ line.text }}</template>
         </p>
         <p
-          v-if="line.translation"
+          v-if="subText(line)"
           class="lyric-translation"
           :style="{
             fontSize: settings.lyricTranslationSize + '%',
             marginTop: settings.lyricTranslationGap + 'px',
           }"
         >
-          {{ line.translation }}
+          {{ subText(line) }}
         </p>
       </div>
     </div>

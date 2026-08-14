@@ -275,7 +275,13 @@ export async function qqFetchLyrics(
       if (ts !== "" && String(tsT) !== "0") {
         trans = await parseTrack(ts);
       }
-      lines = mergeQqLyrics(lines, trans, null);
+      const romaT = resp?.roma_t ?? 0;
+      const roma = resp?.roma ?? "";
+      let romaLines: LyricLine[] | null = null;
+      if (roma !== "" && String(romaT) !== "0") {
+        romaLines = await parseTrack(roma);
+      }
+      lines = mergeQqLyrics(lines, trans, romaLines);
     }
     lyricsCache.set(song.id, { t: Date.now(), lines });
     return lines;

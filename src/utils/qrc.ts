@@ -422,15 +422,15 @@ export function hasWordLevel(lines: LyricLine[]): boolean {
 }
 
 /**
- * 合并原文 + 翻译（+ 罗马音，本应用暂不消费）为 LyricLine[]。
- * 行数一致按索引配对，否则按行起始时间最近匹配（贪心）。
+ * 合并原文 + 翻译 + 罗马音为 LyricLine[]。
+ * 各轨行数一致按索引配对，否则按行起始时间最近匹配（贪心）。
  */
 export function mergeQqLyrics(
   orig: LyricLine[],
   trans: LyricLine[] | null,
-  _roma: LyricLine[] | null,
+  roma: LyricLine[] | null,
 ): LyricLine[] {
-  if (!trans || !trans.length) return orig;
+  if ((!trans || !trans.length) && (!roma || !roma.length)) return orig;
 
   const pairIndex = (a: LyricLine[], b: LyricLine[]): number[] => {
     if (a.length === b.length) return a.map((_, i) => i);
@@ -449,10 +449,22 @@ export function mergeQqLyrics(
     return a.map((_, i) => pairs.get(i) ?? -1);
   };
 
-  const idxMap = pairIndex(orig, trans);
+  const transIdx = trans?.length ? pairIndex(orig, trans) : null;
+  const romaIdx = roma?.length ? pairIndex(orig, roma) : null;
   return orig.map((line, i) => {
-    const ti = idxMap[i];
-    const translation = ti >= 0 ? trans[ti].text : undefined;
-    return translation ? { ...line, translation } : line;
+    let out = line;
+    if (transIdx) {
+      const ti = transIdx[i];
+      if (ti >= 0 && trans![ti].text) {
+        out = { ...out, translation: trans![ti].text };
+      }
+    }
+    if (romaIdx) {
+      const ri = romaIdx[i];
+      if (ri >= 0 && roma![ri].text) {
+        out = { ...out, romaji: roma![ri].text };
+      }
+    }
+    return out;
   });
 }

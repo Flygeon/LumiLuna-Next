@@ -55,7 +55,12 @@ export interface KrcLine {
  */
 export function krcToRawLines(
   krc: string,
-): { lines: KrcLine[]; translations: (string | null)[]; tags: Record<string, string> } | null {
+): {
+  lines: KrcLine[];
+  translations: (string | null)[];
+  romaji: (string | null)[];
+  tags: Record<string, string>;
+} | null {
   const tags: Record<string, string> = {};
   const lines: KrcLine[] = [];
 
@@ -94,13 +99,14 @@ export function krcToRawLines(
   }
   if (!lines.length) return null;
 
-  // [language:] 标签：base64 JSON，type 0 = 逐字罗马音（本应用不展示），type 1 = 逐行翻译
+  // [language:] 标签：base64 JSON，type 0 = 逐字罗马音，type 1 = 逐行翻译
   const translations: (string | null)[] = lines.map(() => null);
+  const romaji: (string | null)[] = lines.map(() => null);
   const langTag = tags["language"]?.trim();
   if (langTag) {
     try {
       const langData = JSON.parse(new TextDecoder("utf-8").decode(base64ToBytes(langTag))) as {
-        content: { type: number; lyricContent: (string[] | string[][])[] }[];
+        content: { type: number; lyricContent: unknown[] }[];
       };
       const ts = langData.content.find((l) => l.type === 1);
       if (ts) {
@@ -111,16 +117,35 @@ export function krcToRawLines(
           }
         });
       }
+      const roma = langData.content.find((l) => l.type === 0);
+      if (roma) {
+        // 罗马音按原文行逐字对齐；无内容的行在罗马音字典中不存在（offset 跳过）
+        let offset = 0;
+        lines.forEach((line, i) => {
+          if (line.words.every((w) => !w.text)) {
+            offset++;
+            return;
+          }
+          const row = roma.lyricContent[i - offset] as unknown;
+          if (Array.isArray(row)) {
+            romaji[i] = row.filter((t): t is string => typeof t === "string").join("");
+          }
+        });
+      }
     } catch {
-      /* 翻译轨解析失败不影响原文 */
+      /* 翻译/罗马音轨解析失败不影响原文 */
     }
   }
-  return { lines, translations, tags };
+  return { lines, translations, romaji, tags };
 }
 
 /** KRC 行 → 项目 LyricLine（秒时间轴），空文本行跳过，翻译按索引合并 */
 export function krcLinesToLyricLines(
-  parsed: { lines: KrcLine[]; translations: (string | null)[] },
+  parsed: {
+    lines: KrcLine[];
+    translations: (string | null)[];
+    romaji: (string | null)[];
+  },
 ): LyricLine[] {
   const out: LyricLine[] = [];
   parsed.lines.forEach((l, i) => {
@@ -132,7 +157,8 @@ export function krcLinesToLyricLines(
       end: w.end / 1000,
     }));
     const translation = parsed.translations[i]?.trim() || undefined;
-    out.push({ time: l.start / 1000, text, units, translation });
+    const romaji = parsed.romaji[i]?.trim() || undefined;
+    out.push({ time: l.start / 1000, text, units, translation, romaji });
   });
   return out;
 }

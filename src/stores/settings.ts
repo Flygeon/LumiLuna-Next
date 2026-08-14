@@ -14,6 +14,8 @@ export type ReaderFontKey = "system" | "serif" | "sans" | "kai" | "yuan";
 export type LyricFontKey = "system" | "sans" | "serif" | "kai" | "yuan";
 /** 播放器背景模式：animated 动态模糊 / image 仅图片模糊 / off 不启用 */
 export type PlayerBgMode = "animated" | "image" | "off";
+/** 歌词副行显示模式：翻译 / 罗马音 */
+export type LyricSubMode = "translation" | "romaji";
 
 const store = new LazyStore("settings.json");
 
@@ -30,6 +32,8 @@ const DEFAULTS = {
   lyricTranslationSize: 62,
   /** 歌词与翻译之间的间距（px） */
   lyricTranslationGap: 4,
+  /** 歌词副行显示：翻译 / 罗马音 */
+  lyricSubMode: "translation" as LyricSubMode,
   /** 逐字歌词（Apple Music 式逐字填充 + 唱完上浮） */
   wordLyrics: true,
   /** 更精确的逐字歌词：播放时按 QQ → 酷狗 → 本地回退链取逐字歌词 */
@@ -78,6 +82,7 @@ export const useSettingsStore = defineStore("settings", () => {
   const lyricFont = ref<LyricFontKey>(DEFAULTS.lyricFont);
   const lyricTranslationSize = ref(DEFAULTS.lyricTranslationSize);
   const lyricTranslationGap = ref(DEFAULTS.lyricTranslationGap);
+  const lyricSubMode = ref<LyricSubMode>(DEFAULTS.lyricSubMode);
   const wordLyrics = ref(DEFAULTS.wordLyrics);
   const preciseLyrics = ref(DEFAULTS.preciseLyrics);
   const lyricSourcePrefs = ref<Record<string, LyricSourcePref>>({ ...DEFAULTS.lyricSourcePrefs });
@@ -110,6 +115,7 @@ export const useSettingsStore = defineStore("settings", () => {
     lyricFont,
     lyricTranslationSize,
     lyricTranslationGap,
+    lyricSubMode,
     wordLyrics,
     preciseLyrics,
     lyricSourcePrefs,
