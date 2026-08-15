@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useSettingsStore } from "@/stores/settings";
 import { usePlayerStore } from "@/stores/player";
@@ -63,6 +63,27 @@ onMounted(async () => {
   await settings.load();
   settings.applyTheme(settings.theme);
   void library.refreshCounts();
+});
+
+// ---- 滚动位置记忆 ----
+// keep-alive 缓存组件时，离开路由后 main-content 内容高度塌缩，浏览器会把
+// scrollTop 钳制回顶部，返回时位置已丢失。这里在切换前记录、返回后恢复。
+const scrollMemory = new Map<string, number>();
+const mainEl = ref<HTMLElement | null>(null);
+let scrollRestoreTimer: number | null = null;
+router.beforeEach((_to, from) => {
+  if (mainEl.value) {
+    scrollMemory.set(from.path, mainEl.value.scrollTop);
+  }
+});
+router.afterEach((to) => {
+  const saved = scrollMemory.get(to.path);
+  if (saved === undefined) return;
+  // 等路由过渡（180ms）+ 内容重插入完成后再恢复
+  if (scrollRestoreTimer) clearTimeout(scrollRestoreTimer);
+  scrollRestoreTimer = window.setTimeout(() => {
+    if (mainEl.value) mainEl.value.scrollTop = saved;
+  }, 260);
 });
 </script>
 
@@ -130,7 +151,7 @@ onMounted(async () => {
         </button>
       </header>
 
-      <main class="main-content">
+      <main ref="mainEl" class="main-content">
         <router-view v-slot="{ Component }">
           <transition name="page" mode="out-in">
             <keep-alive :exclude="['PlayerView']">

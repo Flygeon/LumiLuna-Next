@@ -4,6 +4,7 @@ import { useRouter } from "vue-router";
 import LibraryToolbar from "@/components/LibraryToolbar.vue";
 import MediaGrid from "@/components/MediaGrid.vue";
 import EmptyState from "@/components/EmptyState.vue";
+import CachedCover from "@/components/CachedCover.vue";
 import { useLibraryStore } from "@/stores/library";
 import { usePlayerStore } from "@/stores/player";
 import { useSettingsStore } from "@/stores/settings";
@@ -363,7 +364,7 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
             <span class="material-symbols-outlined">close</span>
           </button>
           <div class="thumb">
-            <img v-if="coverOf(c)" :src="coverOf(c)" :alt="c.name" loading="lazy" />
+            <CachedCover v-if="coverOf(c)" :url="coverOf(c)" :alt="c.name" />
             <span v-else class="placeholder material-symbols-outlined">
               {{ c.key === "local" ? "library_music" : "queue_music" }}
             </span>
@@ -435,7 +436,7 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
           @contextmenu="onSongContext($event, song)"
         >
           <div class="thumb">
-            <img :src="song.pic" :alt="song.name" loading="lazy" decoding="async" />
+            <CachedCover :url="song.pic" :alt="song.name" />
           </div>
           <div class="s-meta">
             <div class="s-title" :title="song.name">{{ song.name }}</div>

@@ -5,6 +5,7 @@ import { capabilities, isTauri } from "@/capabilities";
 import { useSettingsStore } from "@/stores/settings";
 // parseLrc 由 @/utils/lyricTimeline 提供（原先定义在本文件，已移出供歌词源复用）
 import { META_RE, parseLrc } from "@/utils/lyricTimeline";
+import { lrcGet, lrcSet, resolveCover } from "@/utils/onlineCache";
 import {
   fetchCloudLyrics,
   normalizeTitle,
@@ -638,13 +639,21 @@ export const usePlayerStore = defineStore("player", () => {
     try {
       let parsed: LyricLine[] = [];
       try {
-        // lrc 字段可能是 URL（需拉取），也可能是内嵌歌词文本
+        // lrc 字段可能是 URL（需拉取），也可能是内嵌歌词文本；
+        // 歌词文本按歌曲 id 缓存到 IndexedDB，重启后不再请求网络
         const lrc = item.lrc || "";
-        const text = lrc.startsWith("http")
-          ? await (await fetch(lrc)).text()
-          : lrc.includes("[")
-            ? lrc
-            : "";
+        let text = "";
+        if (lrc.startsWith("http")) {
+          const cached = await lrcGet(item.id);
+          if (cached !== null) {
+            text = cached;
+          } else {
+            text = await (await fetch(lrc)).text();
+            void lrcSet(item.id, text);
+          }
+        } else if (lrc.includes("[")) {
+          text = lrc;
+        }
         if (text.trim()) parsed = parseLrc(text, useSettingsStore().detectInstrumental);
       } catch {
         /* 在线歌词拉取失败不阻塞播放 */
@@ -677,6 +686,17 @@ export const usePlayerStore = defineStore("player", () => {
         coverColors.value = getDominantColors(img);
       };
       img.src = item.pic;
+      // 封面本地缓存：命中 IndexedDB 立即替换为 dataURL（不阻塞起播）；
+      // 未命中则后台下载并写缓存，下次进入/重启直接读本地
+      void resolveCover(item.pic).then((cover) => {
+        if (song.value?.id !== item.id || cover === item.pic) return;
+        song.value.cover = cover;
+        const cachedImg = new Image();
+        cachedImg.onload = () => {
+          coverColors.value = getDominantColors(cachedImg);
+        };
+        cachedImg.src = cover;
+      });
       await startPlayback();
       // 「更精确的逐字歌词」：在线歌曲时长来自音频元数据（未就绪则等待），
       // 命中 QQ 官方逐字歌词则替换（并跳过 FFT）；失败回退本地分析
