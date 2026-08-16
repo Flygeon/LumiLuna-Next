@@ -288,12 +288,11 @@ fn aes_ecb_encrypt_bytes(key: &[u8], plain: &[u8]) -> Result<Vec<u8>, String> {
     Ok(out)
 }
 
-/// HMAC-SHA256（xeapiSign）：key 为 XEAPI_SIGN_KEY_B64 解码，data = timestamp+nonce
+/// HMAC-SHA256（xeapiSign）：与参考 crypto.js 一致，key 直接用 base64 字符串的
+/// UTF-8 字节（Node createHmac 对字符串 key 不做解码），data = timestamp+nonce
 fn xeapi_sign(timestamp: &str, nonce: &str) -> Result<String, String> {
-    let key = base64::engine::general_purpose::STANDARD
-        .decode(XEAPI_SIGN_KEY_B64)
-        .map_err(|e| format!("xeapi sign key 解码失败：{e}"))?;
-    let mut mac: Hmac<Sha256> = Mac::new_from_slice(&key).map_err(|e| e.to_string())?;
+    let mut mac: Hmac<Sha256> =
+        Mac::new_from_slice(XEAPI_SIGN_KEY_B64.as_bytes()).map_err(|e| e.to_string())?;
     mac.update(format!("{timestamp}{nonce}").as_bytes());
     Ok(base64::engine::general_purpose::STANDARD.encode(mac.finalize().into_bytes()))
 }
@@ -484,13 +483,30 @@ fn get_xeapi_key(_app: &tauri::AppHandle) -> Result<XeapiKey, String> {
         .post("https://interface.music.163.com/api/gorilla/anti/crawler/security/key/get")
         .header("User-Agent", UA_XEAPI)
         .header("Cookie", format!("deviceId={}", encode_uri_component(&device_id)))
+        .header("Content-Type", "application/x-www-form-urlencoded;charset=utf-8")
         .body(body)
         .timeout(Duration::from_secs(30))
         .send()
         .map_err(|e| format!("获取网易云密钥失败：{}", reqwest_detail(&e)))?;
+    let status = resp.status().as_u16();
     let text = resp.text().map_err(|e| format!("读取密钥响应失败：{e}"))?;
-    let json: Value =
-        serde_json::from_str(&text).map_err(|_| "密钥响应解析失败".to_string())?;
+    let json: Value = serde_json::from_str(&text).map_err(|_| {
+        let preview: String = text
+            .chars()
+            .take(160)
+            .map(|c| match c {
+                '\n' => '\u{23ce}',
+                '\r' => '\u{240d}',
+                '\t' => '\u{2409}',
+                c if c.is_control() => '\u{00b7}',
+                c => c,
+            })
+            .collect();
+        format!(
+            "密钥响应解析失败（HTTP {status}，{} 字节）：{preview}",
+            text.len()
+        )
+    })?;
     if json["code"].as_i64() != Some(200) {
         return Err(format!("网易云返回错误（code={:?}）", json["code"]));
     }
@@ -579,6 +595,7 @@ fn xeapi_call(
     let mut headers: Vec<(String, String)> = vec![
         ("X-Client-Enc-State".into(), "ENCRYPTED".into()),
         ("x-aeapi".into(), "true".into()),
+        ("Content-Type".into(), "application/x-www-form-urlencoded;charset=utf-8".into()),
         ("x-deviceid".into(), device_id.clone()),
         ("x-os".into(), os.into()),
         ("x-osver".into(), osver.into()),
@@ -855,6 +872,7 @@ fn api_call(crypto: &str, path: &str, data: &mut Value) -> Result<(i64, Value), 
                     ("User-Agent".to_string(), UA_WEAPI.to_string()),
                     ("Referer".to_string(), DOMAIN.to_string()),
                     ("Cookie".to_string(), cookie),
+                    ("Content-Type".to_string(), "application/x-www-form-urlencoded;charset=utf-8".to_string()),
                     ("X-Real-IP".to_string(), cn_ip.clone()),
                     ("X-Forwarded-For".to_string(), cn_ip.clone()),
                 ],
@@ -897,6 +915,7 @@ fn api_call(crypto: &str, path: &str, data: &mut Value) -> Result<(i64, Value), 
                 vec![
                     ("User-Agent".to_string(), UA_EAPI.to_string()),
                     ("Cookie".to_string(), cookie),
+                    ("Content-Type".to_string(), "application/x-www-form-urlencoded;charset=utf-8".to_string()),
                     ("X-Real-IP".to_string(), cn_ip.clone()),
                     ("X-Forwarded-For".to_string(), cn_ip.clone()),
                 ],
