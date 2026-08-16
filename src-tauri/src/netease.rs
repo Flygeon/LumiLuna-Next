@@ -445,7 +445,6 @@ fn rand4() -> u32 {
 
 fn fetch_account(app: &tauri::AppHandle) -> Result<NeteaseAccount, String> {
     let (code, body) = api_call(
-        app,
         "weapi",
         "/api/w/nuser/account/get",
         &mut serde_json::json!({}),
@@ -534,7 +533,6 @@ pub fn netease_login_qr_key(app: tauri::AppHandle) -> Result<String, String> {
     // 启动时恢复持久化状态（仅首次）
     ensure_loaded(&app);
     let (code, body) = api_call(
-        &app,
         "eapi",
         "/api/login/qrcode/unikey",
         &mut serde_json::json!({ "type": 3 }),
@@ -556,7 +554,6 @@ pub fn netease_login_qr_check(
     key: String,
 ) -> Result<NeteaseQrCheck, String> {
     let (code, _body) = api_call(
-        &app,
         "eapi",
         "/api/login/qrcode/client/login",
         &mut serde_json::json!({ "key": key, "type": 3 }),
@@ -617,7 +614,6 @@ pub fn netease_user_playlists(
 ) -> Result<Vec<NeteasePlaylist>, String> {
     let uid = current_uid(&app)?;
     let (code, body) = api_call(
-        &app,
         "weapi",
         "/api/user/playlist",
         &mut serde_json::json!({
@@ -651,7 +647,6 @@ pub fn netease_playlist_detail(
     id: i64,
 ) -> Result<Vec<NeteaseSong>, String> {
     let (code, body) = api_call(
-        &app,
         "eapi",
         "/api/v6/playlist/detail",
         &mut serde_json::json!({ "id": id, "n": 100000, "s": 8 }),
@@ -696,7 +691,6 @@ pub fn netease_cloud(
     limit: i64,
 ) -> Result<NeteaseCloudPage, String> {
     let (code, body) = api_call(
-        &app,
         "weapi",
         "/api/v1/cloud/get",
         &mut serde_json::json!({ "limit": limit, "offset": offset }),
@@ -752,7 +746,6 @@ pub fn netease_song_url(
     }
     let ids_json = serde_json::to_string(&ids).map_err(|e| e.to_string())?;
     let (code, body) = api_call(
-        &app,
         "eapi",
         "/api/song/enhance/player/url",
         &mut serde_json::json!({ "ids": ids_json, "br": 999000 }),
