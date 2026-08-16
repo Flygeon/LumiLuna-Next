@@ -1109,7 +1109,13 @@ fn netease_login_qr_key_sync(app: tauri::AppHandle) -> Result<String, String> {
     if code != 200 {
         return Err(err_for_code(code));
     }
-    let unikey = body["data"]["unikey"].as_str().unwrap_or_default().to_string();
+    // 实测响应为 {"code":200,"unikey":"..."}（unikey 在顶层）；
+    // 兼容个别版本放 data 下的情况
+    let unikey = body["data"]["unikey"]
+        .as_str()
+        .or_else(|| body["unikey"].as_str())
+        .unwrap_or_default()
+        .to_string();
     if unikey.is_empty() {
         return Err("未获取到登录二维码".into());
     }
