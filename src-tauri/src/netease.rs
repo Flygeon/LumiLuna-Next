@@ -14,16 +14,22 @@ use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 
 use aes::Aes128;
+use aes::Aes256;
+use aes_gcm::aead::Aead;
+use aes_gcm::{Aes128Gcm, KeyInit as AesGcmKeyInit, Nonce};
 use base64::Engine;
 use cbc::cipher::{block_padding::Pkcs7, BlockEncryptMut, KeyIvInit};
-use ecb::cipher::KeyInit;
+use ecb::cipher::BlockDecryptMut;
+use hmac::{Hmac, Mac};
 use md5::{Digest, Md5};
 use percent_encoding::{utf8_percent_encode, AsciiSet, CONTROLS};
 use rsa::pkcs8::DecodePublicKey;
 use rsa::{Pkcs1v15Encrypt, RsaPublicKey};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use sha2::Sha256;
 use tauri::Manager;
+use x25519_dalek::{PublicKey as X25519PublicKey, StaticSecret};
 
 // ---- 常量（移植自 api-enhanced util/crypto.js + util/config.json）----
 
@@ -45,6 +51,19 @@ const OS_APPVER: &str = "3.1.17.204416";
 const OS_CHANNEL: &str = "netease";
 const OS_NAME: &str = "pc";
 const DOMAIN: &str = "https://music.163.com";
+/// xeapi 域名（api-enhanced util/config.json 的 xeapiDomain）
+const XEAPI_DOMAIN: &str = "https://interface3.music.163.com";
+/// xeapi 静态密钥（hex，32 字节）
+const XEAPI_STATIC_KEY: [u8; 32] = [
+    0xab, 0x1d, 0x5a, 0x43, 0x0f, 0x6b, 0xb0, 0x4a, 0x3f, 0x01, 0xe8, 0x1d, 0xdd, 0x72, 0xbd, 0x91,
+    0x6d, 0x5c, 0xe5, 0x91, 0x24, 0x8a, 0xc1, 0x28, 0x71, 0x48, 0x06, 0xd7, 0xf8, 0xfb, 0x1b, 0x84,
+];
+/// xeapi 签名密钥（base64，HMAC-SHA256 用）
+const XEAPI_SIGN_KEY_B64: &str = "mUHCwVNWJbunMqAHf5MImuirT6plvs6VSFW62MGHstFQxhBGdEoIhLItH3djc4+FB/OKty3+lL2rGeoFBpVe5g==";
+/// xeapi UA（android 客户端）
+const UA_XEAPI: &str = "NeteaseMusic/9.5.61.260802021928(9005061);Dalvik/2.1.0 (Linux; U; Android 12; HBN-AL00 Build/cd737a2.0)";
+/// 云盘加密 id 的 XOR 密钥（register_anonimous 用）
+const ID_XOR_KEY: &[u8] = b"3go8&$8*3*3h0k(2)2";
 /// eapi 主域名：与 weapi 同域（NeteaseCloudMusicApi 经典实现路径，可达性最好）
 const EAPI_DOMAIN: &str = "https://music.163.com";
 /// eapi 备用域名（api-enhanced 的 eapiDomain）：主域连接失败时回退
@@ -62,6 +81,8 @@ struct NeteasePersist {
     device_id: String,
     uid: Option<i64>,
     profile: Option<NeteaseAccount>,
+    /// xeapi 公钥状态（匿名身份注册后缓存）
+    xeapi_key: Option<XeapiKey>,
 }
 
 static STATE: OnceLock<Mutex<NeteasePersist>> = OnceLock::new();
@@ -193,6 +214,409 @@ fn aes_ecb_hex(key: &[u8; 16], plain: &str) -> String {
         }
     }
     out
+}
+
+// ---- xeapi 协议（匿名身份注册，风控必需；移植自 api-enhanced util/crypto.js）----
+
+/// AES-ECB 解密（PKCS7 去填充），支持 16/32 字节密钥
+fn aes_ecb_decrypt(key: &[u8], data: &[u8]) -> Result<Vec<u8>, String> {
+    let mut out = Vec::with_capacity(data.len());
+    match key.len() {
+        16 => {
+            let k: [u8; 16] = key.try_into().map_err(|_| "key len")?;
+            let mut cipher = ecb::Decryptor::<Aes128>::new((&k).into());
+            for chunk in data.chunks_exact(16) {
+                let mut block = aes::Block::clone_from_slice(chunk);
+                cipher.decrypt_block_mut(&mut block);
+                out.extend_from_slice(&block);
+            }
+        }
+        32 => {
+            let k: [u8; 32] = key.try_into().map_err(|_| "key len")?;
+            let mut cipher = ecb::Decryptor::<Aes256>::new((&k).into());
+            for chunk in data.chunks_exact(16) {
+                let mut block = aes::Block::clone_from_slice(chunk);
+                cipher.decrypt_block_mut(&mut block);
+                out.extend_from_slice(&block);
+            }
+        }
+        _ => return Err("AES key 长度必须是 16 或 32 字节".into()),
+    }
+    // PKCS7 去填充
+    if let Some(&last) = out.last() {
+        let pad = last as usize;
+        if pad > 0 && pad <= 16 && out.len() >= pad
+            && out[out.len() - pad..].iter().all(|&b| b == last)
+        {
+            out.truncate(out.len() - pad);
+        }
+    }
+    Ok(out)
+}
+
+/// AES-ECB 加密（PKCS7），返回原始字节，支持 16/32 字节密钥
+fn aes_ecb_encrypt_bytes(key: &[u8], plain: &[u8]) -> Result<Vec<u8>, String> {
+    let mut bytes = plain.to_vec();
+    let pad = 16 - (bytes.len() % 16);
+    bytes.extend(std::iter::repeat_n(pad as u8, pad));
+    let mut out = Vec::with_capacity(bytes.len());
+    match key.len() {
+        16 => {
+            let k: [u8; 16] = key.try_into().map_err(|_| "key len")?;
+            let mut cipher = ecb::Encryptor::<Aes128>::new((&k).into());
+            for chunk in bytes.chunks_exact(16) {
+                let mut block = aes::Block::clone_from_slice(chunk);
+                cipher.encrypt_block_mut(&mut block);
+                out.extend_from_slice(&block);
+            }
+        }
+        32 => {
+            let k: [u8; 32] = key.try_into().map_err(|_| "key len")?;
+            let mut cipher = ecb::Encryptor::<Aes256>::new((&k).into());
+            for chunk in bytes.chunks_exact(16) {
+                let mut block = aes::Block::clone_from_slice(chunk);
+                cipher.encrypt_block_mut(&mut block);
+                out.extend_from_slice(&block);
+            }
+        }
+        _ => return Err("AES key 长度必须是 16 或 32 字节".into()),
+    }
+    Ok(out)
+}
+
+/// HMAC-SHA256（xeapiSign）：key 为 XEAPI_SIGN_KEY_B64 解码，data = timestamp+nonce
+fn xeapi_sign(timestamp: &str, nonce: &str) -> Result<String, String> {
+    let key = base64::engine::general_purpose::STANDARD
+        .decode(XEAPI_SIGN_KEY_B64)
+        .map_err(|e| format!("xeapi sign key 解码失败：{e}"))?;
+    let mut mac: Hmac<Sha256> = Mac::new_from_slice(&key).map_err(|e| e.to_string())?;
+    mac.update(format!("{timestamp}{nonce}").as_bytes());
+    Ok(base64::engine::general_purpose::STANDARD.encode(mac.finalize().into_bytes()))
+}
+
+/// 派生 X25519 会话 AES 密钥（deriveX25519AesKey）：两层 HMAC-SHA256，取 16 字节
+fn derive_x25519_aes_key(shared: &[u8; 32], ephemeral_pub: &[u8; 32]) -> [u8; 16] {
+    let zeros = [0u8; 32];
+    let mut mac1: Hmac<Sha256> = Mac::new_from_slice(&zeros).expect("hmac key");
+    mac1.update(shared);
+    let prk = mac1.finalize().into_bytes();
+    let mut mac2: Hmac<Sha256> = Mac::new_from_slice(&prk).expect("hmac key");
+    let mut msg = Vec::with_capacity(33);
+    msg.extend_from_slice(ephemeral_pub);
+    msg.push(1);
+    mac2.update(&msg);
+    let out = mac2.finalize().into_bytes();
+    let mut key = [0u8; 16];
+    key.copy_from_slice(&out[..16]);
+    key
+}
+
+/// xeapiEncryptS：X25519 协商 + AES-128-GCM 加密 dynamicKey 材料，返回 [ephPub32|iv12|ct|tag]
+fn xeapi_encrypt_s(
+    dynamic_key: &[u8; 16],
+    peer_raw: &[u8; 32],
+    os: &str,
+    sk: &str,
+) -> Result<Vec<u8>, String> {
+    let mut rng = rsa::rand_core::OsRng;
+    let secret = StaticSecret::random_from_rng(&mut rng);
+    let eph_pub = X25519PublicKey::from(&secret);
+    let peer = X25519PublicKey::from(*peer_raw);
+    let shared = secret.diffie_hellman(&peer);
+    let aes_key = derive_x25519_aes_key(shared.as_bytes(), eph_pub.as_bytes());
+    let cipher = Aes128Gcm::new_from_slice(&aes_key).map_err(|e| e.to_string())?;
+    let iv = random_bytes(12);
+    let plaintext = format!(
+        "{}|{}|{}",
+        base64::engine::general_purpose::STANDARD.encode(dynamic_key),
+        os,
+        sk
+    );
+    let ct = cipher
+        .encrypt(Nonce::from_slice(&iv), plaintext.as_bytes())
+        .map_err(|e| format!("AES-GCM 加密失败：{e}"))?;
+    let mut out = Vec::with_capacity(32 + 12 + ct.len());
+    out.extend_from_slice(eph_pub.as_bytes());
+    out.extend_from_slice(&iv);
+    out.extend_from_slice(&ct);
+    Ok(out)
+}
+
+/// xeapiMidTransform：随机 16 字节 XOR 循环 + base64 + 旋转
+fn xeapi_mid_transform(ciphertext: &[u8]) -> Vec<u8> {
+    let random = random_bytes(16);
+    let xored: Vec<u8> = ciphertext
+        .iter()
+        .enumerate()
+        .map(|(i, b)| b ^ random[i & 0x0f])
+        .collect();
+    let b64 = base64::engine::general_purpose::STANDARD.encode(&xored);
+    let bytes = b64.into_bytes();
+    let rot = if !bytes.is_empty() {
+        (random[0] & 0x0f) as usize % bytes.len()
+    } else {
+        0
+    };
+    let mut out = random.to_vec();
+    out.extend_from_slice(&bytes[rot..]);
+    out.extend_from_slice(&bytes[..rot]);
+    out
+}
+
+/// buildXeapiPlaintext：body（x-www-form-urlencoded 编码后 base64）+ queryString
+fn build_xeapi_plaintext(data: &Value) -> Vec<u8> {
+    let mut params: Vec<(String, String)> = Vec::new();
+    if let Some(obj) = data.as_object() {
+        for (k, v) in obj {
+            if k == "e_r" {
+                continue;
+            }
+            params.push((
+                k.clone(),
+                v.as_str()
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| v.to_string().trim_matches('"').to_string()),
+            ));
+        }
+    }
+    let body = params
+        .iter()
+        .map(|(k, v)| format!("{}={}", encode_uri_component(k), encode_uri_component(v)))
+        .collect::<Vec<_>>()
+        .join("&");
+    let body_b64 = base64::engine::general_purpose::STANDARD.encode(body.as_bytes());
+    let fields = serde_json::json!({
+        "body": body_b64,
+        "queryString": "e_r=true",
+    });
+    fields.to_string().into_bytes()
+}
+
+/// xeapi 三层加密，返回 (B, S, R)
+fn xeapi_encrypt(
+    _uri: &str,
+    data: &Value,
+    public_key_state: &XeapiKey,
+    os: &str,
+) -> Result<(String, String, String), String> {
+    let plaintext = build_xeapi_plaintext(data);
+    let dynamic_key: [u8; 16] = random_bytes(16)
+        .try_into()
+        .map_err(|_| "dynamic key 长度错误")?;
+    let inner = aes_ecb_encrypt_bytes(&XEAPI_STATIC_KEY, &plaintext)?;
+    let mid = xeapi_mid_transform(&inner);
+    let b = aes_ecb_encrypt_bytes(&dynamic_key, &mid)?;
+    let peer_raw: [u8; 32] = base64::engine::general_purpose::STANDARD
+        .decode(&public_key_state.public_key)
+        .map_err(|e| format!("xeapi peer key 解码失败：{e}"))?
+        .try_into()
+        .map_err(|_| "xeapi peer key 长度错误".to_string())?;
+    let s = xeapi_encrypt_s(&dynamic_key, &peer_raw, os, &public_key_state.sk)?;
+    let r = aes_ecb_encrypt_bytes(
+        &XEAPI_STATIC_KEY,
+        format!("{}|", public_key_state.version).as_bytes(),
+    )?;
+    Ok((
+        base64::engine::general_purpose::STANDARD.encode(b),
+        base64::engine::general_purpose::STANDARD.encode(s),
+        base64::engine::general_purpose::STANDARD.encode(r),
+    ))
+}
+
+/// 解密 xeapi 响应（AES-ECB(eapiKey) → 可能 gzip → JSON）
+fn xeapi_res_decrypt(body: &[u8]) -> Result<Value, String> {
+    let dec = aes_ecb_decrypt(EAPI_KEY, body)?;
+    let plain = if dec.len() >= 2 && dec[0] == 0x1f && dec[1] == 0x8b {
+        use std::io::Read;
+        let mut decoder = flate2::read::GzDecoder::new(&dec[..]);
+        let mut out = String::new();
+        decoder
+            .read_to_string(&mut out)
+            .map_err(|e| format!("xeapi gzip 解压失败：{e}"))?;
+        out
+    } else {
+        String::from_utf8_lossy(&dec).into_owned()
+    };
+    serde_json::from_str(&plain).map_err(|e| format!("xeapi 响应解析失败：{e}"))
+}
+
+/// cloudmusic_dll_encode_id：XOR + MD5 → base64（匿名注册 username 用）
+fn cloudmusic_dll_encode_id(some_id: &str) -> String {
+    let xored: Vec<u8> = some_id
+        .bytes()
+        .enumerate()
+        .map(|(i, b)| b ^ ID_XOR_KEY[i % ID_XOR_KEY.len()])
+        .collect();
+    base64::engine::general_purpose::STANDARD.encode(Md5::digest(&xored))
+}
+
+/// xeapi public key 状态（/api/gorilla/anti/crawler/security/key/get 解密结果）
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+struct XeapiKey {
+    public_key: String,
+    version: String,
+    sk: String,
+}
+
+/// 获取 xeapi public key（明文请求 + 响应签名校验 + AES-ECB 解密）
+fn get_xeapi_key(_app: &tauri::AppHandle) -> Result<XeapiKey, String> {
+    let device_id = {
+        let persist = state().lock().unwrap();
+        persist.device_id.clone()
+    };
+    let nonce = (0..16)
+        .map(|_| char::from(b'0' + (random_bytes(1)[0] % 10)))
+        .collect::<String>();
+    let timestamp = now_millis().to_string();
+    let signature = xeapi_sign(&timestamp, &nonce)?;
+    let body = format!(
+        "appVersion=9.5.61&currentKeyVersion=&deviceId={}&nonce={}&os=android&requestType=active&signature={}&t1=&t2=&timestamp={}&uid=",
+        encode_uri_component(&device_id),
+        nonce,
+        encode_uri_component(&signature),
+        timestamp
+    );
+    let resp = client()
+        .post("https://interface.music.163.com/api/gorilla/anti/crawler/security/key/get")
+        .header("User-Agent", UA_XEAPI)
+        .header("Cookie", format!("deviceId={}", encode_uri_component(&device_id)))
+        .body(body)
+        .timeout(Duration::from_secs(30))
+        .send()
+        .map_err(|e| format!("获取网易云密钥失败：{}", reqwest_detail(&e)))?;
+    let text = resp.text().map_err(|e| format!("读取密钥响应失败：{e}"))?;
+    let json: Value =
+        serde_json::from_str(&text).map_err(|_| "密钥响应解析失败".to_string())?;
+    if json["code"].as_i64() != Some(200) {
+        return Err(format!("网易云返回错误（code={:?}）", json["code"]));
+    }
+    let data = &json["data"];
+    let encrypted = data["encryptedData"].as_str().unwrap_or_default();
+    // 校验响应签名（可选，签名缺失时不拦截）
+    let resp_ts = data["timestamp"].as_str().unwrap_or_default();
+    let resp_sig = data["signature"].as_str().unwrap_or_default();
+    if let Ok(expected) = xeapi_sign(resp_ts, &nonce) {
+        if !resp_sig.is_empty() && expected != resp_sig {
+            return Err("密钥响应签名校验失败".into());
+        }
+    }
+    let enc_bytes = base64::engine::general_purpose::STANDARD
+        .decode(encrypted)
+        .map_err(|e| format!("密钥密文解码失败：{e}"))?;
+    let dec = aes_ecb_decrypt(&XEAPI_STATIC_KEY, &enc_bytes)?;
+    let key_json: Value =
+        serde_json::from_slice(&dec).map_err(|e| format!("密钥解密结果解析失败：{e}"))?;
+    Ok(XeapiKey {
+        public_key: key_json["publicKey"].as_str().unwrap_or_default().to_string(),
+        version: key_json["version"].as_str().unwrap_or_default().to_string(),
+        sk: key_json["sk"].as_str().unwrap_or_default().to_string(),
+    })
+}
+
+/// 注册匿名身份：xeapi 调用 /api/register/anonimous，拿 MUSIC_A cookie
+fn register_anonymous(app: &tauri::AppHandle) -> Result<(), String> {
+    let xeapi_key = get_xeapi_key(app)?;
+    let device_id = {
+        let persist = state().lock().unwrap();
+        persist.device_id.clone()
+    };
+    let encoded_id = base64::engine::general_purpose::STANDARD.encode(
+        format!(
+            "{} {}",
+            device_id,
+            cloudmusic_dll_encode_id(&device_id)
+        )
+        .as_bytes(),
+    );
+    let result = xeapi_call(
+        "/api/register/anonimous",
+        &mut serde_json::json!({ "username": encoded_id }),
+        &xeapi_key,
+    )?;
+    if result["code"].as_i64() != Some(200) {
+        return Err(format!("匿名身份注册失败（code={:?}）", result["code"]));
+    }
+    // 保存 xeapi key 与匿名 cookie（含 MUSIC_A）
+    {
+        let mut persist = state().lock().unwrap();
+        persist.xeapi_key = Some(xeapi_key);
+        save_persist(app, &persist)?;
+    }
+    Ok(())
+}
+
+/// xeapi 请求：三层加密 → 专用头 → 合并 cookie → 解密响应
+fn xeapi_call(
+    uri: &str,
+    data: &mut Value,
+    public_key_state: &XeapiKey,
+) -> Result<Value, String> {
+    let (music_u, device_id, cookie_map) = {
+        let persist = state().lock().unwrap();
+        let cookie_map = cookie_to_map(&persist.cookie);
+        (
+            cookie_map.get("MUSIC_U").cloned().unwrap_or_default(),
+            persist.device_id.clone(),
+            cookie_map,
+        )
+    };
+
+    let os = "android";
+    let appver = "9.1.65";
+    let osver = "16";
+    let buildver = now_millis().to_string()[..10].to_string();
+
+    // 专用请求头（参考 request.js xeapi 分支）
+    let mut headers: Vec<(String, String)> = vec![
+        ("X-Client-Enc-State".into(), "ENCRYPTED".into()),
+        ("x-aeapi".into(), "true".into()),
+        ("x-deviceid".into(), device_id.clone()),
+        ("x-os".into(), os.into()),
+        ("x-osver".into(), osver.into()),
+        ("x-appver".into(), appver.into()),
+        ("x-sdeviceid".into(), device_id.clone()),
+        ("x-buildver".into(), buildver.clone()),
+        ("User-Agent".into(), UA_XEAPI.into()),
+    ];
+    if !music_u.is_empty() {
+        headers.push(("x-music-u".into(), music_u));
+    }
+    let mut cookie = cookie_map;
+    cookie.insert("os".into(), os.into());
+    cookie.insert("osver".into(), osver.into());
+    cookie.insert("appver".into(), appver.into());
+    cookie.insert("buildver".into(), buildver);
+    cookie.insert("deviceId".into(), device_id.clone());
+    cookie.insert("sDeviceId".into(), device_id.clone());
+    headers.push(("Cookie".into(), map_to_cookie(&cookie)));
+
+    let (b, s, r) = xeapi_encrypt(uri, data, public_key_state, os)?;
+
+    let url = format!("{XEAPI_DOMAIN}/xeapi/{}", uri.trim_start_matches("/api"));
+    let mut req = client()
+        .post(&url)
+        .body(format!(
+            "B={}&S={}&R={}",
+            encode_uri_component(&b),
+            encode_uri_component(&s),
+            encode_uri_component(&r)
+        ))
+        .timeout(Duration::from_secs(30));
+    for (k, v) in &headers {
+        req = req.header(k, v);
+    }
+    let resp = req
+        .send()
+        .map_err(|e| format!("无法连接网易云：{}", reqwest_detail(&e)))?;
+
+    {
+        let mut persist = state().lock().unwrap();
+        merge_set_cookie(&mut persist, &resp);
+    }
+    let bytes = resp
+        .bytes()
+        .map_err(|e| format!("读取网易云响应失败：{e}"))?;
+    xeapi_res_decrypt(&bytes)
 }
 
 /// RSA-1024 PKCS1v15 加密（参考 rsaEncrypt，小写 hex 输出）。
@@ -504,7 +928,7 @@ fn rand4() -> u32 {
 
 // ---- 账号信息 ----
 
-fn fetch_account(app: &tauri::AppHandle) -> Result<NeteaseAccount, String> {
+fn fetch_account(_app: &tauri::AppHandle) -> Result<NeteaseAccount, String> {
     let (code, body) = api_call(
         "weapi",
         "/api/w/nuser/account/get",
@@ -600,6 +1024,21 @@ pub async fn netease_login_qr_key(app: tauri::AppHandle) -> Result<String, Strin
 fn netease_login_qr_key_sync(app: tauri::AppHandle) -> Result<String, String> {
     // 启动时恢复持久化状态（仅首次）
     ensure_loaded(&app);
+    // 风控前置：无登录凭据（MUSIC_U）时先注册匿名身份（xeapi → MUSIC_A），
+    // 否则扫码会被网易云判定"设备环境异常"拦截（参考项目对照实验已验证）
+    {
+        let persist = state().lock().unwrap();
+        let map = cookie_to_map(&persist.cookie);
+        let has_music_u = map.contains_key("MUSIC_U");
+        let has_music_a = map.contains_key("MUSIC_A");
+        let has_key = persist.xeapi_key.is_some();
+        if !has_music_u && (!has_music_a || !has_key) {
+            drop(persist);
+            if let Err(e) = register_anonymous(&app) {
+                eprintln!("[网易云] 匿名身份注册失败（扫码可能被风控）：{e}");
+            }
+        }
+    }
     let (code, body) = api_call(
         "eapi",
         "/api/login/qrcode/unikey",

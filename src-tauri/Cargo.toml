@@ -50,6 +50,12 @@ ecb = "0.1"
 rsa = { version = "0.9", features = ["pem"] }
 md-5 = "0.10"
 rand_core = { version = "0.6", features = ["getrandom"] }
+# 网易云 xeapi 协议（匿名身份注册，风控必需）：X25519 + AES-128-GCM + HMAC-SHA256 + gzip
+x25519-dalek = { version = "2", features = ["static_secrets"] }
+aes-gcm = "0.10"
+hmac = "0.12"
+sha2 = "0.10"
+flate2 = "1"
 roxmltree = "0.20"
 # WebDAV 媒体本地代理：绑定 127.0.0.1 随机端口的轻量 HTTP 服务（SMTC 封面服务同款，跨平台）
 tiny_http = "0.12"
