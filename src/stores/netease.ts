@@ -107,9 +107,13 @@ export const useNeteaseStore = defineStore("netease", () => {
           void refreshCloudCount();
           return;
         }
+        // 实测语义：801=等待扫码 802=已扫码待确认 800=二维码过期（停止轮询）
         if (res.code === 802) qrState.value = "confirmed";
-        else if (res.code === 801) qrState.value = "scanned";
-        else qrState.value = "wait";
+        else if (res.code === 801) qrState.value = "wait";
+        else if (res.code === 800) {
+          qrState.value = "timeout";
+          return;
+        } else qrState.value = "wait";
         poll();
       } catch (e) {
         qrState.value = "error";
