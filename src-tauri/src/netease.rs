@@ -115,6 +115,9 @@ static CLIENT: OnceLock<reqwest::blocking::Client> = OnceLock::new();
 fn client() -> &'static reqwest::blocking::Client {
     CLIENT.get_or_init(|| {
         reqwest::blocking::Client::builder()
+            // 忽略系统 HTTP_PROXY/HTTPS_PROXY 环境变量：代理不可用时
+            // 会报 tunnel error（本机 127.0.0.1:7890 常见），直连更可靠
+            .no_proxy()
             .build()
             .expect("netease http client")
     })

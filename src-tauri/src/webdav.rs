@@ -44,6 +44,8 @@ static CLIENT: OnceLock<reqwest::blocking::Client> = OnceLock::new();
 fn client() -> &'static reqwest::blocking::Client {
     CLIENT.get_or_init(|| {
         reqwest::blocking::Client::builder()
+            // 忽略环境变量代理（HTTP_PROXY/HTTPS_PROXY）：代理未运行时隧道失败
+            .no_proxy()
             .build()
             .expect("webdav http client")
     })
