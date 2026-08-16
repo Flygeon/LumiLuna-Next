@@ -8,13 +8,14 @@
 //! cookie 持久化在 app data 目录，重启后自动恢复登录态。
 
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 
 use aes::Aes128;
 use base64::Engine;
 use cbc::cipher::{block_padding::Pkcs7, BlockEncryptMut, KeyIvInit};
-use ecb::cipher::{BlockEncrypt, KeyInit};
+use ecb::cipher::{BlockEncryptMut, KeyInit};
 use md5::{Digest, Md5};
 use percent_encoding::{utf8_percent_encode, AsciiSet, CONTROLS};
 use rsa::pkcs1::DecodeRsaPublicKey;
@@ -149,20 +150,27 @@ fn generate_device_id() -> String {
 fn aes_cbc_b64(key: &[u8], iv: &[u8; 16], plain: &str) -> String {
     type Aes128CbcEnc = cbc::Encryptor<Aes128>;
     let enc = Aes128CbcEnc::new(key.into(), iv.into());
-    let ct = enc.encrypt_padded_vec_mut::<Pkcs7>(plain.as_bytes());
+    // encrypt_padded_vec_mut 需要 cipher 的 alloc feature，这里手动给 buffer
+    let msg = plain.as_bytes();
+    let mut buf = vec![0u8; msg.len() + 16];
+    let ct = enc
+        .encrypt_padded_mut::<Pkcs7>(&mut buf, msg.len())
+        .expect("aes cbc padding");
     base64::engine::general_purpose::STANDARD.encode(ct)
 }
 
 /// AES-128-ECB（PKCS7 填充），输出大写 hex（参考 aesEncrypt format='hex'）
 fn aes_ecb_hex(key: &[u8; 16], plain: &str) -> String {
-    let cipher = ecb::Encryptor::<Aes128>::new(key.into());
+    // ecb::Encryptor 实现 BlockEncryptMut（原地加密）
+    use ecb::cipher::BlockEncryptMut as _;
+    let mut cipher = ecb::Encryptor::<Aes128>::new(key.into());
     let mut bytes = plain.as_bytes().to_vec();
     let pad = 16 - (bytes.len() % 16);
     bytes.extend(std::iter::repeat_n(pad as u8, pad));
     let mut out = String::with_capacity(bytes.len() * 2);
     for chunk in bytes.chunks_exact(16) {
         let mut block = aes::Block::clone_from_slice(chunk);
-        cipher.encrypt_block(&mut block);
+        cipher.encrypt_block_mut(&mut block);
         for b in block.iter() {
             out.push_str(&format!("{b:02X}"));
         }
@@ -335,12 +343,7 @@ fn merge_set_cookie(persist: &mut NeteasePersist, resp: &reqwest::blocking::Resp
 }
 
 /// 统一请求入口：加密 → POST → 合并 cookie → 返回 (body.code, body)
-fn api_call(
-    app: &tauri::AppHandle,
-    crypto: &str,
-    path: &str,
-    data: &mut Value,
-) -> Result<(i64, Value), String> {
+fn api_call(crypto: &str, path: &str, data: &mut Value) -> Result<(i64, Value), String> {
     let mut persist = state().lock().map_err(|e| e.to_string())?;
     let cookie_map = cookie_to_map(&persist.cookie);
     let csrf = cookie_map.get("__csrf").cloned().unwrap_or_default();
@@ -528,8 +531,8 @@ pub struct NeteaseSongUrl {
 /// 获取二维码 key（unikey），前端据此渲染二维码
 #[tauri::command]
 pub fn netease_login_qr_key(app: tauri::AppHandle) -> Result<String, String> {
-    // 启动时恢复持久化状态
-    *state().lock().unwrap() = load_persist(&app);
+    // 启动时恢复持久化状态（仅首次）
+    ensure_loaded(&app);
     let (code, body) = api_call(
         &app,
         "eapi",
@@ -588,7 +591,7 @@ pub fn netease_login_qr_check(
 /// 账号信息（启动校验登录态；已过期则清除并报错）
 #[tauri::command]
 pub fn netease_account(app: tauri::AppHandle) -> Result<NeteaseAccount, String> {
-    *state().lock().unwrap() = load_persist(&app);
+    ensure_loaded(&app);
     match fetch_account(&app) {
         Ok(account) => {
             let mut persist = state().lock().unwrap();
