@@ -741,6 +741,26 @@ fn weapi(data: &Value) -> Result<(String, String), String> {
         Err(e) => format!("自检失败：{e}"),
     };
     netease_log(&format!("WEAPI-SELFCHECK {selfcheck}"));
+    // 固定密钥复现测试：用固定 secret 加密 text，输出中间值供 Node 同参数对比
+    {
+        let fixed_secret = "FixedSecret123456";
+        match aes_cbc_b64(PRESET_KEY, IV, &text) {
+            Ok(fx_inner) => match aes_cbc_b64(fixed_secret.as_bytes(), IV, &fx_inner) {
+                Ok(fx_params) => {
+                    let fx_dec = aes_cbc_b64_decrypt(fixed_secret.as_bytes(), IV, &fx_params);
+                    netease_log(&format!(
+                        "FIXED-TEST text={} inner={} params={} dec={:?}",
+                        text,
+                        fx_inner,
+                        fx_params,
+                        fx_dec
+                    ));
+                }
+                Err(e) => netease_log(&format!("FIXED-TEST 外层加密失败：{e}")),
+            },
+            Err(e) => netease_log(&format!("FIXED-TEST 内层加密失败：{e}")),
+        }
+    }
     Ok((params, enc_sec_key))
 }
 
