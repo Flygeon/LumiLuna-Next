@@ -476,7 +476,7 @@ fn current_uid(app: &tauri::AppHandle) -> Result<i64, String> {
 
 // ---- 返回类型（与前端 TS 一一对应）----
 
-#[derive(Serialize, Deserialize, Clone, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct NeteaseAccount {
     pub user_id: i64,
