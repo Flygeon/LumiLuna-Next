@@ -79,6 +79,10 @@ const PERSIST_FILE: &str = "netease.json";
 struct NeteasePersist {
     cookie: String,
     device_id: String,
+    /// 随机中国 IP（参考 server.js 的 global.cnIp）：X-Real-IP / X-Forwarded-For，
+    /// 海外/机房 IP 会被网易风控拦截（空响应 / 设备环境异常），带上后与参考项目一致
+    #[serde(default)]
+    cn_ip: String,
     uid: Option<i64>,
     profile: Option<NeteaseAccount>,
     /// xeapi 公钥状态（匿名身份注册后缓存）
@@ -551,12 +555,17 @@ fn xeapi_call(
     data: &mut Value,
     public_key_state: &XeapiKey,
 ) -> Result<Value, String> {
-    let (music_u, device_id, cookie_map) = {
-        let persist = state().lock().unwrap();
+    let (music_u, device_id, cn_ip, cookie_map) = {
+        let mut persist = state().lock().unwrap();
         let cookie_map = cookie_to_map(&persist.cookie);
+        if persist.cn_ip.is_empty() {
+            let b = random_bytes(3);
+            persist.cn_ip = format!("116.{}.{}.{}", 25 + (b[0] % 70), b[1], b[2]);
+        }
         (
             cookie_map.get("MUSIC_U").cloned().unwrap_or_default(),
             persist.device_id.clone(),
+            persist.cn_ip.clone(),
             cookie_map,
         )
     };
@@ -577,6 +586,8 @@ fn xeapi_call(
         ("x-sdeviceid".into(), device_id.clone()),
         ("x-buildver".into(), buildver.clone()),
         ("User-Agent".into(), UA_XEAPI.into()),
+        ("X-Real-IP".into(), cn_ip.clone()),
+        ("X-Forwarded-For".into(), cn_ip.clone()),
     ];
     if !music_u.is_empty() {
         headers.push(("x-music-u".into(), music_u));
@@ -816,6 +827,13 @@ fn api_call(crypto: &str, path: &str, data: &mut Value) -> Result<(i64, Value), 
     } else {
         persist.device_id.clone()
     };
+    if persist.cn_ip.is_empty() {
+        let b = random_bytes(3);
+        persist.cn_ip = format!("116.{}.{}.{}", 25 + (b[0] % 70), b[1], b[2]);
+    }
+    let cn_ip = persist.cn_ip.clone();
+    // 响应明文模式（参考 request.js：encryptResponse=false 时 data.e_r=false）
+    data["e_r"] = Value::Bool(false);
 
     let (body, candidate_urls, headers): (String, Vec<String>, Vec<(String, String)>) =
         if crypto == "weapi" {
@@ -837,6 +855,8 @@ fn api_call(crypto: &str, path: &str, data: &mut Value) -> Result<(i64, Value), 
                     ("User-Agent".to_string(), UA_WEAPI.to_string()),
                     ("Referer".to_string(), DOMAIN.to_string()),
                     ("Cookie".to_string(), cookie),
+                    ("X-Real-IP".to_string(), cn_ip.clone()),
+                    ("X-Forwarded-For".to_string(), cn_ip.clone()),
                 ],
             )
         } else {
@@ -877,6 +897,8 @@ fn api_call(crypto: &str, path: &str, data: &mut Value) -> Result<(i64, Value), 
                 vec![
                     ("User-Agent".to_string(), UA_EAPI.to_string()),
                     ("Cookie".to_string(), cookie),
+                    ("X-Real-IP".to_string(), cn_ip.clone()),
+                    ("X-Forwarded-For".to_string(), cn_ip.clone()),
                 ],
             )
         };
@@ -912,10 +934,25 @@ fn api_call(crypto: &str, path: &str, data: &mut Value) -> Result<(i64, Value), 
         merge_set_cookie(&mut persist, &resp);
     }
 
+    let status = resp.status().as_u16();
     let text = resp.text().map_err(|e| format!("读取网易云响应失败：{e}"))?;
     let body: Value = serde_json::from_str(&text).map_err(|_| {
-        let preview: String = text.chars().take(120).collect();
-        format!("网易云响应解析失败：{preview}")
+        let preview: String = text
+            .chars()
+            .take(200)
+            .map(|c| match c {
+                '\n' => '\u{23ce}',
+                '\r' => '\u{240d}',
+                '\t' => '\u{2409}',
+                c if c.is_control() => '\u{00b7}',
+                c => c,
+            })
+            .collect();
+        format!(
+            "网易云响应解析失败（{}，HTTP {status}，{} 字节）：{preview}",
+            path.trim_start_matches("/api"),
+            text.len()
+        )
     })?;
     let code = body["code"].as_i64().unwrap_or(0);
     Ok((code, body))
@@ -1026,6 +1063,7 @@ fn netease_login_qr_key_sync(app: tauri::AppHandle) -> Result<String, String> {
     ensure_loaded(&app);
     // 风控前置：无登录凭据（MUSIC_U）时先注册匿名身份（xeapi → MUSIC_A），
     // 否则扫码会被网易云判定"设备环境异常"拦截（参考项目对照实验已验证）
+    let mut register_err: Option<String> = None;
     {
         let persist = state().lock().unwrap();
         let map = cookie_to_map(&persist.cookie);
@@ -1036,6 +1074,7 @@ fn netease_login_qr_key_sync(app: tauri::AppHandle) -> Result<String, String> {
             drop(persist);
             if let Err(e) = register_anonymous(&app) {
                 eprintln!("[网易云] 匿名身份注册失败（扫码可能被风控）：{e}");
+                register_err = Some(e);
             }
         }
     }
@@ -1043,7 +1082,11 @@ fn netease_login_qr_key_sync(app: tauri::AppHandle) -> Result<String, String> {
         "eapi",
         "/api/login/qrcode/unikey",
         &mut serde_json::json!({ "type": 3 }),
-    )?;
+    )
+    .map_err(|e| match register_err {
+        Some(re) => format!("匿名身份注册失败：{re}；二维码接口失败：{e}"),
+        None => e,
+    })?;
     if code != 200 {
         return Err(err_for_code(code));
     }
@@ -1111,6 +1154,15 @@ pub async fn netease_account(app: tauri::AppHandle) -> Result<NeteaseAccount, St
 
 fn netease_account_sync(app: tauri::AppHandle) -> Result<NeteaseAccount, String> {
     ensure_loaded(&app);
+    // 未登录（无 MUSIC_U）时直接返回未登录：裸 weapi 请求会被风控以
+    // 空响应拦截（"网易云响应解析失败："），且启动时无需任何网络往返
+    {
+        let persist = state().lock().unwrap();
+        let map = cookie_to_map(&persist.cookie);
+        if !map.contains_key("MUSIC_U") {
+            return Err("未登录".to_string());
+        }
+    }
     match fetch_account(&app) {
         Ok(account) => {
             let mut persist = state().lock().unwrap();
