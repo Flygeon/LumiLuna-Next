@@ -96,6 +96,19 @@ struct NeteasePersist {
 
 static STATE: OnceLock<Mutex<NeteasePersist>> = OnceLock::new();
 
+/// 调试日志路径（app data 目录 netease-debug.log，ensure_loaded 时初始化）
+static LOG_PATH: OnceLock<std::path::PathBuf> = OnceLock::new();
+
+/// 追加一行调试日志（不影响功能，仅排障用）
+fn netease_log(msg: &str) {
+    if let Some(p) = LOG_PATH.get() {
+        use std::io::Write;
+        if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(p) {
+            let _ = writeln!(f, "[{}] {}", now_millis(), msg);
+        }
+    }
+}
+
 fn state() -> &'static Mutex<NeteasePersist> {
     STATE.get_or_init(|| Mutex::new(NeteasePersist::default()))
 }
@@ -106,6 +119,10 @@ static LOADED: AtomicBool = AtomicBool::new(false);
 fn ensure_loaded(app: &tauri::AppHandle) {
     if !LOADED.swap(true, Ordering::SeqCst) {
         *state().lock().unwrap() = load_persist(app);
+    }
+    // 初始化调试日志路径（供 api_call 记录完整请求）
+    if let Ok(dir) = app.path().app_data_dir() {
+        let _ = LOG_PATH.set(dir.join("netease-debug.log"));
     }
 }
 
@@ -971,6 +988,23 @@ fn api_call(crypto: &str, path: &str, data: &mut Value) -> Result<(i64, Value), 
         None => "无法连接网易云（未知网络错误）".to_string(),
     })?;
 
+    // 记录本次请求（排障：对比应用实际发送与 curl/Node 复刻）
+    {
+        let hdrs: String = headers
+            .iter()
+            .map(|(k, v)| format!("{k}={v}"))
+            .collect::<Vec<_>>()
+            .join("\n  ");
+        netease_log(&format!(
+            "REQ {} → {} {}\n  {}\n  BODY: {}",
+            crypto,
+            candidate_urls.join(","),
+            body.len(),
+            hdrs,
+            body
+        ));
+    }
+
     // 合并 Set-Cookie（登录成功的关键：MUSIC_U 等）
     {
         let mut persist = state().lock().map_err(|e| e.to_string())?;
@@ -979,6 +1013,16 @@ fn api_call(crypto: &str, path: &str, data: &mut Value) -> Result<(i64, Value), 
 
     let status = resp.status().as_u16();
     let text = resp.text().map_err(|e| format!("读取网易云响应失败：{e}"))?;
+    if !text.trim().is_empty() && serde_json::from_str::<Value>(&text).is_err() {
+        let t_preview: String = text.chars().take(300).collect();
+        netease_log(&format!(
+            "RESP {} HTTP {status} {}字节 非JSON: {t_preview}",
+            path.trim_start_matches("/api"),
+            text.len()
+        ));
+    } else if text.trim().is_empty() {
+        netease_log(&format!("RESP {} HTTP {status} 空响应体！", path.trim_start_matches("/api")));
+    }
     let body: Value = serde_json::from_str(&text).map_err(|_| {
         let preview: String = text
             .chars()
