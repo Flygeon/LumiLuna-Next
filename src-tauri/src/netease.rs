@@ -545,7 +545,14 @@ pub struct NeteaseSongUrl {
 
 /// 获取二维码 key（unikey），前端据此渲染二维码
 #[tauri::command]
-pub fn netease_login_qr_key(app: tauri::AppHandle) -> Result<String, String> {
+pub async fn netease_login_qr_key(app: tauri::AppHandle) -> Result<String, String> {
+    // spawn_blocking：网络请求不占主线程，避免冻结 UI
+    tauri::async_runtime::spawn_blocking(move || netease_login_qr_key_sync(app))
+        .await
+        .map_err(|e| format!("网易云请求异常：{e}"))?
+}
+
+fn netease_login_qr_key_sync(app: tauri::AppHandle) -> Result<String, String> {
     // 启动时恢复持久化状态（仅首次）
     ensure_loaded(&app);
     let (code, body) = api_call(
@@ -565,7 +572,16 @@ pub fn netease_login_qr_key(app: tauri::AppHandle) -> Result<String, String> {
 
 /// 轮询扫码状态：800 等待 / 801 已扫码 / 802 确认中 / 803 登录成功
 #[tauri::command]
-pub fn netease_login_qr_check(
+pub async fn netease_login_qr_check(
+    app: tauri::AppHandle,
+    key: String,
+) -> Result<NeteaseQrCheck, String> {
+    tauri::async_runtime::spawn_blocking(move || netease_login_qr_check_sync(app, key))
+        .await
+        .map_err(|e| format!("网易云请求异常：{e}"))?
+}
+
+fn netease_login_qr_check_sync(
     app: tauri::AppHandle,
     key: String,
 ) -> Result<NeteaseQrCheck, String> {
@@ -603,7 +619,13 @@ pub fn netease_login_qr_check(
 
 /// 账号信息（启动校验登录态；已过期则清除并报错）
 #[tauri::command]
-pub fn netease_account(app: tauri::AppHandle) -> Result<NeteaseAccount, String> {
+pub async fn netease_account(app: tauri::AppHandle) -> Result<NeteaseAccount, String> {
+    tauri::async_runtime::spawn_blocking(move || netease_account_sync(app))
+        .await
+        .map_err(|e| format!("网易云请求异常：{e}"))?
+}
+
+fn netease_account_sync(app: tauri::AppHandle) -> Result<NeteaseAccount, String> {
     ensure_loaded(&app);
     match fetch_account(&app) {
         Ok(account) => {
@@ -623,7 +645,17 @@ pub fn netease_account(app: tauri::AppHandle) -> Result<NeteaseAccount, String> 
 
 /// 我的歌单（分页）
 #[tauri::command]
-pub fn netease_user_playlists(
+pub async fn netease_user_playlists(
+    app: tauri::AppHandle,
+    offset: i64,
+    limit: i64,
+) -> Result<Vec<NeteasePlaylist>, String> {
+    tauri::async_runtime::spawn_blocking(move || netease_user_playlists_sync(app, offset, limit))
+        .await
+        .map_err(|e| format!("网易云请求异常：{e}"))?
+}
+
+fn netease_user_playlists_sync(
     app: tauri::AppHandle,
     offset: i64,
     limit: i64,
@@ -658,11 +690,16 @@ pub fn netease_user_playlists(
 
 /// 歌单详情 → 歌曲列表
 #[tauri::command]
-pub fn netease_playlist_detail(
+pub async fn netease_playlist_detail(
     app: tauri::AppHandle,
     id: i64,
 ) -> Result<Vec<NeteaseSong>, String> {
-    let _ = &app; // 登录态已在全局状态，无需 app
+    tauri::async_runtime::spawn_blocking(move || netease_playlist_detail_sync(id))
+        .await
+        .map_err(|e| format!("网易云请求异常：{e}"))?
+}
+
+fn netease_playlist_detail_sync(id: i64) -> Result<Vec<NeteaseSong>, String> {
     let (code, body) = api_call(
         "eapi",
         "/api/v6/playlist/detail",
@@ -702,12 +739,17 @@ fn songs_from_tracks(tracks: &[Value]) -> Vec<NeteaseSong> {
 
 /// 云盘歌曲列表（分页）
 #[tauri::command]
-pub fn netease_cloud(
+pub async fn netease_cloud(
     app: tauri::AppHandle,
     offset: i64,
     limit: i64,
 ) -> Result<NeteaseCloudPage, String> {
-    let _ = &app; // 登录态已在全局状态，无需 app
+    tauri::async_runtime::spawn_blocking(move || netease_cloud_sync(offset, limit))
+        .await
+        .map_err(|e| format!("网易云请求异常：{e}"))?
+}
+
+fn netease_cloud_sync(offset: i64, limit: i64) -> Result<NeteaseCloudPage, String> {
     let (code, body) = api_call(
         "weapi",
         "/api/v1/cloud/get",
@@ -755,11 +797,16 @@ pub fn netease_cloud(
 
 /// 批量获取歌曲播放 URL（br=999000 最高可用）
 #[tauri::command]
-pub fn netease_song_url(
+pub async fn netease_song_url(
     app: tauri::AppHandle,
     ids: Vec<i64>,
 ) -> Result<Vec<NeteaseSongUrl>, String> {
-    let _ = &app; // 登录态已在全局状态，无需 app
+    tauri::async_runtime::spawn_blocking(move || netease_song_url_sync(ids))
+        .await
+        .map_err(|e| format!("网易云请求异常：{e}"))?
+}
+
+fn netease_song_url_sync(ids: Vec<i64>) -> Result<Vec<NeteaseSongUrl>, String> {
     if ids.is_empty() {
         return Ok(Vec::new());
     }
@@ -786,7 +833,11 @@ pub fn netease_song_url(
 
 /// 退出登录：清内存 + 删持久化文件
 #[tauri::command]
-pub fn netease_logout(app: tauri::AppHandle) -> Result<(), String> {
-    clear_persist(&app);
-    Ok(())
+pub async fn netease_logout(app: tauri::AppHandle) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        clear_persist(&app);
+        Ok(())
+    })
+    .await
+    .map_err(|e| format!("网易云请求异常：{e}"))?
 }
