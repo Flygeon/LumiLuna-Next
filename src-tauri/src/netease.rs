@@ -18,7 +18,7 @@ use cbc::cipher::{block_padding::Pkcs7, BlockEncryptMut, KeyIvInit};
 use ecb::cipher::KeyInit;
 use md5::{Digest, Md5};
 use percent_encoding::{utf8_percent_encode, AsciiSet, CONTROLS};
-use rsa::pkcs1::DecodeRsaPublicKey;
+use rsa::pkcs8::DecodePublicKey;
 use rsa::{Pkcs1v15Encrypt, RsaPublicKey};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -158,7 +158,7 @@ fn generate_device_id() -> String {
 
 // ---- 加密（移植自 api-enhanced util/crypto.js）----
 
-fn aes_cbc_b64(key: &[u8], iv: &[u8; 16], plain: &str) -> String {
+fn aes_cbc_b64(key: &[u8], iv: &[u8; 16], plain: &str) -> Result<String, String> {
     type Aes128CbcEnc = cbc::Encryptor<Aes128>;
     let enc = Aes128CbcEnc::new(key.into(), iv.into());
     // encrypt_padded_vec_mut 需要 cipher 的 alloc feature，这里手动给 buffer
@@ -166,8 +166,8 @@ fn aes_cbc_b64(key: &[u8], iv: &[u8; 16], plain: &str) -> String {
     let mut buf = vec![0u8; msg.len() + 16];
     let ct = enc
         .encrypt_padded_mut::<Pkcs7>(&mut buf, msg.len())
-        .expect("aes cbc padding");
-    base64::engine::general_purpose::STANDARD.encode(ct)
+        .map_err(|e| format!("AES 加密失败：{e:?}"))?;
+    Ok(base64::engine::general_purpose::STANDARD.encode(ct))
 }
 
 /// AES-128-ECB（PKCS7 填充），输出大写 hex（参考 aesEncrypt format='hex'）
@@ -189,25 +189,28 @@ fn aes_ecb_hex(key: &[u8; 16], plain: &str) -> String {
     out
 }
 
-/// RSA-1024 PKCS1v15 加密（参考 rsaEncrypt，小写 hex 输出）
-fn rsa_encrypt_hex(data: &[u8]) -> String {
-    let key = RsaPublicKey::from_pkcs1_pem(RSA_PUBLIC_KEY_PEM).expect("netease rsa pubkey");
+/// RSA-1024 PKCS1v15 加密（参考 rsaEncrypt，小写 hex 输出）。
+/// 注意：参考项目公钥是 SPKI 格式（BEGIN PUBLIC KEY），必须用 pkcs8 解析
+/// （pkcs1::DecodeRsaPublicKey 只认 BEGIN RSA PUBLIC KEY，运行期会解析失败）。
+fn rsa_encrypt_hex(data: &[u8]) -> Result<String, String> {
+    let key = RsaPublicKey::from_public_key_pem(RSA_PUBLIC_KEY_PEM)
+        .map_err(|e| format!("网易云 RSA 公钥解析失败：{e}"))?;
     let mut rng = rsa::rand_core::OsRng;
     let ct = key
         .encrypt(&mut rng, Pkcs1v15Encrypt, data)
-        .expect("netease rsa encrypt");
-    ct.iter().map(|b| format!("{b:02x}")).collect()
+        .map_err(|e| format!("网易云 RSA 加密失败：{e}"))?;
+    Ok(ct.iter().map(|b| format!("{b:02x}")).collect())
 }
 
 /// weapi 加密：双层 AES-CBC + RSA（返回 (params, encSecKey)）
-fn weapi(data: &Value) -> (String, String) {
+fn weapi(data: &Value) -> Result<(String, String), String> {
     let text = data.to_string();
     let secret = random_base62(16);
-    let inner = aes_cbc_b64(secret.as_bytes(), IV, &text);
-    let params = aes_cbc_b64(PRESET_KEY, IV, &inner);
+    let inner = aes_cbc_b64(secret.as_bytes(), IV, &text)?;
+    let params = aes_cbc_b64(PRESET_KEY, IV, &inner)?;
     let reversed: String = secret.chars().rev().collect();
-    let enc_sec_key = rsa_encrypt_hex(reversed.as_bytes());
-    (params, enc_sec_key)
+    let enc_sec_key = rsa_encrypt_hex(reversed.as_bytes())?;
+    Ok((params, enc_sec_key))
 }
 
 /// eapi 加密：MD5 + AES-ECB，返回大写 hex params
@@ -371,7 +374,7 @@ fn api_call(crypto: &str, path: &str, data: &mut Value) -> Result<(i64, Value), 
     let (body, url, headers): (String, String, Vec<(String, String)>) =
         if crypto == "weapi" {
             data["csrf_token"] = Value::String(csrf.clone());
-            let (params, enc_sec_key) = weapi(data);
+            let (params, enc_sec_key) = weapi(data)?;
             let body = format!(
                 "params={}&encSecKey={}",
                 encode_uri_component(&params),
