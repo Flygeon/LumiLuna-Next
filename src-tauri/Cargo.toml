@@ -38,7 +38,7 @@ rayon = "1"
 base64 = "0.22"
 getrandom = "0.2"
 chrono = "0.4"
-reqwest = { version = "0.12", default-features = false, features = ["blocking", "stream", "rustls-tls", "http2", "charset", "gzip"] }
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "stream", "native-tls", "charset", "gzip"] }
 # WebDAV 直接用到的传递依赖需显式声明（Rust 不允许隐式使用传递依赖）
 url = "2"
 httpdate = "1"

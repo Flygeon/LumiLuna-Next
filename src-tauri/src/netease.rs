@@ -148,6 +148,9 @@ fn client() -> &'static reqwest::blocking::Client {
             // 忽略系统 HTTP_PROXY/HTTPS_PROXY 环境变量：代理不可用时
             // 会报 tunnel error（本机 127.0.0.1:7890 常见），直连更可靠
             .no_proxy()
+            // 强制 HTTP/1.1 + native-tls(schannel)：实测 rustls+HTTP/2 组合的
+            // weapi 请求被网易云风控返回空 body，而 curl(schannel)+h1.1 同内容成功
+            .http1_only()
             .build()
             .expect("netease http client")
     })
