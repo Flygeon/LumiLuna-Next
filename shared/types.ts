@@ -171,6 +171,22 @@ export interface BookProgress {
   updatedAt: number;
 }
 
+/** WebDAV 条目（PROPFIND 结果，path 为相对路径，段间 "/" 分隔） */
+export interface WebDavEntry {
+  name: string;
+  path: string;
+  isDir: boolean;
+  size: number;
+  mtime: number;
+}
+
+/** WebDAV 连接测试结果 */
+export interface WebDavStatus {
+  ok: boolean;
+  /** 服务器返回的根目录 displayname（如有） */
+  rootName?: string | null;
+}
+
 /** SMTC 媒体信息（推送 Windows 系统媒体控件，换歌时调用） */
 export interface SmtcMedia {
   title: string;
@@ -214,8 +230,8 @@ export interface OnlineSong {
   album?: string;
 }
 
-/** 播放队列项：本地文件或在线歌曲 */
-export type QueueItem = MediaEntry | OnlineSong;
+/** 播放队列项：本地文件 / 在线歌曲 / WebDAV 条目 */
+export type QueueItem = MediaEntry | OnlineSong | WebDavEntry;
 
 /** 当前播放曲目（本地/在线统一形态，供播放器与迷你播放器渲染） */
 export interface NowPlaying {
@@ -233,7 +249,7 @@ export interface NowPlaying {
   /** 在线歌曲的封面 URL（SMTC 直接使用） */
   coverUrl?: string;
   durationMs?: number;
-  kind: "local" | "online";
+  kind: "local" | "online" | "webdav";
 }
 
 /** 在线歌单（用户自添加） */

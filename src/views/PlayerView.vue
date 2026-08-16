@@ -35,6 +35,10 @@ function t(key: string) {
   return translate(settings.lang, key);
 }
 
+function isWebDavItem(item: unknown): item is { path: string } {
+  return typeof item === "object" && item !== null && "isDir" in item;
+}
+
 /** 歌词来源徽标：仅「更精确的逐字歌词」开启且当前歌曲完成尝试后显示；点击可切换来源 */
 const sourceBadge = computed(() => {
   const switchHint = t("player.lyricSwitchHint");
@@ -223,7 +227,7 @@ onBeforeUnmount(() => {
           <div v-else-if="player.queue.length" class="queue-list">
             <button
               v-for="(item, i) in player.queue"
-              :key="player.queueTitle(item) + item.id"
+              :key="player.queueTitle(item) + (isWebDavItem(item) ? item.path : item.id)"
               class="queue-item"
               :class="{ current: i === player.currentIndex }"
               @click="player.playFromQueue(i)"

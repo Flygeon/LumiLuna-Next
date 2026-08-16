@@ -18,6 +18,10 @@ import type { MediaEntry, MediaMetadata } from "@shared/types";
 const props = defineProps<{
   items: MediaEntry[];
   index: number;
+  /** 自定义条目媒体 URL（WebDAV 等远程源用本地代理 URL）；默认本地 asset:// */
+  srcOf?: (item: MediaEntry) => string;
+  /** 自定义「用系统应用打开」（远程源用系统浏览器打开代理 URL）；默认本地路径 */
+  openExternal?: (item: MediaEntry) => void;
 }>();
 
 const emit = defineEmits<{
@@ -35,9 +39,10 @@ const panY = ref(0);
 const loadingImage = ref(true);
 
 const src = computed(() => {
-  const path = current.value?.path;
-  if (!path) return "";
-  return isTauri ? convertFileSrc(path) : path;
+  const item = current.value;
+  if (!item) return "";
+  if (props.srcOf) return props.srcOf(item);
+  return isTauri ? convertFileSrc(item.path) : item.path;
 });
 
 /** 原图较大，加载期间先显示已有缩略图避免白屏 */
@@ -137,7 +142,13 @@ onMounted(() => window.addEventListener("keydown", onKey));
 onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
 
 function openExternally() {
-  if (current.value) void capabilities.openFile(current.value.path);
+  const item = current.value;
+  if (!item) return;
+  if (props.openExternal) {
+    props.openExternal(item);
+    return;
+  }
+  void capabilities.openFile(item.path);
 }
 
 /** 信息面板条目，空值自动过滤 */

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
+import { useRouter } from "vue-router";
 import { useSettingsStore, type PdfReadMode, type ThemeMode, type PlayerBgMode, type LyricFontKey } from "@/stores/settings";
 import { useLibraryStore } from "@/stores/library";
 import { capabilities } from "@/capabilities";
@@ -9,6 +10,7 @@ import type { FfmpegStatus } from "@shared/types";
 
 const settings = useSettingsStore();
 const library = useLibraryStore();
+const router = useRouter();
 
 const ffmpeg = ref<FfmpegStatus | null>(null);
 const checking = ref(false);
@@ -60,6 +62,40 @@ async function resetFfmpegDir() {
 
 function setTheme(mode: ThemeMode) {
   settings.applyTheme(mode);
+}
+
+// ---- WebDAV ----
+
+const davTesting = ref(false);
+const davResult = ref<{ ok: boolean; error?: string } | null>(null);
+const showDavPass = ref(false);
+
+async function testWebDav() {
+  davTesting.value = true;
+  davResult.value = null;
+  try {
+    await capabilities.webdavConfigure(
+      settings.webdavUrl,
+      settings.webdavUser,
+      settings.webdavPass,
+    );
+    const res = await capabilities.webdavTest();
+    if (res.ok) {
+      davResult.value = { ok: true };
+      notify(
+        res.rootName
+          ? `${t("settings.webdavOk")} · ${res.rootName}`
+          : t("settings.webdavOk"),
+      );
+    } else {
+      davResult.value = { ok: false, error: t("settings.webdavFail") };
+    }
+  } catch (e) {
+    davResult.value = { ok: false, error: String(e) };
+    notify(`${t("settings.webdavFail")}：${e}`);
+  } finally {
+    davTesting.value = false;
+  }
 }
 
 // ---- 最小体积过滤 ----
@@ -435,6 +471,88 @@ async function clearCache() {
             :class="{ active: settings.musicServer === s }"
             @click="settings.musicServer = s"
           >{{ t("settings.onlineServer_" + s) }}</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- WebDAV -->
+    <section class="card">
+      <h3>{{ t("settings.webdav") }}</h3>
+      <p class="hint">{{ t("settings.webdavHint") }}</p>
+
+      <label class="row switch-row">
+        <span class="row-label">{{ t("settings.webdavEnable") }}</span>
+        <input type="checkbox" v-model="settings.webdavEnabled" />
+      </label>
+
+      <div v-if="settings.webdavEnabled" class="dav-form">
+        <div class="field">
+          <label>{{ t("settings.webdavUrl") }}</label>
+          <input
+            v-model="settings.webdavUrl"
+            type="url"
+            :placeholder="t('settings.webdavUrlPlaceholder')"
+            spellcheck="false"
+            autocomplete="off"
+          />
+        </div>
+        <div class="dav-grid">
+          <div class="field">
+            <label>{{ t("settings.webdavUser") }}</label>
+            <input
+              v-model="settings.webdavUser"
+              type="text"
+              spellcheck="false"
+              autocomplete="off"
+            />
+          </div>
+          <div class="field">
+            <label>{{ t("settings.webdavPass") }}</label>
+            <div class="pass-wrap">
+              <input
+                v-model="settings.webdavPass"
+                :type="showDavPass ? 'text' : 'password'"
+                spellcheck="false"
+                autocomplete="new-password"
+              />
+              <button
+                class="lm-icon-btn small"
+                :title="showDavPass ? 'hide' : 'show'"
+                @click="showDavPass = !showDavPass"
+              >
+                <span class="material-symbols-outlined">
+                  {{ showDavPass ? "visibility_off" : "visibility" }}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div
+          v-if="davResult"
+          class="status"
+          :class="davResult.ok ? 'ok' : 'warn'"
+        >
+          <span class="material-symbols-outlined">
+            {{ davResult.ok ? "check_circle" : "error" }}
+          </span>
+          <div class="status-text">
+            <strong>
+              {{ davResult.ok ? t("settings.webdavOk") : t("settings.webdavFail") }}
+            </strong>
+            <span v-if="!davResult.ok && davResult.error">{{ davResult.error }}</span>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="lm-btn lm-btn--tonal" :disabled="davTesting" @click="testWebDav">
+            <span class="material-symbols-outlined">cloud_sync</span>
+            {{ davTesting ? t("settings.webdavTesting") : t("settings.webdavTest") }}
+          </button>
+          <button class="lm-btn lm-btn--outlined" @click="router.push('/webdav')">
+            <span class="material-symbols-outlined">cloud</span>
+            {{ t("settings.webdavOpen") }}
+          </button>
         </div>
       </div>
     </section>

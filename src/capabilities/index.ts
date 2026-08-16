@@ -20,6 +20,8 @@ import type {
   SmtcMedia,
   SmtcPlayback,
   Song,
+  WebDavEntry,
+  WebDavStatus,
 } from "@shared/types";
 import { mockInvoke } from "./mock";
 
@@ -159,7 +161,29 @@ export const capabilities = {
     return listen<SmtcCommand>("smtc:command", (e) => handler(e.payload));
   },
 
+  // ---- WebDAV ----
+  webdavConfigure(url: string, username: string, password: string): Promise<void> {
+    return safeInvoke("webdav_configure", { url, username, password });
+  },
+  webdavList(path: string): Promise<WebDavEntry[]> {
+    return safeInvoke("webdav_list", { path });
+  },
+  webdavTest(): Promise<WebDavStatus> {
+    return safeInvoke("webdav_test");
+  },
+  webdavMediaUrl(path: string): Promise<string> {
+    return safeInvoke("webdav_media_url", { path });
+  },
+
   // ---- 系统 ----
+  /** 在系统浏览器中打开 URL（浏览器预览退化 window.open） */
+  async openUrl(url: string): Promise<void> {
+    if (!isTauri) {
+      window.open(url, "_blank");
+      return;
+    }
+    await openUrl(url);
+  },
   async openFile(path: string): Promise<void> {
     if (!isTauri) return;
     await openPath(path.replace(/\\/g, "/"));

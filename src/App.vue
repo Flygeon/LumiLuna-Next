@@ -21,6 +21,7 @@ const navItems = [
   { key: "music", path: "/music", icon: "music_note", type: "audio" },
   { key: "books", path: "/books", icon: "menu_book", type: "book" },
   { key: "folders", path: "/folders", icon: "folder", type: null },
+  { key: "webdav", path: "/webdav", icon: "cloud", type: null },
 ];
 const bottomItems = [
   { key: "favorites", path: "/favorites", icon: "favorite" },

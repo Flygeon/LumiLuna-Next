@@ -1,5 +1,6 @@
 pub mod commands;
 pub mod media;
+pub mod webdav;
 
 use serde::{Deserialize, Serialize};
 use tauri::Manager;
@@ -143,6 +144,10 @@ pub fn run() {
             commands::ffmpeg::ffmpeg_status,
             commands::ffmpeg::ffmpeg_set_path,
             commands::ffmpeg::ffmpeg_download_url,
+            webdav::webdav_configure,
+            webdav::webdav_list,
+            webdav::webdav_test,
+            webdav::webdav_media_url,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

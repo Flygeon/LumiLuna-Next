@@ -38,14 +38,19 @@ rayon = "1"
 base64 = "0.22"
 getrandom = "0.2"
 chrono = "0.4"
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "stream", "rustls-tls", "http2", "charset", "gzip"] }
+# WebDAV 直接用到的传递依赖需显式声明（Rust 不允许隐式使用传递依赖）
+url = "2"
+httpdate = "1"
+percent-encoding = "2"
+roxmltree = "0.20"
+# WebDAV 媒体本地代理：绑定 127.0.0.1 随机端口的轻量 HTTP 服务（SMTC 封面服务同款，跨平台）
+tiny_http = "0.12"
 
 # Windows 系统媒体控件（SMTC）：把本应用注册为系统媒体会话。
 # 仅在 Windows 编译，Linux/macOS 构建不受影响。
 [target.'cfg(windows)'.dependencies]
 smtc-tokio = "0.1"
-# SMTC 封面用：本地提取的内嵌封面经本地 HTTP 服务以 http://127.0.0.1 形式喂给系统
-# （Windows 的 RandomAccessStreamReference 不接受 file:// URI）
-tiny_http = "0.12"
 
 [profile.release]
 codegen-units = 1

@@ -12,10 +12,10 @@ import { wordCacheGet, wordCacheSet, type PreciseLine } from "./wordCache";
 import type { LyricLine } from "@shared/types";
 
 export interface SongSource {
-  kind: "local" | "online";
+  kind: "local" | "online" | "webdav";
   /** 本地歌曲磁盘路径 */
   filePath?: string;
-  /** 在线歌曲可播放 URL */
+  /** 在线/WebDAV 歌曲可播放 URL（WebDAV 为本地代理 URL） */
   url?: string;
 }
 
@@ -31,7 +31,7 @@ async function getAudioBytes(source: SongSource): Promise<ArrayBuffer> {
       data.byteOffset + data.byteLength,
     ) as ArrayBuffer;
   }
-  if (source.kind === "online" && source.url) {
+  if ((source.kind === "online" || source.kind === "webdav") && source.url) {
     const res = await fetch(source.url);
     if (!res.ok) throw new Error(`在线音频获取失败 (HTTP ${res.status})`);
     return await res.arrayBuffer();

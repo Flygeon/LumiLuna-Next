@@ -2,7 +2,7 @@
  * 纯浏览器预览用的 mock 后端（`npm run dev` 无 Tauri 环境时生效）。
  * 只为让 UI 可见，不追求行为等价。
  */
-import type { FfmpegStatus, MediaEntry, ScanProgress } from "@shared/types";
+import type { FfmpegStatus, MediaEntry, ScanProgress, WebDavEntry, WebDavStatus } from "@shared/types";
 
 /** 内联 SVG 占位封面，避免依赖外部图片 */
 function placeholderCover(label: string, hue: number): string {
@@ -74,6 +74,33 @@ function entry(
 
 const HUES: Record<string, number> = { audio: 265, image: 195, video: 20, book: 145 };
 const LABELS: Record<string, string> = { audio: "♪", image: "IMG", video: "VIDEO", book: "BOOK" };
+
+// ---- WebDAV 演示目录树（浏览器预览用，真实行为由 Rust 代理提供）----
+
+function davEntry(name: string, dir: string, isDir: boolean, size = 0): WebDavEntry {
+  return {
+    name,
+    path: dir ? dir + "/" + name : name,
+    isDir,
+    size,
+    mtime: 1720000000,
+  };
+}
+
+const DAV_TREE: Record<string, WebDavEntry[]> = {
+  "": [
+    davEntry("音乐", "", true),
+    davEntry("图片", "", true),
+    davEntry("视频", "", true),
+    davEntry("说明.txt", "", false, 120),
+  ],
+  音乐: [
+    davEntry("夜曲.flac", "音乐", false, 9 * 1024 * 1024),
+    davEntry("稻香.mp3", "音乐", false, 4 * 1024 * 1024),
+  ],
+  图片: [davEntry("海边日落.jpg", "图片", false, 2 * 1024 * 1024)],
+  视频: [davEntry("旅行记录.mp4", "视频", false, 60 * 1024 * 1024)],
+};
 
 const favorites = new Set<string>(["demo-a1"]);
 
@@ -196,6 +223,18 @@ export function mockInvoke<T>(
       return as<FfmpegStatus>({ available: false, source: "none" });
     case "ffmpeg_download_url":
       return as("https://ffmpeg.org/download.html");
+    case "webdav_configure":
+      return as(undefined);
+    case "webdav_test":
+      return as<WebDavStatus>({ ok: true, rootName: "demo" });
+    case "webdav_list": {
+      const path = String(args?.path ?? "");
+      return as(DAV_TREE[path] ?? []);
+    }
+    case "webdav_media_url": {
+      const path = String(args?.path ?? "");
+      return as("https://demo.webdav.invalid/" + path);
+    }
     case "smtc_set_media":
     case "smtc_set_playback":
       // 浏览器预览没有系统媒体控件，直接静默成功

@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { ref, watch } from "vue";
 import { LazyStore } from "@tauri-apps/plugin-store";
+import { capabilities } from "@/capabilities";
 import type { MusicServer, OnlinePlaylistEntry } from "@shared/types";
 import type { LyricSourcePref } from "@/utils/preciseLyrics";
 
@@ -71,6 +72,14 @@ const DEFAULTS = {
   onlinePlaylists: [] as OnlinePlaylistEntry[],
   /** 预设歌单的重命名覆盖（key = server:id） */
   playlistRenames: {} as Record<string, string>,
+  /** WebDAV 远程媒体源：启用开关 */
+  webdavEnabled: false,
+  /** WebDAV 服务器根 URL（如 https://host/remote.php/dav/files/user/） */
+  webdavUrl: "",
+  /** WebDAV 用户名 */
+  webdavUser: "",
+  /** WebDAV 密码（明文存 settings.json，与现有配置项一致） */
+  webdavPass: "",
 };
 
 export const useSettingsStore = defineStore("settings", () => {
@@ -103,6 +112,10 @@ export const useSettingsStore = defineStore("settings", () => {
   const musicServer = ref<MusicServer>(DEFAULTS.musicServer);
   const onlinePlaylists = ref<OnlinePlaylistEntry[]>([...DEFAULTS.onlinePlaylists]);
   const playlistRenames = ref<Record<string, string>>({ ...DEFAULTS.playlistRenames });
+  const webdavEnabled = ref(DEFAULTS.webdavEnabled);
+  const webdavUrl = ref(DEFAULTS.webdavUrl);
+  const webdavUser = ref(DEFAULTS.webdavUser);
+  const webdavPass = ref(DEFAULTS.webdavPass);
   const loaded = ref(false);
 
   // 单一注册表：新增设置项只需在此加一行，load/save 自动覆盖
@@ -136,6 +149,10 @@ export const useSettingsStore = defineStore("settings", () => {
     musicServer,
     onlinePlaylists,
     playlistRenames,
+    webdavEnabled,
+    webdavUrl,
+    webdavUser,
+    webdavPass,
   } as const;
 
   async function load() {
@@ -204,6 +221,24 @@ export const useSettingsStore = defineStore("settings", () => {
       if (loaded.value) void save();
     },
     { deep: true },
+  );
+
+  // WebDAV 配置推送到 Rust（凭据只在 Rust 侧；代理/列举命令读取它）
+  watch(
+    [webdavEnabled, webdavUrl, webdavUser, webdavPass],
+    async () => {
+      if (!loaded.value) return;
+      try {
+        await capabilities.webdavConfigure(
+          webdavUrl.value,
+          webdavUser.value,
+          webdavPass.value,
+        );
+      } catch (e) {
+        console.warn("[WebDAV] 配置推送失败:", e);
+      }
+    },
+    { deep: false },
   );
 
   return {

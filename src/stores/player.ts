@@ -19,12 +19,13 @@ import {
   getPreciseWordTimes,
 } from "@/utils/wordAnalysis";
 import type {
+  LyricLine,
   MediaEntry,
   NowPlaying,
   OnlineSong,
   QueueItem,
   Song,
-  LyricLine,
+  WebDavEntry,
 } from "@shared/types";
 
 /** 浏览器预览下没有 Tauri 协议，直接返回原路径避免抛错 */
@@ -233,16 +234,23 @@ export const usePlayerStore = defineStore("player", () => {
     return "url" in item;
   }
 
+  function isWebDav(item: QueueItem): item is WebDavEntry {
+    return "isDir" in item;
+  }
+
   function queueTitle(item: QueueItem): string {
-    return isOnline(item) ? item.name : item.title || item.name;
+    if (isOnline(item) || isWebDav(item)) return item.name;
+    return item.title || item.name;
   }
 
   function queueArtist(item: QueueItem): string {
+    if (isWebDav(item)) return "WebDAV";
     return isOnline(item) ? item.artist : item.artist || "未知艺术家";
   }
 
   function queueDuration(item: QueueItem): number | null {
-    return isOnline(item) ? null : item.durationMs ?? null;
+    if (isOnline(item) || isWebDav(item)) return null;
+    return item.durationMs ?? null;
   }
 
   /** 正在分析的歌曲 key，避免同一首重复分析 */
@@ -253,7 +261,12 @@ export const usePlayerStore = defineStore("player", () => {
    * 不阻塞播放；失败静默降级为粗排。仅在开启「逐字歌词」时执行。
    */
   async function scheduleWordAnalysis(
-    meta: { id: string; kind: "local" | "online"; filePath?: string; url?: string },
+    meta: {
+      id: string;
+      kind: "local" | "online" | "webdav";
+      filePath?: string;
+      url?: string;
+    },
     lines: LyricLine[],
   ) {
     if (!useSettingsStore().wordLyrics) return;
@@ -338,7 +351,7 @@ export const usePlayerStore = defineStore("player", () => {
   /** 当前歌曲的歌词获取上下文（手动切换来源时复用） */
   const lastLyricMeta = ref<{
     id: string;
-    kind: "local" | "online";
+    kind: "local" | "online" | "webdav";
     title: string;
     artist: string;
     durationMs?: number;
@@ -391,7 +404,7 @@ export const usePlayerStore = defineStore("player", () => {
   async function schedulePreciseQqLyrics(
     meta: {
       id: string;
-      kind: "local" | "online";
+      kind: "local" | "online" | "webdav";
       title: string;
       artist: string;
       durationMs?: number;
@@ -399,7 +412,7 @@ export const usePlayerStore = defineStore("player", () => {
     fallbackLines: LyricLine[],
     analysisSource: {
       id: string;
-      kind: "local" | "online";
+      kind: "local" | "online" | "webdav";
       filePath?: string;
       url?: string;
     },
@@ -505,7 +518,7 @@ export const usePlayerStore = defineStore("player", () => {
           id: meta.id,
           kind: meta.kind,
           filePath: meta.kind === "local" ? song.value.filePath : undefined,
-          url: meta.kind === "online" ? song.value.src : undefined,
+          url: meta.kind === "online" || meta.kind === "webdav" ? song.value.src : undefined,
         },
         localLyrics.value,
       );
@@ -727,6 +740,79 @@ export const usePlayerStore = defineStore("player", () => {
     }
   }
 
+  /**
+   * 播放 WebDAV 远程歌曲：
+   * - src 走本地代理 URL（凭据在 Rust 侧，支持拖动进度）；
+   * - 尝试拉取同目录同名 .lrc 作为本地歌词（失败不阻塞播放）；
+   * - 逐字歌词回退链照常（云端按标题匹配 / FFT 经代理 fetch）。
+   */
+  async function loadWebDavSong(entry: WebDavEntry) {
+    loadingSong.value = true;
+    try {
+      const src = await capabilities.webdavMediaUrl(entry.path);
+      let parsed: LyricLine[] = [];
+      try {
+        const lrcPath = entry.path.replace(/\.[^.]+$/, "") + ".lrc";
+        const lrcUrl = await capabilities.webdavMediaUrl(lrcPath);
+        const res = await fetch(lrcUrl);
+        if (res.ok) {
+          const text = await res.text();
+          if (text.includes("[")) {
+            parsed = parseLrc(text, useSettingsStore().detectInstrumental);
+          }
+        }
+      } catch {
+        /* 无 lrc 或拉取失败不阻塞播放 */
+      }
+      const title = entry.name.replace(/\.[^.]+$/, "");
+      song.value = {
+        id: `webdav:${entry.path}`,
+        title,
+        artist: "WebDAV",
+        album: "",
+        cover: "",
+        src,
+        lyrics: parsed,
+        kind: "webdav",
+      };
+      activeLine.value = -1;
+      lyrics.value = parsed;
+      lyricsSource.value = null;
+      lyricFallbackReason.value = null;
+      lyricFallbackDetail.value = null;
+      coverColors.value = [];
+      currentTime.value = 0;
+      duration.value = 0;
+      await startPlayback();
+      const durationMs = await waitAudioDuration(5000);
+      void schedulePreciseQqLyrics(
+        {
+          id: song.value.id,
+          kind: "webdav",
+          title,
+          artist: "",
+          durationMs,
+        },
+        parsed,
+        { id: song.value.id, kind: "webdav", filePath: undefined, url: src },
+      );
+      void capabilities
+        .smtcSetMedia({
+          title,
+          artist: "WebDAV",
+          album: null,
+          durationMs: Math.round(durationMs ?? 0),
+          filePath: "",
+          coverUrl: null,
+        })
+        .catch(() => {});
+    } catch (e) {
+      lastError.value = String(e);
+    } finally {
+      loadingSong.value = false;
+    }
+  }
+
   /** 播放在线歌曲列表（搜索/歌单结果）入队并起播，index 为起播项 */
   async function playOnline(songs: OnlineSong[], index: number) {
     queue.value = songs;
@@ -750,7 +836,9 @@ export const usePlayerStore = defineStore("player", () => {
     if (index < 0 || index >= queue.value.length) return;
     currentIndex.value = index;
     const item = queue.value[index];
-    if (isOnline(item)) {
+    if (isWebDav(item)) {
+      await loadWebDavSong(item);
+    } else if (isOnline(item)) {
       await loadOnlineSong(item);
     } else {
       await loadById(item.id);
@@ -827,7 +915,7 @@ export const usePlayerStore = defineStore("player", () => {
     repeatMode.value = modes[(currentIdx + 1) % modes.length];
   }
 
-  function setQueue(entries: MediaEntry[], startIndex = 0) {
+  function setQueue(entries: QueueItem[], startIndex = 0) {
     queue.value = entries;
     if (shuffleMode.value) {
       generateShuffleOrder();
@@ -919,6 +1007,7 @@ export const usePlayerStore = defineStore("player", () => {
     loadSong,
     loadById,
     loadOnlineSong,
+    loadWebDavSong,
     playOnline,
     initAudio,
     togglePlay,
@@ -933,6 +1022,7 @@ export const usePlayerStore = defineStore("player", () => {
     setQueue,
     playFromQueue,
     isOnline,
+    isWebDav,
     queueTitle,
     queueArtist,
     queueDuration,
