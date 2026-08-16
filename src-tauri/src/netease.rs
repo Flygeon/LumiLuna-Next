@@ -993,7 +993,12 @@ fn api_call(crypto: &str, path: &str, data: &mut Value) -> Result<(i64, Value), 
         let mut keys_sorted = cookie_keys;
         keys_sorted.sort();
         let music_u_len = cookie_map.get("MUSIC_U").map(|v| v.len()).unwrap_or(0);
-        let params_len = params.len();
+        // params 长度：从请求体字符串解析（weapi: params=xxx&encSecKey=yyy；eapi: params=xxx）
+        let params_len = body
+            .split("params=")
+            .nth(1)
+            .map(|s| s.split('&').next().unwrap_or("").len())
+            .unwrap_or(0);
         let sec_preview: String = match body.split("encSecKey=").nth(1) {
             Some(s) => {
                 let cut: String = s.chars().take(24).collect();
