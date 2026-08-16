@@ -8,6 +8,7 @@
 //! cookie 持久化在 app data 目录，重启后自动恢复登录态。
 
 use std::collections::HashMap;
+use std::error::Error as _;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
@@ -732,7 +733,7 @@ fn netease_user_playlists_sync(
 /// 歌单详情 → 歌曲列表
 #[tauri::command]
 pub async fn netease_playlist_detail(
-    app: tauri::AppHandle,
+    _app: tauri::AppHandle,
     id: i64,
 ) -> Result<Vec<NeteaseSong>, String> {
     tauri::async_runtime::spawn_blocking(move || netease_playlist_detail_sync(id))
@@ -781,7 +782,7 @@ fn songs_from_tracks(tracks: &[Value]) -> Vec<NeteaseSong> {
 /// 云盘歌曲列表（分页）
 #[tauri::command]
 pub async fn netease_cloud(
-    app: tauri::AppHandle,
+    _app: tauri::AppHandle,
     offset: i64,
     limit: i64,
 ) -> Result<NeteaseCloudPage, String> {
@@ -839,7 +840,7 @@ fn netease_cloud_sync(offset: i64, limit: i64) -> Result<NeteaseCloudPage, Strin
 /// 批量获取歌曲播放 URL（br=999000 最高可用）
 #[tauri::command]
 pub async fn netease_song_url(
-    app: tauri::AppHandle,
+    _app: tauri::AppHandle,
     ids: Vec<i64>,
 ) -> Result<Vec<NeteaseSongUrl>, String> {
     tauri::async_runtime::spawn_blocking(move || netease_song_url_sync(ids))
