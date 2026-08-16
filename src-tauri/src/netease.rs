@@ -23,8 +23,10 @@ use ecb::cipher::BlockDecryptMut;
 use hmac::{Hmac, Mac};
 use md5::{Digest, Md5};
 use percent_encoding::{utf8_percent_encode, AsciiSet, CONTROLS};
+use rsa::hazmat::rsa_encrypt;
 use rsa::pkcs8::DecodePublicKey;
-use rsa::{Pkcs1v15Encrypt, RsaPublicKey};
+use rsa::traits::PublicKeyParts;
+use rsa::RsaPublicKey;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::Sha256;
@@ -650,17 +652,29 @@ fn xeapi_call(
     xeapi_res_decrypt(&bytes)
 }
 
-/// RSA-1024 PKCS1v15 加密（参考 rsaEncrypt，小写 hex 输出）。
-/// 注意：参考项目公钥是 SPKI 格式（BEGIN PUBLIC KEY），必须用 pkcs8 解析
+/// RSA-1024 无填充加密（raw modpow，小写 hex 输出）。
+/// 参考 crypto.js rsaEncrypt：forge publicKey.encrypt(str, 'NONE') ——
+/// node-forge 的 'NONE' 模式是裸 RSA（无 PKCS1 填充），见 rsa.js 中
+/// ['RAW','NONE','NULL',null] 分支：encode: e => e。
+/// 网易云服务端对 weapi 的 encSecKey 做裸 RSA 解密；若用 PKCS1v1.5 填充，
+/// 解密结果含填充头、secretKey 提取失败，响应为空 body（HTTP 200 0 字节）。
+/// 公钥是 SPKI 格式（BEGIN PUBLIC KEY），必须用 pkcs8 解析
 /// （pkcs1::DecodeRsaPublicKey 只认 BEGIN RSA PUBLIC KEY，运行期会解析失败）。
 fn rsa_encrypt_hex(data: &[u8]) -> Result<String, String> {
     let key = RsaPublicKey::from_public_key_pem(RSA_PUBLIC_KEY_PEM)
         .map_err(|e| format!("网易云 RSA 公钥解析失败：{e}"))?;
-    let mut rng = rsa::rand_core::OsRng;
-    let ct = key
-        .encrypt(&mut rng, Pkcs1v15Encrypt, data)
-        .map_err(|e| format!("网易云 RSA 加密失败：{e}"))?;
-    Ok(ct.iter().map(|b| format!("{b:02x}")).collect())
+    let m = rsa::BigUint::from_bytes_be(data);
+    let c = rsa_encrypt(&key, &m).map_err(|e| format!("网易云 RSA 加密失败：{e}"))?;
+    let bytes = c.to_bytes_be();
+    // 补齐到密钥长度（128 字节），与 forge bytesToHex 的定长输出一致
+    let size = key.size();
+    let mut out = vec![0u8; size];
+    if bytes.len() <= size {
+        out[size - bytes.len()..].copy_from_slice(&bytes);
+    } else {
+        out = bytes;
+    }
+    Ok(out.iter().map(|b| format!("{b:02x}")).collect())
 }
 
 /// weapi 加密：双层 AES-CBC + RSA（返回 (params, encSecKey)）
