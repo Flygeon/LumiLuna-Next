@@ -226,6 +226,21 @@ fn aes_cbc_b64(key: &[u8], iv: &[u8; 16], plain: &str) -> Result<String, String>
     Ok(base64::engine::general_purpose::STANDARD.encode(ct))
 }
 
+/// AES-128-CBC 解密（PKCS7 去填充），自检用：验证 weapi 加密自洽
+fn aes_cbc_b64_decrypt(key: &[u8], iv: &[u8; 16], b64: &str) -> Result<String, String> {
+    use cbc::cipher::BlockDecryptMut as _;
+    type Aes128CbcDec = cbc::Decryptor<Aes128>;
+    let ct = base64::engine::general_purpose::STANDARD
+        .decode(b64)
+        .map_err(|e| e.to_string())?;
+    let dec = Aes128CbcDec::new(key.into(), iv.into());
+    let mut buf = ct.clone();
+    let pt = dec
+        .decrypt_padded_mut::<Pkcs7>(&mut buf)
+        .map_err(|e| format!("AES 解密失败：{e:?}"))?;
+    String::from_utf8(pt.to_vec()).map_err(|e| e.to_string())
+}
+
 /// AES-128-ECB（PKCS7 填充），输出大写 hex（参考 aesEncrypt format='hex'）
 fn aes_ecb_hex(key: &[u8; 16], plain: &str) -> String {
     // ecb::Encryptor 实现 BlockEncryptMut（原地加密）
@@ -709,6 +724,23 @@ fn weapi(data: &Value) -> Result<(String, String), String> {
     let params = aes_cbc_b64(secret.as_bytes(), IV, &inner)?;
     let reversed: String = secret.chars().rev().collect();
     let enc_sec_key = rsa_encrypt_hex(reversed.as_bytes())?;
+    // 自检：用同一密钥解密回验（定位加密实现问题）
+    let dec_inner = aes_cbc_b64_decrypt(secret.as_bytes(), IV, &params);
+    let selfcheck = match &dec_inner {
+        Ok(di) => {
+            let dec_text = aes_cbc_b64_decrypt(PRESET_KEY, IV, di);
+            match dec_text {
+                Ok(dt) => format!(
+                    "自检OK 内层一致={} text={}",
+                    *di == inner,
+                    dt.chars().take(100).collect::<String>()
+                ),
+                Err(e) => format!("自检内层可解但外层失败：{e} 内层前40={}", di.chars().take(40).collect::<String>()),
+            }
+        }
+        Err(e) => format!("自检失败：{e}"),
+    };
+    netease_log(&format!("WEAPI-SELFCHECK {selfcheck}"));
     Ok((params, enc_sec_key))
 }
 
