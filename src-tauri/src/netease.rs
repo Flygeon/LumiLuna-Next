@@ -44,6 +44,8 @@ const OS_APPVER: &str = "3.1.17.204416";
 const OS_CHANNEL: &str = "netease";
 const OS_NAME: &str = "pc";
 const DOMAIN: &str = "https://music.163.com";
+/// eapi 域名（与 api-enhanced util/config.json 的 eapiDomain 一致）
+const EAPI_DOMAIN: &str = "https://interfacepc.music.163.com";
 
 /// cookie / 设备指纹持久化文件名（app data 目录）
 const PERSIST_FILE: &str = "netease.json";
@@ -413,7 +415,7 @@ fn api_call(crypto: &str, path: &str, data: &mut Value) -> Result<(i64, Value), 
             data["header"] = header.clone();
             let params = eapi(path, data);
             let body = format!("params={}", encode_uri_component(&params));
-            let url = format!("{DOMAIN}/eapi/{}", path.trim_start_matches("/api"));
+            let url = format!("{EAPI_DOMAIN}/eapi/{}", path.trim_start_matches("/api"));
             let cookie = build_eapi_cookie(&header);
             (
                 body,
@@ -439,8 +441,10 @@ fn api_call(crypto: &str, path: &str, data: &mut Value) -> Result<(i64, Value), 
     }
 
     let text = resp.text().map_err(|e| format!("读取网易云响应失败：{e}"))?;
-    let body: Value =
-        serde_json::from_str(&text).map_err(|_| format!("网易云响应解析失败：{}", &text[..text.len().min(120)]))?;
+    let body: Value = serde_json::from_str(&text).map_err(|_| {
+        let preview: String = text.chars().take(120).collect();
+        format!("网易云响应解析失败：{preview}")
+    })?;
     let code = body["code"].as_i64().unwrap_or(0);
     Ok((code, body))
 }
@@ -655,6 +659,7 @@ pub fn netease_playlist_detail(
     app: tauri::AppHandle,
     id: i64,
 ) -> Result<Vec<NeteaseSong>, String> {
+    let _ = &app; // 登录态已在全局状态，无需 app
     let (code, body) = api_call(
         "eapi",
         "/api/v6/playlist/detail",
@@ -699,6 +704,7 @@ pub fn netease_cloud(
     offset: i64,
     limit: i64,
 ) -> Result<NeteaseCloudPage, String> {
+    let _ = &app; // 登录态已在全局状态，无需 app
     let (code, body) = api_call(
         "weapi",
         "/api/v1/cloud/get",
@@ -750,6 +756,7 @@ pub fn netease_song_url(
     app: tauri::AppHandle,
     ids: Vec<i64>,
 ) -> Result<Vec<NeteaseSongUrl>, String> {
+    let _ = &app; // 登录态已在全局状态，无需 app
     if ids.is_empty() {
         return Ok(Vec::new());
     }
