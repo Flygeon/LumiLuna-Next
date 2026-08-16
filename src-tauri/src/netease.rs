@@ -44,8 +44,10 @@ const OS_APPVER: &str = "3.1.17.204416";
 const OS_CHANNEL: &str = "netease";
 const OS_NAME: &str = "pc";
 const DOMAIN: &str = "https://music.163.com";
-/// eapi 域名（与 api-enhanced util/config.json 的 eapiDomain 一致）
-const EAPI_DOMAIN: &str = "https://interfacepc.music.163.com";
+/// eapi 主域名：与 weapi 同域（NeteaseCloudMusicApi 经典实现路径，可达性最好）
+const EAPI_DOMAIN: &str = "https://music.163.com";
+/// eapi 备用域名（api-enhanced 的 eapiDomain）：主域连接失败时回退
+const EAPI_DOMAIN_FALLBACK: &str = "https://interfacepc.music.163.com";
 
 /// cookie / 设备指纹持久化文件名（app data 目录）
 const PERSIST_FILE: &str = "netease.json";
@@ -332,6 +334,22 @@ fn build_eapi_cookie(header: &Value) -> String {
 
 // ---- 请求内核 ----
 
+/// reqwest 错误信息带上底层原因链（DNS/TLS/连接拒绝等），便于排查
+fn reqwest_detail(e: &reqwest::Error) -> String {
+    let mut msg = e.to_string();
+    let mut src = e.source();
+    for _ in 0..3 {
+        match src {
+            Some(s) => {
+                msg.push_str(&format!(" → {s}"));
+                src = s.source();
+            }
+            None => break,
+        }
+    }
+    msg
+}
+
 fn err_for_code(code: i64) -> String {
     match code {
         301 => "登录已过期，请重新扫码登录".to_string(),
@@ -371,7 +389,7 @@ fn api_call(crypto: &str, path: &str, data: &mut Value) -> Result<(i64, Value), 
         persist.device_id.clone()
     };
 
-    let (body, url, headers): (String, String, Vec<(String, String)>) =
+    let (body, candidate_urls, headers): (String, Vec<String>, Vec<(String, String)>) =
         if crypto == "weapi" {
             data["csrf_token"] = Value::String(csrf.clone());
             let (params, enc_sec_key) = weapi(data)?;
@@ -380,11 +398,13 @@ fn api_call(crypto: &str, path: &str, data: &mut Value) -> Result<(i64, Value), 
                 encode_uri_component(&params),
                 encode_uri_component(&enc_sec_key)
             );
-            let url = format!("{DOMAIN}/weapi/{}", path.trim_start_matches("/api"));
             let cookie = build_weapi_cookie(&cookie_map, &device_id, path);
             (
                 body,
-                url,
+                vec![format!(
+                    "{DOMAIN}/weapi/{}",
+                    path.trim_start_matches("/api")
+                )],
                 vec![
                     ("User-Agent".to_string(), UA_WEAPI.to_string()),
                     ("Referer".to_string(), DOMAIN.to_string()),
@@ -418,11 +438,14 @@ fn api_call(crypto: &str, path: &str, data: &mut Value) -> Result<(i64, Value), 
             data["header"] = header.clone();
             let params = eapi(path, data);
             let body = format!("params={}", encode_uri_component(&params));
-            let url = format!("{EAPI_DOMAIN}/eapi/{}", path.trim_start_matches("/api"));
             let cookie = build_eapi_cookie(&header);
+            let rel = path.trim_start_matches("/api");
             (
                 body,
-                url,
+                vec![
+                    format!("{EAPI_DOMAIN}/eapi/{rel}"),
+                    format!("{EAPI_DOMAIN_FALLBACK}/eapi/{rel}"),
+                ],
                 vec![
                     ("User-Agent".to_string(), UA_EAPI.to_string()),
                     ("Cookie".to_string(), cookie),
@@ -431,11 +454,29 @@ fn api_call(crypto: &str, path: &str, data: &mut Value) -> Result<(i64, Value), 
         };
     drop(persist);
 
-    let mut req = client().post(&url).body(body).timeout(Duration::from_secs(30));
-    for (k, v) in &headers {
-        req = req.header(k, v);
+    // 连接失败时依次尝试候选域名（eapi：主域 → 备用域）
+    let mut resp: Option<reqwest::blocking::Response> = None;
+    let mut last_err: Option<reqwest::Error> = None;
+    for url in &candidate_urls {
+        let mut req = client()
+            .post(url)
+            .body(body.clone())
+            .timeout(Duration::from_secs(30));
+        for (k, v) in &headers {
+            req = req.header(k, v);
+        }
+        match req.send() {
+            Ok(r) => {
+                resp = Some(r);
+                break;
+            }
+            Err(e) => last_err = Some(e),
+        }
     }
-    let resp = req.send().map_err(|e| format!("无法连接网易云：{e}"))?;
+    let resp = resp.ok_or_else(|| match last_err {
+        Some(e) => format!("无法连接网易云：{}", reqwest_detail(&e)),
+        None => "无法连接网易云（未知网络错误）".to_string(),
+    })?;
 
     // 合并 Set-Cookie（登录成功的关键：MUSIC_U 等）
     {
