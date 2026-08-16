@@ -187,6 +187,44 @@ export interface WebDavStatus {
   rootName?: string | null;
 }
 
+/** 网易云账号信息 */
+export interface NeteaseProfile {
+  userId: number;
+  nickname: string;
+  avatarUrl: string;
+}
+
+/** 网易云我的歌单 */
+export interface NeteasePlaylist {
+  id: number;
+  name: string;
+  coverUrl: string;
+  trackCount: number;
+}
+
+/** 网易云歌曲（歌单/云盘列表项，不含播放 URL） */
+export interface NeteaseSong {
+  id: number;
+  name: string;
+  artist: string;
+  album?: string | null;
+  picUrl?: string | null;
+}
+
+/** 网易云盘分页 */
+export interface NeteaseCloudPage {
+  songs: NeteaseSong[];
+  hasMore: boolean;
+  count: number;
+}
+
+/** 扫码登录轮询状态：800 等待 / 801 已扫码 / 802 确认中 / 803 成功 */
+export interface NeteaseQrCheck {
+  code: number;
+  nickname?: string | null;
+  avatarUrl?: string | null;
+}
+
 /** SMTC 媒体信息（推送 Windows 系统媒体控件，换歌时调用） */
 export interface SmtcMedia {
   title: string;

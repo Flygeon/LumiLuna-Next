@@ -8,9 +8,11 @@ import CachedCover from "@/components/CachedCover.vue";
 import { useLibraryStore } from "@/stores/library";
 import { usePlayerStore } from "@/stores/player";
 import { useSettingsStore } from "@/stores/settings";
+import { useNeteaseStore } from "@/stores/netease";
 import { capabilities } from "@/capabilities";
 import { openContextMenu } from "@/composables/useContextMenu";
 import { promptText } from "@/composables/useTextPrompt";
+import { toOnlineSongs } from "@/utils/netease";
 import { translate } from "@shared/i18n";
 import {
   CURATED_PLAYLISTS,
@@ -23,10 +25,12 @@ import type {
   OnlinePlaylistEntry,
   OnlineSong,
 } from "@shared/types";
+import type { NeteasePlaylist } from "@shared/types";
 
 const library = useLibraryStore();
 const player = usePlayerStore();
 const settings = useSettingsStore();
+const netease = useNeteaseStore();
 const router = useRouter();
 
 const items = computed(() => library.entries("audio"));
@@ -50,6 +54,15 @@ function load() {
 }
 
 onMounted(load);
+onMounted(() => {
+  void netease.init();
+});
+watch(
+  () => settings.neteaseEnabled,
+  (on) => {
+    if (on) void netease.init();
+  },
+);
 onActivated(() => {
   if (!items.value.length) void load();
 });
@@ -60,7 +73,8 @@ const tab = ref<"playlists" | "search">("playlists");
 
 type Detail =
   | { type: "local" }
-  | { type: "online"; title: string; songs: OnlineSong[] };
+  | { type: "online"; title: string; songs: OnlineSong[] }
+  | { type: "cloud"; title: string; songs: OnlineSong[]; loadingMore?: boolean };
 const detail = ref<Detail | null>(null);
 
 const onlineLoading = ref(false);
@@ -81,13 +95,15 @@ function songsOf(card: { server?: MusicServer; id?: string }): OnlineSong[] | nu
   return playlistCache.get(keyOf(card)) ?? null;
 }
 
-/** 歌单卡片封面 = 歌单内首曲封面 */
-function coverOf(card: { server?: MusicServer; id?: string }): string | undefined {
+/** 歌单卡片封面：我的歌单用封面图；其余取歌单内首曲封面 */
+function coverOf(card: PlaylistCard): string | undefined {
+  if (card.cover) return card.cover;
   return songsOf(card)?.[0]?.pic;
 }
 
-function subtitleOf(card: (typeof playlistCards.value)[number]): string {
+function subtitleOf(card: PlaylistCard): string {
   if (card.key === "local") return `${items.value.length} ${t("online.tracks")}`;
+  if (card.count !== undefined) return `${card.count} ${t("online.tracks")}`;
   const songs = songsOf(card);
   return songs ? `${songs.length} ${t("online.tracks")}` : t("online.playlists");
 }
@@ -129,15 +145,40 @@ watch(
   },
 );
 
-/** 歌单卡片列表：本地音乐 + 当前平台的预设歌单 + 用户歌单 */
-const playlistCards = computed(() => {
+/** 歌单卡片（含网易云：云盘 + 我的歌单） */
+type PlaylistCard = {
+  key: string;
+  name: string;
+  server?: MusicServer;
+  id?: string;
+  /** 远程封面（我的歌单） */
+  cover?: string;
+  /** 数量副标题（云盘/我的歌单） */
+  count?: number;
+};
+
+/** 歌单卡片列表：网易云（云盘+我的歌单）→ 本地音乐 → 预设歌单 → 用户歌单 */
+const playlistCards = computed<PlaylistCard[]>(() => {
   const server = settings.musicServer;
-  const cards: {
-    key: string;
-    name: string;
-    server?: MusicServer;
-    id?: string;
-  }[] = [{ key: "local", name: t("online.local") }];
+  const cards: PlaylistCard[] = [];
+  if (settings.neteaseEnabled && netease.loggedIn) {
+    cards.push({
+      key: "cloud",
+      name: t("netease.cloud"),
+      id: "cloud",
+      count: netease.cloudCount,
+    });
+    for (const p of netease.playlists) {
+      cards.push({
+        key: `mine:${p.id}`,
+        name: p.name,
+        id: `mine:${p.id}`,
+        cover: p.coverUrl,
+        count: p.trackCount,
+      });
+    }
+  }
+  cards.push({ key: "local", name: t("online.local") });
   for (const p of CURATED_PLAYLISTS) {
     if (p.server === server) {
       cards.push({
@@ -156,7 +197,28 @@ const playlistCards = computed(() => {
   return cards;
 });
 
-async function openPlaylist(card: (typeof playlistCards.value)[number]) {
+async function openPlaylist(card: PlaylistCard) {
+  // 网易云云盘
+  if (card.key === "cloud") {
+    await openCloud();
+    return;
+  }
+  // 网易云我的歌单
+  if (card.key.startsWith("mine:")) {
+    const id = Number(card.key.slice("mine:".length));
+    onlineLoading.value = true;
+    onlineError.value = "";
+    try {
+      const songs = await capabilities.neteasePlaylistDetail(id);
+      const online = await toOnlineSongs(songs);
+      detail.value = { type: "online", title: card.name, songs: online };
+    } catch (e) {
+      onlineError.value = e instanceof Error ? e.message : String(e);
+    } finally {
+      onlineLoading.value = false;
+    }
+    return;
+  }
   // 本地音乐
   if (!card.id) {
     detail.value = { type: "local" };
@@ -179,6 +241,45 @@ async function openPlaylist(card: (typeof playlistCards.value)[number]) {
   } finally {
     onlineLoading.value = false;
   }
+}
+
+/** 打开云盘：首页 + 批量解析播放 URL */
+async function openCloud() {
+  onlineLoading.value = true;
+  onlineError.value = "";
+  try {
+    const songs = await netease.loadCloudPage(0);
+    const online = await toOnlineSongs(songs);
+    detail.value = { type: "cloud", title: t("netease.cloud"), songs: online };
+  } catch (e) {
+    onlineError.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    onlineLoading.value = false;
+  }
+}
+
+/** 云盘分页加载更多 */
+async function loadMoreCloud() {
+  const d = detail.value;
+  if (!d || d.type !== "cloud" || d.loadingMore) return;
+  d.loadingMore = true;
+  onlineError.value = "";
+  try {
+    const songs = await netease.loadCloudPage(d.songs.length);
+    const online = await toOnlineSongs(songs);
+    d.songs.push(...online);
+  } catch (e) {
+    onlineError.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    d.loadingMore = false;
+  }
+}
+
+/** 退出登录：清 Rust 侧 cookie + 本地状态 */
+async function logoutNetease() {
+  await netease.logout();
+  if (detail.value?.type === "cloud") detail.value = null;
+  notify(t("netease.loggedOut"));
 }
 
 async function doSearch() {
@@ -219,8 +320,10 @@ function removePlaylist(id: string) {
 // ---- 右键菜单：歌单重命名 / 歌曲下载 ----
 
 /** 所有在线歌单（预设/用户）均可右键重命名；用户歌单额外可移除；本地歌单无菜单 */
-function onPlaylistContext(e: MouseEvent, card: (typeof playlistCards.value)[number]) {
+function onPlaylistContext(e: MouseEvent, card: PlaylistCard) {
   if (!card.id) return;
+  // 网易云云盘/我的歌单不支持重命名/移除
+  if (card.key === "cloud" || card.key.startsWith("mine:")) return;
   const items: { id: string; label: string; icon: string; danger?: boolean }[] = [
     { id: "rename", label: t("context.renamePlaylist"), icon: "edit" },
   ];
@@ -291,6 +394,11 @@ async function downloadCover(song: OnlineSong) {
 /** 在线歌曲入队并跳转全屏播放器 */
 function playOnlineSongs(songs: OnlineSong[], index: number) {
   error.value = "";
+  // 网易云无版权/VIP 歌曲 url 为空，直接提示不进入播放器
+  if (!songs[index]?.url) {
+    error.value = t("netease.playFailed");
+    return;
+  }
   void player
     .playOnline(songs, index)
     .then(() => {
@@ -346,6 +454,37 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
 
     <!-- 歌单根列表 -->
     <template v-if="showOnlineRoot && tab === 'playlists'">
+      <!-- 网易云账号条 -->
+      <div v-if="settings.neteaseEnabled" class="netease-bar">
+        <template v-if="netease.loggedIn">
+          <CachedCover
+            v-if="netease.profile?.avatarUrl"
+            :url="netease.profile.avatarUrl"
+            class="avatar"
+            alt=""
+          />
+          <span v-else class="avatar placeholder">
+            <span class="material-symbols-outlined">person</span>
+          </span>
+          <span class="nickname">{{ netease.profile?.nickname ?? "" }}</span>
+          <span class="spacer"></span>
+          <button class="lm-btn lm-btn--text" @click="logoutNetease">
+            <span class="material-symbols-outlined">logout</span>
+            {{ t("netease.logout") }}
+          </button>
+        </template>
+        <template v-else>
+          <span class="avatar placeholder">
+            <span class="material-symbols-outlined">person</span>
+          </span>
+          <span class="nickname">{{ t("netease.loginHint") }}</span>
+          <span class="spacer"></span>
+          <button class="lm-btn lm-btn--tonal" @click="netease.openQr()">
+            <span class="material-symbols-outlined">qr_code</span>
+            {{ t("netease.login") }}
+          </button>
+        </template>
+      </div>
       <p class="online-hint">{{ t("online.hint") }}</p>
       <div class="online-grid">
         <button
@@ -366,7 +505,7 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
           <div class="thumb">
             <CachedCover v-if="coverOf(c)" :url="coverOf(c)" :alt="c.name" />
             <span v-else class="placeholder material-symbols-outlined">
-              {{ c.key === "local" ? "library_music" : "queue_music" }}
+              {{ c.key === "local" ? "library_music" : c.key === "cloud" ? "cloud" : "queue_music" }}
             </span>
           </div>
           <div class="s-meta">
@@ -421,13 +560,13 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
         <button class="lm-icon-btn" @click="detail = null">
           <span class="material-symbols-outlined">arrow_back</span>
         </button>
-        <h2>{{ detail.type === "online" ? detail.title : t("online.local") }}</h2>
-        <span v-if="detail.type === 'online'" class="count tabular-nums">
+        <h2>{{ detail.type === "local" ? t("online.local") : detail.title }}</h2>
+        <span v-if="detail.type !== 'local'" class="count tabular-nums">
           {{ detail.songs.length }} {{ t("online.tracks") }}
         </span>
       </div>
 
-      <div v-if="detail.type === 'online'" class="online-grid">
+      <div v-if="detail.type === 'online' || detail.type === 'cloud'" class="online-grid">
         <button
           v-for="(song, i) in detail.songs"
           :key="song.id"
@@ -436,7 +575,8 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
           @contextmenu="onSongContext($event, song)"
         >
           <div class="thumb">
-            <CachedCover :url="song.pic" :alt="song.name" />
+            <CachedCover v-if="song.pic" :url="song.pic" :alt="song.name" />
+            <span v-else class="placeholder material-symbols-outlined">music_note</span>
           </div>
           <div class="s-meta">
             <div class="s-title" :title="song.name">{{ song.name }}</div>
@@ -445,6 +585,24 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
         </button>
       </div>
       <div v-else-if="onlineLoading" class="loading">{{ t("online.loading") }}</div>
+
+      <!-- 云盘：空态 / 加载更多 -->
+      <EmptyState
+        v-if="detail.type === 'cloud' && !detail.songs.length && !onlineLoading"
+        icon="cloud_off"
+        :title="t('netease.cloudEmpty')"
+        :description="t('netease.cloudEmptyHint')"
+      />
+      <div v-if="detail.type === 'cloud' && detail.loadingMore" class="loading">
+        {{ t("online.loading") }}
+      </div>
+      <button
+        v-if="detail.type === 'cloud' && !detail.loadingMore && netease.cloudHasMore"
+        class="load-more"
+        @click="loadMoreCloud"
+      >
+        {{ t("netease.loadMore") }}
+      </button>
     </template>
 
     <!-- 本地音乐（原模式 或 点开「本地音乐」歌单） -->
@@ -494,6 +652,39 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
         @secondary="router.push('/settings')"
       />
     </template>
+
+    <!-- 网易云扫码登录弹窗 -->
+    <transition name="qr-fade">
+      <div v-if="netease.qrOpen" class="qr-mask" @click.self="netease.closeQr()">
+        <div class="qr-card">
+          <h3>{{ t("netease.loginTitle") }}</h3>
+          <div class="qr-img-wrap">
+            <img v-if="netease.qrCode" :src="netease.qrCode" alt="QR" class="qr-img" />
+            <div v-else class="qr-loading">{{ t("online.loading") }}</div>
+          </div>
+          <p class="qr-status" :class="{ error: netease.qrState === 'error' }">
+            <template v-if="netease.qrState === 'wait'">{{ t("netease.scanWaiting") }}</template>
+            <template v-else-if="netease.qrState === 'scanned'">{{ t("netease.scanScanned") }}</template>
+            <template v-else-if="netease.qrState === 'confirmed'">{{ t("netease.scanConfirmed") }}</template>
+            <template v-else-if="netease.qrState === 'success'">{{ t("netease.scanSuccess") }}</template>
+            <template v-else-if="netease.qrState === 'timeout'">{{ t("netease.scanTimeout") }}</template>
+            <template v-else-if="netease.qrState === 'error'">{{ netease.qrError }}</template>
+          </p>
+          <div class="qr-actions">
+            <button class="lm-btn lm-btn--text" @click="netease.closeQr()">
+              {{ t("actions.cancel") }}
+            </button>
+            <button
+              v-if="netease.qrState === 'error' || netease.qrState === 'timeout'"
+              class="lm-btn lm-btn--tonal"
+              @click="netease.openQr()"
+            >
+              {{ t("netease.login") }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
 
     <transition name="toast">
       <div v-if="toast" class="toast">{{ toast }}</div>
@@ -732,4 +923,136 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
   opacity: 0;
   transform: translate(-50%, 12px);
 }
+
+/* ---- 网易云账号 ---- */
+.netease-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  background: var(--md-sys-color-surface-container-low);
+  border-radius: var(--md-sys-shape-corner-extra-large);
+  box-shadow: inset 0 0 0 1px var(--lm-hairline);
+}
+.avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex: none;
+}
+.avatar.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface-variant);
+}
+.avatar.placeholder .material-symbols-outlined {
+  font-size: 20px;
+}
+.nickname {
+  font-size: var(--md-sys-typescale-body-medium-size);
+  font-weight: 500;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.netease-bar .spacer {
+  flex: 1;
+}
+
+/* ---- 扫码弹窗 ---- */
+.qr-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+}
+.qr-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  min-width: 300px;
+  padding: 24px 28px 18px;
+  background: var(--md-sys-color-surface-container-high);
+  border-radius: var(--md-sys-shape-corner-extra-large);
+  box-shadow: var(--md-elevation-3);
+  animation: lm-rise 260ms var(--md-sys-motion-easing-emphasized-decelerate) both;
+}
+.qr-card h3 {
+  font-size: var(--md-sys-typescale-title-medium-size);
+  font-weight: var(--md-sys-typescale-title-medium-weight);
+}
+.qr-img-wrap {
+  width: 224px;
+  height: 224px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--md-sys-shape-corner-medium);
+  background: #fff;
+  overflow: hidden;
+}
+.qr-img {
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+.qr-loading {
+  font-size: var(--md-sys-typescale-body-small-size);
+  color: var(--md-sys-color-on-surface-variant);
+}
+.qr-status {
+  min-height: 20px;
+  font-size: var(--md-sys-typescale-body-small-size);
+  color: var(--md-sys-color-on-surface-variant);
+  text-align: center;
+}
+.qr-status.error {
+  color: var(--md-sys-color-error);
+}
+.qr-actions {
+  display: flex;
+  gap: 8px;
+}
+.qr-actions .material-symbols-outlined {
+  font-size: 18px;
+}
+
+.qr-fade-enter-active,
+.qr-fade-leave-active {
+  transition: opacity 200ms var(--md-sys-motion-easing-standard);
+}
+.qr-fade-enter-from,
+.qr-fade-leave-to {
+  opacity: 0;
+}
+
+/* 云盘加载更多 */
+.load-more {
+  display: block;
+  margin: 18px auto 8px;
+  padding: 9px 22px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-full);
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  font-family: inherit;
+  font-size: var(--md-sys-typescale-label-large-size);
+  cursor: pointer;
+  transition: all var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard);
+}
+.load-more:hover {
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+}
+
 </style>

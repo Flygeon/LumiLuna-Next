@@ -461,6 +461,11 @@ async function clearCache() {
         <span class="row-label">{{ t("settings.onlineEnable") }}</span>
         <input type="checkbox" v-model="settings.enableOnlineMusic" />
       </label>
+      <label class="row switch-row">
+        <span class="row-label">{{ t("settings.neteaseEnable") }}</span>
+        <input type="checkbox" v-model="settings.neteaseEnabled" />
+      </label>
+      <p class="hint">{{ t("settings.neteaseHint") }}</p>
       <div v-if="settings.enableOnlineMusic" class="row">
         <div class="row-label"><span>{{ t("settings.onlineServer") }}</span></div>
         <div class="segmented">

@@ -19,6 +19,11 @@ import type {
   SmtcCommand,
   SmtcMedia,
   SmtcPlayback,
+  NeteaseCloudPage,
+  NeteasePlaylist,
+  NeteaseProfile,
+  NeteaseQrCheck,
+  NeteaseSong,
   Song,
   WebDavEntry,
   WebDavStatus,
@@ -173,6 +178,32 @@ export const capabilities = {
   },
   webdavMediaUrl(path: string): Promise<string> {
     return safeInvoke("webdav_media_url", { path });
+  },
+
+  // ---- 网易云账号 ----
+  neteaseLoginQrKey(): Promise<string> {
+    return safeInvoke("netease_login_qr_key");
+  },
+  neteaseLoginQrCheck(key: string): Promise<NeteaseQrCheck> {
+    return safeInvoke("netease_login_qr_check", { key });
+  },
+  neteaseAccount(): Promise<NeteaseProfile> {
+    return safeInvoke("netease_account");
+  },
+  neteaseUserPlaylists(offset = 0, limit = 100): Promise<NeteasePlaylist[]> {
+    return safeInvoke("netease_user_playlists", { offset, limit });
+  },
+  neteasePlaylistDetail(id: number): Promise<NeteaseSong[]> {
+    return safeInvoke("netease_playlist_detail", { id });
+  },
+  neteaseCloud(offset = 0, limit = 50): Promise<NeteaseCloudPage> {
+    return safeInvoke("netease_cloud", { offset, limit });
+  },
+  neteaseSongUrl(ids: number[]): Promise<{ id: number; url: string }[]> {
+    return safeInvoke("netease_song_url", { ids });
+  },
+  neteaseLogout(): Promise<void> {
+    return safeInvoke("netease_logout");
   },
 
   // ---- 系统 ----

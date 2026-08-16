@@ -80,6 +80,8 @@ const DEFAULTS = {
   webdavUser: "",
   /** WebDAV 密码（明文存 settings.json，与现有配置项一致） */
   webdavPass: "",
+  /** 实验性：网易云账号（扫码登录，我的歌单 + 云盘） */
+  neteaseEnabled: false,
 };
 
 export const useSettingsStore = defineStore("settings", () => {
@@ -116,6 +118,7 @@ export const useSettingsStore = defineStore("settings", () => {
   const webdavUrl = ref(DEFAULTS.webdavUrl);
   const webdavUser = ref(DEFAULTS.webdavUser);
   const webdavPass = ref(DEFAULTS.webdavPass);
+  const neteaseEnabled = ref(DEFAULTS.neteaseEnabled);
   const loaded = ref(false);
 
   // 单一注册表：新增设置项只需在此加一行，load/save 自动覆盖
@@ -153,6 +156,7 @@ export const useSettingsStore = defineStore("settings", () => {
     webdavUrl,
     webdavUser,
     webdavPass,
+    neteaseEnabled,
   } as const;
 
   async function load() {

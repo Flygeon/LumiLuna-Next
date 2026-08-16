@@ -1,5 +1,6 @@
 pub mod commands;
 pub mod media;
+pub mod netease;
 pub mod webdav;
 
 use serde::{Deserialize, Serialize};
@@ -148,6 +149,14 @@ pub fn run() {
             webdav::webdav_list,
             webdav::webdav_test,
             webdav::webdav_media_url,
+            netease::netease_login_qr_key,
+            netease::netease_login_qr_check,
+            netease::netease_account,
+            netease::netease_user_playlists,
+            netease::netease_playlist_detail,
+            netease::netease_cloud,
+            netease::netease_song_url,
+            netease::netease_logout,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -43,6 +43,13 @@ reqwest = { version = "0.12", default-features = false, features = ["blocking", 
 url = "2"
 httpdate = "1"
 percent-encoding = "2"
+# 网易云音乐 weapi/eapi 签名（移植自 api-enhanced，纯 Rust 实现）
+aes = "0.8"
+cbc = "0.1"
+ecb = "0.1"
+rsa = { version = "0.9", features = ["pem"] }
+md-5 = "0.10"
+rand_core = { version = "0.6", features = ["getrandom"] }
 roxmltree = "0.20"
 # WebDAV 媒体本地代理：绑定 127.0.0.1 随机端口的轻量 HTTP 服务（SMTC 封面服务同款，跨平台）
 tiny_http = "0.12"

@@ -2,7 +2,7 @@
  * 纯浏览器预览用的 mock 后端（`npm run dev` 无 Tauri 环境时生效）。
  * 只为让 UI 可见，不追求行为等价。
  */
-import type { FfmpegStatus, MediaEntry, ScanProgress, WebDavEntry, WebDavStatus } from "@shared/types";
+import type { FfmpegStatus, MediaEntry, NeteaseCloudPage, NeteasePlaylist, NeteaseProfile, NeteaseQrCheck, NeteaseSong, ScanProgress, WebDavEntry, WebDavStatus } from "@shared/types";
 
 /** 内联 SVG 占位封面，避免依赖外部图片 */
 function placeholderCover(label: string, hue: number): string {
@@ -103,6 +103,9 @@ const DAV_TREE: Record<string, WebDavEntry[]> = {
 };
 
 const favorites = new Set<string>(["demo-a1"]);
+
+/** 浏览器预览用：扫码轮询计数（800 → 803 推进） */
+let qrCheckCount: number | undefined;
 
 export function mockInvoke<T>(
   cmd: string,
@@ -235,6 +238,51 @@ export function mockInvoke<T>(
       const path = String(args?.path ?? "");
       return as("https://demo.webdav.invalid/" + path);
     }
+    case "netease_login_qr_key":
+      return as("demo-unikey-abcdef");
+    case "netease_login_qr_check": {
+      // 演示：第一次 800，之后 803
+      const count = (qrCheckCount = (qrCheckCount ?? 0) + 1);
+      if (count <= 1) {
+        return as<NeteaseQrCheck>({ code: 800 });
+      }
+      return as<NeteaseQrCheck>({
+        code: 803,
+        nickname: "演示用户",
+        avatarUrl: "",
+      });
+    }
+    case "netease_account":
+      return as<NeteaseProfile>({
+        userId: 10001,
+        nickname: "演示用户",
+        avatarUrl: "",
+      });
+    case "netease_user_playlists":
+      return as<NeteasePlaylist[]>([
+        { id: 1, name: "我喜欢的音乐", coverUrl: "", trackCount: 128 },
+        { id: 2, name: "通勤歌单", coverUrl: "", trackCount: 45 },
+      ]);
+    case "netease_playlist_detail":
+      return as<NeteaseSong[]>([
+        { id: 1001, name: "夜曲", artist: "周杰伦", album: "十一月的萧邦", picUrl: "" },
+        { id: 1002, name: "稻香", artist: "周杰伦", album: "魔杰座", picUrl: "" },
+      ]);
+    case "netease_cloud":
+      return as<NeteaseCloudPage>({
+        songs: [
+          { id: 2001, name: "云盘试听曲", artist: "演示歌手", album: "云盘", picUrl: "" },
+          { id: 2002, name: "Demo Track", artist: "Demo Artist", picUrl: "" },
+        ],
+        hasMore: false,
+        count: 2,
+      });
+    case "netease_song_url": {
+      const ids = (args?.ids as number[]) ?? [];
+      return as(ids.map((id) => ({ id, url: "https://demo.netease.invalid/play?id=" + id })));
+    }
+    case "netease_logout":
+      return as(undefined);
     case "smtc_set_media":
     case "smtc_set_playback":
       // 浏览器预览没有系统媒体控件，直接静默成功
