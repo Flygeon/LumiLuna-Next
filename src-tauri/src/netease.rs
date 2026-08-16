@@ -743,7 +743,7 @@ fn weapi(data: &Value) -> Result<(String, String), String> {
     netease_log(&format!("WEAPI-SELFCHECK {selfcheck}"));
     // 固定密钥复现测试：用固定 secret 加密 text，输出中间值供 Node 同参数对比
     {
-        let fixed_secret = "FixedSecret123456";
+        let fixed_secret = "AbCdEfGhIjKlMnOp"; // 恰好 16 字符（AES-128 密钥必须 16 字节，否则 key.into() 断言 panic）
         match aes_cbc_b64(PRESET_KEY, IV, &text) {
             Ok(fx_inner) => match aes_cbc_b64(fixed_secret.as_bytes(), IV, &fx_inner) {
                 Ok(fx_params) => {
