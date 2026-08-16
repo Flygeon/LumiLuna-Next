@@ -677,12 +677,16 @@ fn rsa_encrypt_hex(data: &[u8]) -> Result<String, String> {
     Ok(out.iter().map(|b| format!("{b:02x}")).collect())
 }
 
-/// weapi 加密：双层 AES-CBC + RSA（返回 (params, encSecKey)）
+/// weapi 加密：双层 AES-CBC + RSA（返回 (params, encSecKey)）。
+/// 层序参考 crypto.js weapi：内层 presetKey、外层 secretKey ——
+/// aesEncrypt(aesEncrypt(text,'cbc',presetKey,iv),'cbc',secretKey,iv)。
+/// 服务端用 RSA 裸解密 encSecKey 得 secretKey 后先解外层再解内层；
+/// 层序写反（secretKey 内层）会导致解密失败、响应为空 body。
 fn weapi(data: &Value) -> Result<(String, String), String> {
     let text = data.to_string();
     let secret = random_base62(16);
-    let inner = aes_cbc_b64(secret.as_bytes(), IV, &text)?;
-    let params = aes_cbc_b64(PRESET_KEY, IV, &inner)?;
+    let inner = aes_cbc_b64(PRESET_KEY, IV, &text)?;
+    let params = aes_cbc_b64(secret.as_bytes(), IV, &inner)?;
     let reversed: String = secret.chars().rev().collect();
     let enc_sec_key = rsa_encrypt_hex(reversed.as_bytes())?;
     Ok((params, enc_sec_key))
