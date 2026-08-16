@@ -988,10 +988,29 @@ fn api_call(crypto: &str, path: &str, data: &mut Value) -> Result<(i64, Value), 
                 c => c,
             })
             .collect();
+        // 诊断信息：本次请求发了哪些 cookie 键、MUSIC_U 长度、加密参数摘要
+        let cookie_keys: Vec<&str> = cookie_map.keys().map(|k| k.as_str()).collect();
+        let mut keys_sorted = cookie_keys;
+        keys_sorted.sort();
+        let music_u_len = cookie_map.get("MUSIC_U").map(|v| v.len()).unwrap_or(0);
+        let params_len = params.len();
+        let sec_preview: String = match body.split("encSecKey=").nth(1) {
+            Some(s) => {
+                let cut: String = s.chars().take(24).collect();
+                format!("{}...(共{}字符)", cut, s.len())
+            }
+            None => "无".to_string(),
+        };
         format!(
-            "网易云响应解析失败（{}，HTTP {status}，{} 字节）：{preview}",
+            "网易云响应解析失败（{}，HTTP {status}，{} 字节）：{preview}【诊断：cookie 键={}，MUSIC_U 长度={}，params 长度={}，encSecKey={}，deviceId={}，cn_ip={}】",
             path.trim_start_matches("/api"),
-            text.len()
+            text.len(),
+            keys_sorted.join(","),
+            music_u_len,
+            params_len,
+            sec_preview,
+            device_id.chars().take(8).collect::<String>(),
+            cn_ip,
         )
     })?;
     let code = body["code"].as_i64().unwrap_or(0);
