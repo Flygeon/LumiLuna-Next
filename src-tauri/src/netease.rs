@@ -991,34 +991,47 @@ fn api_call(crypto: &str, path: &str, data: &mut Value) -> Result<(i64, Value), 
                 c => c,
             })
             .collect();
-        // 诊断信息：本次请求发了哪些 cookie 键、MUSIC_U 长度、加密参数摘要
-        let cookie_keys: Vec<&str> = cookie_map.keys().map(|k| k.as_str()).collect();
-        let mut keys_sorted = cookie_keys;
-        keys_sorted.sort();
-        let music_u_len = cookie_map.get("MUSIC_U").map(|v| v.len()).unwrap_or(0);
-        // params 长度：从请求体字符串解析（weapi: params=xxx&encSecKey=yyy；eapi: params=xxx）
-        let params_len = body
-            .split("params=")
-            .nth(1)
-            .map(|s| s.split('&').next().unwrap_or("").len())
-            .unwrap_or(0);
-        let sec_preview: String = match body.split("encSecKey=").nth(1) {
-            Some(s) => {
-                let cut: String = s.chars().take(24).collect();
-                format!("{}...(共{}字符)", cut, s.len())
-            }
-            None => "无".to_string(),
-        };
+        // 诊断信息：完整请求头 + 加密产物前缀（定位与参考实现/curl 的差异）
+        let music_u_preview = cookie_map
+            .get("MUSIC_U")
+            .map(|v| {
+                let head: String = v.chars().take(20).collect();
+                format!("{}…(共{}字符)", head, v.len())
+            })
+            .unwrap_or_else(|| "无".to_string());
+        let csrf_preview = cookie_map
+            .get("__csrf")
+            .map(|v| {
+                let head: String = v.chars().take(12).collect();
+                format!("{}…(共{}字符)", head, v.len())
+            })
+            .unwrap_or_else(|| "无".to_string());
+        let header_desc: String = headers
+            .iter()
+            .map(|(k, v)| {
+                if k.eq_ignore_ascii_case("cookie") {
+                    // cookie 头太长，只显示键
+                    let keys: Vec<&str> = v
+                        .split(';')
+                        .filter_map(|p| p.trim().split_once('=').map(|(k2, _)| k2))
+                        .collect();
+                    format!("Cookie[{}]", keys.join(","))
+                } else {
+                    format!("{k}={v}")
+                }
+            })
+            .collect::<Vec<_>>()
+            .join(" | ");
+        let body_full: String = body.chars().take(700).collect();
         format!(
-            "网易云响应解析失败（{}，HTTP {status}，{} 字节）：{preview}【诊断：cookie 键={}，MUSIC_U 长度={}，params 长度={}，encSecKey={}，deviceId={}，cn_ip={}】",
+            "网易云响应解析失败（{}，HTTP {status}，{} 字节）：{preview}【诊断：MUSIC_U={}，__csrf={}，headers={}，URL={}，BODY={}】",
             path.trim_start_matches("/api"),
             text.len(),
-            keys_sorted.join(","),
-            music_u_len,
-            params_len,
-            sec_preview,
-            device_id.chars().take(8).collect::<String>(),
-            cn_ip,
+            music_u_preview,
+            csrf_preview,
+            header_desc,
+            candidate_urls.join(","),
+            body_full,
         )
     })?;
     let code = body["code"].as_i64().unwrap_or(0);
