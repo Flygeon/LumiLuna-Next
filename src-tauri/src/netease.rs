@@ -217,9 +217,12 @@ fn generate_device_id() -> String {
 fn aes_cbc_b64(key: &[u8], iv: &[u8; 16], plain: &str) -> Result<String, String> {
     type Aes128CbcEnc = cbc::Encryptor<Aes128>;
     let enc = Aes128CbcEnc::new(key.into(), iv.into());
-    // encrypt_padded_vec_mut 需要 cipher 的 alloc feature，这里手动给 buffer
+    // encrypt_padded_vec_mut 需要 cipher 的 alloc feature，这里手动给 buffer。
+    // 注意：encrypt_padded_mut 是就地接口——buf 的前 msg_len 字节是明文输入！
+    // 必须先把明文拷入 buf，否则加密的是全 0（FIXED-TEST 实证：不同 text 产生相同密文）。
     let msg = plain.as_bytes();
     let mut buf = vec![0u8; msg.len() + 16];
+    buf[..msg.len()].copy_from_slice(msg);
     let ct = enc
         .encrypt_padded_mut::<Pkcs7>(&mut buf, msg.len())
         .map_err(|e| format!("AES 加密失败：{e:?}"))?;
