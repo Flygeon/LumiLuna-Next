@@ -65,6 +65,15 @@ fn state() -> &'static Mutex<NeteasePersist> {
     STATE.get_or_init(|| Mutex::new(NeteasePersist::default()))
 }
 
+/// 是否已从文件加载过持久化状态（只加载一次，避免覆盖登录流程中合并的 cookie）
+static LOADED: AtomicBool = AtomicBool::new(false);
+
+fn ensure_loaded(app: &tauri::AppHandle) {
+    if !LOADED.swap(true, Ordering::SeqCst) {
+        *state().lock().unwrap() = load_persist(app);
+    }
+}
+
 fn persist_path(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
     let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
     std::fs::create_dir_all(&dir).map_err(|e| format!("创建数据目录失败：{e}"))?;
