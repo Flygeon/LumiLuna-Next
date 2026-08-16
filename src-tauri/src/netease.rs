@@ -15,7 +15,7 @@ use std::time::Duration;
 use aes::Aes128;
 use base64::Engine;
 use cbc::cipher::{block_padding::Pkcs7, BlockEncryptMut, KeyIvInit};
-use ecb::cipher::{BlockEncryptMut, KeyInit};
+use ecb::cipher::KeyInit;
 use md5::{Digest, Md5};
 use percent_encoding::{utf8_percent_encode, AsciiSet, CONTROLS};
 use rsa::pkcs1::DecodeRsaPublicKey;
