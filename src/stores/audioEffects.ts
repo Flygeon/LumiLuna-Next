@@ -240,15 +240,44 @@ function decodeSharePayload(code: string): SharedPresetPayload | null {
 }
 
 /**
- * 「字符码」分享格式解码：`<预设名称>:<字符码>`。
- * 用最后一个冒号拆分，冒号前为预设名，冒号后为 1–5 字字符码。
+ * 「字符码」分享格式解码。
+ *
+ * 支持两种写法：
+ * - `<预设名称><分隔符><字符码>`：用最后一个分隔符拆分；
+ * - 只有 `<字符码>`（未写预设名）：直接用字符码本身作为预设名（1–5 字）。
+ *
+ * 分隔符可替换为：`:` `：` `·` `*` `#` `、` `` ` `` `~` `-` `+` `=` `|` `&` `@` `<` `>` `;` `；`
  */
+const CHAR_SHARE_SEPARATORS = "：·*#、`~-+=|&@<>;；";
+
 function decodeCharSharePayload(code: string): SharedPresetPayload | null {
-  const colon = code.lastIndexOf(":");
-  if (colon <= 0) return null;
-  const name = code.slice(0, colon).trim().slice(0, NAME_MAX_CHARS);
-  const values = decodeEqCode(code.slice(colon + 1));
-  if (!name || !values) return null;
+  const trimmed = code.trim();
+  // 从右往左找最后一个分隔符。
+  let sepIndex = -1;
+  for (let i = trimmed.length - 1; i >= 0; i -= 1) {
+    if (CHAR_SHARE_SEPARATORS.includes(trimmed[i])) {
+      sepIndex = i;
+      break;
+    }
+  }
+
+  let name: string;
+  let chars: string;
+  if (sepIndex > 0) {
+    name = trimmed.slice(0, sepIndex).trim();
+    chars = trimmed.slice(sepIndex + 1);
+  } else {
+    // 没写预设名：整个字符串就是字符码。
+    name = "";
+    chars = trimmed;
+  }
+
+  const values = decodeEqCode(chars);
+  if (!values) return null;
+
+  // 未写预设名时，默认用字符码本身（1–5 字）作为预设名。
+  const finalName = (name || chars).trim().slice(0, NAME_MAX_CHARS);
+  if (!finalName) return null;
 
   const eqBands = DEFAULT_EQ_BANDS.map((band, index) => ({
     frequency: band.frequency,
@@ -256,7 +285,7 @@ function decodeCharSharePayload(code: string): SharedPresetPayload | null {
   }));
   return {
     version: CHAR_SHARE_VERSION,
-    name,
+    name: finalName,
     config: {
       enabled: true,
       eqBands,
