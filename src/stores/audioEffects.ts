@@ -94,6 +94,7 @@ export const useAudioEffectsStore = defineStore("audio-effects", () => {
   const audioEl = ref<HTMLAudioElement | null>(null);
 
   let saveTimer: ReturnType<typeof setTimeout> | null = null;
+  let pendingAttach = false;
 
   function persist() {
     if (!loaded.value) return;
@@ -107,14 +108,86 @@ export const useAudioEffectsStore = defineStore("audio-effects", () => {
     }, 300);
   }
 
+  /**
+   * 启用音效时，如果音频已经加载且尚未以 CORS 模式加载，
+   * 需要设置 crossOrigin="anonymous" 并重新加载当前曲目，
+   * 否则 Web Audio 的 MediaElementSource 会因 CORS 限制输出静音。
+   */
+  function enableWithReload() {
+    const el = audioEl.value;
+    if (!el || pendingAttach) return;
+    pendingAttach = true;
+
+    const src = el.src;
+    const wasPlaying = !el.paused;
+    const time = el.currentTime;
+
+    try {
+      el.pause();
+      el.crossOrigin = "anonymous";
+      el.removeAttribute("src");
+      el.src = src;
+      el.load();
+    } catch (e) {
+      pendingAttach = false;
+      console.warn("[音效] 重新加载音频失败，已自动关闭音效:", e);
+      config.value.enabled = false;
+      return;
+    }
+
+    const onReady = () => {
+      el.removeEventListener("loadedmetadata", onReady);
+      el.removeEventListener("error", onError);
+      pendingAttach = false;
+      try {
+        if (time > 0 && Number.isFinite(el.duration)) {
+          el.currentTime = Math.min(time, el.duration);
+        }
+      } catch {
+        /* 恢复进度失败不阻塞 */
+      }
+      try {
+        audioEffectEngine.attach(el);
+        audioEffectEngine.update(config.value);
+        audioEffectEngine.resume();
+      } catch (e) {
+        console.warn("[音效] Web Audio 初始化失败，已自动关闭音效:", e);
+        config.value.enabled = false;
+      }
+      if (wasPlaying) void el.play().catch(() => {});
+    };
+
+    const onError = () => {
+      el.removeEventListener("loadedmetadata", onReady);
+      el.removeEventListener("error", onError);
+      pendingAttach = false;
+      console.warn("[音效] 重新加载音频失败（可能不支持 CORS），已自动关闭音效");
+      config.value.enabled = false;
+      persist();
+    };
+
+    el.addEventListener("loadedmetadata", onReady);
+    el.addEventListener("error", onError);
+  }
+
   function syncEngine() {
-    if (!audioEl.value) return;
+    const el = audioEl.value;
+    if (!el) return;
     try {
       if (config.value.enabled) {
-        audioEffectEngine.attach(audioEl.value);
+        if (!audioEffectEngine.attached) {
+          if (el.src && el.crossOrigin !== "anonymous") {
+            enableWithReload();
+            return;
+          }
+          el.crossOrigin = "anonymous";
+          audioEffectEngine.attach(el);
+        }
+        audioEffectEngine.update(config.value);
         audioEffectEngine.resume();
+      } else {
+        audioEffectEngine.update(config.value);
       }
-      audioEffectEngine.update(config.value);
     } catch (e) {
       console.warn("[音效] Web Audio 初始化失败，已自动关闭音效:", e);
       config.value.enabled = false;
