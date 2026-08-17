@@ -23,9 +23,6 @@
     ],
     "security": {
       "csp": null,
-      "headers": {
-        "Access-Control-Allow-Origin": "*"
-      },
       "assetProtocol": {
         "enable": true,
         "scope": {
