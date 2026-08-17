@@ -7,7 +7,11 @@ import { useLibraryStore } from "@/stores/library";
 import MiniPlayer from "@/components/MiniPlayer.vue";
 import ContextMenu from "@/components/ContextMenu.vue";
 import TextPrompt from "@/components/TextPrompt.vue";
+import { useWindowTitlebar } from "@/composables/useWindowTitlebar";
 import { translate } from "@shared/i18n";
+
+const { isTauri, isMaximized, onDragStart, minimize, toggleMaximize, closeWindow } =
+  useWindowTitlebar();
 
 const settings = useSettingsStore();
 const player = usePlayerStore();
@@ -91,7 +95,7 @@ router.afterEach((to) => {
 <template>
   <div class="app-shell" :class="{ 'has-player': player.song && !isPlayerPage }">
     <!-- 左侧导航 Rail -->
-    <nav v-if="!isPlayerPage" class="nav-rail lm-glass">
+    <nav v-if="!isPlayerPage" class="nav-rail lm-glass" @mousedown="onDragStart">
       <div class="brand">
         <span class="material-symbols-outlined brand-mark">blur_on</span>
         <span class="brand-name">{{ t("app.name") }}</span>
@@ -140,7 +144,7 @@ router.afterEach((to) => {
 
     <!-- 内容区 -->
     <div class="content">
-      <header v-if="!isPlayerPage" class="topbar lm-glass">
+      <header v-if="!isPlayerPage" class="topbar lm-glass" @mousedown="onDragStart">
         <h1 class="title">{{ t("nav." + currentTab) }}</h1>
         <div class="spacer"></div>
         <button
@@ -150,6 +154,31 @@ router.afterEach((to) => {
         >
           <span class="material-symbols-outlined">{{ themeIcon }}</span>
         </button>
+        <template v-if="isTauri">
+          <button
+            class="lm-icon-btn win-control"
+            title="最小化"
+            @click="minimize"
+          >
+            <span class="material-symbols-outlined">remove</span>
+          </button>
+          <button
+            class="lm-icon-btn win-control"
+            :title="isMaximized ? '还原' : '最大化'"
+            @click="toggleMaximize"
+          >
+            <span class="material-symbols-outlined">
+              {{ isMaximized ? "filter_none" : "crop_square" }}
+            </span>
+          </button>
+          <button
+            class="lm-icon-btn win-control close"
+            title="关闭"
+            @click="closeWindow"
+          >
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </template>
       </header>
 
       <main ref="mainEl" class="main-content">
@@ -330,6 +359,13 @@ router.afterEach((to) => {
 }
 .spacer {
   flex: 1;
+}
+.win-control .material-symbols-outlined {
+  font-size: 18px;
+}
+.win-control.close:hover {
+  background: var(--md-sys-color-error);
+  color: var(--md-sys-color-on-error);
 }
 
 .main-content {
