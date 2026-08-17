@@ -246,9 +246,9 @@ function decodeSharePayload(code: string): SharedPresetPayload | null {
  * - `<预设名称><分隔符><字符码>`：用最后一个分隔符拆分；
  * - 只有 `<字符码>`（未写预设名）：直接用字符码本身作为预设名（1–5 字）。
  *
- * 分隔符可替换为：`:` `：` `·` `*` `#` `、` `` ` `` `~` `-` `+` `=` `|` `&` `@` `<` `>` `;` `；`
+ * 连接符仅支持 `@`；若预设名、字符码中都不含 `@`（字库中不含 `@`），拆分即唯一。
  */
-const CHAR_SHARE_SEPARATORS = "：·*#、`~-+=|&@<>;；";
+const CHAR_SHARE_SEPARATORS = "@";
 
 function decodeCharSharePayload(code: string): SharedPresetPayload | null {
   const trimmed = code.trim();
