@@ -4,7 +4,6 @@ import { usePlayerStore } from "@/stores/player";
 import { useSettingsStore } from "@/stores/settings";
 import { useRouter } from "vue-router";
 import { translate } from "@shared/i18n";
-import { useWindowTitlebar } from "@/composables/useWindowTitlebar";
 import FluidBackground from "@/components/FluidBackground.vue";
 import LyricsView from "@/components/LyricsView.vue";
 import PlayerControlIcon from "@/components/PlayerControlIcon.vue";
@@ -13,8 +12,6 @@ import { formatDuration } from "@/utils/format";
 const player = usePlayerStore();
 const settings = useSettingsStore();
 const router = useRouter();
-const { isTauri, isMaximized, onDragStart, minimize, toggleMaximize, closeWindow } =
-  useWindowTitlebar();
 const rightTab = ref<"lyrics" | "queue">("lyrics");
 const speed = ref(1);
 const isDragging = ref(false);
@@ -112,37 +109,10 @@ onBeforeUnmount(() => {
     <FluidBackground />
 
     <!-- 顶部覆盖层 -->
-    <div class="player-topbar" @mousedown="onDragStart">
+    <div class="player-topbar">
       <button class="back" @click="router.back()"><span class="material-symbols-outlined">arrow_back</span> {{ t("player.back") }}</button>
       <div class="now-title">{{ t("player.nowPlaying") }}</div>
-      <div class="right-actions">
-        <template v-if="isTauri">
-          <button
-            class="win-btn"
-            title="最小化"
-            @click="minimize"
-          >
-            <span class="material-symbols-outlined">remove</span>
-          </button>
-          <button
-            class="win-btn"
-            :title="isMaximized ? '还原' : '最大化'"
-            @click="toggleMaximize"
-          >
-            <span class="material-symbols-outlined">
-              {{ isMaximized ? "filter_none" : "crop_square" }}
-            </span>
-          </button>
-          <button
-            class="win-btn close"
-            title="关闭"
-            @click="closeWindow"
-          >
-            <span class="material-symbols-outlined">close</span>
-          </button>
-        </template>
-        <span v-else class="right-placeholder"></span>
-      </div>
+      <div class="right-placeholder"></div>
     </div>
 
     <div class="player-body">
@@ -326,42 +296,8 @@ onBeforeUnmount(() => {
   font-size: 14px;
   opacity: 0.8;
 }
-.right-actions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-width: 110px;
-  justify-content: flex-end;
-}
 .right-placeholder {
   width: 60px;
-}
-.win-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border: none;
-  border-radius: 50%;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.85);
-  cursor: pointer;
-  transition: background 180ms ease, transform 120ms var(--md-sys-motion-spring);
-}
-.win-btn:hover {
-  background: rgba(255, 255, 255, 0.16);
-  color: #fff;
-}
-.win-btn:active {
-  transform: scale(0.9);
-}
-.win-btn.close:hover {
-  background: rgba(255, 82, 82, 0.85);
-  color: #fff;
-}
-.win-btn .material-symbols-outlined {
-  font-size: 18px;
 }
 .player-body {
   height: 100%;
