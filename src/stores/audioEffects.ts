@@ -24,7 +24,7 @@ import type { AudioEffectConfig, AudioEffectPreset } from "@shared/types";
 const store = new LazyStore("audio-effects.json");
 const PRESET_SHARE_PREFIX = "LLFX3:";
 const LEGACY_PRESET_SHARE_PREFIX = "LLFX1:";
-/** 「字符码」分享格式版本（<预设名称>:<字符码>）。 */
+/** 「字符码」分享格式版本（<预设名称>@<字符码>）。 */
 const CHAR_SHARE_VERSION = 4;
 const NAME_MAX_CHARS = 80;
 
@@ -600,7 +600,7 @@ export const useAudioEffectsStore = defineStore("audio-effects", () => {
 
   /**
    * 导出两套分享码（默认一并复制到剪贴板）：
-   * 1. 新「字符码」：`<预设名称>:<字符码>`；
+   * 1. 新「字符码」：`<预设名称>@<字符码>`；
    * 2. 原有 LLFX3 紧凑二进制格式（保留自定义频点等全部参数）。
    */
   function exportUserPreset(id: string): string[] | null {
@@ -611,7 +611,7 @@ export const useAudioEffectsStore = defineStore("audio-effects", () => {
     if (!name) return null;
     const payload: SharedPresetPayload = { version: 1, name, config };
     return [
-      `${name}:${encodeEqCode(configToEqArray(config))}`,
+      `${name}@${encodeEqCode(configToEqArray(config))}`,
       encodeSharePayload(payload),
     ];
   }
