@@ -38,11 +38,12 @@ function deletePreset(id: string) {
 }
 
 async function sharePreset(id: string) {
-  const code = effects.exportUserPreset(id);
-  if (!code) {
+  const codes = effects.exportUserPreset(id);
+  if (!codes || codes.length === 0) {
     shareStatus.value = "failed";
     return;
   }
+  const code = codes.join("\n");
   try {
     if (navigator.clipboard) {
       await navigator.clipboard.writeText(code);
