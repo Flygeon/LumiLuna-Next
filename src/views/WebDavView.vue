@@ -11,7 +11,13 @@ import MediaViewer from "@/components/MediaViewer.vue";
 import { useSettingsStore } from "@/stores/settings";
 import { usePlayerStore } from "@/stores/player";
 import { capabilities } from "@/capabilities";
-import { entryType, titleOf, webdavList, webdavMediaUrl } from "@/utils/webdav";
+import {
+  entryType,
+  titleOf,
+  webdavList,
+  webdavListCached,
+  webdavMediaUrl,
+} from "@/utils/webdav";
 import { formatSize } from "@/utils/format";
 import { translate } from "@shared/i18n";
 import type { MediaEntry, MediaType, WebDavEntry } from "@shared/types";
@@ -63,17 +69,41 @@ async function load(dir: string) {
   path.value = dir;
   loading.value = true;
   error.value = "";
+  let hasCache = false;
   try {
-    entries.value = await webdavList(dir);
+    const cached = await webdavListCached(dir);
+    if (cached) {
+      // 先展示持久化索引，秒开；随后在后台拉取最新状态并更新缓存
+      entries.value = cached;
+      hasCache = true;
+      loading.value = false;
+      for (const f of cached) {
+        if (entryType(f) === "image") loadThumb(f);
+      }
+    }
+  } catch {
+    /* 读取缓存失败时继续走在线刷新 */
+  }
+
+  try {
+    const fresh = await webdavList(dir);
+    entries.value = fresh;
+    hasCache = true;
+    loading.value = false;
     // 预解析可见图片的代理 URL（本地字符串拼装，无网络请求）
-    for (const f of entries.value) {
+    for (const f of fresh) {
       if (entryType(f) === "image") loadThumb(f);
     }
   } catch (e) {
-    error.value = String(e);
-    entries.value = [];
-  } finally {
-    loading.value = false;
+    if (!hasCache) {
+      error.value = String(e);
+      entries.value = [];
+      loading.value = false;
+    } else {
+      // 有缓存时后台刷新失败不打断浏览，仅提示保留的是索引缓存
+      loading.value = false;
+      notify(`${t("webdav.refresh")} 失败：${e instanceof Error ? e.message : String(e)}`);
+    }
   }
 }
 

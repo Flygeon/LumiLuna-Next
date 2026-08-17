@@ -15,14 +15,16 @@ const library = useLibraryStore();
 const router = useRouter();
 const route = useRoute();
 
-const navItems = [
+const navItems = computed(() => [
   { key: "images", path: "/images", icon: "image", type: "image" },
   { key: "videos", path: "/videos", icon: "movie", type: "video" },
   { key: "music", path: "/music", icon: "music_note", type: "audio" },
   { key: "books", path: "/books", icon: "menu_book", type: "book" },
   { key: "folders", path: "/folders", icon: "folder", type: null },
-  { key: "webdav", path: "/webdav", icon: "cloud", type: null },
-];
+  ...(settings.webdavEnabled
+    ? [{ key: "webdav", path: "/webdav", icon: "cloud", type: null }]
+    : []),
+]);
 const bottomItems = [
   { key: "favorites", path: "/favorites", icon: "favorite" },
   { key: "history", path: "/history", icon: "history" },
