@@ -16,10 +16,12 @@ import {
 import type { AudioEffectConfig, AudioEffectPreset } from "@shared/types";
 
 const store = new LazyStore("audio-effects.json");
-const PRESET_SHARE_PREFIX = "LLFX1:";
+const PRESET_SHARE_PREFIX = "LLFX3:";
+const LEGACY_PRESET_SHARE_PREFIX = "LLFX1:";
+const NAME_MAX_CHARS = 80;
 
 interface SharedPresetPayload {
-  version: 1;
+  version: number;
   name: string;
   config: Omit<AudioEffectConfig, "presetId">;
 }
@@ -33,27 +35,165 @@ function clamp(value: unknown, min: number, max: number): number | null {
   return Math.max(min, Math.min(max, Math.round(value)));
 }
 
-function encodeSharePayload(payload: SharedPresetPayload): string {
-  const bytes = new TextEncoder().encode(JSON.stringify(payload));
+function bytesToBase64Url(bytes: Uint8Array): string {
   let binary = "";
   for (const byte of bytes) binary += String.fromCharCode(byte);
-  return `${PRESET_SHARE_PREFIX}${btoa(binary)}`
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-function decodeSharePayload(code: string): SharedPresetPayload | null {
-  if (!code.startsWith(PRESET_SHARE_PREFIX)) return null;
+function base64UrlToBytes(code: string): Uint8Array | null {
   try {
-    const encoded = code.slice(PRESET_SHARE_PREFIX.length).replace(/-/g, "+").replace(/_/g, "/");
+    const encoded = code.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = encoded.padEnd(Math.ceil(encoded.length / 4) * 4, "=");
+    const binary = atob(padded);
+    return Uint8Array.from(binary, (char) => char.charCodeAt(0));
+  } catch {
+    return null;
+  }
+}
+
+/** MSB-first 位写入器，用于把固定字段压缩到最小位数。 */
+class BitWriter {
+  private bytes: number[] = [];
+  private current = 0;
+  private count = 0;
+
+  write(value: number, bitCount: number): void {
+    for (let i = bitCount - 1; i >= 0; i--) {
+      this.current = (this.current << 1) | ((value >>> i) & 1);
+      this.count++;
+      if (this.count === 8) {
+        this.bytes.push(this.current);
+        this.current = 0;
+        this.count = 0;
+      }
+    }
+  }
+
+  finish(): Uint8Array {
+    if (this.count > 0) {
+      this.bytes.push(this.current << (8 - this.count));
+      this.current = 0;
+      this.count = 0;
+    }
+    return Uint8Array.from(this.bytes);
+  }
+}
+
+/** MSB-first 位读取器，与 BitWriter 对应。 */
+class BitReader {
+  private bytes: Uint8Array;
+  private byteIndex = 0;
+  private bitIndex = 0;
+
+  constructor(bytes: Uint8Array) {
+    this.bytes = bytes;
+  }
+
+  read(bitCount: number): number {
+    let value = 0;
+    for (let i = 0; i < bitCount; i++) {
+      if (this.byteIndex >= this.bytes.length) throw new Error("Unexpected end of share code");
+      const bit = (this.bytes[this.byteIndex] >> (7 - this.bitIndex)) & 1;
+      value = (value << 1) | bit;
+      this.bitIndex++;
+      if (this.bitIndex === 8) {
+        this.bitIndex = 0;
+        this.byteIndex++;
+      }
+    }
+    return value;
+  }
+}
+
+/**
+ * LLFX3 紧凑二进制格式：
+ * - 第 1 bit 为频点模式：0 = 使用当前 DEFAULT_EQ_BANDS 固定频点（不写频点，最短）；
+ *   1 = 频点不固定，按 10 × 16bit 原样写入（不丢参数）。
+ * - EQ 增益/低音增强用 5 bit 存 [-12, 12] 的偏移；
+ * - 混响/立体声宽度用 7 bit 存 [0, 100]；
+ * - 预设名 UTF-8 字节前置 1 字节长度（80 个 UTF-16 code unit 最长不超过 255 字节）。
+ */
+function encodeSharePayload(payload: SharedPresetPayload): string {
+  const name = payload.name.trim().slice(0, NAME_MAX_CHARS);
+  const nameBytes = new TextEncoder().encode(name);
+  const writer = new BitWriter();
+
+  const useDefaultFrequencies =
+    payload.config.eqBands.length === DEFAULT_EQ_BANDS.length &&
+    payload.config.eqBands.every(
+      (band, index) => band.frequency === DEFAULT_EQ_BANDS[index].frequency,
+    );
+
+  writer.write(useDefaultFrequencies ? 0 : 1, 1);
+  if (!useDefaultFrequencies) {
+    for (const band of payload.config.eqBands) writer.write(band.frequency, 16);
+  }
+
+  writer.write(payload.config.enabled ? 1 : 0, 1);
+  for (const band of payload.config.eqBands) writer.write(band.gain + 12, 5);
+  writer.write(payload.config.bassBoost + 12, 5);
+  writer.write(payload.config.reverb, 7);
+  writer.write(payload.config.stereoWidth, 7);
+  writer.write(nameBytes.length, 8);
+  for (const byte of nameBytes) writer.write(byte, 8);
+
+  return `${PRESET_SHARE_PREFIX}${bytesToBase64Url(writer.finish())}`;
+}
+
+function decodeV3SharePayload(code: string): SharedPresetPayload | null {
+  try {
+    const bytes = base64UrlToBytes(code.slice(PRESET_SHARE_PREFIX.length));
+    if (!bytes) return null;
+    const reader = new BitReader(bytes);
+
+    const useDefaultFrequencies = reader.read(1) === 0;
+    const eqBands: AudioEffectConfig["eqBands"] = DEFAULT_EQ_BANDS.map((defaultBand) => ({
+      frequency: useDefaultFrequencies
+        ? defaultBand.frequency
+        : reader.read(16),
+      gain: 0,
+    }));
+
+    const enabled = reader.read(1) === 1;
+    for (const band of eqBands) band.gain = reader.read(5) - 12;
+    const bassBoost = reader.read(5) - 12;
+    const reverb = reader.read(7);
+    const stereoWidth = reader.read(7);
+    if (reverb > 100 || stereoWidth > 100) return null;
+
+    const nameLength = reader.read(8);
+    const nameBytes = new Uint8Array(nameLength);
+    for (let i = 0; i < nameLength; i++) nameBytes[i] = reader.read(8);
+    const name = new TextDecoder().decode(nameBytes).trim().slice(0, NAME_MAX_CHARS);
+    if (!name) return null;
+
+    return {
+      version: 3,
+      name,
+      config: {
+        enabled,
+        eqBands,
+        bassBoost,
+        reverb,
+        stereoWidth,
+      },
+    };
+  } catch {
+    return null;
+  }
+}
+
+function decodeLegacyV1SharePayload(code: string): SharedPresetPayload | null {
+  try {
+    const encoded = code.slice(LEGACY_PRESET_SHARE_PREFIX.length).replace(/-/g, "+").replace(/_/g, "/");
     const padded = encoded.padEnd(Math.ceil(encoded.length / 4) * 4, "=");
     const binary = atob(padded);
     const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
     const payload = JSON.parse(new TextDecoder().decode(bytes)) as Partial<SharedPresetPayload>;
     if (payload.version !== 1 || typeof payload.name !== "string") return null;
 
-    const name = payload.name.trim().slice(0, 80);
+    const name = payload.name.trim().slice(0, NAME_MAX_CHARS);
     const config = payload.config;
     if (!name || !config || typeof config !== "object" || !Array.isArray(config.eqBands)) return null;
     if (config.eqBands.length !== DEFAULT_EQ_BANDS.length) return null;
@@ -82,6 +222,13 @@ function decodeSharePayload(code: string): SharedPresetPayload | null {
   } catch {
     return null;
   }
+}
+
+function decodeSharePayload(code: string): SharedPresetPayload | null {
+  const trimmed = code.trim();
+  if (trimmed.startsWith(PRESET_SHARE_PREFIX)) return decodeV3SharePayload(trimmed);
+  if (trimmed.startsWith(LEGACY_PRESET_SHARE_PREFIX)) return decodeLegacyV1SharePayload(trimmed);
+  return null;
 }
 
 function flatConfig(presetId = "flat"): AudioEffectConfig {
