@@ -2,7 +2,7 @@
  * 「更精确的逐字歌词」匹配编排。
  *
  * 流程（回退链）：优先尝试用户偏好的来源（默认 QQ）→ 失败回退另一云端来源（QQ ⇄ 酷狗）
- * → 全部失败则交由调用方回退本地歌词。
+ * → 已登录网易云时追加 Meting API → 全部云端失败则交由调用方回退本地歌词。
  * 每个来源：搜索歌曲名（忽略括号内信息）→ 过滤「同名 + 时长差 ≤ ±1 秒」→ 按时长差升序
  * 取前 N 个候选 → 逐个拉取逐字歌词：优先含逐字数据的候选；全无逐字则回退首个逐行结果。
  *
@@ -11,11 +11,14 @@
  */
 import { qqSearchSongs, qqFetchLyrics, type QqSongInfo } from "./qqMusic";
 import { kgSearchSongs, kgFetchLyrics, type KgSongInfo } from "./kgMusic";
+import { metingSearch } from "./meting";
+import { lrcGet, lrcSet } from "./onlineCache";
+import { parseLrc, filterInstrumentalPlaceholder } from "./lyricTimeline";
 import { hasWordLevel } from "./qrc";
-import type { LyricLine } from "@shared/types";
+import type { LyricLine, OnlineSong } from "@shared/types";
 
 /** 云端歌词来源 */
-export type LyricSource = "qq" | "kg";
+export type LyricSource = "qq" | "kg" | "meting";
 /** 歌词来源偏好（含本地） */
 export type LyricSourcePref = LyricSource | "local";
 
@@ -52,7 +55,11 @@ export type PreciseLyricsResult =
     }
   | { ok: false; reason: QqFallbackReason; detail?: string };
 
-const SOURCE_LABEL: Record<LyricSource, string> = { qq: "QQ 音乐", kg: "酷狗音乐" };
+const SOURCE_LABEL: Record<LyricSource, string> = {
+  qq: "QQ 音乐",
+  kg: "酷狗音乐",
+  meting: "Meting API",
+};
 
 /** 括号内容（半角/全角） */
 const BRACKET_RE = /[（(][^（）()]*[）)]/g;
@@ -76,6 +83,109 @@ export function normalizeTitle(t: string): string {
 interface TryContext {
   title: string;
   durationMs: number;
+  artist?: string;
+}
+
+/**
+ * 尝试 Meting API 来源（网易云歌词回退）。
+ * Meting 搜索结果不含时长字段，因此采用「归一化标题完全一致」优先，
+ * 其次选择首个搜索结果；拉取 lrc 后解析为标准 LRC（含粗排逐字时间轴）。
+ */
+async function tryMetingSource(
+  opts: TryContext,
+): Promise<PreciseLyricsResult> {
+  const keyword = stripBrackets(opts.title);
+  let songs: OnlineSong[];
+  try {
+    songs = await metingSearch("netease", keyword);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return {
+      ok: false,
+      reason: "search-failed",
+      detail: `${SOURCE_LABEL.meting} 搜索失败: ${msg}`,
+    };
+  }
+  if (!songs.length) {
+    return {
+      ok: false,
+      reason: "no-match",
+      detail: `${SOURCE_LABEL.meting}：无搜索结果`,
+    };
+  }
+
+  const titleNorm = normalizeTitle(opts.title);
+  const titleMatched = songs.filter(
+    (s) => normalizeTitle(s.name) === titleNorm,
+  );
+  const artistNorm = opts.artist ? normalizeTitle(opts.artist) : "";
+  const pick =
+    titleMatched.find(
+      (s) => artistNorm && (normalizeTitle(s.artist).includes(artistNorm) || artistNorm.includes(normalizeTitle(s.artist))),
+    ) ||
+    titleMatched[0] ||
+    songs[0];
+  if (!pick?.lrc) {
+    return {
+      ok: false,
+      reason: "no-lyrics",
+      detail: `${SOURCE_LABEL.meting}：候选 ${songs.length} 条，但无歌词地址`,
+    };
+  }
+
+  try {
+    const cacheKey = pick.id || pick.lrc;
+    let text = "";
+    let fromCache = false;
+    if (pick.lrc.startsWith("http")) {
+      const cached = await lrcGet(cacheKey);
+      if (cached !== null) {
+        text = cached;
+        fromCache = true;
+      } else {
+        const res = await fetch(pick.lrc);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        text = await res.text();
+        text = text.trim();
+        if (text) void lrcSet(cacheKey, text);
+      }
+    } else if (pick.lrc.includes("[")) {
+      text = pick.lrc;
+    }
+
+    if (!text.trim()) {
+      return {
+        ok: false,
+        reason: "no-lyrics",
+        detail: `${SOURCE_LABEL.meting}：歌词内容为空`,
+      };
+    }
+    const parsed = parseLrc(text, true);
+    const lines = filterInstrumentalPlaceholder(parsed);
+    if (!lines?.length) {
+      return {
+        ok: false,
+        reason: "no-lyrics",
+        detail: `${SOURCE_LABEL.meting}：歌词内容为空或为纯音乐占位文案`,
+      };
+    }
+    return {
+      ok: true,
+      source: "meting",
+      lines,
+      songId: pick.id,
+      songTitle: pick.name,
+      wordLevel: false,
+      fromCache,
+    };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return {
+      ok: false,
+      reason: "no-lyrics",
+      detail: `${SOURCE_LABEL.meting} 获取歌词失败: ${msg}`,
+    };
+  }
 }
 
 /** 尝试单个来源：搜索 → 同名+时长匹配 → 逐字优先取词 */
@@ -83,6 +193,7 @@ async function trySource(
   source: LyricSource,
   opts: TryContext,
 ): Promise<PreciseLyricsResult> {
+  if (source === "meting") return tryMetingSource(opts);
   const keyword = stripBrackets(opts.title); // 搜索词同样忽略括号内信息
   let candidates: (QqSongInfo | KgSongInfo)[];
   try {
@@ -181,10 +292,12 @@ export interface PreciseLyricsOptions {
   preferredSource?: LyricSource;
   /** 手动切换时强制忽略结果缓存 */
   force?: boolean;
+  /** 已登录网易云账号：QQ/酷狗均失败后追加 Meting API 歌词回退 */
+  fallbackToMeting?: boolean;
 }
 
 /**
- * 按回退链从云端取逐字歌词（偏好来源 → 另一来源）。
+ * 按回退链从云端取逐字歌词（偏好来源 → 另一来源；登录网易云后追加 Meting）。
  * 成功返回歌词（含来源信息），失败返回原因；调用方据此回退本地歌词并提示。
  */
 export async function fetchCloudLyrics(
@@ -194,7 +307,7 @@ export async function fetchCloudLyrics(
   if (!title || !opts.durationMs || !Number.isFinite(opts.durationMs)) {
     return { ok: false, reason: "missing-info" };
   }
-  const key = `${normalizeTitle(title)}|${Math.round(opts.durationMs)}|${opts.preferredSource ?? "auto"}`;
+  const key = `${normalizeTitle(title)}|${Math.round(opts.durationMs)}|${opts.preferredSource ?? "auto"}|${opts.fallbackToMeting ? "meting" : "no-meting"}`;
   const cached = resultCache.get(key);
   if (cached && !opts.force) {
     const ttl = cached.result.ok ? OK_TTL : FAIL_TTL;
@@ -209,13 +322,21 @@ export async function fetchCloudLyrics(
     resultCache.delete(key);
   }
 
-  const order: LyricSource[] = opts.preferredSource
-    ? [opts.preferredSource, opts.preferredSource === "qq" ? "kg" : "qq"]
-    : ["qq", "kg"];
+  const base: LyricSource[] = [];
+  const preferred = opts.preferredSource;
+  if (preferred) base.push(preferred);
+  if (preferred !== "qq") base.push("qq");
+  if (preferred !== "kg" && !base.includes("kg")) base.push("kg");
+  if (opts.fallbackToMeting && !base.includes("meting")) base.push("meting");
+  const order = base;
 
   let lastFailure: PreciseLyricsResult | null = null;
   for (const source of order) {
-    const r = await trySource(source, { title, durationMs: opts.durationMs });
+    const r = await trySource(source, {
+      title,
+      durationMs: opts.durationMs,
+      artist: opts.artist,
+    });
     if (r.ok) {
       resultCache.set(key, { t: Date.now(), result: r });
       return r;

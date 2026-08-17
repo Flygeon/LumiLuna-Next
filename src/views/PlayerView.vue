@@ -6,6 +6,7 @@ import { useRouter } from "vue-router";
 import { translate } from "@shared/i18n";
 import FluidBackground from "@/components/FluidBackground.vue";
 import LyricsView from "@/components/LyricsView.vue";
+import PlayerControlIcon from "@/components/PlayerControlIcon.vue";
 import { formatDuration } from "@/utils/format";
 
 const player = usePlayerStore();
@@ -53,6 +54,12 @@ const sourceBadge = computed(() => {
     return {
       text: t("player.lyricSourceKg"),
       hint: `${t("player.lyricSourceKgHint")} · ${switchHint}`,
+    };
+  }
+  if (player.lyricsSource === "meting") {
+    return {
+      text: t("player.lyricSourceMeting"),
+      hint: `${t("player.lyricSourceMetingHint")} · ${switchHint}`,
     };
   }
   const reason = player.lyricFallbackReason
@@ -153,21 +160,21 @@ onBeforeUnmount(() => {
         <div class="controls">
           <div class="ctrl-group left">
             <button class="side-btn" :class="{ active: player.repeatMode !== 'off' }" :title="t('player.repeat')" @click="player.cycleRepeat()">
-              <span class="material-symbols-outlined">{{ player.repeatMode === 'one' ? 'repeat_one' : 'repeat' }}</span>
+              <span class="material-symbols-outlined" :class="{ filled: player.repeatMode !== 'off' }">{{ player.repeatMode === 'one' ? 'repeat_one' : 'repeat' }}</span>
             </button>
             <button class="side-btn" :class="{ active: player.shuffleMode }" :title="t('player.shuffle')" @click="player.toggleShuffle()">
-              <span class="material-symbols-outlined">shuffle</span>
+              <span class="material-symbols-outlined" :class="{ filled: player.shuffleMode }">shuffle</span>
             </button>
           </div>
           <div class="ctrl-group center">
             <button class="side-btn" :title="t('player.prev')" @click="player.previous()">
-              <span class="material-symbols-outlined">skip_previous</span>
+              <span class="material-symbols-outlined filled">skip_previous</span>
             </button>
-            <button class="main-btn" @click="player.togglePlay()">
-              <span class="material-symbols-outlined">{{ player.playing ? "pause" : "play_arrow" }}</span>
+            <button class="main-btn" :title="player.playing ? t('player.pause') : t('player.play')" @click="player.togglePlay()">
+              <PlayerControlIcon :name="player.playing ? 'pause' : 'play'" />
             </button>
             <button class="side-btn" :title="t('player.next')" @click="player.next()">
-              <span class="material-symbols-outlined">skip_next</span>
+              <span class="material-symbols-outlined filled">skip_next</span>
             </button>
           </div>
           <div class="ctrl-group right">
@@ -204,7 +211,9 @@ onBeforeUnmount(() => {
                   ? "verified"
                   : player.lyricsSource === "kg"
                     ? "graphic_eq"
-                    : "info"
+                    : player.lyricsSource === "meting"
+                      ? "cloud"
+                      : "info"
               }}
             </span>
             {{ sourceBadge.text }}
@@ -426,8 +435,10 @@ onBeforeUnmount(() => {
   justify-content: center;
   transition: transform 200ms;
 }
-.main-btn .material-symbols-outlined {
-  font-size: 34px;
+.main-btn .player-control-icon {
+  width: 34px;
+  height: 30px;
+  filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.2));
 }
 .main-btn:hover {
   transform: scale(1.03);
@@ -446,9 +457,15 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+  filter: drop-shadow(0 0 8px rgba(0, 0, 0, 0.25));
 }
 .side-btn .material-symbols-outlined {
-  font-size: 20px;
+  font-size: 21px;
+  font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+}
+.side-btn.active {
+  opacity: 1;
+  color: #fff;
 }
 .side-btn:active {
   transform: scale(0.8);
@@ -500,6 +517,10 @@ onBeforeUnmount(() => {
 .source-badge.kg {
   background: rgba(56, 160, 255, 0.18);
   color: #7cc4ff;
+}
+.source-badge.meting {
+  background: rgba(236, 72, 91, 0.18);
+  color: #ff94a3;
 }
 .source-badge.local {
   background: rgba(255, 255, 255, 0.10);

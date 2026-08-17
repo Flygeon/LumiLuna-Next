@@ -37,9 +37,9 @@ const DEFAULTS = {
   lyricSubMode: "translation" as LyricSubMode,
   /** 逐字歌词（Apple Music 式逐字填充 + 唱完上浮） */
   wordLyrics: true,
-  /** 更精确的逐字歌词：播放时按 QQ → 酷狗 → 本地回退链取逐字歌词 */
+  /** 更精确的逐字歌词：播放时按 QQ → 酷狗 → [登录网易云后 Meting] → 本地回退链取逐字歌词 */
   preciseLyrics: false,
-  /** 各歌曲手动选择的歌词来源偏好（key = 归一化标题|时长ms，值 = qq/kg/local） */
+  /** 各歌曲手动选择的歌词来源偏好（key = 归一化标题|时长ms，值 = qq/kg/meting/local） */
   lyricSourcePrefs: {} as Record<string, LyricSourcePref>,
   /** 自动识别前奏/间奏：隐藏作词/作曲/编曲为三点，长间奏插入三点 */
   detectInstrumental: true,

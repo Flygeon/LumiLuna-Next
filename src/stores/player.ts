@@ -3,6 +3,7 @@ import { ref, computed } from "vue";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { capabilities, isTauri } from "@/capabilities";
 import { useSettingsStore } from "@/stores/settings";
+import { useNeteaseStore } from "@/stores/netease";
 // parseLrc 由 @/utils/lyricTimeline 提供（原先定义在本文件，已移出供歌词源复用）
 import { META_RE, parseLrc } from "@/utils/lyricTimeline";
 import { lrcGet, lrcSet, resolveCover } from "@/utils/onlineCache";
@@ -317,9 +318,9 @@ export const usePlayerStore = defineStore("player", () => {
 
   /**
    * 歌词来源状态：仅当「更精确的逐字歌词」开启且当前歌曲完成一次尝试后才有值。
-   * - "qq" / "kg"：已应用对应云端歌词；"local"：已回退本地歌词（原因见 lyricFallbackReason）。
+   * - "qq" / "kg" / "meting"：已应用对应云端歌词；"local"：已回退本地歌词（原因见 lyricFallbackReason）。
    */
-  const lyricsSource = ref<"qq" | "kg" | "local" | null>(null);
+  const lyricsSource = ref<"qq" | "kg" | "meting" | "local" | null>(null);
   const lyricFallbackReason = ref<QqFallbackReason | null>(null);
   /** 回退的详细错误（徽标悬停展示，便于免 DevTools 排查） */
   const lyricFallbackDetail = ref<string | null>(null);
@@ -387,7 +388,8 @@ export const usePlayerStore = defineStore("player", () => {
     lyricsSource.value = result.source;
     lyricFallbackReason.value = null;
     lyricFallbackDetail.value = null;
-    const srcLabel = result.source === "qq" ? "QQ" : "酷狗";
+    const srcLabel =
+      result.source === "qq" ? "QQ" : result.source === "kg" ? "酷狗" : "Meting";
     console.info(
       `[逐字歌词] 命中${srcLabel}：${result.songTitle}（${srcLabel} id=${result.songId}，${applied.length} 行，${result.wordLevel ? "含逐字时间轴" : "仅逐行"}，${result.fromCache ? "来自缓存" : "在线获取"}）`,
     );
@@ -395,7 +397,7 @@ export const usePlayerStore = defineStore("player", () => {
   }
 
   /**
-   * 「更精确的逐字歌词」编排（回退链 QQ → 酷狗 → 本地）：
+   * 「更精确的逐字歌词」编排（回退链 QQ → 酷狗 → [登录网易云后追加 Meting] → 本地）：
    * - 设置关闭 → 保持原流程（FFT 精排），不显示来源徽标；
    * - 开启 → 按用户偏好（手动切换的记忆）或默认 QQ 优先，依次尝试云端逐字歌词，
    *   成功则替换当前歌词、标记来源并跳过 FFT；全部失败则提示回退原因并走 FFT 回退。
@@ -418,6 +420,7 @@ export const usePlayerStore = defineStore("player", () => {
     },
   ) {
     const settings = useSettingsStore();
+    const neteaseLoggedIn = settings.neteaseEnabled && useNeteaseStore().loggedIn;
     const runFallback = () => scheduleWordAnalysis(analysisSource, fallbackLines);
     if (!settings.preciseLyrics) {
       lyricsSource.value = null; // 功能未启用，不显示来源徽标
@@ -438,10 +441,12 @@ export const usePlayerStore = defineStore("player", () => {
     if (qqLyricsInflight.has(key)) return; // 进行中，结果到达时统一处理
     qqLyricsInflight.add(key);
     try {
-      // 用户偏好：local = 直接本地；qq/kg = 对应来源优先的回退链
+      // 用户偏好：local = 直接本地；qq/kg/meting = 对应来源优先的回退链
       const prefKey = lyricPrefKey(meta);
       const pref = prefKey ? settings.lyricSourcePrefs[prefKey] : undefined;
-      if (pref === "local") {
+      // 已退出网易云时，历史 meting 偏好不再作为首选（自动回到默认回退链）
+      const effectivePref = pref === "meting" && !neteaseLoggedIn ? undefined : pref;
+      if (effectivePref === "local") {
         lyricsSource.value = "local";
         lyricFallbackReason.value = null; // 主动选择，非回退
         lyricFallbackDetail.value = null;
@@ -453,7 +458,8 @@ export const usePlayerStore = defineStore("player", () => {
         title: meta.title,
         artist: meta.artist || undefined,
         durationMs: meta.durationMs,
-        preferredSource: pref,
+        preferredSource: effectivePref,
+        fallbackToMeting: neteaseLoggedIn,
       });
       // 防止完成时已切歌：当前歌曲仍是同一首才应用
       if (song.value?.id !== meta.id) {
@@ -480,14 +486,18 @@ export const usePlayerStore = defineStore("player", () => {
   }
 
   /**
-   * 手动切换歌词来源（播放器徽标点击）：qq → kg → local → qq 循环。
+   * 手动切换歌词来源（播放器徽标点击）：
+   * 未登录网易云：qq → kg → local → qq；已登录：qq → kg → meting → local → qq。
    * 记忆偏好（下次播放同一歌曲默认使用该来源），切云端时强制重新获取。
    */
   async function switchLyricSource() {
     const meta = lastLyricMeta.value;
     const settings = useSettingsStore();
+    const neteaseLoggedIn = settings.neteaseEnabled && useNeteaseStore().loggedIn;
     if (!meta || !song.value || !settings.preciseLyrics || !meta.durationMs) return;
-    const order: LyricSourcePref[] = ["qq", "kg", "local"];
+    const order: LyricSourcePref[] = neteaseLoggedIn
+      ? ["qq", "kg", "meting", "local"]
+      : ["qq", "kg", "local"];
     const cur = lyricsSource.value ?? "qq";
     const next = order[(order.indexOf(cur as LyricSourcePref) + 1) % order.length];
     const prefKey = lyricPrefKey(meta);
@@ -498,6 +508,7 @@ export const usePlayerStore = defineStore("player", () => {
     const labels: Record<LyricSourcePref, string> = {
       qq: translate(lang, "player.lyricSourceQq"),
       kg: translate(lang, "player.lyricSourceKg"),
+      meting: translate(lang, "player.lyricSourceMeting"),
       local: translate(lang, "player.lyricSourceLocal"),
     };
 
@@ -539,6 +550,7 @@ export const usePlayerStore = defineStore("player", () => {
         durationMs: meta.durationMs,
         preferredSource: next,
         force: true,
+        fallbackToMeting: neteaseLoggedIn,
       });
       if (song.value?.id !== meta.id) return;
       if (result.ok) {
@@ -589,7 +601,7 @@ export const usePlayerStore = defineStore("player", () => {
       };
       img.src = s.coverBase64;
     }
-    // 「更精确的逐字歌词」：QQ → 酷狗 → 本地回退链（同名 + 时长差 ≤1s），
+    // 「更精确的逐字歌词」：QQ → 酷狗 → [登录网易云后 Meting] → 本地回退链（同名 + 时长差 ≤1s），
     // 云端全部失败再走本地 FFT 精排（schedulePreciseQqLyrics 内部串行处理）
     void schedulePreciseQqLyrics(
       {

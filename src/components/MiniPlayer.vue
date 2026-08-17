@@ -2,6 +2,7 @@
 import { computed } from "vue";
 import { useRouter } from "vue-router";
 import { usePlayerStore } from "@/stores/player";
+import PlayerControlIcon from "@/components/PlayerControlIcon.vue";
 import { formatTime } from "@/utils/format";
 
 const player = usePlayerStore();
@@ -46,10 +47,8 @@ function seek(e: MouseEvent) {
         <button class="lm-icon-btn" title="上一首" @click="player.previous()">
           <span class="material-symbols-outlined filled">skip_previous</span>
         </button>
-        <button class="lm-icon-btn play" @click="player.togglePlay()">
-          <span class="material-symbols-outlined filled">
-            {{ player.playing ? "pause" : "play_arrow" }}
-          </span>
+        <button class="lm-icon-btn play" :title="player.playing ? '暂停' : '播放'" @click="player.togglePlay()">
+          <PlayerControlIcon :name="player.playing ? 'pause' : 'play'" />
         </button>
         <button class="lm-icon-btn" title="下一首" @click="player.next()">
           <span class="material-symbols-outlined filled">skip_next</span>
@@ -180,8 +179,10 @@ function seek(e: MouseEvent) {
 .controls .play:hover {
   filter: brightness(1.08);
 }
-.controls .play .material-symbols-outlined {
-  font-size: 26px;
+.controls .play .player-control-icon {
+  width: 26px;
+  height: 23px;
+  filter: drop-shadow(0 0 6px rgba(0, 0, 0, 0.18));
 }
 
 @media (max-width: 720px) {
