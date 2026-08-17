@@ -7,12 +7,13 @@ import { translate } from "@shared/i18n";
 import FluidBackground from "@/components/FluidBackground.vue";
 import LyricsView from "@/components/LyricsView.vue";
 import PlayerControlIcon from "@/components/PlayerControlIcon.vue";
+import AudioEffectsPanel from "@/components/AudioEffectsPanel.vue";
 import { formatDuration } from "@/utils/format";
 
 const player = usePlayerStore();
 const settings = useSettingsStore();
 const router = useRouter();
-const rightTab = ref<"lyrics" | "queue">("lyrics");
+const rightTab = ref<"lyrics" | "queue" | "effects">("lyrics");
 const speed = ref(1);
 const isDragging = ref(false);
 
@@ -197,6 +198,11 @@ onBeforeUnmount(() => {
               :class="{ active: rightTab === 'queue' }"
               @click="rightTab = 'queue'"
             >{{ t("actions.queue") }}</button>
+            <button
+              class="seg-btn"
+              :class="{ active: rightTab === 'effects' }"
+              @click="rightTab = 'effects'"
+            >{{ t("player.effects") }}</button>
           </div>
           <button
             v-if="sourceBadge"
@@ -233,6 +239,7 @@ onBeforeUnmount(() => {
         </div>
         <div class="right-content">
           <LyricsView v-if="rightTab === 'lyrics'" />
+          <AudioEffectsPanel v-else-if="rightTab === 'effects'" />
           <div v-else-if="player.queue.length" class="queue-list">
             <button
               v-for="(item, i) in player.queue"

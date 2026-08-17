@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useSettingsStore, type PdfReadMode, type ThemeMode, type PlayerBgMode, type LyricFontKey } from "@/stores/settings";
 import { useLibraryStore } from "@/stores/library";
+import AudioEffectsPanel from "@/components/AudioEffectsPanel.vue";
 import { capabilities } from "@/capabilities";
 import { formatSize } from "@/utils/format";
 import { translate } from "@shared/i18n";
@@ -451,6 +452,13 @@ async function clearCache() {
         <span class="row-label">{{ t("settings.lyricBlur") }}</span>
         <input type="checkbox" v-model="settings.lyricBlur" />
       </label>
+    </section>
+
+    <!-- 音效 -->
+    <section class="card">
+      <h3>{{ t("settings.audioEffects") }}</h3>
+      <p class="hint">{{ t("settings.audioEffectsHint") }}</p>
+      <AudioEffectsPanel />
     </section>
 
     <!-- 实验性：在线音乐 -->

@@ -180,6 +180,30 @@ export interface WebDavEntry {
   mtime: number;
 }
 
+/** 音频 EQ 频段 */
+export interface EqBand {
+  frequency: number;
+  gain: number;
+}
+
+/** 音频音效配置 */
+export interface AudioEffectConfig {
+  enabled: boolean;
+  eqBands: EqBand[];
+  bassBoost: number;
+  reverb: number;
+  stereoWidth: number;
+  presetId: string;
+}
+
+/** 音效预设（内置或用户自定义） */
+export interface AudioEffectPreset {
+  id: string;
+  name: string;
+  config: AudioEffectConfig;
+  builtin?: boolean;
+}
+
 /** WebDAV 连接测试结果 */
 export interface WebDavStatus {
   ok: boolean;

@@ -4,6 +4,7 @@ import { convertFileSrc } from "@tauri-apps/api/core";
 import { capabilities, isTauri } from "@/capabilities";
 import { useSettingsStore } from "@/stores/settings";
 import { useNeteaseStore } from "@/stores/netease";
+import { useAudioEffectsStore } from "@/stores/audioEffects";
 // parseLrc 由 @/utils/lyricTimeline 提供（原先定义在本文件，已移出供歌词源复用）
 import { META_RE, parseLrc } from "@/utils/lyricTimeline";
 import { lrcGet, lrcSet, resolveCover } from "@/utils/onlineCache";
@@ -163,10 +164,12 @@ export const usePlayerStore = defineStore("player", () => {
     });
     el.addEventListener("play", () => {
       playing.value = true;
+      useAudioEffectsStore().resume();
       syncSmtc(true);
     });
     el.addEventListener("pause", () => {
       playing.value = false;
+      useAudioEffectsStore().suspend();
       syncSmtc(true);
     });
     el.addEventListener("seeked", () => {
@@ -180,6 +183,7 @@ export const usePlayerStore = defineStore("player", () => {
       lastError.value = `无法播放：${song.value?.title ?? ""}`;
     });
     audioEl.value = el;
+    useAudioEffectsStore().registerAudioElement(el);
     return el;
   }
 

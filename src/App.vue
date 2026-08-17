@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useSettingsStore } from "@/stores/settings";
 import { usePlayerStore } from "@/stores/player";
+import { useAudioEffectsStore } from "@/stores/audioEffects";
 import { useLibraryStore } from "@/stores/library";
 import MiniPlayer from "@/components/MiniPlayer.vue";
 import ContextMenu from "@/components/ContextMenu.vue";
@@ -12,6 +13,7 @@ import { translate } from "@shared/i18n";
 const settings = useSettingsStore();
 const player = usePlayerStore();
 const library = useLibraryStore();
+const audioEffects = useAudioEffectsStore();
 const router = useRouter();
 const route = useRoute();
 
@@ -65,6 +67,7 @@ function cycleTheme() {
 onMounted(async () => {
   await settings.load();
   settings.applyTheme(settings.theme);
+  void audioEffects.init();
   void library.refreshCounts();
 });
 
