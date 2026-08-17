@@ -16,9 +16,72 @@ import {
 import type { AudioEffectConfig, AudioEffectPreset } from "@shared/types";
 
 const store = new LazyStore("audio-effects.json");
+const PRESET_SHARE_PREFIX = "LLFX1:";
+
+interface SharedPresetPayload {
+  version: 1;
+  name: string;
+  config: Omit<AudioEffectConfig, "presetId">;
+}
 
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function clamp(value: unknown, min: number, max: number): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  return Math.max(min, Math.min(max, Math.round(value)));
+}
+
+function encodeSharePayload(payload: SharedPresetPayload): string {
+  const bytes = new TextEncoder().encode(JSON.stringify(payload));
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return `${PRESET_SHARE_PREFIX}${btoa(binary)}`
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+function decodeSharePayload(code: string): SharedPresetPayload | null {
+  if (!code.startsWith(PRESET_SHARE_PREFIX)) return null;
+  try {
+    const encoded = code.slice(PRESET_SHARE_PREFIX.length).replace(/-/g, "+").replace(/_/g, "/");
+    const padded = encoded.padEnd(Math.ceil(encoded.length / 4) * 4, "=");
+    const binary = atob(padded);
+    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+    const payload = JSON.parse(new TextDecoder().decode(bytes)) as Partial<SharedPresetPayload>;
+    if (payload.version !== 1 || typeof payload.name !== "string") return null;
+
+    const name = payload.name.trim().slice(0, 80);
+    const config = payload.config;
+    if (!name || !config || typeof config !== "object" || !Array.isArray(config.eqBands)) return null;
+    if (config.eqBands.length !== DEFAULT_EQ_BANDS.length) return null;
+
+    const eqBands = config.eqBands.map((band, index) => {
+      if (!band || band.frequency !== DEFAULT_EQ_BANDS[index].frequency) return null;
+      const gain = clamp(band.gain, -12, 12);
+      return gain === null ? null : { frequency: band.frequency, gain };
+    });
+    const bassBoost = clamp(config.bassBoost, -12, 12);
+    const reverb = clamp(config.reverb, 0, 100);
+    const stereoWidth = clamp(config.stereoWidth, 0, 100);
+    if (eqBands.some((band) => band === null) || bassBoost === null || reverb === null || stereoWidth === null) return null;
+
+    return {
+      version: 1,
+      name,
+      config: {
+        enabled: Boolean(config.enabled),
+        eqBands: eqBands as AudioEffectConfig["eqBands"],
+        bassBoost,
+        reverb,
+        stereoWidth,
+      },
+    };
+  } catch {
+    return null;
+  }
 }
 
 function flatConfig(presetId = "flat"): AudioEffectConfig {
@@ -313,6 +376,29 @@ export const useAudioEffectsStore = defineStore("audio-effects", () => {
     persist();
   }
 
+  function exportUserPreset(id: string): string | null {
+    const found = userPresets.value.find((preset) => preset.id === id);
+    if (!found) return null;
+    const { presetId: _presetId, ...sharedConfig } = clone(found.config);
+    return encodeSharePayload({ version: 1, name: found.name, config: sharedConfig });
+  }
+
+  function importUserPreset(code: string): string | null {
+    const payload = decodeSharePayload(code.trim());
+    if (!payload) return null;
+
+    const id = `custom-${Date.now()}`;
+    const config: AudioEffectConfig = {
+      ...payload.config,
+      eqBands: clone(payload.config.eqBands),
+      enabled: true,
+      presetId: id,
+    };
+    userPresets.value.push({ id, name: payload.name, config, builtin: false });
+    applyConfig(config);
+    return payload.name;
+  }
+
   watch([config, userPresets], persist, { deep: true });
 
   return {
@@ -334,5 +420,7 @@ export const useAudioEffectsStore = defineStore("audio-effects", () => {
     resetToFlat,
     saveUserPreset,
     deleteUserPreset,
+    exportUserPreset,
+    importUserPreset,
   };
 });
