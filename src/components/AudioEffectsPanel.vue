@@ -43,7 +43,15 @@ async function sharePreset(id: string) {
     shareStatus.value = "failed";
     return;
   }
-  const code = codes.join("\n");
+  const mode = settings.shareCodePreference;
+  let code: string;
+  if (mode === "chinese") {
+    code = codes[0];
+  } else if (mode === "original") {
+    code = codes[1] ?? codes[0];
+  } else {
+    code = `${t("player.effectsShareChineseLabel")}：${codes[0]}\n${t("player.effectsShareOriginalLabel")}：${codes[1]}`;
+  }
   try {
     if (navigator.clipboard) {
       await navigator.clipboard.writeText(code);

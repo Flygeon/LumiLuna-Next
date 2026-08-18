@@ -27,6 +27,24 @@ const LEGACY_PRESET_SHARE_PREFIX = "LLFX1:";
 /** 「字符码」分享格式版本（<预设名称>@<字符码>）。 */
 const CHAR_SHARE_VERSION = 4;
 const NAME_MAX_CHARS = 80;
+/** 两种分享码同时输出时使用的行首标签（导入时自动剥离）。 */
+const SHARE_LABEL_PREFIXES = [
+  "中文预设码",
+  "原版预设码",
+  "Chinese preset code",
+  "Original preset code",
+] as const;
+
+/** 去掉分享码行首的“中文预设码：/ 原版预设码：”等标签。 */
+function stripShareLabel(line: string): string {
+  for (const label of SHARE_LABEL_PREFIXES) {
+    if (line.startsWith(label)) {
+      const rest = line.slice(label.length).replace(/^\s*[：:]\s*/, "");
+      if (rest) return rest;
+    }
+  }
+  return line;
+}
 
 interface SharedPresetPayload {
   version: number;
@@ -624,19 +642,22 @@ export const useAudioEffectsStore = defineStore("audio-effects", () => {
       .map((line) => line.trim())
       .filter(Boolean);
     for (const line of lines) {
-      const payload = decodeSharePayload(line);
-      if (!payload) continue;
+      const candidates = [line, stripShareLabel(line)];
+      for (const candidate of candidates) {
+        const payload = decodeSharePayload(candidate);
+        if (!payload) continue;
 
-      const id = `custom-${Date.now()}`;
-      const config: AudioEffectConfig = {
-        ...payload.config,
-        eqBands: clone(payload.config.eqBands),
-        enabled: true,
-        presetId: id,
-      };
-      userPresets.value.push({ id, name: payload.name, config, builtin: false });
-      applyConfig(config);
-      return payload.name;
+        const id = `custom-${Date.now()}`;
+        const config: AudioEffectConfig = {
+          ...payload.config,
+          eqBands: clone(payload.config.eqBands),
+          enabled: true,
+          presetId: id,
+        };
+        userPresets.value.push({ id, name: payload.name, config, builtin: false });
+        applyConfig(config);
+        return payload.name;
+      }
     }
     return null;
   }

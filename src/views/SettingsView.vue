@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
-import { useSettingsStore, type PdfReadMode, type ThemeMode, type PlayerBgMode, type LyricFontKey } from "@/stores/settings";
+import { useSettingsStore, type PdfReadMode, type ThemeMode, type PlayerBgMode, type LyricFontKey, type ShareCodePreference } from "@/stores/settings";
 import { useLibraryStore } from "@/stores/library";
 import AudioEffectsPanel from "@/components/AudioEffectsPanel.vue";
 import { capabilities } from "@/capabilities";
@@ -458,6 +458,21 @@ async function clearCache() {
     <section class="card">
       <h3>{{ t("settings.audioEffects") }}</h3>
       <p class="hint">{{ t("settings.audioEffectsHint") }}</p>
+      <div class="row">
+        <div class="row-label"><span>{{ t("settings.shareCodePreference") }}</span></div>
+        <div class="segmented">
+          <button
+            v-for="mode in (['chinese', 'original', 'both'] as ShareCodePreference[])"
+            :key="mode"
+            class="seg"
+            :class="{ active: settings.shareCodePreference === mode }"
+            @click="settings.shareCodePreference = mode"
+          >
+            {{ t("settings.shareCodePreference_" + mode) }}
+          </button>
+        </div>
+      </div>
+      <p class="hint">{{ t("settings.shareCodePreferenceHint") }}</p>
       <AudioEffectsPanel />
     </section>
 

@@ -17,6 +17,8 @@ export type LyricFontKey = "system" | "sans" | "serif" | "kai" | "yuan";
 export type PlayerBgMode = "animated" | "image" | "off";
 /** 歌词副行显示模式：翻译 / 罗马音 */
 export type LyricSubMode = "translation" | "romaji";
+/** 预设分享码偏好：仅中文 / 仅原版 / 两者同时输出 */
+export type ShareCodePreference = "chinese" | "original" | "both";
 
 const store = new LazyStore("settings.json");
 
@@ -82,6 +84,8 @@ const DEFAULTS = {
   webdavPass: "",
   /** 实验性：网易云账号（扫码登录，我的歌单 + 云盘） */
   neteaseEnabled: false,
+  /** 预设分享码偏好：both（默认，两种同时输出）/ chinese / original */
+  shareCodePreference: "both" as ShareCodePreference,
 };
 
 export const useSettingsStore = defineStore("settings", () => {
@@ -119,6 +123,7 @@ export const useSettingsStore = defineStore("settings", () => {
   const webdavUser = ref(DEFAULTS.webdavUser);
   const webdavPass = ref(DEFAULTS.webdavPass);
   const neteaseEnabled = ref(DEFAULTS.neteaseEnabled);
+  const shareCodePreference = ref<ShareCodePreference>(DEFAULTS.shareCodePreference);
   const loaded = ref(false);
 
   // 单一注册表：新增设置项只需在此加一行，load/save 自动覆盖
@@ -157,6 +162,7 @@ export const useSettingsStore = defineStore("settings", () => {
     webdavUser,
     webdavPass,
     neteaseEnabled,
+    shareCodePreference,
   } as const;
 
   async function load() {
