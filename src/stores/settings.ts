@@ -101,6 +101,7 @@ const DEFAULTS = {
   desktopLyricsOpacity: 90,
   desktopLyricsLocked: false,
   desktopLyricsAlwaysOnTop: true,
+  desktopLyricsShowNext: false,
   desktopLyricsAnimation: "fade" as DesktopLyricsAnimation,
   desktopLyricsBounds: { width: 420, height: 120 } as DesktopLyricsBounds,
 };
@@ -146,6 +147,7 @@ export const useSettingsStore = defineStore("settings", () => {
   const desktopLyricsOpacity = ref(DEFAULTS.desktopLyricsOpacity);
   const desktopLyricsLocked = ref(DEFAULTS.desktopLyricsLocked);
   const desktopLyricsAlwaysOnTop = ref(DEFAULTS.desktopLyricsAlwaysOnTop);
+  const desktopLyricsShowNext = ref(DEFAULTS.desktopLyricsShowNext);
   const desktopLyricsAnimation = ref<DesktopLyricsAnimation>(DEFAULTS.desktopLyricsAnimation);
   const desktopLyricsBounds = ref<DesktopLyricsBounds>({ ...DEFAULTS.desktopLyricsBounds });
   const loaded = ref(false);
@@ -192,6 +194,7 @@ export const useSettingsStore = defineStore("settings", () => {
     desktopLyricsOpacity,
     desktopLyricsLocked,
     desktopLyricsAlwaysOnTop,
+    desktopLyricsShowNext,
     desktopLyricsAnimation,
     desktopLyricsBounds,
   } as const;

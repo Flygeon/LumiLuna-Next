@@ -443,6 +443,11 @@ function resetDesktopLyricsBounds() {
         <input type="checkbox" v-model="settings.desktopLyricsEnabled" />
       </label>
 
+      <label class="row switch-row">
+        <span class="row-label">{{ t("settings.desktopLyricsShowNext") }}</span>
+        <input type="checkbox" v-model="settings.desktopLyricsShowNext" />
+      </label>
+
       <div class="row">
         <div class="row-label"><span>{{ t("settings.desktopLyricsFontSize") }}</span></div>
         <input

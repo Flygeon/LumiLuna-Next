@@ -15,7 +15,7 @@ import {
 } from "vue";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import { useSettingsStore } from "@/stores/settings";
+import { useSettingsStore, type DesktopLyricsAnimation } from "@/stores/settings";
 import { isTauri } from "@/capabilities";
 import {
   DL_STATE_EVENT,
@@ -29,6 +29,8 @@ import {
 const settings = useSettingsStore();
 const state = ref<DesktopLyricsState | null>(null);
 const hover = ref(false);
+const ctx = ref<{ x: number; y: number } | null>(null);
+let hideTimer: number | null = null;
 
 const currentIndex = computed(() => {
   const lines = state.value?.lines ?? [];
@@ -53,6 +55,7 @@ const mainText = computed(() => {
   return "暂无歌词";
 });
 const subText = computed(() => {
+  if (!settings.desktopLyricsShowNext) return "";
   if (next.value?.text && next.value.text !== mainText.value)
     return `下一句 · ${next.value.text}`;
   return "";
@@ -102,11 +105,47 @@ function closeLyrics() {
   void emitDesktopLyricsControl("close");
   if (isTauri) void WebviewWindow.getCurrent().close();
 }
+function onEnter() {
+  if (hideTimer !== null) {
+    window.clearTimeout(hideTimer);
+    hideTimer = null;
+  }
+  hover.value = true;
+}
+function onLeave() {
+  if (hideTimer !== null) window.clearTimeout(hideTimer);
+  hideTimer = window.setTimeout(() => {
+    hover.value = false;
+    hideTimer = null;
+  }, 120);
+}
+function onBlur() {
+  if (hideTimer !== null) window.clearTimeout(hideTimer);
+  hover.value = false;
+  hideTimer = null;
+  ctx.value = null;
+}
+function onContextMenu(e: MouseEvent) {
+  e.preventDefault();
+  ctx.value = { x: e.clientX, y: e.clientY };
+}
+function closeCtx() {
+  ctx.value = null;
+}
+function pickAnimation(anim: DesktopLyricsAnimation) {
+  settings.desktopLyricsAnimation = anim;
+  ctx.value = null;
+}
+function toggleShowNext() {
+  settings.desktopLyricsShowNext = !settings.desktopLyricsShowNext;
+  ctx.value = null;
+}
 
 onMounted(async () => {
   if (!isTauri) return;
   if (!(await isDesktopLyricsWindow())) return;
 
+  window.addEventListener("blur", onBlur);
   try {
     unlistenState = await listen<DesktopLyricsState>(DL_STATE_EVENT, (e) => {
       state.value = e.payload;
@@ -129,7 +168,9 @@ watch(
 );
 
 onBeforeUnmount(() => {
+  if (hideTimer !== null) window.clearTimeout(hideTimer);
   if (boundsTimer !== null) window.clearTimeout(boundsTimer);
+  window.removeEventListener("blur", onBlur);
   unlistenState?.();
   unlistenMoved?.();
   unlistenResized?.();
@@ -144,8 +185,10 @@ onBeforeUnmount(() => {
       fontSize: settings.desktopLyricsFontSize + 'px',
       opacity: settings.desktopLyricsOpacity / 100,
     }"
-    @mouseenter="hover = true"
-    @mouseleave="hover = false"
+    @mouseenter="onEnter"
+    @mouseleave="onLeave"
+    @click="closeCtx"
+    @contextmenu.prevent="onContextMenu"
   >
     <div class="lyrics-main">
       <Transition :name="'dl-' + settings.desktopLyricsAnimation" mode="out-in">
@@ -178,6 +221,39 @@ onBeforeUnmount(() => {
         </button>
       </div>
     </Transition>
+<div
+      v-if="ctx"
+      class="ctx-menu"
+      :style="{ left: ctx.x + 'px', top: ctx.y + 'px' }"
+      @click.stop="closeCtx"
+    >
+      <button class="ctx-item" @click.stop="toggleShowNext">
+        <span class="material-symbols-outlined">{{ settings.desktopLyricsShowNext ? "check_box" : "check_box_outline_blank" }}</span>
+        显示下一句
+      </button>
+      <div class="ctx-sep"></div>
+      <span class="ctx-title">切换歌词动画</span>
+      <button
+        v-for="a in (['fade', 'slide', 'scale', 'glow'] as DesktopLyricsAnimation[])"
+        :key="a"
+        class="ctx-item"
+        :class="{ active: settings.desktopLyricsAnimation === a }"
+        @click.stop="pickAnimation(a)"
+      >
+        <span class="material-symbols-outlined">
+          {{ settings.desktopLyricsAnimation === a ? "radio_button_checked" : "radio_button_unchecked" }}
+        </span>
+        {{
+          a === "fade"
+            ? "淡入"
+            : a === "slide"
+              ? "上滑"
+              : a === "scale"
+                ? "缩放"
+                : "模糊浮现"
+        }}
+      </button>
+    </div>
   </div>
 </template>
 
@@ -218,6 +294,10 @@ html {
   align-items: center;
   gap: 2px;
   max-width: 100%;
+  transition: padding-top 180ms ease;
+}
+.desktop-lyrics.hovered .lyrics-main {
+  padding-top: 34px;
 }
 .line {
   margin: 0;
@@ -363,5 +443,52 @@ html {
 .dl-bar-leave-to {
   opacity: 0;
   transform: translateY(-6px);
+}
+.ctx-menu {
+  position: fixed;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+  padding: 6px;
+  border-radius: 12px;
+  background: rgba(24, 24, 30, 0.92);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 13px;
+}
+.ctx-menu .ctx-title {
+  padding: 4px 10px 2px;
+  font-size: 11px;
+  opacity: 0.5;
+}
+.ctx-menu .ctx-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+}
+.ctx-menu .ctx-item:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+.ctx-menu .ctx-item.active {
+  color: #7cc4ff;
+}
+.ctx-menu .ctx-item .material-symbols-outlined {
+  font-size: 16px;
+}
+.ctx-menu .ctx-sep {
+  height: 1px;
+  margin: 4px 8px;
+  background: rgba(255, 255, 255, 0.14);
 }
 </style>
