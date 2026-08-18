@@ -106,9 +106,7 @@ const navItems = computed(() => [
   { key: "music", path: "/music", icon: "music_note", type: "audio" },
   { key: "books", path: "/books", icon: "menu_book", type: "book" },
   { key: "folders", path: "/folders", icon: "folder", type: null },
-  ...(settings.webdavEnabled
-    ? [{ key: "webdav", path: "/webdav", icon: "cloud", type: null }]
-    : []),
+    { key: "treasure", path: "/treasure", icon: "inventory_2", type: null },
 ]);
 const bottomItems = [
   { key: "favorites", path: "/favorites", icon: "favorite" },
