@@ -191,9 +191,9 @@ export const useNeteaseStore = defineStore("netease", () => {
     phoneError.value = "";
     phoneLogging.value = true;
     try {
-      const profile = await capabilities.neteaseLoginCellphone(phone.value.trim(), smsCode.value.trim());
+      const account = await capabilities.neteaseLoginCellphone(phone.value.trim(), smsCode.value.trim());
       loggedIn.value = true;
-      profile.value = profile;
+      profile.value = account;
       closeQr();
       void refreshPlaylists();
       void refreshCloudCount();
