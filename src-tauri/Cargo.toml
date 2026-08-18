@@ -1,6 +1,6 @@
 [package]
 name = "lumiluna"
-version = "1.0.0"
+version = "1.1.0"
 description = "LumiLuna —— 本地优先全媒体库应用"
 authors = ["LumiLuna"]
 license = "GPL-3.0-only"

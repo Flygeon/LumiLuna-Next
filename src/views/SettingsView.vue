@@ -695,7 +695,7 @@ function resetDesktopLyricsBounds() {
       <h3>{{ t("settings.about") }}</h3>
       <div class="row">
         <span class="row-label">{{ t("settings.version") }}</span>
-        <span class="value">1.0.0</span>
+        <span class="value">1.1.0</span>
       </div>
       <div class="actions">
         <button class="lm-btn lm-btn--outlined" @click="clearCache">
