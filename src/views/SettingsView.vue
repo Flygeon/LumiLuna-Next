@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
+import PageHeader from "@/components/PageHeader.vue";
 import { useSettingsStore, type PdfReadMode, type ThemeMode, type PlayerBgMode, type LyricFontKey, type ShareCodePreference, type DesktopLyricsAnimation, type DesktopLyricsToolbar, type DesktopLyricsDoubleClick } from "@/stores/settings";
 import { useLibraryStore } from "@/stores/library";
 import AudioEffectsPanel from "@/components/AudioEffectsPanel.vue";
@@ -167,6 +168,7 @@ function resetDesktopLyricsBounds() {
 
 <template>
   <div class="settings-view">
+    <PageHeader :title="t('nav.settings')" :description="t('navDesc.settings')" />
     <!-- 外观 -->
     <section class="card">
       <h3>{{ t("settings.appearance") }}</h3>

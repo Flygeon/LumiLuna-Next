@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onActivated, onMounted, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
+import PageHeader from "@/components/PageHeader.vue";
 import LibraryToolbar from "@/components/LibraryToolbar.vue";
 import MediaGrid from "@/components/MediaGrid.vue";
 import EmptyState from "@/components/EmptyState.vue";
@@ -438,6 +439,7 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
 
 <template>
   <div class="view">
+    <PageHeader :title="t('nav.music')" :description="t('navDesc.music')" />
     <!-- 在线音乐：歌单 / 搜索 切换 -->
     <div v-if="showOnlineRoot" class="online-tabs">
       <button

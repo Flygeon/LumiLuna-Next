@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onActivated, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
+import PageHeader from "@/components/PageHeader.vue";
 import LibraryToolbar from "@/components/LibraryToolbar.vue";
 import MediaGrid from "@/components/MediaGrid.vue";
 import MediaViewer from "@/components/MediaViewer.vue";
@@ -52,6 +53,7 @@ function clearSearch() {
 
 <template>
   <div class="view">
+    <PageHeader :title="t('nav.videos')" :description="t('navDesc.videos')" />
     <LibraryToolbar :count="items.length" @changed="load" />
 
     <div

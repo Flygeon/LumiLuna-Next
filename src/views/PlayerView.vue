@@ -4,6 +4,9 @@ import { usePlayerStore } from "@/stores/player";
 import { useSettingsStore } from "@/stores/settings";
 import { useRouter } from "vue-router";
 import { translate } from "@shared/i18n";
+import { isTauri } from "@/capabilities";
+import { useWindowDrag } from "@/composables/useWindowDrag";
+import WindowControls from "@/components/WindowControls.vue";
 import FluidBackground from "@/components/FluidBackground.vue";
 import LyricsView from "@/components/LyricsView.vue";
 import PlayerControlIcon from "@/components/PlayerControlIcon.vue";
@@ -16,6 +19,9 @@ const router = useRouter();
 const rightTab = ref<"lyrics" | "queue" | "effects">("lyrics");
 const speed = ref(1);
 const isDragging = ref(false);
+
+const { isMaximized, minimize, toggleMaximize, close, startDrag } =
+  useWindowDrag();
 
 /** 当前歌曲是否有翻译/罗马音副行（无则切换按钮置灰） */
 const hasSubLine = computed(() =>
@@ -112,8 +118,15 @@ onBeforeUnmount(() => {
     <!-- 顶部覆盖层 -->
     <div class="player-topbar">
       <button class="back" @click="router.back()"><span class="material-symbols-outlined">arrow_back</span> {{ t("player.back") }}</button>
-      <div class="now-title">{{ t("player.nowPlaying") }}</div>
-      <div class="right-placeholder"></div>
+      <div class="now-title" @pointerdown="startDrag">{{ t("player.nowPlaying") }}</div>
+      <WindowControls
+        v-if="isTauri"
+        :is-maximized="isMaximized"
+        :minimize="minimize"
+        :toggle-maximize="toggleMaximize"
+        :close="close"
+      />
+      <div v-else class="right-placeholder"></div>
     </div>
 
     <div class="player-body">

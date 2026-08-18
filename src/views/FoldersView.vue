@@ -2,6 +2,7 @@
 /** 按目录聚合已索引的媒体文件；选中目录后在右侧显示其内容。 */
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
+import PageHeader from "@/components/PageHeader.vue";
 import MediaGrid from "@/components/MediaGrid.vue";
 import EmptyState from "@/components/EmptyState.vue";
 import { useLibraryStore } from "@/stores/library";
@@ -74,64 +75,75 @@ async function open(item: MediaEntry) {
 
 <template>
   <div class="folders-view">
-    <aside class="tree">
-      <div class="tree-head">{{ t("nav.folders") }}</div>
-      <div v-if="loading" class="tree-loading">
-        <div v-for="n in 8" :key="n" class="lm-skeleton tree-skeleton"></div>
-      </div>
-      <button
-        v-for="f in folders"
-        v-else
-        :key="f.path"
-        class="tree-item"
-        :class="{ active: selected === f.path }"
-        :title="f.path"
-        @click="pick(f.path)"
-      >
-        <span class="material-symbols-outlined" :class="{ filled: selected === f.path }">
-          folder
-        </span>
-        <span class="tree-name">{{ f.name }}</span>
-        <span class="tree-count tabular-nums">{{ f.count }}</span>
-      </button>
+    <PageHeader :title="t('nav.folders')" :description="t('navDesc.folders')" />
 
-      <div v-if="!loading && !folders.length" class="tree-empty">
-        暂无已索引目录
-      </div>
-    </aside>
+    <div class="folders-body">
+      <aside class="tree">
+        <div v-if="loading" class="tree-loading">
+          <div v-for="n in 8" :key="n" class="lm-skeleton tree-skeleton"></div>
+        </div>
+        <button
+          v-for="f in folders"
+          v-else
+          :key="f.path"
+          class="tree-item"
+          :class="{ active: selected === f.path }"
+          :title="f.path"
+          @click="pick(f.path)"
+        >
+          <span class="material-symbols-outlined" :class="{ filled: selected === f.path }">
+            folder
+          </span>
+          <span class="tree-name">{{ f.name }}</span>
+          <span class="tree-count tabular-nums">{{ f.count }}</span>
+        </button>
 
-    <section class="content">
-      <template v-if="selected">
-        <header class="content-head">
-          <h3>{{ selected }}</h3>
-          <span class="count tabular-nums">{{ items.length }} 项</span>
-        </header>
-        <MediaGrid
-          :items="items"
-          aspect="1"
-          :min-width="170"
-          subtitle="size"
-          @open="open"
-          @favorite="library.toggleFavorite"
+        <div v-if="!loading && !folders.length" class="tree-empty">
+          暂无已索引目录
+        </div>
+      </aside>
+
+      <section class="content">
+        <template v-if="selected">
+          <header class="content-head">
+            <h3>{{ selected }}</h3>
+            <span class="count tabular-nums">{{ items.length }} 项</span>
+          </header>
+          <MediaGrid
+            :items="items"
+            aspect="1"
+            :min-width="170"
+            subtitle="size"
+            @open="open"
+            @favorite="library.toggleFavorite"
+          />
+        </template>
+
+        <EmptyState
+          v-else
+          icon="folder_open"
+          title="选择一个目录"
+          description="左侧列出所有包含已索引媒体的目录，点击即可浏览其中的文件。"
         />
-      </template>
-
-      <EmptyState
-        v-else
-        icon="folder_open"
-        title="选择一个目录"
-        description="左侧列出所有包含已索引媒体的目录，点击即可浏览其中的文件。"
-      />
-    </section>
+      </section>
+    </div>
   </div>
 </template>
 
 <style scoped>
 .folders-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 0;
+}
+
+.folders-body {
+  flex: 1;
   display: grid;
   grid-template-columns: 260px minmax(0, 1fr);
   gap: 20px;
-  height: 100%;
+  min-height: 0;
 }
 
 .tree {

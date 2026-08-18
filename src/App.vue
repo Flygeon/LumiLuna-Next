@@ -9,6 +9,7 @@ import { isTauri } from "@/capabilities";
 import MiniPlayer from "@/components/MiniPlayer.vue";
 import ContextMenu from "@/components/ContextMenu.vue";
 import TextPrompt from "@/components/TextPrompt.vue";
+import WindowTitleBar from "@/components/WindowTitleBar.vue";
 import { translate } from "@shared/i18n";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import {
@@ -105,8 +106,7 @@ const navItems = computed(() => [
   { key: "videos", path: "/videos", icon: "movie", type: "video" },
   { key: "music", path: "/music", icon: "music_note", type: "audio" },
   { key: "books", path: "/books", icon: "menu_book", type: "book" },
-  { key: "folders", path: "/folders", icon: "folder", type: null },
-    { key: "treasure", path: "/treasure", icon: "inventory_2", type: null },
+  { key: "treasure", path: "/treasure", icon: "inventory_2", type: null },
 ]);
 const bottomItems = [
   { key: "favorites", path: "/favorites", icon: "favorite" },
@@ -121,7 +121,6 @@ function t(key: string) {
 
 const isPlayerPage = computed(() => route.path === "/music/player");
 const isDesktopLyricsPage = computed(() => route.path === "/desktop-lyrics");
-const currentTab = computed(() => route.path.split("/")[1] || "images");
 
 function isActive(path: string) {
   return route.path === path;
@@ -129,21 +128,6 @@ function isActive(path: string) {
 
 function countOf(type: string | null): number {
   return type ? (library.counts[type] ?? 0) : 0;
-}
-
-const themeIcon = computed(() =>
-  settings.theme === "dark"
-    ? "dark_mode"
-    : settings.theme === "light"
-      ? "light_mode"
-      : "brightness_auto",
-);
-
-/** 三态循环：跟随系统 → 浅色 → 深色 */
-function cycleTheme() {
-  const order = ["system", "light", "dark"] as const;
-  const next = order[(order.indexOf(settings.theme) + 1) % order.length];
-  settings.applyTheme(next);
 }
 
 onMounted(async () => {
@@ -176,78 +160,89 @@ router.afterEach((to) => {
 </script>
 
 <template>
-  <div class="app-shell" :class="{ 'has-player': player.song && !isPlayerPage, 'desktop-lyrics-page': isDesktopLyricsPage }">
-    <!-- 左侧导航 Rail -->
-    <nav v-if="!isPlayerPage && !isDesktopLyricsPage" class="nav-rail lm-glass">
-      <div class="brand">
-        <span class="material-symbols-outlined brand-mark">blur_on</span>
-        <span class="brand-name">{{ t("app.name") }}</span>
-      </div>
+  <div
+    class="app-shell"
+    :class="{
+      'has-player': player.song && !isPlayerPage,
+      'desktop-lyrics-page': isDesktopLyricsPage,
+    }"
+  >
+    <!-- Windows 自定义标题栏（仅 Tauri 桌面版，播放页与桌面歌词页隐藏） -->
+    <WindowTitleBar v-if="isTauri && !isPlayerPage && !isDesktopLyricsPage" />
 
-      <div class="nav-group">
-        <button
-          v-for="item in navItems"
-          :key="item.key"
-          class="nav-item"
-          :class="{ active: isActive(item.path) }"
-          @click="router.push(item.path)"
-        >
-          <span class="indicator">
+    <!-- 主体：左侧导航 + 内容区 -->
+    <div class="app-body">
+      <!-- 左侧导航 Rail -->
+      <nav
+        v-if="!isPlayerPage && !isDesktopLyricsPage"
+        class="nav-rail lm-glass"
+      >
+        <div v-if="!isTauri" class="brand">
+          <span class="material-symbols-outlined brand-mark">blur_on</span>
+          <span class="brand-name">{{ t("app.name") }}</span>
+        </div>
+
+        <div class="nav-group">
+          <button
+            v-for="item in navItems"
+            :key="item.key"
+            class="nav-item"
+            :class="{ active: isActive(item.path) }"
+            @click="router.push(item.path)"
+          >
+            <span class="indicator">
+              <span
+                class="material-symbols-outlined"
+                :class="{ filled: isActive(item.path) }"
+              >{{ item.icon }}</span>
+              <span
+                v-if="countOf(item.type)"
+                class="badge tabular-nums"
+              >{{ countOf(item.type) > 999 ? "999+" : countOf(item.type) }}</span>
+            </span>
+            <span class="label">{{ t("nav." + item.key) }}</span>
             <span
-              class="material-symbols-outlined"
-              :class="{ filled: isActive(item.path) }"
-            >{{ item.icon }}</span>
+              v-if="isActive(item.path)"
+              class="desc"
+            >{{ t("navDesc." + item.key) }}</span>
+          </button>
+        </div>
+
+        <div class="nav-group bottom">
+          <button
+            v-for="item in bottomItems"
+            :key="item.key"
+            class="nav-item"
+            :class="{ active: isActive(item.path) }"
+            @click="router.push(item.path)"
+          >
+            <span class="indicator">
+              <span
+                class="material-symbols-outlined"
+                :class="{ filled: isActive(item.path) }"
+              >{{ item.icon }}</span>
+            </span>
+            <span class="label">{{ t("nav." + item.key) }}</span>
             <span
-              v-if="countOf(item.type)"
-              class="badge tabular-nums"
-            >{{ countOf(item.type) > 999 ? "999+" : countOf(item.type) }}</span>
-          </span>
-          <span class="label">{{ t("nav." + item.key) }}</span>
-        </button>
+              v-if="isActive(item.path)"
+              class="desc"
+            >{{ t("navDesc." + item.key) }}</span>
+          </button>
+        </div>
+      </nav>
+
+      <!-- 内容区 -->
+      <div class="content">
+        <main ref="mainEl" class="main-content">
+          <router-view v-slot="{ Component }">
+            <transition name="page" mode="out-in">
+              <keep-alive :exclude="['PlayerView']">
+                <component :is="Component" />
+              </keep-alive>
+            </transition>
+          </router-view>
+        </main>
       </div>
-
-      <div class="nav-group bottom">
-        <button
-          v-for="item in bottomItems"
-          :key="item.key"
-          class="nav-item"
-          :class="{ active: isActive(item.path) }"
-          @click="router.push(item.path)"
-        >
-          <span class="indicator">
-            <span
-              class="material-symbols-outlined"
-              :class="{ filled: isActive(item.path) }"
-            >{{ item.icon }}</span>
-          </span>
-          <span class="label">{{ t("nav." + item.key) }}</span>
-        </button>
-      </div>
-    </nav>
-
-    <!-- 内容区 -->
-    <div class="content">
-      <header v-if="!isPlayerPage && !isDesktopLyricsPage" class="topbar lm-glass">
-        <h1 class="title">{{ t("nav." + currentTab) }}</h1>
-        <div class="spacer"></div>
-        <button
-          class="lm-icon-btn"
-          :title="t('settings.theme')"
-          @click="cycleTheme"
-        >
-          <span class="material-symbols-outlined">{{ themeIcon }}</span>
-        </button>
-      </header>
-
-      <main ref="mainEl" class="main-content">
-        <router-view v-slot="{ Component }">
-          <transition name="page" mode="out-in">
-            <keep-alive :exclude="['PlayerView']">
-              <component :is="Component" />
-            </keep-alive>
-          </transition>
-        </router-view>
-      </main>
     </div>
 
     <MiniPlayer v-if="player.song && !isPlayerPage && !isDesktopLyricsPage" />
@@ -269,6 +264,7 @@ router.afterEach((to) => {
 <style scoped>
 .app-shell {
   display: flex;
+  flex-direction: column;
   height: 100vh;
   width: 100vw;
   overflow: hidden;
@@ -279,6 +275,13 @@ router.afterEach((to) => {
 }
 .app-shell.desktop-lyrics-page .main-content {
   padding: 0;
+}
+
+.app-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
 }
 
 /* ---- 导航 Rail ---- */
@@ -397,6 +400,18 @@ router.afterEach((to) => {
   font-weight: 600;
 }
 
+.desc {
+  font-size: 9px;
+  line-height: 1.2;
+  color: var(--md-sys-color-on-surface-variant);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+  opacity: 0.8;
+}
+
 /* ---- 内容区 ---- */
 .content {
   flex: 1;
@@ -404,25 +419,6 @@ router.afterEach((to) => {
   flex-direction: column;
   min-width: 0;
   overflow: hidden;
-}
-
-.topbar {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  height: var(--lm-topbar-height);
-  flex: none;
-  padding: 0 var(--lm-content-pad);
-  border-bottom: 1px solid var(--lm-hairline);
-  z-index: 5;
-}
-.title {
-  font-size: var(--md-sys-typescale-title-large-size);
-  font-weight: var(--md-sys-typescale-title-large-weight);
-  color: var(--md-sys-color-on-surface);
-}
-.spacer {
-  flex: 1;
 }
 
 .main-content {

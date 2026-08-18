@@ -17,6 +17,15 @@ function t(key: string) {
     <p class="page-hint">{{ t("settings.treasure.subtitle") }}</p>
 
     <div class="card-grid">
+      <button class="t-card" @click="router.push('/folders')">
+        <span class="t-icon material-symbols-outlined">folder</span>
+        <div class="t-body">
+          <div class="t-name">{{ t("settings.treasure.folders") }}</div>
+          <div class="t-desc">{{ t("settings.treasure.foldersHint") }}</div>
+        </div>
+        <span class="material-symbols-outlined t-arrow">chevron_right</span>
+      </button>
+
       <button class="t-card" @click="router.push('/webdav')">
         <span class="t-icon material-symbols-outlined">cloud</span>
         <div class="t-body">

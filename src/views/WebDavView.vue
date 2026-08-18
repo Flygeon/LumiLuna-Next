@@ -8,6 +8,7 @@ import { computed, onActivated, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import EmptyState from "@/components/EmptyState.vue";
 import MediaViewer from "@/components/MediaViewer.vue";
+import PageHeader from "@/components/PageHeader.vue";
 import { useSettingsStore } from "@/stores/settings";
 import { usePlayerStore } from "@/stores/player";
 import { capabilities } from "@/capabilities";
@@ -240,6 +241,7 @@ function typeOf(entry: WebDavEntry) {
 
 <template>
   <div class="webdav-view">
+    <PageHeader :title="t('nav.webdav')" />
     <!-- 未启用 / 未配置 -->
     <EmptyState
       v-if="!settings.webdavEnabled"

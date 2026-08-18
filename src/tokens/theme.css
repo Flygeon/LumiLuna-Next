@@ -122,9 +122,9 @@
   --lm-scrim-surface: rgba(252, 252, 252, 0.72);
   --lm-hairline: rgba(0, 0, 0, 0.08);
   --lm-nav-width: 88px;
-  --lm-topbar-height: 60px;
   --lm-miniplayer-height: 72px;
   --lm-content-pad: 24px;
+  --lm-titlebar-height: 48px;
 
   /* 播放器令牌（Apple Music 蓝本，写死勿改） */
   --am-ease-out-back: cubic-bezier(0.25, 0.8, 0.25, 1);
@@ -260,8 +260,8 @@ body {
 /* M3 毛玻璃表面 */
 .lm-glass {
   background: var(--lm-scrim-surface);
-  backdrop-filter: blur(24px) saturate(1.8);
-  -webkit-backdrop-filter: blur(24px) saturate(1.8);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
 }
 
 /* 填充态图标（导航选中项） */
