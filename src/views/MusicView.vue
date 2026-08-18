@@ -4,6 +4,7 @@ import { useRouter } from "vue-router";
 import PageHeader from "@/components/PageHeader.vue";
 import LibraryToolbar from "@/components/LibraryToolbar.vue";
 import MediaGrid from "@/components/MediaGrid.vue";
+import TrackList from "@/components/TrackList.vue";
 import EmptyState from "@/components/EmptyState.vue";
 import CachedCover from "@/components/CachedCover.vue";
 import { useLibraryStore } from "@/stores/library";
@@ -609,7 +610,27 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
 
     <!-- 本地音乐（原模式 或 点开「本地音乐」歌单） -->
     <template v-if="showLocal">
-      <LibraryToolbar :count="items.length" @changed="load" />
+      <div class="local-head">
+        <LibraryToolbar :count="items.length" @changed="load" />
+        <div class="segmented view-toggle">
+          <button
+            class="seg"
+            :class="{ active: settings.musicViewMode === 'grid' }"
+            :title="t('settings.musicViewMode_grid')"
+            @click="settings.musicViewMode = 'grid'"
+          >
+            <span class="material-symbols-outlined">grid_view</span>
+          </button>
+          <button
+            class="seg"
+            :class="{ active: settings.musicViewMode === 'list' }"
+            :title="t('settings.musicViewMode_list')"
+            @click="settings.musicViewMode = 'list'"
+          >
+            <span class="material-symbols-outlined">view_list</span>
+          </button>
+        </div>
+      </div>
 
       <div v-if="error" class="error-bar">
         <span class="material-symbols-outlined">error</span>
@@ -620,7 +641,7 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
       </div>
 
       <MediaGrid
-        v-if="library.loading || items.length"
+        v-if="(library.loading || items.length) && settings.musicViewMode === 'grid'"
         :items="items"
         :loading="library.loading"
         aspect="1"
@@ -628,6 +649,14 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
         subtitle="artist"
         @open="playLocal"
         @favorite="library.toggleFavorite"
+      />
+
+      <TrackList
+        v-else-if="items.length && settings.musicViewMode === 'list'"
+        :items="items"
+        @open="playLocal"
+        @favorite="library.toggleFavorite"
+        @notify="notify"
       />
 
       <EmptyState
@@ -953,6 +982,43 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.local-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.local-head :deep(.library-toolbar) {
+  flex: 1;
+  margin: 0;
+}
+.view-toggle {
+  display: flex;
+  gap: 2px;
+  flex: none;
+  padding: 3px;
+  border-radius: var(--md-sys-shape-corner-large);
+  background: var(--md-sys-color-surface-container);
+}
+.view-toggle .seg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 30px;
+  border: none;
+  border-radius: var(--md-sys-shape-corner-medium);
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  cursor: pointer;
+}
+.view-toggle .seg.active {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+.view-toggle .material-symbols-outlined {
+  font-size: 18px;
 }
 
 .error-bar {

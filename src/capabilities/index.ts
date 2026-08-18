@@ -216,6 +216,15 @@ export const capabilities = {
     if (!isTauri) return () => {};
     return listen<SmtcCommand>("smtc:command", (e) => handler(e.payload));
   },
+  /** 订阅 Rust 托盘菜单发出的播放器命令（play/pause/toggle/next/prev/show） */
+  async onAppPlayerCommand(handler: (action: string) => void): Promise<UnlistenFn> {
+    if (!isTauri) return () => {};
+    return listen<string>("app:player-command", (e) => handler(e.payload));
+  },
+  /** 退出应用（配合关闭最小化到托盘：托盘菜单「退出」或关闭拦截时显式退出） */
+  exitApp(): Promise<void> {
+    return safeInvoke("exit_app");
+  },
 
   // ---- WebDAV ----
   webdavConfigure(url: string, username: string, password: string): Promise<void> {

@@ -555,6 +555,54 @@ function resetDesktopLyricsBounds() {
           </button>
         </div>
       </div>
+      <div class="row">
+        <div class="row-label">
+          <span>{{ t("settings.volume") }}</span>
+          <small class="row-value">{{ Math.round(settings.volume * 100) }}%</small>
+        </div>
+        <input
+          class="range"
+          type="range"
+          min="0"
+          max="100"
+          :value="Math.round(settings.volume * 100)"
+          @input="settings.volume = Number(($event.target as HTMLInputElement).value) / 100"
+        />
+      </div>
+      <div class="row">
+        <div class="row-label"><span>{{ t("settings.musicViewMode") }}</span></div>
+        <div class="segmented">
+          <button
+            v-for="m in (['grid', 'list'] as const)"
+            :key="m"
+            class="seg"
+            :class="{ active: settings.musicViewMode === m }"
+            @click="settings.musicViewMode = m"
+          >
+            {{ t("settings.musicViewMode_" + m) }}
+          </button>
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-label"><span>{{ t("settings.playerLayout") }}</span></div>
+        <div class="segmented">
+          <button
+            v-for="l in (['classic', 'cover', 'lyrics'] as const)"
+            :key="l"
+            class="seg"
+            :class="{ active: settings.playerLayout === l }"
+            @click="settings.playerLayout = l"
+          >
+            {{ t("settings.playerLayout_" + l) }}
+          </button>
+        </div>
+      </div>
+      <label class="row switch-row">
+        <span class="row-label">{{ t("settings.closeToTray") }}</span>
+        <input type="checkbox" v-model="settings.closeToTray" />
+      </label>
+      <p class="hint">{{ t("settings.closeToTrayHint") }}</p>
+      <p class="hint">{{ t("player.hotkeysHint") }}</p>
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.lyricBlur") }}</span>
         <input type="checkbox" v-model="settings.lyricBlur" />

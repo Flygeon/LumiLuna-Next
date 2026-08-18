@@ -10,6 +10,7 @@ import MiniPlayer from "@/components/MiniPlayer.vue";
 import ContextMenu from "@/components/ContextMenu.vue";
 import TextPrompt from "@/components/TextPrompt.vue";
 import WindowTitleBar from "@/components/WindowTitleBar.vue";
+import { useDesktopChrome } from "@/composables/useDesktopChrome";
 import { translate } from "@shared/i18n";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import {
@@ -25,6 +26,8 @@ import type { DesktopLyricsBounds } from "@/stores/settings";
 
 const settings = useSettingsStore();
 const player = usePlayerStore();
+// 托盘命令 + 关闭最小化到托盘 + 应用内热键
+useDesktopChrome();
 // ---- 桌面歌词控制器 ----
 let dlUnlisteners: UnlistenFn[] = [];
 
@@ -227,7 +230,7 @@ router.afterEach((to) => {
       <div class="content">
         <main ref="mainEl" class="main-content">
           <router-view v-slot="{ Component }">
-            <transition name="page" mode="out-in">
+            <transition :name="isPlayerPage ? 'player' : 'page'" mode="out-in">
               <keep-alive :exclude="['PlayerView']">
                 <component :is="Component" />
               </keep-alive>
@@ -426,6 +429,19 @@ router.afterEach((to) => {
 .page-leave-to {
   opacity: 0;
   transform: translateY(-4px);
+}
+
+/* 播放器路由：抽屉式滑入滑出 */
+.player-enter-active,
+.player-leave-active {
+  transition:
+    transform 340ms var(--md-sys-motion-easing-emphasized-decelerate),
+    opacity 260ms var(--md-sys-motion-easing-standard);
+}
+.player-enter-from,
+.player-leave-to {
+  transform: translateY(100%);
+  opacity: 0.6;
 }
 
 /* 全局回退提示 toast */

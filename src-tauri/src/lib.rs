@@ -1,6 +1,7 @@
 pub mod commands;
 pub mod media;
 pub mod netease;
+pub mod tray;
 pub mod webdav;
 
 use serde::{Deserialize, Serialize};
@@ -118,9 +119,14 @@ pub fn run() {
             )));
             // Windows 系统媒体控件（SMTC）会话
             commands::smtc::setup(app.handle());
+            // 系统托盘（播放控制 / 显示主界面 / 退出）
+            if let Err(error) = tray::setup(app.handle()) {
+                eprintln!("setup tray failed: {error}");
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            commands::app::exit_app,
             commands::book::get_book_progress,
             commands::book::save_book_progress,
             commands::scan::scan_start,

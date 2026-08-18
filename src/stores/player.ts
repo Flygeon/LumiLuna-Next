@@ -233,6 +233,7 @@ export const usePlayerStore = defineStore("player", () => {
     if (audioEl.value) return audioEl.value;
     const el = new Audio();
     el.preload = "auto";
+    el.volume = useSettingsStore().volume;
     el.addEventListener("timeupdate", () => {
       currentTime.value = el.currentTime;
       // 听歌时长累计：仅播放中且正向增量
@@ -1064,6 +1065,61 @@ export const usePlayerStore = defineStore("player", () => {
     currentIndex.value = startIndex;
   }
 
+  // ---- 音量与队列操作（音乐列表行内操作使用）----
+  const volume = computed(() => useSettingsStore().volume);
+
+  function setVolume(v: number) {
+    const nextVolume = Math.max(0, Math.min(1, v));
+    useSettingsStore().volume = nextVolume;
+    if (audioEl.value) audioEl.value.volume = nextVolume;
+  }
+
+  /** 追加到队尾；当前队列为空时直接作为当前曲目起播 */
+  async function addToQueue(item: QueueItem) {
+    if (queue.value.length === 0) {
+      queue.value = [item];
+      currentIndex.value = 0;
+      return;
+    }
+    queue.value = [...queue.value, item];
+    if (shuffleMode.value) generateShuffleOrder();
+  }
+
+  /** 插到当前曲目之后（下一首播放） */
+  function playNext(item: QueueItem) {
+    if (queue.value.length === 0) {
+      queue.value = [item];
+      currentIndex.value = 0;
+      return;
+    }
+    const insertAt = currentIndex.value + 1;
+    queue.value = [
+      ...queue.value.slice(0, insertAt),
+      item,
+      ...queue.value.slice(insertAt),
+    ];
+    if (shuffleMode.value) generateShuffleOrder();
+  }
+
+  /** 从队列移除；不允许移除正在播放的当前曲目 */
+  function removeFromQueue(index: number) {
+    if (index < 0 || index >= queue.value.length) return;
+    if (index === currentIndex.value) return;
+    queue.value = queue.value.filter((_, i) => i !== index);
+    if (index < currentIndex.value) currentIndex.value -= 1;
+    if (queue.value.length === 0) currentIndex.value = 0;
+    if (shuffleMode.value) generateShuffleOrder();
+  }
+
+  /** 清空队列，仅保留当前曲目 */
+  function clearQueue() {
+    if (queue.value.length === 0) return;
+    const current = queue.value[currentIndex.value];
+    queue.value = current ? [current] : [];
+    currentIndex.value = 0;
+    if (shuffleMode.value) generateShuffleOrder();
+  }
+
   function togglePlay() {
     if (!song.value) return;
     const el = ensureAudio();
@@ -1174,6 +1230,12 @@ export const usePlayerStore = defineStore("player", () => {
     cycleRepeat,
     setQueue,
     playFromQueue,
+    volume,
+    setVolume,
+    addToQueue,
+    playNext,
+    removeFromQueue,
+    clearQueue,
     isOnline,
     isWebDav,
     queueTitle,

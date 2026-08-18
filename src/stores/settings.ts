@@ -32,6 +32,10 @@ export interface DesktopLyricsBounds {
   width: number;
   height: number;
 }
+/** 本地音乐库展示模式 */
+export type MusicViewMode = "grid" | "list";
+/** 播放器布局：classic 分栏 / cover 封面主导 / lyrics 歌词主导 */
+export type PlayerLayout = "classic" | "cover" | "lyrics";
 
 const store = new LazyStore("settings.json");
 
@@ -110,6 +114,14 @@ const DEFAULTS = {
   desktopLyricsDoubleClick: "toggle" as DesktopLyricsDoubleClick,
   desktopLyricsAnimation: "fade" as DesktopLyricsAnimation,
   desktopLyricsBounds: { width: 420, height: 120 } as DesktopLyricsBounds,
+  /** 关闭窗口时最小化到托盘（而非退出应用） */
+  closeToTray: true,
+  /** 主音量 0–1 */
+  volume: 1,
+  /** 本地音乐库展示模式：网格 / 列表 */
+  musicViewMode: "grid" as MusicViewMode,
+  /** 播放器布局：classic 分栏 / cover 封面主导 / lyrics 歌词主导 */
+  playerLayout: "classic" as PlayerLayout,
 };
 
 export const useSettingsStore = defineStore("settings", () => {
@@ -158,6 +170,10 @@ export const useSettingsStore = defineStore("settings", () => {
   const desktopLyricsDoubleClick = ref<DesktopLyricsDoubleClick>(DEFAULTS.desktopLyricsDoubleClick);
   const desktopLyricsAnimation = ref<DesktopLyricsAnimation>(DEFAULTS.desktopLyricsAnimation);
   const desktopLyricsBounds = ref<DesktopLyricsBounds>({ ...DEFAULTS.desktopLyricsBounds });
+  const closeToTray = ref(DEFAULTS.closeToTray);
+  const volume = ref(DEFAULTS.volume);
+  const musicViewMode = ref<MusicViewMode>(DEFAULTS.musicViewMode);
+  const playerLayout = ref<PlayerLayout>(DEFAULTS.playerLayout);
   const loaded = ref(false);
 
   // 单一注册表：新增设置项只需在此加一行，load/save 自动覆盖
@@ -207,6 +223,10 @@ export const useSettingsStore = defineStore("settings", () => {
     desktopLyricsDoubleClick,
     desktopLyricsAnimation,
     desktopLyricsBounds,
+    closeToTray,
+    volume,
+    musicViewMode,
+    playerLayout,
   } as const;
 
   async function load() {
