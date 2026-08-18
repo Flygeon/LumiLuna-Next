@@ -86,10 +86,10 @@ loadPresets();
       <button class="lm-icon-btn" @click="router.back()">
         <span class="material-symbols-outlined">arrow_back</span>
       </button>
-      <h2 class="page-title">{{ t("market.title") }}</h2>
+      <h2 class="page-title">{{ t("settings.market.title") }}</h2>
       <button class="lm-btn lm-btn--tonal" @click="loadPresets" :disabled="loading">
         <span class="material-symbols-outlined">refresh</span>
-        {{ t("market.refresh") }}
+        {{ t("settings.market.refresh") }}
       </button>
     </div>
 
@@ -98,12 +98,12 @@ loadPresets();
     <div v-else-if="error" class="error-bar">
       <span class="material-symbols-outlined">error</span>
       {{ error }}
-      <button class="lm-btn lm-btn--text" @click="loadPresets">{{ t("market.refresh") }}</button>
+      <button class="lm-btn lm-btn--text" @click="loadPresets">{{ t("settings.market.refresh") }}</button>
     </div>
 
     <div v-else-if="!presets.length" class="empty">
       <span class="material-symbols-outlined">inventory_2</span>
-      <p>{{ t("market.empty") }}</p>
+      <p>{{ t("settings.market.empty") }}</p>
     </div>
 
     <div v-else class="preset-grid">
@@ -121,7 +121,7 @@ loadPresets();
           @click="importPreset(item)"
         >
           <span class="material-symbols-outlined">download</span>
-          {{ t("market.import") }}
+          {{ t("settings.market.import") }}
         </button>
       </div>
     </div>

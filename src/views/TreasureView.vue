@@ -13,15 +13,15 @@ function t(key: string) {
 
 <template>
   <div class="treasure-view">
-    <h2 class="page-title">{{ t("treasure.title") }}</h2>
-    <p class="page-hint">{{ t("treasure.subtitle") }}</p>
+    <h2 class="page-title">{{ t("settings.treasure.title") }}</h2>
+    <p class="page-hint">{{ t("settings.treasure.subtitle") }}</p>
 
     <div class="card-grid">
       <button class="t-card" @click="router.push('/webdav')">
         <span class="t-icon material-symbols-outlined">cloud</span>
         <div class="t-body">
-          <div class="t-name">{{ t("treasure.webdav") }}</div>
-          <div class="t-desc">{{ t("treasure.webdavHint") }}</div>
+          <div class="t-name">{{ t("settings.treasure.webdav") }}</div>
+          <div class="t-desc">{{ t("settings.treasure.webdavHint") }}</div>
         </div>
         <span class="material-symbols-outlined t-arrow">chevron_right</span>
       </button>
@@ -29,8 +29,8 @@ function t(key: string) {
       <button class="t-card" @click="router.push('/treasure/market')">
         <span class="t-icon material-symbols-outlined">music_note</span>
         <div class="t-body">
-          <div class="t-name">{{ t("treasure.market") }}</div>
-          <div class="t-desc">{{ t("treasure.marketHint") }}</div>
+          <div class="t-name">{{ t("settings.treasure.market") }}</div>
+          <div class="t-desc">{{ t("settings.treasure.marketHint") }}</div>
         </div>
         <span class="material-symbols-outlined t-arrow">chevron_right</span>
       </button>
