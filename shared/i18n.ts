@@ -139,6 +139,8 @@ export const messages = {
         webdavHint: "浏览和管理远程媒体文件",
         market: "音效预设市场",
         marketHint: "下载和分享音效预设",
+        stats: "听歌时长统计",
+        statsHint: "了解你的听歌习惯与趋势",
       },
       market: {
         title: "音效预设市场",
@@ -456,6 +458,8 @@ desktopLyrics: "桌面歌词",
         webdavHint: "Browse and manage remote files",
         market: "Preset Market",
         marketHint: "Download and share audio presets",
+        stats: "Listening Statistics",
+        statsHint: "Explore your listening habits and trends",
       },
       market: {
         title: "Preset Market",

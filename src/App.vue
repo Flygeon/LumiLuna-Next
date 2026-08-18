@@ -111,7 +111,6 @@ const navItems = computed(() => [
 const bottomItems = [
   { key: "favorites", path: "/favorites", icon: "favorite" },
   { key: "history", path: "/history", icon: "history" },
-  { key: "stats", path: "/stats", icon: "bar_chart" },
   { key: "trash", path: "/trash", icon: "delete" },
   { key: "settings", path: "/settings", icon: "settings" },
 ];
