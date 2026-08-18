@@ -3,8 +3,9 @@
  * 桌面歌词窗口页面。
  *
  * 独立透明置顶窗口（label: desktop-lyrics）加载本路由；
- * 通过 Tauri Event 接收歌词状态，悬浮时展开迷你控制条。
- * 歌词切换动画可由设置选择（fade / slide / scale / glow）。
+ * 通过 Tauri Event 接收歌词状态。
+ * 控制栏：点击歌词展开，5 秒无操作自动隐藏；
+ * 设置可选择始终显示。
  */
 import {
   computed,
@@ -28,9 +29,9 @@ import {
 
 const settings = useSettingsStore();
 const state = ref<DesktopLyricsState | null>(null);
-const hover = ref(false);
+const toolbarOpen = ref(settings.desktopLyricsToolbar === "always");
 const ctx = ref<{ x: number; y: number } | null>(null);
-let hideTimer: number | null = null;
+let autoHideTimer: number | null = null;
 
 const currentIndex = computed(() => {
   const lines = state.value?.lines ?? [];
@@ -60,6 +61,43 @@ const subText = computed(() => {
     return `下一句 · ${next.value.text}`;
   return "";
 });
+
+/** 控制栏是否可见（always 模式 / click 模式且已展开） */
+const toolbarVisible = computed(
+  () => settings.desktopLyricsToolbar === "always" || toolbarOpen.value,
+);
+
+/** 点击歌词区域切换控制栏 */
+function toggleToolbar() {
+  if (settings.desktopLyricsToolbar !== "click") return;
+  toolbarOpen.value = !toolbarOpen.value;
+  if (toolbarOpen.value) startAutoHide();
+  else cancelAutoHide();
+}
+
+/** 操作控制栏时重置自动隐藏计时 */
+function resetAutoHide() {
+  if (settings.desktopLyricsToolbar !== "click") return;
+  if (!toolbarOpen.value) return;
+  startAutoHide();
+}
+
+function startAutoHide() {
+  cancelAutoHide();
+  autoHideTimer = window.setTimeout(() => {
+    toolbarOpen.value = false;
+    autoHideTimer = null;
+  }, 5000);
+}
+
+function cancelAutoHide() {
+  if (autoHideTimer !== null) {
+    window.clearTimeout(autoHideTimer);
+    autoHideTimer = null;
+  }
+}
+
+// ---- 窗口控制 ----
 
 let unlistenState: UnlistenFn | null = null;
 let unlistenMoved: UnlistenFn | null = null;
@@ -93,36 +131,27 @@ async function reportBounds() {
 }
 
 function togglePlay() {
+  resetAutoHide();
   void emitDesktopLyricsControl("toggle");
 }
 function prevSong() {
+  resetAutoHide();
   void emitDesktopLyricsControl("prev");
 }
 function nextSong() {
+  resetAutoHide();
   void emitDesktopLyricsControl("next");
 }
 function closeLyrics() {
   void emitDesktopLyricsControl("close");
   if (isTauri) void WebviewWindow.getCurrent().close();
 }
-function onEnter() {
-  if (hideTimer !== null) {
-    window.clearTimeout(hideTimer);
-    hideTimer = null;
-  }
-  hover.value = true;
-}
-function onLeave() {
-  if (hideTimer !== null) window.clearTimeout(hideTimer);
-  hideTimer = window.setTimeout(() => {
-    hover.value = false;
-    hideTimer = null;
-  }, 120);
-}
+
+// ---- 右键菜单 ----
+
 function onBlur() {
-  if (hideTimer !== null) window.clearTimeout(hideTimer);
-  hover.value = false;
-  hideTimer = null;
+  cancelAutoHide();
+  toolbarOpen.value = false;
   ctx.value = null;
 }
 function onContextMenu(e: MouseEvent) {
@@ -140,6 +169,8 @@ function toggleShowNext() {
   settings.desktopLyricsShowNext = !settings.desktopLyricsShowNext;
   ctx.value = null;
 }
+
+// ---- 生命周期 ----
 
 onMounted(async () => {
   if (!isTauri) return;
@@ -168,7 +199,7 @@ watch(
 );
 
 onBeforeUnmount(() => {
-  if (hideTimer !== null) window.clearTimeout(hideTimer);
+  cancelAutoHide();
   if (boundsTimer !== null) window.clearTimeout(boundsTimer);
   window.removeEventListener("blur", onBlur);
   unlistenState?.();
@@ -180,17 +211,18 @@ onBeforeUnmount(() => {
 <template>
   <div
     class="desktop-lyrics"
-    :class="{ hovered: hover, locked: settings.desktopLyricsLocked }"
+    :class="{
+      'toolbar-visible': toolbarVisible,
+      locked: settings.desktopLyricsLocked,
+    }"
     :style="{
       fontSize: settings.desktopLyricsFontSize + 'px',
       opacity: settings.desktopLyricsOpacity / 100,
     }"
-    @mouseenter="onEnter"
-    @mouseleave="onLeave"
     @click="closeCtx"
     @contextmenu.prevent="onContextMenu"
   >
-    <div class="lyrics-main">
+    <div class="lyrics-main" @click.stop="toggleToolbar">
       <Transition :name="'dl-' + settings.desktopLyricsAnimation" mode="out-in">
         <p :key="currentIndex" class="line current">
           {{ mainText }}
@@ -200,7 +232,12 @@ onBeforeUnmount(() => {
     </div>
 
     <Transition name="dl-bar">
-      <div v-if="hover" class="control-bar">
+      <div
+        v-if="toolbarVisible"
+        class="control-bar"
+        @click.stop
+        @mousemove="resetAutoHide"
+      >
         <span class="meta" :title="state?.title || ''">
           {{ state?.title || "—" }}<template v-if="state?.artist"> · {{ state.artist }}</template>
         </span>
@@ -221,7 +258,8 @@ onBeforeUnmount(() => {
         </button>
       </div>
     </Transition>
-<div
+
+    <div
       v-if="ctx"
       class="ctx-menu"
       :style="{ left: ctx.x + 'px', top: ctx.y + 'px' }"
@@ -295,8 +333,10 @@ html {
   gap: 2px;
   max-width: 100%;
   transition: padding-top 180ms ease;
+  position: relative;
+  z-index: 1;
 }
-.desktop-lyrics.hovered .lyrics-main {
+.desktop-lyrics.toolbar-visible .lyrics-main {
   padding-top: 34px;
 }
 .line {
@@ -333,6 +373,7 @@ html {
   background: rgba(20, 20, 24, 0.72);
   backdrop-filter: blur(8px);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  z-index: 2;
 }
 .control-bar .meta {
   font-size: 12px;
@@ -444,6 +485,8 @@ html {
   opacity: 0;
   transform: translateY(-6px);
 }
+
+/* 右键菜单 */
 .ctx-menu {
   position: fixed;
   z-index: 50;

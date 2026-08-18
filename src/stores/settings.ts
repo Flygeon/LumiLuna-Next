@@ -21,6 +21,8 @@ export type LyricSubMode = "translation" | "romaji";
 export type ShareCodePreference = "chinese" | "original" | "both";
 /** 桌面歌词切换动画方案 */
 export type DesktopLyricsAnimation = "fade" | "slide" | "scale" | "glow";
+/** 桌面歌词控制栏显示策略：click 点击展开(5s 自动隐藏) / always 始终显示 */
+export type DesktopLyricsToolbar = "click" | "always";
 /** 桌面歌词窗口位置与尺寸（逻辑坐标） */
 export interface DesktopLyricsBounds {
   x?: number;
@@ -102,6 +104,7 @@ const DEFAULTS = {
   desktopLyricsLocked: false,
   desktopLyricsAlwaysOnTop: true,
   desktopLyricsShowNext: false,
+  desktopLyricsToolbar: "click" as DesktopLyricsToolbar,
   desktopLyricsAnimation: "fade" as DesktopLyricsAnimation,
   desktopLyricsBounds: { width: 420, height: 120 } as DesktopLyricsBounds,
 };
@@ -148,6 +151,7 @@ export const useSettingsStore = defineStore("settings", () => {
   const desktopLyricsLocked = ref(DEFAULTS.desktopLyricsLocked);
   const desktopLyricsAlwaysOnTop = ref(DEFAULTS.desktopLyricsAlwaysOnTop);
   const desktopLyricsShowNext = ref(DEFAULTS.desktopLyricsShowNext);
+  const desktopLyricsToolbar = ref<DesktopLyricsToolbar>(DEFAULTS.desktopLyricsToolbar);
   const desktopLyricsAnimation = ref<DesktopLyricsAnimation>(DEFAULTS.desktopLyricsAnimation);
   const desktopLyricsBounds = ref<DesktopLyricsBounds>({ ...DEFAULTS.desktopLyricsBounds });
   const loaded = ref(false);
@@ -195,6 +199,7 @@ export const useSettingsStore = defineStore("settings", () => {
     desktopLyricsLocked,
     desktopLyricsAlwaysOnTop,
     desktopLyricsShowNext,
+    desktopLyricsToolbar,
     desktopLyricsAnimation,
     desktopLyricsBounds,
   } as const;
