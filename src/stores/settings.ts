@@ -23,6 +23,8 @@ export type ShareCodePreference = "chinese" | "original" | "both";
 export type DesktopLyricsAnimation = "fade" | "slide" | "scale" | "glow";
 /** 桌面歌词控制栏显示策略：click 点击展开(5s 自动隐藏) / always 始终显示 */
 export type DesktopLyricsToolbar = "click" | "always";
+/** 双击桌面歌词动作：none 无操作 / toggle 播放暂停 */
+export type DesktopLyricsDoubleClick = "none" | "toggle";
 /** 桌面歌词窗口位置与尺寸（逻辑坐标） */
 export interface DesktopLyricsBounds {
   x?: number;
@@ -105,6 +107,7 @@ const DEFAULTS = {
   desktopLyricsAlwaysOnTop: true,
   desktopLyricsShowNext: false,
   desktopLyricsToolbar: "click" as DesktopLyricsToolbar,
+  desktopLyricsDoubleClick: "toggle" as DesktopLyricsDoubleClick,
   desktopLyricsAnimation: "fade" as DesktopLyricsAnimation,
   desktopLyricsBounds: { width: 420, height: 120 } as DesktopLyricsBounds,
 };
@@ -152,6 +155,7 @@ export const useSettingsStore = defineStore("settings", () => {
   const desktopLyricsAlwaysOnTop = ref(DEFAULTS.desktopLyricsAlwaysOnTop);
   const desktopLyricsShowNext = ref(DEFAULTS.desktopLyricsShowNext);
   const desktopLyricsToolbar = ref<DesktopLyricsToolbar>(DEFAULTS.desktopLyricsToolbar);
+  const desktopLyricsDoubleClick = ref<DesktopLyricsDoubleClick>(DEFAULTS.desktopLyricsDoubleClick);
   const desktopLyricsAnimation = ref<DesktopLyricsAnimation>(DEFAULTS.desktopLyricsAnimation);
   const desktopLyricsBounds = ref<DesktopLyricsBounds>({ ...DEFAULTS.desktopLyricsBounds });
   const loaded = ref(false);
@@ -200,6 +204,7 @@ export const useSettingsStore = defineStore("settings", () => {
     desktopLyricsAlwaysOnTop,
     desktopLyricsShowNext,
     desktopLyricsToolbar,
+    desktopLyricsDoubleClick,
     desktopLyricsAnimation,
     desktopLyricsBounds,
   } as const;

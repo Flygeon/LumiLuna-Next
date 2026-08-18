@@ -134,6 +134,11 @@ function togglePlay() {
   resetAutoHide();
   void emitDesktopLyricsControl("toggle");
 }
+function onDblClick() {
+  if (settings.desktopLyricsDoubleClick !== "toggle") return;
+  resetAutoHide();
+  void emitDesktopLyricsControl("toggle");
+}
 function prevSong() {
   resetAutoHide();
   void emitDesktopLyricsControl("prev");
@@ -222,7 +227,11 @@ onBeforeUnmount(() => {
     @click="closeCtx"
     @contextmenu.prevent="onContextMenu"
   >
-    <div class="lyrics-main" @click.stop="toggleToolbar">
+    <div
+      class="drag-handle"
+      :class="{ locked: settings.desktopLyricsLocked }"
+    ></div>
+    <div class="lyrics-main" @click.stop="toggleToolbar" @dblclick="onDblClick">
       <Transition :name="'dl-' + settings.desktopLyricsAnimation" mode="out-in">
         <p :key="currentIndex" class="line current">
           {{ mainText }}
@@ -319,10 +328,19 @@ html {
   -webkit-app-region: no-drag;
   overflow: hidden;
 }
-.desktop-lyrics:not(.locked) {
-  -webkit-app-region: drag;
-}
 .desktop-lyrics .control-bar {
+  -webkit-app-region: no-drag;
+}
+.drag-handle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 22px;
+  -webkit-app-region: drag;
+  z-index: 5;
+}
+.drag-handle.locked {
   -webkit-app-region: no-drag;
 }
 

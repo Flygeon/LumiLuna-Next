@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
-import { useSettingsStore, type PdfReadMode, type ThemeMode, type PlayerBgMode, type LyricFontKey, type ShareCodePreference, type DesktopLyricsAnimation, type DesktopLyricsToolbar } from "@/stores/settings";
+import { useSettingsStore, type PdfReadMode, type ThemeMode, type PlayerBgMode, type LyricFontKey, type ShareCodePreference, type DesktopLyricsAnimation, type DesktopLyricsToolbar, type DesktopLyricsDoubleClick } from "@/stores/settings";
 import { useLibraryStore } from "@/stores/library";
 import AudioEffectsPanel from "@/components/AudioEffectsPanel.vue";
 import { capabilities } from "@/capabilities";
@@ -459,6 +459,20 @@ function resetDesktopLyricsBounds() {
             @click="settings.desktopLyricsToolbar = m"
           >
             {{ t("settings.desktopLyricsToolbar_" + m) }}
+          </button>
+        </div>
+      </div>
+<div class="row">
+        <div class="row-label"><span>{{ t("settings.desktopLyricsDoubleClick") }}</span></div>
+        <div class="segmented">
+          <button
+            v-for="m in (['none', 'toggle'] as DesktopLyricsDoubleClick[])"
+            :key="m"
+            class="seg"
+            :class="{ active: settings.desktopLyricsDoubleClick === m }"
+            @click="settings.desktopLyricsDoubleClick = m"
+          >
+            {{ t("settings.desktopLyricsDoubleClick_" + m) }}
           </button>
         </div>
       </div>
