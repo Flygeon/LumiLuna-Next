@@ -1,17 +1,100 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useSettingsStore } from "@/stores/settings";
 import { usePlayerStore } from "@/stores/player";
 import { useAudioEffectsStore } from "@/stores/audioEffects";
 import { useLibraryStore } from "@/stores/library";
+import { isTauri } from "@/capabilities";
 import MiniPlayer from "@/components/MiniPlayer.vue";
 import ContextMenu from "@/components/ContextMenu.vue";
 import TextPrompt from "@/components/TextPrompt.vue";
 import { translate } from "@shared/i18n";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import {
+  DL_BOUNDS_EVENT,
+  DL_CONTROL_EVENT,
+  DL_READY_EVENT,
+  closeDesktopLyricsWindow,
+  emitDesktopLyricsState,
+  openDesktopLyricsWindow,
+  type DesktopLyricsState,
+} from "@/utils/desktopLyrics";
+import type { DesktopLyricsBounds } from "@/stores/settings";
 
 const settings = useSettingsStore();
 const player = usePlayerStore();
+// ---- 桌面歌词控制器 ----
+let dlUnlisteners: UnlistenFn[] = [];
+
+function pushDesktopLyricsState() {
+  if (!settings.desktopLyricsEnabled) return;
+  const stateData: DesktopLyricsState = {
+    lines: player.lyrics.map((l) => ({
+      time: l.time,
+      text: l.text,
+      translation: l.translation,
+      romaji: l.romaji,
+    })),
+    currentTime: player.currentTime,
+    playing: player.playing,
+    title: player.song?.title ?? "",
+    artist: player.song?.artist ?? "",
+  };
+  void emitDesktopLyricsState(stateData);
+}
+
+watch(
+  () => settings.desktopLyricsEnabled,
+  async (on) => {
+    if (on) {
+      await openDesktopLyricsWindow(settings.desktopLyricsBounds);
+      // 等子窗口就绪事件回推一次状态（也做一次兜底延迟发送）
+      window.setTimeout(() => pushDesktopLyricsState(), 400);
+    } else {
+      await closeDesktopLyricsWindow();
+    }
+  },
+);
+
+onMounted(async () => {
+  if (isTauri) {
+    try {
+      dlUnlisteners.push(
+        await listen<null>(DL_READY_EVENT, () => pushDesktopLyricsState()),
+        await listen<{ action: "toggle" | "next" | "prev" | "close" }>(
+          DL_CONTROL_EVENT,
+          (e) => {
+            switch (e.payload.action) {
+              case "toggle":
+                player.togglePlay();
+                break;
+              case "next":
+                void player.next();
+                break;
+              case "prev":
+                void player.previous();
+                break;
+              case "close":
+                settings.desktopLyricsEnabled = false;
+                break;
+            }
+          },
+        ),
+        await listen<DesktopLyricsBounds>(DL_BOUNDS_EVENT, (e) => {
+          settings.desktopLyricsBounds = e.payload;
+        }),
+      );
+    } catch {
+      /* 非 Tauri 或权限不足时静默 */
+    }
+  }
+});
+
+onBeforeUnmount(() => {
+  dlUnlisteners.forEach((un) => un());
+  dlUnlisteners = [];
+});
 const library = useLibraryStore();
 const audioEffects = useAudioEffectsStore();
 const router = useRouter();
@@ -39,6 +122,7 @@ function t(key: string) {
 }
 
 const isPlayerPage = computed(() => route.path === "/music/player");
+const isDesktopLyricsPage = computed(() => route.path === "/desktop-lyrics");
 const currentTab = computed(() => route.path.split("/")[1] || "images");
 
 function isActive(path: string) {
@@ -94,9 +178,9 @@ router.afterEach((to) => {
 </script>
 
 <template>
-  <div class="app-shell" :class="{ 'has-player': player.song && !isPlayerPage }">
+  <div class="app-shell" :class="{ 'has-player': player.song && !isPlayerPage, 'desktop-lyrics-page': isDesktopLyricsPage }">
     <!-- 左侧导航 Rail -->
-    <nav v-if="!isPlayerPage" class="nav-rail lm-glass">
+    <nav v-if="!isPlayerPage && !isDesktopLyricsPage" class="nav-rail lm-glass">
       <div class="brand">
         <span class="material-symbols-outlined brand-mark">blur_on</span>
         <span class="brand-name">{{ t("app.name") }}</span>
@@ -145,7 +229,7 @@ router.afterEach((to) => {
 
     <!-- 内容区 -->
     <div class="content">
-      <header v-if="!isPlayerPage" class="topbar lm-glass">
+      <header v-if="!isPlayerPage && !isDesktopLyricsPage" class="topbar lm-glass">
         <h1 class="title">{{ t("nav." + currentTab) }}</h1>
         <div class="spacer"></div>
         <button
@@ -168,7 +252,7 @@ router.afterEach((to) => {
       </main>
     </div>
 
-    <MiniPlayer v-if="player.song && !isPlayerPage" />
+    <MiniPlayer v-if="player.song && !isPlayerPage && !isDesktopLyricsPage" />
 
     <!-- 全局 M3 右键菜单与文本输入框（Teleport 到 body） -->
     <ContextMenu />
@@ -191,6 +275,12 @@ router.afterEach((to) => {
   width: 100vw;
   overflow: hidden;
   background: var(--md-sys-color-background);
+}
+.app-shell.desktop-lyrics-page {
+  background: transparent;
+}
+.app-shell.desktop-lyrics-page .main-content {
+  padding: 0;
 }
 
 /* ---- 导航 Rail ---- */

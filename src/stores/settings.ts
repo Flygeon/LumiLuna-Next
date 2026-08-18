@@ -19,6 +19,15 @@ export type PlayerBgMode = "animated" | "image" | "off";
 export type LyricSubMode = "translation" | "romaji";
 /** 预设分享码偏好：仅中文 / 仅原版 / 两者同时输出 */
 export type ShareCodePreference = "chinese" | "original" | "both";
+/** 桌面歌词切换动画方案 */
+export type DesktopLyricsAnimation = "fade" | "slide" | "scale" | "glow";
+/** 桌面歌词窗口位置与尺寸（逻辑坐标） */
+export interface DesktopLyricsBounds {
+  x?: number;
+  y?: number;
+  width: number;
+  height: number;
+}
 
 const store = new LazyStore("settings.json");
 
@@ -86,6 +95,14 @@ const DEFAULTS = {
   neteaseEnabled: false,
   /** 预设分享码偏好：both（默认，两种同时输出）/ chinese / original */
   shareCodePreference: "both" as ShareCodePreference,
+  /** 桌面歌词 */
+  desktopLyricsEnabled: false,
+  desktopLyricsFontSize: 28,
+  desktopLyricsOpacity: 90,
+  desktopLyricsLocked: false,
+  desktopLyricsAlwaysOnTop: true,
+  desktopLyricsAnimation: "fade" as DesktopLyricsAnimation,
+  desktopLyricsBounds: { width: 420, height: 120 } as DesktopLyricsBounds,
 };
 
 export const useSettingsStore = defineStore("settings", () => {
@@ -124,6 +141,13 @@ export const useSettingsStore = defineStore("settings", () => {
   const webdavPass = ref(DEFAULTS.webdavPass);
   const neteaseEnabled = ref(DEFAULTS.neteaseEnabled);
   const shareCodePreference = ref<ShareCodePreference>(DEFAULTS.shareCodePreference);
+  const desktopLyricsEnabled = ref(DEFAULTS.desktopLyricsEnabled);
+  const desktopLyricsFontSize = ref(DEFAULTS.desktopLyricsFontSize);
+  const desktopLyricsOpacity = ref(DEFAULTS.desktopLyricsOpacity);
+  const desktopLyricsLocked = ref(DEFAULTS.desktopLyricsLocked);
+  const desktopLyricsAlwaysOnTop = ref(DEFAULTS.desktopLyricsAlwaysOnTop);
+  const desktopLyricsAnimation = ref<DesktopLyricsAnimation>(DEFAULTS.desktopLyricsAnimation);
+  const desktopLyricsBounds = ref<DesktopLyricsBounds>({ ...DEFAULTS.desktopLyricsBounds });
   const loaded = ref(false);
 
   // 单一注册表：新增设置项只需在此加一行，load/save 自动覆盖
@@ -163,6 +187,13 @@ export const useSettingsStore = defineStore("settings", () => {
     webdavPass,
     neteaseEnabled,
     shareCodePreference,
+    desktopLyricsEnabled,
+    desktopLyricsFontSize,
+    desktopLyricsOpacity,
+    desktopLyricsLocked,
+    desktopLyricsAlwaysOnTop,
+    desktopLyricsAnimation,
+    desktopLyricsBounds,
   } as const;
 
   async function load() {

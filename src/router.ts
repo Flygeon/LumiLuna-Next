@@ -15,6 +15,7 @@ const router = createRouter({
     { path: "/history", component: () => import("@/views/HistoryView.vue") },
     { path: "/trash", component: () => import("@/views/TrashView.vue") },
     { path: "/settings", component: () => import("@/views/SettingsView.vue") },
+    { path: "/desktop-lyrics", component: () => import("@/views/DesktopLyrics.vue") },
   ],
 });
 

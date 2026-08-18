@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { capabilities, isTauri } from "@/capabilities";
 import { useSettingsStore } from "@/stores/settings";
@@ -8,6 +8,7 @@ import { useAudioEffectsStore } from "@/stores/audioEffects";
 // parseLrc 由 @/utils/lyricTimeline 提供（原先定义在本文件，已移出供歌词源复用）
 import { META_RE, parseLrc } from "@/utils/lyricTimeline";
 import { lrcGet, lrcSet, resolveCover } from "@/utils/onlineCache";
+import { emitDesktopLyricsState } from "@/utils/desktopLyrics";
 import {
   fetchCloudLyrics,
   normalizeTitle,
@@ -157,6 +158,7 @@ export const usePlayerStore = defineStore("player", () => {
       currentTime.value = el.currentTime;
       updateActiveLine();
       syncSmtc();
+      syncDesktopLyrics();
     });
     el.addEventListener("loadedmetadata", () => {
       duration.value = el.duration;
@@ -166,11 +168,13 @@ export const usePlayerStore = defineStore("player", () => {
       playing.value = true;
       useAudioEffectsStore().resume();
       syncSmtc(true);
+      syncDesktopLyrics(true);
     });
     el.addEventListener("pause", () => {
       playing.value = false;
       useAudioEffectsStore().suspend();
       syncSmtc(true);
+      syncDesktopLyrics(true);
     });
     el.addEventListener("seeked", () => {
       syncSmtc(true);
@@ -223,6 +227,30 @@ export const usePlayerStore = defineStore("player", () => {
       })
       .catch(() => {});
   }
+/** 推送歌词状态给桌面歌词窗口；默认节流 200ms，切歌等关键节点用 force 立即同步 */
+  let lastDesktopLyricsSync = 0;
+  function syncDesktopLyrics(force = false) {
+    if (!isTauri) return;
+    const settings = useSettingsStore();
+    if (!settings.desktopLyricsEnabled || !song.value) return;
+    const now = Date.now();
+    if (!force && now - lastDesktopLyricsSync < 200) return;
+    lastDesktopLyricsSync = now;
+    void emitDesktopLyricsState({
+      lines: lyrics.value.map((l) => ({
+        time: l.time,
+        text: l.text,
+        translation: l.translation,
+        romaji: l.romaji,
+      })),
+      currentTime: currentTime.value,
+      playing: playing.value,
+      title: song.value.title,
+      artist: song.value.artist ?? "",
+    }).catch(() => {});
+  }
+
+  watch([lyrics, song, playing], () => syncDesktopLyrics(true));
 
   function generateShuffleOrder() {
     const indices = Array.from({ length: queue.value.length }, (_, i) => i);

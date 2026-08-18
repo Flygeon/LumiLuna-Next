@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
-import { useSettingsStore, type PdfReadMode, type ThemeMode, type PlayerBgMode, type LyricFontKey, type ShareCodePreference } from "@/stores/settings";
+import { useSettingsStore, type PdfReadMode, type ThemeMode, type PlayerBgMode, type LyricFontKey, type ShareCodePreference, type DesktopLyricsAnimation } from "@/stores/settings";
 import { useLibraryStore } from "@/stores/library";
 import AudioEffectsPanel from "@/components/AudioEffectsPanel.vue";
 import { capabilities } from "@/capabilities";
@@ -22,6 +22,7 @@ function t(key: string) {
 }
 
 const LYRIC_FONT_KEYS: LyricFontKey[] = ["system", "sans", "serif", "kai", "yuan"];
+const LYRICS_ANIMATIONS: DesktopLyricsAnimation[] = ["fade", "slide", "scale", "glow"];
 
 function notify(message: string) {
   toast.value = message;
@@ -158,6 +159,9 @@ async function clearCache() {
   const freed = await capabilities.clearThumbnailCache();
   library.invalidate();
   notify(`${t("settings.cacheCleared")}${freed ? ` · ${formatSize(freed)}` : ""}`);
+}
+function resetDesktopLyricsBounds() {
+  settings.desktopLyricsBounds = { width: 420, height: 120 };
 }
 </script>
 
@@ -429,6 +433,73 @@ async function clearCache() {
         <span class="value tabular-nums">{{ settings.lyricTranslationGap }}px</span>
       </div>
     </section>
+<!-- 桌面歌词 -->
+    <section class="card">
+      <h3>{{ t("settings.desktopLyrics") }}</h3>
+      <p class="hint">{{ t("settings.desktopLyricsHint") }}</p>
+
+      <label class="row switch-row">
+        <span class="row-label">{{ t("settings.desktopLyricsEnable") }}</span>
+        <input type="checkbox" v-model="settings.desktopLyricsEnabled" />
+      </label>
+
+      <div class="row">
+        <div class="row-label"><span>{{ t("settings.desktopLyricsFontSize") }}</span></div>
+        <input
+          type="range"
+          min="16"
+          max="64"
+          step="1"
+          v-model.number="settings.desktopLyricsFontSize"
+        />
+        <span class="value tabular-nums">{{ settings.desktopLyricsFontSize }}px</span>
+      </div>
+
+      <div class="row">
+        <div class="row-label"><span>{{ t("settings.desktopLyricsOpacity") }}</span></div>
+        <input
+          type="range"
+          min="30"
+          max="100"
+          step="5"
+          v-model.number="settings.desktopLyricsOpacity"
+        />
+        <span class="value tabular-nums">{{ settings.desktopLyricsOpacity }}%</span>
+      </div>
+
+      <div class="row">
+        <div class="row-label"><span>{{ t("settings.desktopLyricsAnimation") }}</span></div>
+        <div class="presets inline">
+          <button
+            v-for="k in LYRICS_ANIMATIONS"
+            :key="k"
+            class="chip"
+            :class="{ active: settings.desktopLyricsAnimation === k }"
+            @click="settings.desktopLyricsAnimation = k"
+          >
+            {{ t("settings.desktopLyricsAnim_" + k) }}
+          </button>
+        </div>
+      </div>
+
+      <label class="row switch-row">
+        <span class="row-label">{{ t("settings.desktopLyricsLocked") }}</span>
+        <input type="checkbox" v-model="settings.desktopLyricsLocked" />
+      </label>
+
+      <label class="row switch-row">
+        <span class="row-label">{{ t("settings.desktopLyricsAlwaysOnTop") }}</span>
+        <input type="checkbox" v-model="settings.desktopLyricsAlwaysOnTop" />
+      </label>
+
+      <div class="actions">
+        <button class="lm-btn lm-btn--outlined" @click="resetDesktopLyricsBounds">
+          {{ t("settings.desktopLyricsResetPos") }}
+        </button>
+      </div>
+    </section>
+
+    <!-- 播放器 -->
 
     <!-- 播放器 -->
     <section class="card">
