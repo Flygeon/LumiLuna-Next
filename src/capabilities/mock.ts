@@ -238,6 +238,14 @@ export function mockInvoke<T>(
       const path = String(args?.path ?? "");
       return as("https://demo.webdav.invalid/" + path);
     }
+    case "netease_sms_captcha_sent":
+      return as(undefined);
+    case "netease_login_cellphone":
+      return as<NeteaseProfile>({
+        userId: 10001,
+        nickname: "演示用户(手机)",
+        avatarUrl: "",
+      });
     case "netease_login_qr_key":
       return as("demo-unikey-abcdef");
     case "netease_login_qr_check": {

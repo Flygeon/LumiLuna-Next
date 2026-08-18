@@ -190,6 +190,12 @@ export const capabilities = {
   neteaseAccount(): Promise<NeteaseProfile> {
     return safeInvoke("netease_account");
   },
+  neteaseSmsCaptchaSent(phone: string, ctcode?: string): Promise<void> {
+    return safeInvoke("netease_sms_captcha_sent", { phone, ctcode: ctcode ?? null });
+  },
+  neteaseLoginCellphone(phone: string, captcha: string, ctcode?: string): Promise<NeteaseProfile> {
+    return safeInvoke("netease_login_cellphone", { phone, captcha, ctcode: ctcode ?? null });
+  },
   neteaseUserPlaylists(offset = 0, limit = 100): Promise<NeteasePlaylist[]> {
     return safeInvoke("netease_user_playlists", { offset, limit });
   },

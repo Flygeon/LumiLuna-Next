@@ -653,35 +653,111 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
       />
     </template>
 
-    <!-- 网易云扫码登录弹窗 -->
+    <!-- 网易云登录弹窗（扫码 / 手机号） -->
     <transition name="qr-fade">
       <div v-if="netease.qrOpen" class="qr-mask" @click.self="netease.closeQr()">
         <div class="qr-card">
           <h3>{{ t("netease.loginTitle") }}</h3>
-          <div class="qr-img-wrap">
-            <img v-if="netease.qrCode" :src="netease.qrCode" alt="QR" class="qr-img" />
-            <div v-else class="qr-loading">{{ t("online.loading") }}</div>
-          </div>
-          <p class="qr-status" :class="{ error: netease.qrState === 'error' }">
-            <template v-if="netease.qrState === 'wait'">{{ t("netease.scanWaiting") }}</template>
-            <template v-else-if="netease.qrState === 'scanned'">{{ t("netease.scanScanned") }}</template>
-            <template v-else-if="netease.qrState === 'confirmed'">{{ t("netease.scanConfirmed") }}</template>
-            <template v-else-if="netease.qrState === 'success'">{{ t("netease.scanSuccess") }}</template>
-            <template v-else-if="netease.qrState === 'timeout'">{{ t("netease.scanTimeout") }}</template>
-            <template v-else-if="netease.qrState === 'error'">{{ netease.qrError }}</template>
-          </p>
-          <div class="qr-actions">
-            <button class="lm-btn lm-btn--text" @click="netease.closeQr()">
-              {{ t("actions.cancel") }}
+          <!-- 切换 tab -->
+          <div class="phone-tabs">
+            <button
+              :class="['phone-tab', { active: netease.authTab === 'qr' }]"
+              @click="netease.authTab = 'qr'; netease.phoneError = ''"
+            >
+              <span class="material-symbols-outlined">qr_code</span>
+              {{ t("netease.qrTab") }}
             </button>
             <button
-              v-if="netease.qrState === 'error' || netease.qrState === 'timeout'"
-              class="lm-btn lm-btn--tonal"
-              @click="netease.openQr()"
+              :class="['phone-tab', { active: netease.authTab === 'phone' }]"
+              @click="netease.authTab = 'phone'; netease.phoneError = ''"
             >
-              {{ t("netease.login") }}
+              <span class="material-symbols-outlined">smartphone</span>
+              {{ t("netease.phoneTab") }}
             </button>
           </div>
+
+          <!-- 扫码登录 -->
+          <template v-if="netease.authTab === 'qr'">
+            <div class="qr-img-wrap">
+              <img v-if="netease.qrCode" :src="netease.qrCode" alt="QR" class="qr-img" />
+              <div v-else class="qr-loading">{{ t("online.loading") }}</div>
+            </div>
+            <p class="qr-status" :class="{ error: netease.qrState === 'error' }">
+              <template v-if="netease.qrState === 'wait'">{{ t("netease.scanWaiting") }}</template>
+              <template v-else-if="netease.qrState === 'scanned'">{{ t("netease.scanScanned") }}</template>
+              <template v-else-if="netease.qrState === 'confirmed'">{{ t("netease.scanConfirmed") }}</template>
+              <template v-else-if="netease.qrState === 'success'">{{ t("netease.scanSuccess") }}</template>
+              <template v-else-if="netease.qrState === 'timeout'">{{ t("netease.scanTimeout") }}</template>
+              <template v-else-if="netease.qrState === 'error'">{{ netease.qrError }}</template>
+            </p>
+            <div class="qr-actions">
+              <button class="lm-btn lm-btn--text" @click="netease.closeQr()">
+                {{ t("actions.cancel") }}
+              </button>
+              <button
+                v-if="netease.qrState === 'error' || netease.qrState === 'timeout'"
+                class="lm-btn lm-btn--tonal"
+                @click="netease.openQr()"
+              >
+                <span class="material-symbols-outlined">refresh</span>
+                {{ t("netease.login") }}
+              </button>
+            </div>
+          </template>
+
+          <!-- 手机号登录 -->
+          <template v-else>
+            <div class="phone-form">
+              <input
+                v-model="netease.phone"
+                type="tel"
+                inputmode="numeric"
+                maxlength="11"
+                placeholder="手机号"
+                class="phone-input"
+                @keyup.enter="netease.sendSmsCaptcha()"
+              />
+              <div class="sms-row">
+                <input
+                  v-model="netease.smsCode"
+                  type="text"
+                  inputmode="numeric"
+                  maxlength="6"
+                  placeholder="短信验证码"
+                  class="phone-input sms-input"
+                  @keyup.enter="netease.phoneLogin()"
+                />
+                <button
+                  class="sms-btn"
+                  :disabled="netease.smsSending || netease.smsCooldown > 0"
+                  @click="netease.sendSmsCaptcha()"
+                >
+                  <template v-if="netease.smsCooldown > 0">
+                    {{ netease.smsCooldown }}s
+                  </template>
+                  <template v-else-if="netease.smsSending">
+                    发送中…
+                  </template>
+                  <template v-else>
+                    获取验证码
+                  </template>
+                </button>
+              </div>
+              <p v-if="netease.phoneError" class="phone-error">{{ netease.phoneError }}</p>
+              <button
+                class="phone-login-btn"
+                :disabled="netease.phoneLogging"
+                @click="netease.phoneLogin()"
+              >
+                {{ netease.phoneLogging ? "登录中…" : "登录" }}
+              </button>
+              <div class="phone-actions">
+                <button class="lm-btn lm-btn--text" @click="netease.closeQr()">
+                  {{ t("actions.cancel") }}
+                </button>
+              </div>
+            </div>
+          </template>
         </div>
       </div>
     </transition>
@@ -964,7 +1040,7 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
   flex: 1;
 }
 
-/* ---- 扫码弹窗 ---- */
+/* ---- 登录弹窗 ---- */
 .qr-mask {
   position: fixed;
   inset: 0;
@@ -1025,6 +1101,123 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
 }
 .qr-actions .material-symbols-outlined {
   font-size: 18px;
+}
+
+/* ---- 手机号登录 tab ---- */
+.phone-tabs {
+  display: flex;
+  gap: 4px;
+  width: 100%;
+  background: var(--md-sys-color-surface-container);
+  border-radius: var(--md-sys-shape-corner-full);
+  padding: 3px;
+}
+.phone-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border: none;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  font-family: inherit;
+  font-size: var(--md-sys-typescale-label-small-size);
+  cursor: pointer;
+  transition: all var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard);
+}
+.phone-tab.active {
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+  box-shadow: var(--md-elevation-1);
+}
+.phone-tab .material-symbols-outlined {
+  font-size: 16px;
+}
+.phone-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+.phone-input {
+  height: 40px;
+  width: 100%;
+  padding: 0 14px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-medium);
+  background: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
+  font-family: inherit;
+  font-size: var(--md-sys-typescale-body-small-size);
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard);
+}
+.phone-input:focus {
+  border-color: var(--md-sys-color-primary);
+}
+.sms-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+.sms-input {
+  flex: 1;
+  min-width: 0;
+}
+.sms-btn {
+  height: 40px;
+  padding: 0 14px;
+  border: none;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+  font-family: inherit;
+  font-size: var(--md-sys-typescale-label-small-size);
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard);
+}
+.sms-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.sms-btn:hover:not(:disabled) {
+  background: var(--md-sys-color-surface-container-highest);
+}
+.phone-error {
+  font-size: var(--md-sys-typescale-body-small-size);
+  color: var(--md-sys-color-error);
+  text-align: center;
+  margin: 0;
+}
+.phone-login-btn {
+  height: 40px;
+  width: 100%;
+  border: none;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+  font-family: inherit;
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard);
+}
+.phone-login-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.phone-login-btn:hover:not(:disabled) {
+  opacity: 0.92;
+}
+.phone-actions {
+  display: flex;
+  justify-content: center;
 }
 
 .qr-fade-enter-active,

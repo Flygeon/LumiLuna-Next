@@ -29,7 +29,7 @@ export const useNeteaseStore = defineStore("netease", () => {
   const cloudCount = ref(0);
   const cloudHasMore = ref(false);
 
-  // ---- 扫码弹窗 ----
+  // ---- 登录弹窗 ----
   const qrOpen = ref(false);
   const qrKey = ref("");
   const qrCode = ref("");
@@ -37,6 +37,16 @@ export const useNeteaseStore = defineStore("netease", () => {
   const qrError = ref("");
   let pollTimer: number | null = null;
   let qrDeadline = 0;
+
+  // 手机号登录弹窗状态
+  const authTab = ref<"qr" | "phone">("qr");
+  const phone = ref("");
+  const smsCode = ref("");
+  const smsSending = ref(false);
+  const smsCooldown = ref(0);
+  const phoneLogging = ref(false);
+  const phoneError = ref("");
+  let smsCooldownTimer: number | null = null;
 
   /** 应用启动 / 设置开启时校验登录态并拉取歌单与云盘数量 */
   async function init() {
@@ -124,10 +134,74 @@ export const useNeteaseStore = defineStore("netease", () => {
 
   function closeQr() {
     stopPolling();
+    if (smsCooldownTimer) {
+      clearTimeout(smsCooldownTimer);
+      smsCooldownTimer = null;
+    }
     qrOpen.value = false;
     qrKey.value = "";
     qrCode.value = "";
     qrState.value = "wait";
+    smsCooldown.value = 0;
+    phone.value = "";
+    smsCode.value = "";
+    phoneError.value = "";
+    authTab.value = "qr";
+  }
+
+  /** 发送短信验证码 */
+  async function sendSmsCaptcha() {
+    if (smsSending.value || smsCooldown.value > 0) return;
+    if (!/^\d{11}$/.test(phone.value.trim())) {
+      phoneError.value = "请输入 11 位手机号";
+      return;
+    }
+    phoneError.value = "";
+    smsSending.value = true;
+    try {
+      await capabilities.neteaseSmsCaptchaSent(phone.value.trim());
+      smsCooldown.value = 60;
+      smsCooldownTimer = window.setInterval(() => {
+        smsCooldown.value--;
+        if (smsCooldown.value <= 0) {
+          if (smsCooldownTimer) {
+            clearInterval(smsCooldownTimer);
+            smsCooldownTimer = null;
+          }
+        }
+      }, 1000);
+    } catch (e) {
+      phoneError.value = String(e);
+    } finally {
+      smsSending.value = false;
+    }
+  }
+
+  /** 手机号验证码登录 */
+  async function phoneLogin() {
+    if (phoneLogging.value) return;
+    if (!/^\d{11}$/.test(phone.value.trim())) {
+      phoneError.value = "请输入 11 位手机号";
+      return;
+    }
+    if (!smsCode.value.trim()) {
+      phoneError.value = "请输入验证码";
+      return;
+    }
+    phoneError.value = "";
+    phoneLogging.value = true;
+    try {
+      const profile = await capabilities.neteaseLoginCellphone(phone.value.trim(), smsCode.value.trim());
+      loggedIn.value = true;
+      profile.value = profile;
+      closeQr();
+      void refreshPlaylists();
+      void refreshCloudCount();
+    } catch (e) {
+      phoneError.value = String(e);
+    } finally {
+      phoneLogging.value = false;
+    }
   }
 
   /** 退出登录：清 Rust 侧 cookie + 本地状态 */
@@ -180,10 +254,19 @@ export const useNeteaseStore = defineStore("netease", () => {
     qrCode,
     qrState,
     qrError,
+    authTab,
+    phone,
+    smsCode,
+    smsSending,
+    smsCooldown,
+    phoneLogging,
+    phoneError,
     init,
     openQr,
     closeQr,
     logout,
+    sendSmsCaptcha,
+    phoneLogin,
     refreshPlaylists,
     refreshCloudCount,
     loadCloudPage,

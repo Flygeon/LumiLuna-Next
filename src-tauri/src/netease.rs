@@ -1552,6 +1552,109 @@ fn netease_song_url_sync(ids: Vec<i64>) -> Result<Vec<NeteaseSongUrl>, String> {
         .collect())
 }
 
+/// 手机号短信验证码发送
+#[tauri::command]
+pub async fn netease_sms_captcha_sent(
+    app: tauri::AppHandle,
+    phone: String,
+    ctcode: Option<String>,
+) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || netease_sms_captcha_sent_sync(app, phone, ctcode))
+        .await
+        .map_err(|e| format!("网易云请求异常：{e}"))?
+}
+
+fn netease_sms_captcha_sent_sync(
+    app: tauri::AppHandle,
+    phone: String,
+    ctcode: Option<String>,
+) -> Result<(), String> {
+    ensure_loaded(&app);
+    let (code, body) = api_call(
+        "weapi",
+        "/api/sms/captcha/sent",
+        &mut serde_json::json!({
+            "ctcode": ctcode.unwrap_or_else(|| "86".to_string()),
+            "secrete": "music_middleuser_pclogin",
+            "cellphone": phone,
+        }),
+    )?;
+    if code != 200 {
+        return Err(body["message"].as_str().unwrap_or("验证码发送失败").to_string());
+    }
+    Ok(())
+}
+
+/// 手机号验证码登录
+#[tauri::command]
+pub async fn netease_login_cellphone(
+    app: tauri::AppHandle,
+    phone: String,
+    captcha: String,
+    ctcode: Option<String>,
+) -> Result<NeteaseAccount, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        netease_login_cellphone_sync(app, phone, captcha, ctcode)
+    })
+        .await
+        .map_err(|e| format!("网易云请求异常：{e}"))?
+}
+
+fn netease_login_cellphone_sync(
+    app: tauri::AppHandle,
+    phone: String,
+    captcha: String,
+    ctcode: Option<String>,
+) -> Result<NeteaseAccount, String> {
+    ensure_loaded(&app);
+    // 同扫码登录流程：先确保有匿名身份（MUSIC_A），防风控
+    {
+        let persist = state().lock().unwrap();
+        let map = cookie_to_map(&persist.cookie);
+        let has_music_u = map.contains_key("MUSIC_U");
+        let has_music_a = map.contains_key("MUSIC_A");
+        let has_key = persist.xeapi_key.is_some();
+        if !has_music_u && (!has_music_a || !has_key) {
+            drop(persist);
+            if let Err(e) = register_anonymous(&app) {
+                eprintln!("[网易云] 匿名身份注册失败（手机号登录可能被风控）：{e}");
+            }
+        }
+    }
+    let (code, _body) = api_call(
+        "weapi",
+        "/api/w/login/cellphone",
+        &mut serde_json::json!({
+            "type": "1",
+            "https": "true",
+            "phone": phone,
+            "countrycode": ctcode.unwrap_or_else(|| "86".to_string()),
+            "remember": "true",
+            "captcha": captcha,
+        }),
+    )?;
+    if code != 200 {
+        // 从 body 提取错误信息
+        let msg = _body["message"].as_str()
+            .or_else(|| _body["msg"].as_str())
+            .unwrap_or("登录失败");
+        return Err(msg.to_string());
+    }
+    // 登录成功：合并 cookie → 拉取账号 → 持久化
+    {
+        let persist = state().lock().unwrap();
+        save_persist(&app, &persist)?;
+    }
+    let account = fetch_account(&app)?;
+    {
+        let mut persist = state().lock().unwrap();
+        persist.uid = Some(account.user_id);
+        persist.profile = Some(account.clone());
+        save_persist(&app, &persist)?;
+    }
+    Ok(account)
+}
+
 /// 退出登录：清内存 + 删持久化文件
 #[tauri::command]
 pub async fn netease_logout(app: tauri::AppHandle) -> Result<(), String> {

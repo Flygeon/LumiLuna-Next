@@ -151,6 +151,8 @@ pub fn run() {
             webdav::webdav_media_url,
             netease::netease_login_qr_key,
             netease::netease_login_qr_check,
+            netease::netease_sms_captcha_sent,
+            netease::netease_login_cellphone,
             netease::netease_account,
             netease::netease_user_playlists,
             netease::netease_playlist_detail,
