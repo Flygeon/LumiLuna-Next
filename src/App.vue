@@ -201,10 +201,6 @@ router.afterEach((to) => {
               >{{ countOf(item.type) > 999 ? "999+" : countOf(item.type) }}</span>
             </span>
             <span class="label">{{ t("nav." + item.key) }}</span>
-            <span
-              v-if="isActive(item.path)"
-              class="desc"
-            >{{ t("navDesc." + item.key) }}</span>
           </button>
         </div>
 
@@ -223,10 +219,6 @@ router.afterEach((to) => {
               >{{ item.icon }}</span>
             </span>
             <span class="label">{{ t("nav." + item.key) }}</span>
-            <span
-              v-if="isActive(item.path)"
-              class="desc"
-            >{{ t("navDesc." + item.key) }}</span>
           </button>
         </div>
       </nav>
@@ -398,18 +390,6 @@ router.afterEach((to) => {
 .nav-item.active .label {
   color: var(--md-sys-color-on-surface);
   font-weight: 600;
-}
-
-.desc {
-  font-size: 9px;
-  line-height: 1.2;
-  color: var(--md-sys-color-on-surface-variant);
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: center;
-  opacity: 0.8;
 }
 
 /* ---- 内容区 ---- */
