@@ -320,3 +320,76 @@ export interface OnlinePlaylistEntry {
   id: string;
   name: string;
 }
+
+// ── 听歌时长统计 ──────────────────────────────────────────────
+
+/** 播放来源 */
+export type PlaySource = "local" | "online" | "webdav";
+
+/** 开始播放会话 */
+export interface PlaySessionStart {
+  id: string;
+  trackId: string;
+  source: PlaySource;
+  startedAt: number;
+  title?: string | null;
+  artist?: string | null;
+  album?: string | null;
+  filePath?: string | null;
+  fileName?: string | null;
+  contentHash?: string | null;
+  coverUrl?: string | null;
+  srcUrl?: string | null;
+  qualityBr?: number | null;
+}
+
+/** 结束播放会话 */
+export interface PlaySessionEnd {
+  id: string;
+  trackId: string;
+  source: PlaySource;
+  startedAt: number;
+  endedAt: number;
+  listenedMs: number;
+  completed: boolean;
+  title?: string | null;
+  artist?: string | null;
+  album?: string | null;
+  filePath?: string | null;
+  fileName?: string | null;
+  contentHash?: string | null;
+  coverUrl?: string | null;
+  srcUrl?: string | null;
+  qualityBr?: number | null;
+}
+
+/** 日统计 */
+export interface ListenStats {
+  day: string;
+  playCount: number;
+  uniqueTracks: number;
+  totalMs: number;
+}
+
+/** 来源分布统计 */
+export interface ListenSourceStat {
+  source: string;
+  playCount: number;
+  totalMs: number;
+}
+
+/** 歌曲排行统计 */
+export interface TopTrackStat {
+  trackId: string;
+  source: string;
+  title: string;
+  artist: string;
+  album: string;
+  coverUrl?: string | null;
+  filePath?: string | null;
+  fileName?: string | null;
+  contentHash?: string | null;
+  playCount: number;
+  totalMs: number;
+  srcUrl?: string | null;
+}

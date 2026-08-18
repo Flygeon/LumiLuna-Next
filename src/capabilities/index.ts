@@ -11,9 +11,13 @@ import { writeFile } from "@tauri-apps/plugin-fs";
 import type {
   BookProgress,
   FfmpegStatus,
+  ListenSourceStat,
+  ListenStats,
   ListQuery,
   MediaEntry,
   MediaMetadata,
+  PlaySessionEnd,
+  PlaySessionStart,
   ScanConfig,
   ScanProgress,
   SmtcCommand,
@@ -25,6 +29,7 @@ import type {
   NeteaseQrCheck,
   NeteaseSong,
   Song,
+  TopTrackStat,
   WebDavEntry,
   WebDavStatus,
 } from "@shared/types";
@@ -118,6 +123,52 @@ export const capabilities = {
   },
   listHistory(): Promise<MediaEntry[]> {
     return safeInvoke("list_history");
+  },
+
+  // ---- 听歌时长统计 ----
+  startPlaySession(input: PlaySessionStart): Promise<void> {
+    return safeInvoke("start_play_session", { input });
+  },
+  endPlaySession(input: PlaySessionEnd): Promise<void> {
+    return safeInvoke("end_play_session", { input });
+  },
+  getListenStats(day?: string): Promise<ListenStats | null> {
+    return safeInvoke("get_listen_stats", { day: day ?? null });
+  },
+  listListenStats(
+    days: number,
+    fromDay?: string,
+    toDay?: string,
+  ): Promise<ListenStats[]> {
+    return safeInvoke("list_listen_stats", {
+      days: days ?? null,
+      fromDay: fromDay ?? null,
+      toDay: toDay ?? null,
+    });
+  },
+  listTopTracks(
+    limit: number,
+    days?: number | null,
+    fromDay?: string,
+    toDay?: string,
+  ): Promise<TopTrackStat[]> {
+    return safeInvoke("list_top_tracks", {
+      limit: limit ?? null,
+      days: days ?? null,
+      fromDay: fromDay ?? null,
+      toDay: toDay ?? null,
+    });
+  },
+  listenSourceBreakdown(
+    days?: number | null,
+    fromDay?: string,
+    toDay?: string,
+  ): Promise<ListenSourceStat[]> {
+    return safeInvoke("listen_source_breakdown", {
+      days: days ?? null,
+      fromDay: fromDay ?? null,
+      toDay: toDay ?? null,
+    });
   },
   listTrash(): Promise<MediaEntry[]> {
     return safeInvoke("list_trash");

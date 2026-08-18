@@ -4,6 +4,7 @@ pub mod metadata;
 pub mod scan;
 pub mod smtc;
 pub mod song;
+pub mod stats;
 pub mod thumbnail;
 
 use std::collections::HashMap;
@@ -59,7 +60,7 @@ impl ScanJobInfo {
 }
 
 /// 当前 schema 版本。递增后在 `migrate` 中追加对应分支。
-const SCHEMA_VERSION: i64 = 1;
+const SCHEMA_VERSION: i64 = 2;
 
 /// 建表 + 版本化迁移。对已存在的库是幂等的。
 pub fn init_db(conn: &rusqlite::Connection) -> rusqlite::Result<()> {
@@ -156,7 +157,48 @@ fn migrate(conn: &rusqlite::Connection) -> rusqlite::Result<()> {
         return Ok(());
     }
     // v0 -> v1：初始 schema 已由上面的 CREATE TABLE IF NOT EXISTS 建立。
-    conn.pragma_update(None, "user_version", SCHEMA_VERSION)?;
+    if current < 1 {
+        conn.pragma_update(None, "user_version", 1)?;
+    }
+    // v1 -> v2：听歌时长统计
+    if current < 2 {
+        conn.execute_batch(
+            r#"
+            CREATE TABLE IF NOT EXISTS play_session (
+              id TEXT PRIMARY KEY,
+              track_id TEXT NOT NULL,
+              source TEXT NOT NULL,
+              started_at INTEGER NOT NULL,
+              ended_at INTEGER,
+              listened_ms INTEGER NOT NULL DEFAULT 0,
+              completed INTEGER NOT NULL DEFAULT 0,
+              quality_br INTEGER,
+              title TEXT,
+              artist TEXT,
+              album TEXT,
+              file_path TEXT,
+              file_name TEXT,
+              content_hash TEXT,
+              cover_url TEXT,
+              src_url TEXT
+            );
+            CREATE TABLE IF NOT EXISTS listen_daily (
+              day TEXT PRIMARY KEY,
+              play_count INTEGER NOT NULL DEFAULT 0,
+              unique_tracks INTEGER NOT NULL DEFAULT 0,
+              total_ms INTEGER NOT NULL DEFAULT 0
+            );
+            CREATE TABLE IF NOT EXISTS listen_day_track (
+              day TEXT NOT NULL,
+              track_id TEXT NOT NULL,
+              PRIMARY KEY (day, track_id)
+            );
+            CREATE INDEX IF NOT EXISTS idx_session_started ON play_session(started_at);
+            CREATE INDEX IF NOT EXISTS idx_session_track ON play_session(track_id);
+            "#,
+        )?;
+        conn.pragma_update(None, "user_version", 2)?;
+    }
     Ok(())
 }
 
@@ -165,5 +207,13 @@ pub fn now_secs() -> i64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_secs() as i64)
+        .unwrap_or(0)
+}
+
+/// 当前 Unix 毫秒
+pub fn now_ms() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as i64)
         .unwrap_or(0)
 }

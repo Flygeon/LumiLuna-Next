@@ -50,3 +50,17 @@ export const TYPE_ICONS: Record<string, string> = {
   audio: "music_note",
   book: "menu_book",
 };
+
+/** 听歌时长：X 小时 Y 分 / X 分钟，Screen Time 风格 */
+export function formatListenDuration(ms: number): string {
+  const totalMin = Math.max(0, Math.floor(ms / 60_000));
+  if (totalMin < 60) {
+    return `${totalMin} 分钟`;
+  }
+  const hours = Math.floor(totalMin / 60);
+  const mins = totalMin % 60;
+  if (mins === 0) {
+    return `${hours} 小时`;
+  }
+  return `${hours} 小时 ${mins} 分`;
+}

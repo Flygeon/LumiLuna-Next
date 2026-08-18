@@ -15,6 +15,7 @@ const router = createRouter({
     { path: "/treasure/market", component: () => import("@/views/PresetMarket.vue") },
     { path: "/favorites", component: () => import("@/views/FavoritesView.vue") },
     { path: "/history", component: () => import("@/views/HistoryView.vue") },
+    { path: "/stats", component: () => import("@/views/StatsView.vue") },
     { path: "/trash", component: () => import("@/views/TrashView.vue") },
     { path: "/settings", component: () => import("@/views/SettingsView.vue") },
     { path: "/desktop-lyrics", component: () => import("@/views/DesktopLyrics.vue") },

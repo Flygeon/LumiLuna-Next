@@ -26,6 +26,8 @@ import type {
   MediaEntry,
   NowPlaying,
   OnlineSong,
+  PlaySessionEnd,
+  PlaySessionStart,
   QueueItem,
   Song,
   WebDavEntry,
@@ -132,6 +134,83 @@ export const usePlayerStore = defineStore("player", () => {
   const repeatMode = ref<RepeatMode>("off");
   const shuffledIndices = ref<number[]>([]);
 
+  // ── 听歌时长统计：会话状态（非响应式，timeupdate 高频读写不触发重渲染）──
+  let sessionId: string | null = null;
+  let sessionTrack: NowPlaying | null = null;
+  let sessionStartedAt = 0;
+  let sessionListenedMs = 0;
+  let lastTickPos = 0;
+
+  /** 结束当前会话并写入数据库 */
+  function flushSession(completed: boolean) {
+    if (!sessionId || !sessionTrack) return;
+    const listenedMs = Math.max(0, Math.round(sessionListenedMs));
+    const now = Date.now();
+    const endedAt = now;
+    // 计算实际完成度：用 positionRef 值（非响应式已同步）
+    const pos = currentTime.value;
+    const dur = duration.value || sessionTrack.durationMs || 0;
+    const isCompleted = completed || (dur > 0 && (pos / dur >= 0.8 || listenedMs >= dur * 0.8));
+    const payload: PlaySessionEnd = {
+      id: sessionId,
+      trackId: song.value?.id ?? sessionTrack.id,
+      source: (sessionTrack.kind === "local" ? "local" : sessionTrack.kind === "online" ? "online" : "webdav") as "local" | "online" | "webdav",
+      startedAt: sessionStartedAt,
+      endedAt,
+      listenedMs,
+      completed: isCompleted,
+      title: sessionTrack.title || null,
+      artist: sessionTrack.artist || null,
+      album: sessionTrack.album || null,
+      filePath: ("filePath" in sessionTrack ? sessionTrack.filePath : null) || null,
+      fileName: null,
+      contentHash: null,
+      coverUrl: sessionTrack.coverUrl || null,
+      srcUrl: null,
+      qualityBr: null,
+    };
+    void capabilities.endPlaySession(payload).catch(() => {});
+    sessionId = null;
+    sessionTrack = null;
+    sessionListenedMs = 0;
+    lastTickPos = 0;
+  }
+
+  /** 开始新播放会话 */
+  function beginSession(track: NowPlaying) {
+    // 先 flush 旧会话
+    if (sessionId && sessionTrack) {
+      const pos = currentTime.value;
+      const dur = duration.value || sessionTrack.durationMs || 0;
+      const isCompleted = dur > 0 && (pos / dur >= 0.8 || sessionListenedMs >= dur * 0.8);
+      flushSession(isCompleted);
+    }
+    const id = typeof crypto !== "undefined" && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `ps-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    sessionId = id;
+    sessionTrack = track;
+    sessionStartedAt = Date.now();
+    sessionListenedMs = 0;
+    lastTickPos = 0;
+    const payload: PlaySessionStart = {
+      id,
+      trackId: track.id,
+      source: (track.kind === "local" ? "local" : track.kind === "online" ? "online" : "webdav") as "local" | "online" | "webdav",
+      startedAt: sessionStartedAt,
+      title: track.title || null,
+      artist: track.artist || null,
+      album: track.album || null,
+      filePath: ("filePath" in track ? track.filePath : null) || null,
+      fileName: null,
+      contentHash: null,
+      coverUrl: track.coverUrl || null,
+      srcUrl: track.kind === "online" ? track.src : null,
+      qualityBr: null,
+    };
+    void capabilities.startPlaySession(payload).catch(() => {});
+  }
+
   function setIndex(i: number) {
     currentIndex.value = i;
   }
@@ -156,6 +235,11 @@ export const usePlayerStore = defineStore("player", () => {
     el.preload = "auto";
     el.addEventListener("timeupdate", () => {
       currentTime.value = el.currentTime;
+      // 听歌时长累计：仅播放中且正向增量
+      if (playing.value && el.currentTime > lastTickPos) {
+        sessionListenedMs += (el.currentTime - lastTickPos) * 1000;
+      }
+      lastTickPos = el.currentTime;
       updateActiveLine();
       syncSmtc();
       syncDesktopLyrics();
@@ -177,9 +261,14 @@ export const usePlayerStore = defineStore("player", () => {
       syncDesktopLyrics(true);
     });
     el.addEventListener("seeked", () => {
+      // seek 后更新 lastTickPos，避免下一步 timeupdate 误增
+      lastTickPos = el.currentTime;
       syncSmtc(true);
     });
     el.addEventListener("ended", () => {
+      playing.value = false;
+      // 听歌时长：标记完成
+      flushSession(true);
       void next();
     });
     el.addEventListener("error", () => {
@@ -617,6 +706,8 @@ export const usePlayerStore = defineStore("player", () => {
       durationMs: s.meta.durationMs ?? undefined,
       kind: "local",
     };
+    // 听歌时长统计：开始新会话（自动 flush 旧会话）
+    beginSession(song.value);
     activeLine.value = -1;
     lyrics.value = parsed;
     coverColors.value = [];
@@ -726,6 +817,8 @@ export const usePlayerStore = defineStore("player", () => {
         coverUrl: item.pic,
         kind: "online",
       };
+      // 听歌时长统计：开始新会话
+      beginSession(song.value);
       activeLine.value = -1;
       // 与 loadSong 一致：歌词挂在 store 的 lyrics ref 上，LyricsView 读它
       lyrics.value = parsed;
@@ -819,6 +912,8 @@ export const usePlayerStore = defineStore("player", () => {
         lyrics: parsed,
         kind: "webdav",
       };
+      // 听歌时长统计：开始新会话
+      beginSession(song.value);
       activeLine.value = -1;
       lyrics.value = parsed;
       lyricsSource.value = null;
@@ -894,6 +989,8 @@ export const usePlayerStore = defineStore("player", () => {
     if (repeatMode.value === "one") {
       const el = ensureAudio();
       el.currentTime = 0;
+      // 开始新会话（旧会话已由 ended 事件 flush）
+      if (song.value) beginSession(song.value);
       void el.play().catch(() => {});
       return;
     }
@@ -1024,6 +1121,18 @@ export const usePlayerStore = defineStore("player", () => {
       }
     })
     .catch(() => {});
+
+  // 应用退出时尽力 flush 会话
+  if (typeof window !== "undefined") {
+    window.addEventListener("beforeunload", () => {
+      if (sessionId && sessionTrack) {
+        const pos = currentTime.value;
+        const dur = duration.value || sessionTrack.durationMs || 0;
+        const isCompleted = dur > 0 && (pos / dur >= 0.8 || sessionListenedMs >= dur * 0.8);
+        flushSession(isCompleted);
+      }
+    });
+  }
 
   return {
     song,

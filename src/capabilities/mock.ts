@@ -2,7 +2,7 @@
  * 纯浏览器预览用的 mock 后端（`npm run dev` 无 Tauri 环境时生效）。
  * 只为让 UI 可见，不追求行为等价。
  */
-import type { FfmpegStatus, MediaEntry, NeteaseCloudPage, NeteasePlaylist, NeteaseProfile, NeteaseQrCheck, NeteaseSong, ScanProgress, WebDavEntry, WebDavStatus } from "@shared/types";
+import type { FfmpegStatus, ListenSourceStat, ListenStats, MediaEntry, NeteaseCloudPage, NeteasePlaylist, NeteaseProfile, NeteaseQrCheck, NeteaseSong, ScanProgress, TopTrackStat, WebDavEntry, WebDavStatus } from "@shared/types";
 
 /** 内联 SVG 占位封面，避免依赖外部图片 */
 function placeholderCover(label: string, hue: number): string {
@@ -291,6 +291,113 @@ export function mockInvoke<T>(
     }
     case "netease_logout":
       return as(undefined);
+    case "start_play_session":
+    case "end_play_session":
+      return as(undefined);
+    case "get_listen_stats": {
+      return as<ListenStats | null>({
+        day: "2025-01-15",
+        playCount: 12,
+        uniqueTracks: 8,
+        totalMs: 2_580_000,
+      });
+    }
+    case "list_listen_stats": {
+      const days = Number((args?.days as number) ?? 7);
+      const rows: ListenStats[] = Array.from({ length: days }, (_, i) => {
+        const d = new Date();
+        d.setDate(d.getDate() - (days - 1 - i));
+        const ymd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        return {
+          day: ymd,
+          playCount: Math.floor(Math.random() * 20) + 1,
+          uniqueTracks: Math.floor(Math.random() * 10) + 1,
+          totalMs: Math.floor(Math.random() * 3_600_000) + 60_000,
+        };
+      });
+      return as(rows);
+    }
+    case "list_top_tracks": {
+      const demo: TopTrackStat[] = [
+        {
+          trackId: "demo-a1",
+          source: "local",
+          title: "夜曲",
+          artist: "周杰伦",
+          album: "十一月的萧邦",
+          coverUrl: null,
+          filePath: "D:/Demo/夜曲.flac",
+          fileName: "夜曲.flac",
+          contentHash: null,
+          playCount: 15,
+          totalMs: 2_890_000,
+          srcUrl: null,
+        },
+        {
+          trackId: "demo-a2",
+          source: "local",
+          title: "稻香",
+          artist: "周杰伦",
+          album: "魔杰座",
+          coverUrl: null,
+          filePath: "D:/Demo/稻香.mp3",
+          fileName: "稻香.mp3",
+          contentHash: null,
+          playCount: 10,
+          totalMs: 1_950_000,
+          srcUrl: null,
+        },
+        {
+          trackId: "demo-a3",
+          source: "local",
+          title: "Bohemian Rhapsody",
+          artist: "Queen",
+          album: "A Night at the Opera",
+          coverUrl: null,
+          filePath: "D:/Demo/Bohemian Rhapsody.flac",
+          fileName: "Bohemian Rhapsody.flac",
+          contentHash: null,
+          playCount: 8,
+          totalMs: 2_520_000,
+          srcUrl: null,
+        },
+        {
+          trackId: "1001",
+          source: "online",
+          title: "晴天",
+          artist: "周杰伦",
+          album: "叶惠美",
+          coverUrl: "https://p2.music.126.net/placeholder.jpg",
+          filePath: null,
+          fileName: null,
+          contentHash: null,
+          playCount: 5,
+          totalMs: 1_340_000,
+          srcUrl: "https://demo.netease.invalid/play?id=1001",
+        },
+        {
+          trackId: "2001",
+          source: "online",
+          title: "起风了",
+          artist: "买辣椒也用券",
+          album: "起风了",
+          coverUrl: "https://p2.music.126.net/placeholder2.jpg",
+          filePath: null,
+          fileName: null,
+          contentHash: null,
+          playCount: 3,
+          totalMs: 780_000,
+          srcUrl: "https://demo.netease.invalid/play?id=2001",
+        },
+      ];
+      return as(demo);
+    }
+    case "listen_source_breakdown": {
+      return as<ListenSourceStat[]>([
+        { source: "local", playCount: 33, totalMs: 7_360_000 },
+        { source: "online", playCount: 8, totalMs: 2_120_000 },
+      ]);
+    }
     case "smtc_set_media":
     case "smtc_set_playback":
       // 浏览器预览没有系统媒体控件，直接静默成功
