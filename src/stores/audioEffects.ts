@@ -13,11 +13,19 @@ import {
   audioEffectEngine,
   DEFAULT_EQ_BANDS,
 } from "@/utils/audioEffects";
+import {
+  decodeEqCode,
+  decodeGain,
+  encodeEqCode,
+  encodeGain,
+} from "@/utils/shareCode";
 import type { AudioEffectConfig, AudioEffectPreset } from "@shared/types";
 
 const store = new LazyStore("audio-effects.json");
 const PRESET_SHARE_PREFIX = "LLFX3:";
 const LEGACY_PRESET_SHARE_PREFIX = "LLFX1:";
+/** 「字符码」分享格式版本（<预设名称>@<字符码>）。 */
+const CHAR_SHARE_VERSION = 4;
 const NAME_MAX_CHARS = 80;
 
 interface SharedPresetPayload {
@@ -228,7 +236,74 @@ function decodeSharePayload(code: string): SharedPresetPayload | null {
   const trimmed = code.trim();
   if (trimmed.startsWith(PRESET_SHARE_PREFIX)) return decodeV3SharePayload(trimmed);
   if (trimmed.startsWith(LEGACY_PRESET_SHARE_PREFIX)) return decodeLegacyV1SharePayload(trimmed);
-  return null;
+  return decodeCharSharePayload(trimmed);
+}
+
+/**
+ * 「字符码」分享格式解码。
+ *
+ * 支持两种写法：
+ * - `<预设名称><分隔符><字符码>`：用最后一个分隔符拆分；
+ * - 只有 `<字符码>`（未写预设名）：直接用字符码本身作为预设名（1–5 字）。
+ *
+ * 连接符仅支持 `@`；若预设名、字符码中都不含 `@`（字库中不含 `@`），拆分即唯一。
+ */
+const CHAR_SHARE_SEPARATORS = "@";
+
+function decodeCharSharePayload(code: string): SharedPresetPayload | null {
+  const trimmed = code.trim();
+  // 从右往左找最后一个分隔符。
+  let sepIndex = -1;
+  for (let i = trimmed.length - 1; i >= 0; i -= 1) {
+    if (CHAR_SHARE_SEPARATORS.includes(trimmed[i])) {
+      sepIndex = i;
+      break;
+    }
+  }
+
+  let name: string;
+  let chars: string;
+  if (sepIndex > 0) {
+    name = trimmed.slice(0, sepIndex).trim();
+    chars = trimmed.slice(sepIndex + 1);
+  } else {
+    // 没写预设名：整个字符串就是字符码。
+    name = "";
+    chars = trimmed;
+  }
+
+  const values = decodeEqCode(chars);
+  if (!values) return null;
+
+  // 未写预设名时，默认用字符码本身（1–5 字）作为预设名。
+  const finalName = (name || chars).trim().slice(0, NAME_MAX_CHARS);
+  if (!finalName) return null;
+
+  const eqBands = DEFAULT_EQ_BANDS.map((band, index) => ({
+    frequency: band.frequency,
+    gain: decodeGain(values[index]),
+  }));
+  return {
+    version: CHAR_SHARE_VERSION,
+    name: finalName,
+    config: {
+      enabled: true,
+      eqBands,
+      bassBoost: decodeGain(values[10]),
+      reverb: values[11],
+      stereoWidth: values[12],
+    },
+  };
+}
+
+/** 均衡器配置 → 13 组数组值（顺序见 shareCode.ts 文件头注释）。 */
+function configToEqArray(config: AudioEffectConfig): number[] {
+  return [
+    ...config.eqBands.map((band) => encodeGain(band.gain)),
+    encodeGain(config.bassBoost),
+    config.reverb,
+    config.stereoWidth,
+  ];
 }
 
 function flatConfig(presetId = "flat"): AudioEffectConfig {
@@ -523,27 +598,47 @@ export const useAudioEffectsStore = defineStore("audio-effects", () => {
     persist();
   }
 
-  function exportUserPreset(id: string): string | null {
+  /**
+   * 导出两套分享码（默认一并复制到剪贴板）：
+   * 1. 新「字符码」：`<预设名称>@<字符码>`；
+   * 2. 原有 LLFX3 紧凑二进制格式（保留自定义频点等全部参数）。
+   */
+  function exportUserPreset(id: string): string[] | null {
     const found = userPresets.value.find((preset) => preset.id === id);
     if (!found) return null;
-    const { presetId: _presetId, ...sharedConfig } = clone(found.config);
-    return encodeSharePayload({ version: 1, name: found.name, config: sharedConfig });
+    const config = clone(found.config);
+    const name = found.name.trim().slice(0, NAME_MAX_CHARS);
+    if (!name) return null;
+    const payload: SharedPresetPayload = { version: 1, name, config };
+    return [
+      `${name}@${encodeEqCode(configToEqArray(config))}`,
+      encodeSharePayload(payload),
+    ];
   }
 
   function importUserPreset(code: string): string | null {
-    const payload = decodeSharePayload(code.trim());
-    if (!payload) return null;
+    // 复制出的两套分享码用换行分隔，导入时逐行按识别码尝试解码。
+    const lines = code
+      .trim()
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+    for (const line of lines) {
+      const payload = decodeSharePayload(line);
+      if (!payload) continue;
 
-    const id = `custom-${Date.now()}`;
-    const config: AudioEffectConfig = {
-      ...payload.config,
-      eqBands: clone(payload.config.eqBands),
-      enabled: true,
-      presetId: id,
-    };
-    userPresets.value.push({ id, name: payload.name, config, builtin: false });
-    applyConfig(config);
-    return payload.name;
+      const id = `custom-${Date.now()}`;
+      const config: AudioEffectConfig = {
+        ...payload.config,
+        eqBands: clone(payload.config.eqBands),
+        enabled: true,
+        presetId: id,
+      };
+      userPresets.value.push({ id, name: payload.name, config, builtin: false });
+      applyConfig(config);
+      return payload.name;
+    }
+    return null;
   }
 
   watch([config, userPresets], persist, { deep: true });
