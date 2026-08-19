@@ -33,7 +33,13 @@ export async function openWenku8Login(): Promise<Wenku8LoginStatus> {
 
   const { capabilities } = await import("@/capabilities");
   // 由 Rust 侧创建窗口并注入脚本（含 initialization_script）
-  await capabilities.wenku8LoginOpen();
+  // 加超时保护：若 Rust 命令因异常挂起，前端不会永久卡在“登录中”
+  await Promise.race([
+    capabilities.wenku8LoginOpen(),
+    new Promise<void>((_, reject) =>
+      setTimeout(() => reject(new Error("打开登录窗口超时，请重试")), 15000),
+    ),
+  ]);
 
   // 等待窗口创建后再监听关闭
   let win: WebviewWindow | null = await WebviewWindow.getByLabel(label);

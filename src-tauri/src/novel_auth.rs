@@ -272,7 +272,11 @@ pub fn wenku8_login_open(app: tauri::AppHandle) -> Result<(), String> {
     if let Some(w) = app.get_webview_window(label) {
         let _ = w.close();
     }
-    let w = tauri::WebviewWindowBuilder::new(&app, label, tauri::WebviewUrl::External(
+    // 注意：不要使用 visible(false)+show()+set_focus() 的组合。
+    // Tauri v2 中 build() 之后再 show()/set_focus() 在部分环境下会 panic，
+    // 导致本命令不返回、窗口停在不可见状态，前端 await 永久卡死（表现为“卡在登录中”、窗口不出现）。
+    // 直接用默认（可见）build() 创建窗口即可，窗口一定会出现。
+    tauri::WebviewWindowBuilder::new(&app, label, tauri::WebviewUrl::External(
         "https://www.wenku8.net/login.php".parse().unwrap(),
     ))
     .title("登录轻小说网 Wenku8")
@@ -280,15 +284,10 @@ pub fn wenku8_login_open(app: tauri::AppHandle) -> Result<(), String> {
     .resizable(true)
     .center()
     .decorations(true)
-    .visible(false)
     .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36 Edg/135.0.0.0")
     .initialization_script(LOGIN_INJECT_JS)
     .build()
     .map_err(|e| format!("创建登录窗口失败：{e}"))?;
-    // 先隐藏再显示：规避 WebView2 加载外部页时初始白屏/未绘制的竞态
-    // （Tauri 外部页窗口的已知做法，参考 mamezou-tech 的 PoC）。
-    w.show().map_err(|e| format!("显示登录窗口失败：{e}"))?;
-    let _ = w.set_focus();
     Ok(())
 }
 
