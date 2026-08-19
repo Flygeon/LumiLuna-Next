@@ -280,10 +280,10 @@ fn login_debug_log(msg: &str) {
     }
 }
 
-/// 注入到登录窗口的脚本：移除临时登录选项、轮询 cookie，
-/// 登录成功（cookie 含 jieqiUserInfo + jieqiVisitInfo）后提交并关闭窗口。
-/// 通过 initialization_script 注入，在 DOMContentLoaded 后执行避免阻塞渲染。
-/// 提交成功后由 Rust 侧主动关闭窗口（远程页 window.close 不可靠）。
+/// 注入到登录窗口的脚本：移除临时登录选项、检测登录完成（跳出 login.php 跳转到主页），
+/// 然后提交 cookie（交给 Rust 校验；若前端 document.cookie 因 httpOnly 缺失，
+/// Rust 侧会直接读 webview 全量 cookie 兜底）。全程写诊断日志到同一日志文件。
+/// 通过 initialization_script 注入，每次页面加载（含登录后跳转主页）都会重新执行。
 const LOGIN_INJECT_JS: &str = r#"
 (function () {
   function showErr(msg) {
@@ -299,67 +299,84 @@ const LOGIN_INJECT_JS: &str = r#"
       }
     } catch (e) {}
   }
+  var LOGIN_MARK = 'login.php';
+  function cookieState() {
+    var c = document.cookie || '';
+    return { len: c.length, hasU: c.indexOf('jieqiUserInfo') >= 0, hasV: c.indexOf('jieqiVisitInfo') >= 0 };
+  }
+  function logCookie(tag) {
+    try {
+      if (window.__TAURI__ && window.__TAURI__.core) {
+        var s = cookieState();
+        window.__TAURI__.core.invoke('wenku8_login_log', {
+          msg: '[diag:' + tag + '] docCookie len=' + s.len + ' hasUserInfo=' + s.hasU + ' hasVisit=' + s.hasV + ' url=' + location.href
+        }).catch(function(){});
+      }
+    } catch (e) {}
+  }
+  function onLoginPage() { return location.href.indexOf(LOGIN_MARK) >= 0; }
+  function markSawLogin() { try { sessionStorage.setItem('__wenku8_saw_login', '1'); } catch (e) {} }
+  function sawLogin() { try { return sessionStorage.getItem('__wenku8_saw_login') === '1'; } catch (e) { return false; } }
+  function stripTempCookie() {
+    try {
+      var sel = document.querySelector('select[name="usecookie"]');
+      if (sel) {
+        for (var i = 0; i < sel.options.length; i++) { if (sel.options[i].value === '0') sel.options[i].remove(); }
+        if (!sel.value) sel.value = '1';
+      }
+    } catch (e) {}
+  }
+  var submitted = false;
+  function submit() {
+    if (submitted) return;
+    submitted = true;
+    var cookie = document.cookie || '';
+    logCookie('submitBefore');
+    try {
+      if (window.__TAURI__ && window.__TAURI__.core) {
+        window.__TAURI__.core.invoke('wenku8_login_log', { msg: '[submit] 调用 wenku8_login_submit（cookie 交给 Rust 校验/兜底读 webview cookie）' }).catch(function(){});
+        window.__TAURI__.core.invoke('wenku8_login_submit', { cookie: cookie })
+          .then(function () {
+            try { window.__TAURI__.core.invoke('wenku8_login_log', { msg: '[submit] 成功返回，窗口将由 Rust 关闭' }).catch(function(){}); } catch (_) {}
+          })
+          .catch(function (e) {
+            try { window.__TAURI__.core.invoke('wenku8_login_log', { msg: 'submit 失败: ' + (e && e.message || e) }).catch(function(){}); } catch (_) {}
+          });
+      } else {
+        showErr('window.__TAURI__ 未定义，无法提交 cookie（请确认 tauri.conf.json 已开 withGlobalTauri）');
+      }
+    } catch (e) { showErr('submit 异常: ' + e); }
+  }
+  function maybeDone() {
+    var c = document.cookie || '';
+    // 情况1：document.cookie 直接含两个关键字段（非 httpOnly）
+    if (c.indexOf('jieqiUserInfo') >= 0 && c.indexOf('jieqiVisitInfo') >= 0) { submit(); return true; }
+    // 情况2：仍在登录页 -> 标记“见过登录页”，继续等
+    if (onLoginPage()) { markSawLogin(); return false; }
+    // 情况3：已离开登录页（登录成功会跳转到主页）-> 提交，由 Rust 读全量 cookie（含 httpOnly）
+    if (sawLogin()) { submit(); return true; }
+    return false;
+  }
   function run() {
-    function diag(tag) {
-      try {
-        if (window.__TAURI__ && window.__TAURI__.core) {
-          window.__TAURI__.core.invoke('wenku8_login_log', {
-            msg: '[diag:' + tag + '] readyState=' + document.readyState + ' url=' + location.href
-          }).catch(function(){});
-        }
-      } catch (e) {}
-    }
-    // 页面初始 DOM 状态（确认注入脚本已执行、当前 URL）
-    diag('init');
-    // 页面 load 完成（确认外部页是否真正加载成功）
-    window.addEventListener('load', function() { diag('onload'); });
-    // 监听 URL 变化（登录成功可能跳转到 userpage.php 等）
+    logCookie('init');
+    window.addEventListener('load', function () { logCookie('onload'); });
     var _lastUrl = location.href;
-    setInterval(function() {
+    setInterval(function () {
       try {
         if (location.href !== _lastUrl) {
           _lastUrl = location.href;
-          if (window.__TAURI__ && window.__TAURI__.core) {
-            window.__TAURI__.core.invoke('wenku8_login_log', {
-              msg: '[diag:url-changed] -> ' + location.href
-            }).catch(function(){});
-          }
+          logCookie('url-changed');
         }
       } catch (e) {}
     }, 1000);
-    function stripTempCookie() {
-      try {
-        const sel = document.querySelector('select[name="usecookie"]');
-        if (sel) {
-          for (const opt of Array.from(sel.options)) {
-            if (opt.value === '0') opt.remove();
-          }
-          if (!sel.value) sel.value = '1';
-        }
-      } catch (e) {}
-    }
-    function hasAll() {
-      const c = document.cookie || '';
-      return c.includes('jieqiUserInfo') && c.includes('jieqiVisitInfo');
-    }
-    async function submit() {
-      try {
-        const cookie = document.cookie;
-        try { if (window.__TAURI__ && window.__TAURI__.core) window.__TAURI__.core.invoke('wenku8_login_log', {
-          msg: '[submit] before: len=' + cookie.length + ' hasUserInfo=' + cookie.includes('jieqiUserInfo') + ' hasVisit=' + cookie.includes('jieqiVisitInfo')
-        }).catch(function(){}); } catch (_) {}
-        if (window.__TAURI__ && window.__TAURI__.core) {
-          await window.__TAURI__.core.invoke('wenku8_login_submit', { cookie });
-        }
-      } catch (e) { console.error('wenku8 submit failed', e); try { if (window.__TAURI__ && window.__TAURI__.core) window.__TAURI__.core.invoke('wenku8_login_log', { msg: 'submit failed: ' + (e && e.message || e) }).catch(function(){}); } catch (_) {} }
-    }
     stripTempCookie();
-    if (hasAll()) { submit(); return; }
-    const iv = setInterval(() => {
-      stripTempCookie();
-      if (hasAll()) { clearInterval(iv); submit(); }
-    }, 600);
-    setTimeout(() => clearInterval(iv), 600000);
+    if (!maybeDone()) {
+      var iv = setInterval(function () {
+        stripTempCookie();
+        maybeDone();
+      }, 600);
+      setTimeout(function () { clearInterval(iv); }, 600000);
+    }
   }
   function safeRun() {
     try { run(); } catch (e) { showErr(String(e)); }
