@@ -69,6 +69,7 @@
   --md-sys-shape-corner-medium: 12px;
   --md-sys-shape-corner-large: 16px;
   --md-sys-shape-corner-extra-large: 28px;
+  --md-sys-shape-corner-full: 999px;
 
   /* ---- M3 Type Scale ---- */
   --md-sys-typescale-display-size: 57px;
