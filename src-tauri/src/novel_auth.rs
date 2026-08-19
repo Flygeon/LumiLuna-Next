@@ -210,6 +210,14 @@ pub fn wenku8_userinfo(app: tauri::AppHandle) -> Option<Wenku8UserInfo> {
 /// 提交成功后由 Rust 侧主动关闭窗口（远程页 window.close 不可靠）。
 const LOGIN_INJECT_JS: &str = r#"
 (function () {
+  function showErr(msg) {
+    try {
+      var d = document.createElement('div');
+      d.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#c00;color:#fff;font:12px/1.6 monospace;padding:6px 8px;white-space:pre-wrap;';
+      d.textContent = 'LumiLuna 登录注入错误: ' + msg;
+      (document.body || document.documentElement).appendChild(d);
+    } catch (e) {}
+  }
   function run() {
     function stripTempCookie() {
       try {
@@ -242,10 +250,13 @@ const LOGIN_INJECT_JS: &str = r#"
     }, 600);
     setTimeout(() => clearInterval(iv), 600000);
   }
+  function safeRun() {
+    try { run(); } catch (e) { showErr(String(e)); }
+  }
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', run);
+    document.addEventListener('DOMContentLoaded', safeRun);
   } else {
-    run();
+    safeRun();
   }
 })();
 "#;
