@@ -7,9 +7,7 @@
     "core:default",
     "core:webview:allow-internal-toggle-devtools",
     "core:window:allow-close",
-    "core:window:allow-set-focus",
-    "wenku8_login_submit",
-    "wenku8_login_log"
+    "core:window:allow-set-focus"
   ],
   "remote": {
     "urls": ["https://www.wenku8.net", "https://*.wenku8.net", "https://*.wenku8.cc"]
