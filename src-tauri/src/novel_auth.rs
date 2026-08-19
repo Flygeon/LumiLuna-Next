@@ -253,6 +253,7 @@ const LOGIN_INJECT_JS: &str = r#"
 /// 打开登录窗口并由 Rust 侧注入抓取脚本。
 /// 使用 WebviewWindowBuilder.initialization_script（v2 无 eval API，
 /// 该方式在每次页面加载前注入，无需额外权限）。
+/// 设置浏览器 UA：wenku8 对 WebView2 默认 UA 会返回空白页（参考项目同样设置 Edge UA）。
 #[tauri::command]
 pub fn wenku8_login_open(app: tauri::AppHandle) -> Result<(), String> {
     let label = "wenku8-login";
@@ -267,6 +268,7 @@ pub fn wenku8_login_open(app: tauri::AppHandle) -> Result<(), String> {
     .inner_size(440.0, 680.0)
     .resizable(true)
     .center()
+    .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36 Edg/135.0.0.0")
     .initialization_script(LOGIN_INJECT_JS)
     .build()
     .map_err(|e| format!("创建登录窗口失败：{e}"))?;
