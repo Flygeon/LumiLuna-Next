@@ -244,6 +244,33 @@ const LOGIN_INJECT_JS: &str = r#"
     } catch (e) {}
   }
   function run() {
+    function diag(tag) {
+      try {
+        if (window.__TAURI__ && window.__TAURI__.core) {
+          window.__TAURI__.core.invoke('wenku8_login_log', {
+            msg: '[diag:' + tag + '] readyState=' + document.readyState + ' url=' + location.href
+          }).catch(function(){});
+        }
+      } catch (e) {}
+    }
+    // 页面初始 DOM 状态（确认注入脚本已执行、当前 URL）
+    diag('init');
+    // 页面 load 完成（确认外部页是否真正加载成功）
+    window.addEventListener('load', function() { diag('onload'); });
+    // 监听 URL 变化（登录成功可能跳转到 userpage.php 等）
+    var _lastUrl = location.href;
+    setInterval(function() {
+      try {
+        if (location.href !== _lastUrl) {
+          _lastUrl = location.href;
+          if (window.__TAURI__ && window.__TAURI__.core) {
+            window.__TAURI__.core.invoke('wenku8_login_log', {
+              msg: '[diag:url-changed] -> ' + location.href
+            }).catch(function(){});
+          }
+        }
+      } catch (e) {}
+    }, 1000);
     function stripTempCookie() {
       try {
         const sel = document.querySelector('select[name="usecookie"]');
@@ -303,12 +330,11 @@ pub fn wenku8_login_open(app: tauri::AppHandle) -> Result<(), String> {
     // Tauri v2 中 build() 之后再 show()/set_focus() 在部分环境下会 panic，
     // 导致本命令不返回、窗口停在不可见状态，前端 await 永久卡死（表现为“卡在登录中”、窗口不出现）。
     // 直接用默认（可见）build() 创建窗口即可，窗口一定会出现。
-    let nav_label = label.to_string();
-    let load_label = label.to_string();
     login_debug_log(&format!(
         "目标 URL = https://www.wenku8.net/login.php, label = {}",
         label
     ));
+    login_debug_log("准备调用 build() 创建窗口");
     let w = tauri::WebviewWindowBuilder::new(
         &app,
         label,
@@ -321,20 +347,6 @@ pub fn wenku8_login_open(app: tauri::AppHandle) -> Result<(), String> {
     .decorations(true)
     .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36 Edg/135.0.0.0")
     .initialization_script(LOGIN_INJECT_JS)
-    // 记录每一次导航（含被拦截/重定向），用于判断白屏是“页面没加载”还是“加载后渲染异常”
-    .on_navigation(move |url| {
-        login_debug_log(&format!("[{}][nav] -> {}", nav_label, url));
-        true
-    })
-    // 记录页面加载开始/结束事件及最终 URL
-    .on_page_load(move |_, payload| {
-        login_debug_log(&format!(
-            "[{}][load] {:?} {}",
-            load_label,
-            payload.event(),
-            payload.url()
-        ));
-    })
     .build()
     .map_err(|e| {
         login_debug_log(&format!("创建登录窗口失败：{e}"));
