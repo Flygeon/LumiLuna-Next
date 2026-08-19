@@ -1,27 +1,32 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import { useRouter } from "vue-router";
 import { usePlayerStore } from "@/stores/player";
 import PlayerControlIcon from "@/components/PlayerControlIcon.vue";
-import ElasticSlider from "@/components/ElasticSlider.vue";
 import { formatTime } from "@/utils/format";
 
 const player = usePlayerStore();
 const router = useRouter();
+
+const progress = computed(() =>
+  player.duration ? (player.currentTime / player.duration) * 100 : 0,
+);
+
+function seek(e: MouseEvent) {
+  const el = e.currentTarget as HTMLElement;
+  const ratio = (e.clientX - el.getBoundingClientRect().left) / el.offsetWidth;
+  player.seek(Math.max(0, Math.min(1, ratio)) * player.duration);
+}
 </script>
 
 <template>
   <div class="mini-player lm-glass">
-    <!-- 进度条置顶，松手 seek -->
-    <ElasticSlider
-      class="mini-track"
-      compact
-      fluid
-      :value="player.currentTime"
-      :max-value="Math.max(1, player.duration || 1)"
-      :starting-value="0"
-      aria-label="播放进度"
-      @value-commit="(v: number) => player.seek(v)"
-    />
+    <!-- 进度条置顶，点击可跳转 -->
+    <div class="track" @click.stop="seek">
+      <div class="fill" :style="{ width: progress + '%' }">
+        <span class="knob"></span>
+      </div>
+    </div>
 
     <div class="body" @click="router.push('/music/player')">
       <div class="cover">
@@ -76,24 +81,32 @@ const router = useRouter();
   to { transform: none; }
 }
 
-.mini-track {
+.track {
   position: relative;
   height: 4px;
   cursor: pointer;
-  z-index: 1;
+  background: var(--md-sys-color-surface-container-highest);
 }
-.mini-track :deep(.track) {
-  height: 4px;
-  align-items: flex-start;
+.track:hover .knob {
+  opacity: 1;
 }
-.mini-track :deep(.track-bg) {
-  height: 4px;
-  border-radius: 0;
+.fill {
+  position: relative;
+  height: 100%;
+  background: var(--md-sys-color-primary);
+  transition: width 180ms linear;
 }
-.mini-track :deep(.knob) {
+.knob {
+  position: absolute;
+  right: -5px;
+  top: 50%;
   width: 10px;
   height: 10px;
   border-radius: 50%;
+  background: var(--md-sys-color-primary);
+  transform: translateY(-50%);
+  opacity: 0;
+  transition: opacity var(--md-sys-motion-duration-short);
 }
 
 .body {

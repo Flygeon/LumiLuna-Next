@@ -233,7 +233,6 @@ export const usePlayerStore = defineStore("player", () => {
     if (audioEl.value) return audioEl.value;
     const el = new Audio();
     el.preload = "auto";
-    el.volume = useSettingsStore().volume;
     el.addEventListener("timeupdate", () => {
       currentTime.value = el.currentTime;
       // 听歌时长累计：仅播放中且正向增量
@@ -1065,14 +1064,7 @@ export const usePlayerStore = defineStore("player", () => {
     currentIndex.value = startIndex;
   }
 
-  // ---- 音量与队列操作（音乐列表行内操作使用）----
-  const volume = computed(() => useSettingsStore().volume);
-
-  function setVolume(v: number) {
-    const nextVolume = Math.max(0, Math.min(1, v));
-    useSettingsStore().volume = nextVolume;
-    if (audioEl.value) audioEl.value.volume = nextVolume;
-  }
+  // ---- 队列操作（音乐列表行内操作使用）----
 
   /** 追加到队尾；当前队列为空时直接作为当前曲目起播 */
   async function addToQueue(item: QueueItem) {
@@ -1230,8 +1222,6 @@ export const usePlayerStore = defineStore("player", () => {
     cycleRepeat,
     setQueue,
     playFromQueue,
-    volume,
-    setVolume,
     addToQueue,
     playNext,
     removeFromQueue,

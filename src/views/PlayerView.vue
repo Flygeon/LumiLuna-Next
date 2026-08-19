@@ -7,7 +7,6 @@ import { translate } from "@shared/i18n";
 import { isTauri } from "@/capabilities";
 import { useWindowDrag } from "@/composables/useWindowDrag";
 import WindowControls from "@/components/WindowControls.vue";
-import ElasticSlider from "@/components/ElasticSlider.vue";
 import FluidBackground from "@/components/FluidBackground.vue";
 import LyricsView from "@/components/LyricsView.vue";
 import PlayerControlIcon from "@/components/PlayerControlIcon.vue";
@@ -19,6 +18,7 @@ const settings = useSettingsStore();
 const router = useRouter();
 const rightTab = ref<"lyrics" | "queue" | "effects">("lyrics");
 const speed = ref(1);
+const isDragging = ref(false);
 
 const { isMaximized, minimize, toggleMaximize, close, startDrag } =
   useWindowDrag();
@@ -86,6 +86,13 @@ function formatTime(s: number) {
   return `${m}:${sec < 10 ? "0" : ""}${sec}`;
 }
 
+function onProgressClick(e: MouseEvent) {
+  const bar = (e.currentTarget as HTMLElement);
+  const rect = bar.getBoundingClientRect();
+  const pct = (e.clientX - rect.left) / rect.width;
+  player.seek(pct * player.duration);
+}
+
 function cycleSpeed() {
   const speeds = [1, 1.5, 2, 0.5, 0.75];
   speed.value = speeds[(speeds.indexOf(speed.value) + 1) % speeds.length];
@@ -140,16 +147,24 @@ onBeforeUnmount(() => {
         </div>
 
         <div class="progress-section">
-          <ElasticSlider
-            class="seek-slider"
-            fluid
-            :value="player.currentTime"
-            :max-value="Math.max(1, player.duration || 1)"
-            :starting-value="0"
-            :aria-label="t('player.progress')"
-            :format-value="formatTime"
-            @value-commit="(v: number) => player.seek(v)"
-          />
+          <div
+            class="progress-bar"
+            :class="{ dragging: isDragging }"
+            @mousedown="isDragging = true"
+            @mousemove="isDragging && onProgressClick($event)"
+            @mouseup="isDragging = false"
+            @mouseleave="isDragging = false"
+            @click="onProgressClick"
+          >
+            <div
+              class="progress-fill"
+              :style="{ width: (player.duration ? (player.currentTime / player.duration) * 100 : 0) + '%' }"
+            ></div>
+            <div
+              class="progress-thumb"
+              :style="{ left: (player.duration ? (player.currentTime / player.duration) * 100 : 0) + '%' }"
+            ></div>
+          </div>
           <div class="time-row">
             <span>{{ formatTime(player.currentTime) }}</span>
             <span>-{{ formatTime(player.duration - player.currentTime) }}</span>
@@ -177,17 +192,6 @@ onBeforeUnmount(() => {
             </button>
           </div>
           <div class="ctrl-group right">
-            <ElasticSlider
-              class="volume-slider"
-              compact
-              :value="player.volume"
-              :max-value="1"
-              :starting-value="0"
-              :aria-label="t('player.volumeAria')"
-              left-icon="volume_down"
-              right-icon="volume_up"
-              @value-change="(v: number) => player.setVolume(v)"
-            />
             <button class="side-btn speed" @click="cycleSpeed">{{ speed }}x</button>
           </div>
         </div>
@@ -387,10 +391,38 @@ onBeforeUnmount(() => {
   width: 425px;
   margin-top: 24px;
 }
-.seek-slider {
-  /* ElasticSlider 默认 primary 色，播放页高对比环境下覆盖为白色 */
-  --md-sys-color-primary: #fff;
-  --md-sys-color-surface-container-highest: rgba(255, 255, 255, 0.22);
+.progress-bar {
+  width: 425px;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 4px;
+  position: relative;
+  cursor: pointer;
+  transition: height 250ms cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+.progress-bar:hover,
+.progress-bar.dragging {
+  height: 10px;
+}
+.progress-fill {
+  height: 100%;
+  background: #fff;
+  border-radius: 4px;
+}
+.progress-thumb {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.25);
+  opacity: 0;
+  transition: opacity 200ms;
+}
+.progress-bar:hover .progress-thumb {
+  opacity: 1;
 }
 .time-row {
   display: flex;
@@ -410,12 +442,6 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 10px;
-}
-.volume-slider {
-  width: 150px;
-  --md-sys-color-primary: #fff;
-  --md-sys-color-surface-container-highest: rgba(255, 255, 255, 0.22);
-  --md-sys-color-on-surface-variant: rgba(255, 255, 255, 0.7);
 }
 .main-btn {
   width: 68px;

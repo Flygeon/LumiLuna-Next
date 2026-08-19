@@ -114,8 +114,6 @@ const DEFAULTS = {
   desktopLyricsBounds: { width: 420, height: 120 } as DesktopLyricsBounds,
   /** 关闭窗口时最小化到托盘（而非退出应用） */
   closeToTray: true,
-  /** 主音量 0–1 */
-  volume: 1,
   /** 本地音乐库展示模式：网格 / 列表 */
   musicViewMode: "grid" as MusicViewMode,
 };
@@ -167,7 +165,6 @@ export const useSettingsStore = defineStore("settings", () => {
   const desktopLyricsAnimation = ref<DesktopLyricsAnimation>(DEFAULTS.desktopLyricsAnimation);
   const desktopLyricsBounds = ref<DesktopLyricsBounds>({ ...DEFAULTS.desktopLyricsBounds });
   const closeToTray = ref(DEFAULTS.closeToTray);
-  const volume = ref(DEFAULTS.volume);
   const musicViewMode = ref<MusicViewMode>(DEFAULTS.musicViewMode);
   const loaded = ref(false);
 
@@ -219,7 +216,6 @@ export const useSettingsStore = defineStore("settings", () => {
     desktopLyricsAnimation,
     desktopLyricsBounds,
     closeToTray,
-    volume,
     musicViewMode,
   } as const;
 

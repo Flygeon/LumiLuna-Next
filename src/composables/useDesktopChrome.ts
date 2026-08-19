@@ -72,14 +72,6 @@ export function useDesktopChrome() {
           ),
         );
         break;
-      case "ArrowUp":
-        event.preventDefault();
-        player.setVolume(settings.volume + 0.05);
-        break;
-      case "ArrowDown":
-        event.preventDefault();
-        player.setVolume(settings.volume - 0.05);
-        break;
       default:
         break;
     }

@@ -556,20 +556,6 @@ function resetDesktopLyricsBounds() {
         </div>
       </div>
       <div class="row">
-        <div class="row-label">
-          <span>{{ t("settings.volume") }}</span>
-          <small class="row-value">{{ Math.round(settings.volume * 100) }}%</small>
-        </div>
-        <input
-          class="range"
-          type="range"
-          min="0"
-          max="100"
-          :value="Math.round(settings.volume * 100)"
-          @input="settings.volume = Number(($event.target as HTMLInputElement).value) / 100"
-        />
-      </div>
-      <div class="row">
         <div class="row-label"><span>{{ t("settings.musicViewMode") }}</span></div>
         <div class="segmented">
           <button
