@@ -135,6 +135,7 @@ pub fn is_login_required(html: &str) -> bool {
 // ---- Tauri 命令 ----
 
 /// 前端 WebView 登录完成后提交 cookie。校验通过后持久化，并立即拉取用户信息。
+/// 成功后由 Rust 侧主动关闭登录窗口（远程页 window.close 不可靠）。
 #[tauri::command]
 pub fn wenku8_login_submit(
     app: tauri::AppHandle,
@@ -156,6 +157,14 @@ pub fn wenku8_login_submit(
         s.user_info = user.clone();
         save_persist(&app, &s)?;
     }
+    // 延迟关闭登录窗口，确保本次 invoke 先返回
+    let app2 = app.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(300));
+        if let Some(w) = app2.get_webview_window("wenku8-login") {
+            let _ = w.close();
+        }
+    });
     Ok(Wenku8LoginStatus {
         logged_in: true,
         uname: user.as_ref().map(|u| u.uname.clone()),
@@ -197,41 +206,47 @@ pub fn wenku8_userinfo(app: tauri::AppHandle) -> Option<Wenku8UserInfo> {
 
 /// 注入到登录窗口的脚本：移除临时登录选项、轮询 cookie，
 /// 登录成功（cookie 含 jieqiUserInfo + jieqiVisitInfo）后提交并关闭窗口。
-/// 该脚本在登录窗口自身上下文内执行，因此可直接调用 invoke 与 window.close。
-/// 通过 WebviewWindowBuilder.initialization_script 注入（v2 已移除 eval）。
+/// 通过 initialization_script 注入，在 DOMContentLoaded 后执行避免阻塞渲染。
+/// 提交成功后由 Rust 侧主动关闭窗口（远程页 window.close 不可靠）。
 const LOGIN_INJECT_JS: &str = r#"
-(() => {
-  function stripTempCookie() {
-    try {
-      const sel = document.querySelector('select[name="usecookie"]');
-      if (sel) {
-        for (const opt of Array.from(sel.options)) {
-          if (opt.value === '0') opt.remove();
+(function () {
+  function run() {
+    function stripTempCookie() {
+      try {
+        const sel = document.querySelector('select[name="usecookie"]');
+        if (sel) {
+          for (const opt of Array.from(sel.options)) {
+            if (opt.value === '0') opt.remove();
+          }
+          if (!sel.value) sel.value = '1';
         }
-        if (!sel.value) sel.value = '1';
-      }
-    } catch (e) {}
-  }
-  function hasAll() {
-    const c = document.cookie || '';
-    return c.includes('jieqiUserInfo') && c.includes('jieqiVisitInfo');
-  }
-  async function submit() {
-    try {
-      const cookie = document.cookie;
-      if (window.__TAURI__ && window.__TAURI__.core) {
-        await window.__TAURI__.core.invoke('wenku8_login_submit', { cookie });
-      }
-    } catch (e) { console.error('wenku8 submit failed', e); }
-    try { window.close(); } catch (e) {}
-  }
-  stripTempCookie();
-  if (hasAll()) { submit(); return; }
-  const iv = setInterval(() => {
+      } catch (e) {}
+    }
+    function hasAll() {
+      const c = document.cookie || '';
+      return c.includes('jieqiUserInfo') && c.includes('jieqiVisitInfo');
+    }
+    async function submit() {
+      try {
+        const cookie = document.cookie;
+        if (window.__TAURI__ && window.__TAURI__.core) {
+          await window.__TAURI__.core.invoke('wenku8_login_submit', { cookie });
+        }
+      } catch (e) { console.error('wenku8 submit failed', e); }
+    }
     stripTempCookie();
-    if (hasAll()) { clearInterval(iv); submit(); }
-  }, 600);
-  setTimeout(() => clearInterval(iv), 600000);
+    if (hasAll()) { submit(); return; }
+    const iv = setInterval(() => {
+      stripTempCookie();
+      if (hasAll()) { clearInterval(iv); submit(); }
+    }, 600);
+    setTimeout(() => clearInterval(iv), 600000);
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', run);
+  } else {
+    run();
+  }
 })();
 "#;
 
