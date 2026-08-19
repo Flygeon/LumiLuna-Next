@@ -66,20 +66,22 @@ export async function openWenku8Login(): Promise<Wenku8LoginStatus> {
       resolve();
     };
     if (win) {
-      win
-        .onCloseRequested(() => {
-          try {
-            capabilities.wenku8LoginLog(
-              "[fe] onCloseRequested 触发（win 存在，准备关闭）",
-            ).catch(() => {});
-          } catch (e) {}
-          // 关闭请求：Tauri v2 监听 onCloseRequested 但不 preventDefault 时默认会关闭窗口；
-          // 这里显式 close() 兜底，确保系统“X”一定生效。
-          win.close().catch(() => {});
-          onClose();
-        })
-        .catch(() => onClose());
-      win.once("destroyed", onClose);
+      let closeHandled = false;
+      const handleClose = () => {
+        if (closeHandled) return;
+        closeHandled = true;
+        try {
+          capabilities
+            .wenku8LoginLog("[fe] onCloseRequested 触发（win 存在，准备关闭）")
+            .catch(() => {});
+        } catch (e) {}
+        // 关键：Tauri v2 点击 X 默认即关闭窗口（无 preventDefault 时）。
+        // 切勿在此处调用 win.close()——它会再次触发 onCloseRequested，
+        // 形成无限递归风暴，使窗口卡在“关闭中”永远关不掉（见 2026-08-20 日志）。
+        onClose();
+      };
+      win.onCloseRequested(handleClose).catch(() => onClose());
+      win.once("destroyed", handleClose);
     } else {
       try {
         capabilities
