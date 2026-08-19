@@ -269,6 +269,10 @@ pub fn wenku8_login_open(app: tauri::AppHandle) -> Result<(), String> {
     .resizable(true)
     .center()
     .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36 Edg/135.0.0.0")
+    // 允许混合内容（HTTPS 页加载 HTTP 子资源）：Wenku8 经 Cloudflare，登录页样式/脚本多走 http，
+    // Tauri 默认 WebView2 会拦截混合内容导致白屏；参考项目 InAppWebView 默认允许故能正常显示。
+    // 保留 wry 默认的 --disable-features，并追加 --allow-running-insecure-content。
+    .additional_browser_args("--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --allow-running-insecure-content")
     .initialization_script(LOGIN_INJECT_JS)
     .build()
     .map_err(|e| format!("创建登录窗口失败：{e}"))?;

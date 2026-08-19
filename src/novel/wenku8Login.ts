@@ -39,9 +39,20 @@ export async function openWenku8Login(): Promise<Wenku8LoginStatus> {
   let win: WebviewWindow | null = await WebviewWindow.getByLabel(label);
   const start = Date.now();
   await new Promise<void>((resolve) => {
-    const onClose = () => resolve();
+    let settled = false;
+    const onClose = () => {
+      if (settled) return;
+      settled = true;
+      resolve();
+    };
     if (win) {
-      win.once("close-requested", onClose);
+      // 关闭请求：默认即会关闭窗口；显式调用 close() 兜底，确保系统“X”一定生效
+      win
+        .onCloseRequested(() => {
+          win.close().catch(() => {});
+          onClose();
+        })
+        .catch(() => onClose());
       win.once("destroyed", onClose);
     }
     // 超时兜底：强制关闭
@@ -49,7 +60,7 @@ export async function openWenku8Login(): Promise<Wenku8LoginStatus> {
       if (Date.now() - start > TIMEOUT) {
         clearInterval(watchdog);
         win?.close().catch(() => {});
-        resolve();
+        onClose();
       }
     }, 1000);
   });
