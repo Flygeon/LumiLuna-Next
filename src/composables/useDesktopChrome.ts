@@ -49,6 +49,16 @@ export function useDesktopChrome() {
 
   function onKeyDown(event: KeyboardEvent) {
     if (isTypingTarget(event.target)) return;
+
+    // F12 开发者工具（仅设置中开启时生效）
+    if (event.key === "F12") {
+      if (localStorage.getItem("lumiluna-devtools-enabled") === "1") {
+        event.preventDefault();
+        void capabilities.openDevtools();
+      }
+      return;
+    }
+
     if (!player.song) return;
 
     if (event.code === "Space") {

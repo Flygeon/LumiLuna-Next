@@ -17,6 +17,9 @@ const router = useRouter();
 const ffmpeg = ref<FfmpegStatus | null>(null);
 const checking = ref(false);
 const toast = ref("");
+const devtoolsEnabled = ref(
+  typeof window !== "undefined" && localStorage.getItem("lumiluna-devtools-enabled") === "1",
+);
 
 function t(key: string) {
   return translate(settings.lang, key);
@@ -28,6 +31,16 @@ const LYRICS_ANIMATIONS: DesktopLyricsAnimation[] = ["fade", "slide", "scale", "
 function notify(message: string) {
   toast.value = message;
   window.setTimeout(() => (toast.value = ""), 2400);
+}
+
+function toggleDevtools(event: Event) {
+  const enabled = (event.target as HTMLInputElement).checked;
+  devtoolsEnabled.value = enabled;
+  localStorage.setItem("lumiluna-devtools-enabled", enabled ? "1" : "0");
+  if (enabled) {
+    // 打开后立即打开一次 DevTools，方便定位问题
+    void capabilities.openDevtools();
+  }
 }
 
 onMounted(async () => {
@@ -719,6 +732,15 @@ function resetDesktopLyricsBounds() {
         <span class="row-label">{{ t("settings.version") }}</span>
         <span class="value">1.1.0</span>
       </div>
+      <label class="row switch-row">
+        <span class="row-label">{{ t("settings.devtools") }}</span>
+        <input
+          type="checkbox"
+          :checked="devtoolsEnabled"
+          @change="toggleDevtools"
+        />
+      </label>
+      <p class="hint">{{ t("settings.devtoolsHint") }}</p>
       <div class="actions">
         <button class="lm-btn lm-btn--outlined" @click="clearCache">
           <span class="material-symbols-outlined">cleaning_services</span>

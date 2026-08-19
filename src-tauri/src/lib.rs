@@ -127,6 +127,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::app::exit_app,
+            commands::app::open_devtools,
             commands::book::get_book_progress,
             commands::book::save_book_progress,
             commands::scan::scan_start,

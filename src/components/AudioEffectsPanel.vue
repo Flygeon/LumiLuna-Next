@@ -6,13 +6,25 @@
 import { ref } from "vue";
 import { useAudioEffectsStore } from "@/stores/audioEffects";
 import { useSettingsStore } from "@/stores/settings";
+import { capabilities, isTauri } from "@/capabilities";
 import { translate } from "@shared/i18n";
+import { save } from "@tauri-apps/plugin-dialog";
+import { writeTextFile } from "@tauri-apps/plugin-fs";
 
 const effects = useAudioEffectsStore();
 const settings = useSettingsStore();
 const newPresetName = ref("");
 const importCode = ref("");
 const shareStatus = ref<"copied" | "failed" | "imported" | "invalid" | null>(null);
+
+// ---- 分享弹窗 ----
+const sharePopupPresetId = ref<string | null>(null);
+const uploadPopupPresetId = ref<string | null>(null);
+const uploadName = ref("");
+const uploadDesc = ref("");
+const uploadShareCode = ref("");
+const uploadStatus = ref<"idle" | "saving" | "saved" | "error">("idle");
+const uploadError = ref("");
 
 function t(key: string) {
   return translate(settings.lang, key);
@@ -37,7 +49,23 @@ function deletePreset(id: string) {
   effects.deleteUserPreset(id);
 }
 
-async function sharePreset(id: string) {
+/** 分享按钮：先弹出选择窗 */
+function showSharePopup(id: string) {
+  sharePopupPresetId.value = id;
+  uploadPopupPresetId.value = null;
+  uploadStatus.value = "idle";
+  uploadError.value = "";
+}
+
+function closeSharePopup() {
+  sharePopupPresetId.value = null;
+  uploadPopupPresetId.value = null;
+  uploadStatus.value = "idle";
+  uploadError.value = "";
+}
+
+/** 复制分享码（原行为） */
+async function copyShareCode(id: string) {
   const codes = effects.exportUserPreset(id);
   if (!codes || codes.length === 0) {
     shareStatus.value = "failed";
@@ -67,8 +95,83 @@ async function sharePreset(id: string) {
       if (!copied) throw new Error("Clipboard unavailable");
     }
     shareStatus.value = "copied";
+    closeSharePopup();
   } catch {
     shareStatus.value = "failed";
+  }
+}
+
+/** 切换到上传至预设市场弹窗 */
+function openUploadPopup(id: string) {
+  const preset = effects.userPresets.find((p) => p.id === id);
+  if (!preset) return;
+  const codes = effects.exportUserPreset(id);
+  if (!codes || codes.length === 0) return;
+  // 用 LLFX3 紧凑格式作为市场分享码
+  uploadName.value = preset.name;
+  uploadDesc.value = "";
+  uploadShareCode.value = codes[1] ?? codes[0]; // LLFX3:xxx
+  uploadPopupPresetId.value = id;
+  uploadStatus.value = "idle";
+  uploadError.value = "";
+  sharePopupPresetId.value = null;
+}
+
+async function saveUploadJson() {
+  if (!uploadName.value.trim() || !uploadShareCode.value.trim()) {
+    uploadError.value = "名称和分享码不能为空";
+    return;
+  }
+  uploadStatus.value = "saving";
+  uploadError.value = "";
+
+  const jsonObj = {
+    name: uploadName.value.trim(),
+    version: 1,
+    description: uploadDesc.value.trim(),
+    shareCode: uploadShareCode.value.trim(),
+  };
+
+  const jsonStr = JSON.stringify(jsonObj, null, 2);
+  const safeName = uploadName.value.trim().replace(/[^a-zA-Z0-9_-]/g, "") || "preset";
+  const fileName = `preset-${safeName}.json`;
+
+  if (isTauri) {
+    // Tauri 原生保存对话框
+    try {
+      const filePath = await save({
+        defaultPath: fileName,
+        filters: [{ name: "JSON", extensions: ["json"] }],
+      });
+      if (!filePath) {
+        uploadStatus.value = "idle";
+        return;
+      }
+      await writeTextFile(filePath, jsonStr);
+      uploadStatus.value = "saved";
+      // 打开浏览器到预设仓库
+      await capabilities.openUrl("https://github.com/Flygeon/LumiLuna-Presets");
+    } catch (e) {
+      uploadError.value = String(e);
+      uploadStatus.value = "error";
+    }
+  } else {
+    // 预览/非 Tauri 环境：下载方式
+    try {
+      const blob = new Blob([jsonStr], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      a.click();
+      URL.revokeObjectURL(url);
+      uploadStatus.value = "saved";
+      // 打开浏览器到预设仓库
+      window.open("https://github.com/Flygeon/LumiLuna-Presets", "_blank");
+    } catch (e) {
+      uploadError.value = String(e);
+      uploadStatus.value = "error";
+    }
   }
 }
 
@@ -119,7 +222,7 @@ const frequencyLabel = (hz: number) =>
             <button
               class="preset-action"
               :title="t('player.effectsShare')"
-              @click="sharePreset(p.id)"
+              @click="showSharePopup(p.id)"
             >
               <span class="material-symbols-outlined">ios_share</span>
             </button>
@@ -237,6 +340,84 @@ const frequencyLabel = (hz: number) =>
         {{ t("player.effectsReset") }}
       </button>
     </fieldset>
+
+    <!-- 分享选择弹窗 -->
+    <Teleport to="body">
+      <div
+        v-if="sharePopupPresetId"
+        class="popup-overlay"
+        @click.self="closeSharePopup"
+      >
+        <div class="popup-card">
+          <h4 class="popup-title">{{ t("player.effectsShare") }}</h4>
+          <div class="popup-actions">
+            <button class="popup-opt" @click="copyShareCode(sharePopupPresetId!)">
+              <span class="material-symbols-outlined">content_copy</span>
+              <span class="popup-opt-label">{{ t("player.effectsShareCopy") }}</span>
+            </button>
+            <button class="popup-opt" @click="openUploadPopup(sharePopupPresetId!)">
+              <span class="material-symbols-outlined">cloud_upload</span>
+              <span class="popup-opt-label">{{ t("player.effectsShareUpload") }}</span>
+            </button>
+          </div>
+          <button class="popup-close" @click="closeSharePopup">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- 上传至预设市场弹窗 -->
+    <Teleport to="body">
+      <div
+        v-if="uploadPopupPresetId"
+        class="popup-overlay"
+        @click.self="closeSharePopup"
+      >
+        <div class="popup-card upload-card">
+          <h4 class="popup-title">{{ t("player.effectsShareUpload") }}</h4>
+          <p class="upload-hint">{{ t("player.effectsUploadHint") }}</p>
+
+          <label class="upload-field">
+            <span>{{ t("player.effectsUploadName") }}</span>
+            <input v-model="uploadName" :placeholder="t('player.effectsUploadNamePlaceholder')" />
+          </label>
+          <label class="upload-field">
+            <span>{{ t("player.effectsUploadDesc") }}</span>
+            <textarea v-model="uploadDesc" :placeholder="t('player.effectsUploadDescPlaceholder')" rows="3" />
+          </label>
+          <label class="upload-field">
+            <span>{{ t("player.effectsUploadShareCode") }}</span>
+            <input v-model="uploadShareCode" readonly class="readonly-input" />
+          </label>
+
+          <div v-if="uploadError" class="upload-error">{{ uploadError }}</div>
+          <div v-if="uploadStatus === 'saved'" class="upload-success">
+            <span class="material-symbols-outlined">check_circle</span>
+            {{ t("player.effectsUploadSaved") }}
+          </div>
+
+          <div class="upload-actions">
+            <button
+              class="lm-btn lm-btn--filled"
+              :disabled="uploadStatus === 'saving' || uploadStatus === 'saved'"
+              @click="saveUploadJson"
+            >
+              <span v-if="uploadStatus === 'saving'" class="material-symbols-outlined spinning">sync</span>
+              <span v-else class="material-symbols-outlined">save</span>
+              {{ uploadStatus === 'saved' ? t('player.effectsUploadSaved') : t('player.effectsUploadSave') }}
+            </button>
+            <button class="lm-btn lm-btn--text" @click="closeSharePopup">
+              {{ t('actions.cancel') }}
+            </button>
+          </div>
+
+          <button class="popup-close" @click="closeSharePopup">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -487,5 +668,164 @@ const frequencyLabel = (hz: number) =>
 
 .reset {
   align-self: flex-start;
+}
+
+/* ---- 分享弹窗 ---- */
+.popup-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.48);
+  backdrop-filter: blur(2px);
+  animation: popup-fade 180ms var(--md-sys-motion-easing-standard);
+}
+@keyframes popup-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.popup-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 380px;
+  max-width: 90vw;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 24px 28px 20px;
+  border-radius: 20px;
+  background: var(--md-sys-color-surface-container-high);
+  box-shadow: var(--md-elevation-3);
+  animation: popup-scale 200ms var(--md-sys-motion-easing-emphasized-decelerate);
+}
+@keyframes popup-scale {
+  from { transform: scale(0.92); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+.popup-title {
+  margin: 0;
+  font-size: var(--md-sys-typescale-title-medium-size);
+  font-weight: 600;
+}
+.popup-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.popup-opt {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: none;
+  border-radius: var(--md-sys-shape-corner-medium);
+  background: transparent;
+  color: var(--md-sys-color-on-surface);
+  font-family: inherit;
+  font-size: var(--md-sys-typescale-body-medium-size);
+  cursor: pointer;
+  text-align: left;
+  transition: background 120ms;
+}
+.popup-opt:hover {
+  background: var(--md-sys-color-surface-container-highest);
+}
+.popup-opt .material-symbols-outlined {
+  font-size: 22px;
+  color: var(--md-sys-color-primary);
+}
+.popup-opt-label {
+  font-weight: 500;
+}
+.popup-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  cursor: pointer;
+}
+.popup-close:hover {
+  background: var(--md-sys-color-surface-container-highest);
+}
+
+/* ---- 上传弹窗 ---- */
+.upload-card {
+  width: 440px;
+}
+.upload-hint {
+  margin: 0;
+  font-size: var(--md-sys-typescale-body-small-size);
+  color: var(--md-sys-color-on-surface-variant);
+  line-height: 1.5;
+}
+.upload-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--md-sys-typescale-body-small-size);
+  color: var(--md-sys-color-on-surface-variant);
+}
+.upload-field input,
+.upload-field textarea {
+  padding: 8px 12px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-medium);
+  background: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface);
+  font-family: inherit;
+  font-size: var(--md-sys-typescale-body-medium-size);
+  outline: none;
+  transition: border-color 120ms;
+}
+.upload-field input:focus,
+.upload-field textarea:focus {
+  border-color: var(--md-sys-color-primary);
+}
+.upload-field textarea {
+  resize: vertical;
+}
+.upload-field .readonly-input {
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface-variant);
+}
+.upload-error {
+  padding: 8px 12px;
+  border-radius: var(--md-sys-shape-corner-medium);
+  font-size: var(--md-sys-typescale-body-small-size);
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+}
+.upload-success {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--md-sys-shape-corner-medium);
+  font-size: var(--md-sys-typescale-body-small-size);
+  background: var(--md-sys-color-tertiary-container);
+  color: var(--md-sys-color-on-tertiary-container);
+}
+.upload-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+.spinning {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 </style>

@@ -314,4 +314,8 @@ export const capabilities = {
     const bytes = new Uint8Array(await res.arrayBuffer());
     await writeFile(dest, bytes);
   },
+  /** 打开开发者工具 */
+  openDevtools(): Promise<void> {
+    return safeInvoke("open_devtools");
+  },
 };
