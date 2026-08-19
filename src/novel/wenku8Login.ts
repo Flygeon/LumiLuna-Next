@@ -66,14 +66,32 @@ export async function openWenku8Login(): Promise<Wenku8LoginStatus> {
       resolve();
     };
     if (win) {
-      // 关闭请求：默认即会关闭窗口；显式调用 close() 兜底，确保系统“X”一定生效
       win
         .onCloseRequested(() => {
+          try {
+            if (window.__TAURI__ && window.__TAURI__.core) {
+              window.__TAURI__.core
+                .invoke("wenku8_login_log", {
+                  msg: "[fe] onCloseRequested 触发（win 存在，准备关闭）",
+                })
+                .catch(() => {});
+            }
+          } catch (e) {}
+          // 关闭请求：Tauri v2 监听 onCloseRequested 但不 preventDefault 时默认会关闭窗口；
+          // 这里显式 close() 兜底，确保系统“X”一定生效。
           win.close().catch(() => {});
           onClose();
         })
         .catch(() => onClose());
       win.once("destroyed", onClose);
+    } else {
+      try {
+        if (window.__TAURI__ && window.__TAURI__.core) {
+          window.__TAURI__.core
+            .invoke("wenku8_login_log", { msg: "[fe] 警告：win 为 null，未注册关闭监听" })
+            .catch(() => {});
+        }
+      } catch (e) {}
     }
     // 超时兜底：强制关闭
     const watchdog = setInterval(() => {

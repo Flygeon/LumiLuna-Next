@@ -95,14 +95,16 @@ fn save_persist(app: &tauri::AppHandle, p: &Wenku8Persist) -> Result<(), String>
 
 /// 校验提交上来的 cookie 是否包含登录所需字段。
 /// 参考项目判定登录成功：Cookie 中同时存在 jieqiUserInfo 与 jieqiVisitInfo。
+/// 注意：实际 cookie 形如 `jieqiUserInfo=xxx`（单个 `=`），此前曾误写成 `==` / ` =`
+/// 导致永远匹配不上、所有提交被拒。这里改为匹配 `key=value` 与裸 `key`。
 fn cookie_has_required(cookie: &str) -> bool {
     let lower = cookie.to_lowercase();
     REQUIRED_COOKIE_KEYS.iter().all(|k| {
+        let key = k.to_lowercase();
         lower
             .split(';')
             .map(|kv| kv.trim().to_lowercase())
-            .any(|kv| kv.starts_with(&format!("{}==", k.to_lowercase()))
-                || kv.starts_with(&format!("{} =", k.to_lowercase())))
+            .any(|kv| kv == key || kv.starts_with(&format!("{}=", key)))
     })
 }
 
@@ -137,18 +139,71 @@ pub fn is_login_required(html: &str) -> bool {
 
 /// 前端 WebView 登录完成后提交 cookie。校验通过后持久化，并立即拉取用户信息。
 /// 成功后由 Rust 侧主动关闭登录窗口（远程页 window.close 不可靠）。
+///
+/// 修复要点（2026-08-20）：
+/// - 此前 `cookie_has_required` 误用 `==` 匹配，导致所有提交被拒、登录态永不保存。
+/// - 改为：优先用前端传来的 `document.cookie`；若校验不过，则从 webview 直接读取
+///   全部 cookie（含 httpOnly，覆盖 jieqi 系列 cookie 可能是 httpOnly 的情况）。
+/// - `cookies()` 在 Windows 同步命令中**会死锁**（Tauri 官方 known issue），故必须
+///   在 `spawn_blocking` 独立线程中调用（与 `wenku8_login_open` 的 build 修复同理）。
 #[tauri::command]
-pub fn wenku8_login_submit(
+pub async fn wenku8_login_submit(
     app: tauri::AppHandle,
-    cookie: String,
+    cookie: Option<String>,
 ) -> Result<Wenku8LoginStatus, String> {
-    if !cookie_has_required(&cookie) {
+    login_debug_log(&format!(
+        "[submit] 收到 cookie 参数: 长度={} 含UserInfo={} 含Visit={}",
+        cookie.as_ref().map(|c| c.len()).unwrap_or(0),
+        cookie
+            .as_deref()
+            .map(|c| c.to_lowercase().contains("jieqiuserinfo"))
+            .unwrap_or(false),
+        cookie
+            .as_deref()
+            .map(|c| c.to_lowercase().contains("jieqivisitinfo"))
+            .unwrap_or(false)
+    ));
+    // 优先用前端传来的 cookie；若校验不通过，从 webview 直接读（覆盖 httpOnly）。
+    let mut cookie_str = cookie.clone().unwrap_or_default();
+    if !cookie_has_required(&cookie_str) {
+        if let Some(w) = app.get_webview_window("wenku8-login") {
+            let w2 = w.clone();
+            match tauri::async_runtime::spawn_blocking(move || w2.cookies()).await {
+                Ok(Ok(cookies)) => {
+                    let collected: Vec<String> = cookies
+                        .iter()
+                        .filter(|c| {
+                            REQUIRED_COOKIE_KEYS
+                                .iter()
+                                .any(|k| c.name().eq_ignore_ascii_case(k))
+                        })
+                        .map(|c| format!("{}={}", c.name(), c.value()))
+                        .collect();
+                    login_debug_log(&format!(
+                        "[submit] webview 读取 cookie 数={} 命中关键字段数={}",
+                        cookies.len(),
+                        collected.len()
+                    ));
+                    if !collected.is_empty() {
+                        cookie_str = collected.join("; ");
+                    }
+                }
+                _ => login_debug_log("[submit] webview cookies() 读取失败或线程异常"),
+            }
+        } else {
+            login_debug_log("[submit] 未找到 wenku8-login 窗口，无法从 webview 读 cookie");
+        }
+    }
+
+    if !cookie_has_required(&cookie_str) {
+        login_debug_log("[submit] 校验失败：仍缺少 jieqiUserInfo / jieqiVisitInfo");
         return Err("cookie 缺少 jieqiUserInfo / jieqiVisitInfo，登录未完成".into());
     }
+
     ensure_loaded(&app);
     {
         let mut s = state().lock().unwrap();
-        s.cookie = Some(cookie.trim().to_string());
+        s.cookie = Some(cookie_str.trim().to_string());
         s.user_info = None;
     }
     // 拉取用户信息并保存
@@ -158,6 +213,7 @@ pub fn wenku8_login_submit(
         s.user_info = user.clone();
         save_persist(&app, &s)?;
     }
+    login_debug_log("[submit] 成功：已保存登录态，准备关闭窗口");
     // 延迟关闭登录窗口，确保本次 invoke 先返回
     let app2 = app.clone();
     std::thread::spawn(move || {
@@ -289,6 +345,9 @@ const LOGIN_INJECT_JS: &str = r#"
     async function submit() {
       try {
         const cookie = document.cookie;
+        try { if (window.__TAURI__ && window.__TAURI__.core) window.__TAURI__.core.invoke('wenku8_login_log', {
+          msg: '[submit] before: len=' + cookie.length + ' hasUserInfo=' + cookie.includes('jieqiUserInfo') + ' hasVisit=' + cookie.includes('jieqiVisitInfo')
+        }).catch(function(){}); } catch (_) {}
         if (window.__TAURI__ && window.__TAURI__.core) {
           await window.__TAURI__.core.invoke('wenku8_login_submit', { cookie });
         }
