@@ -606,9 +606,8 @@ pub fn novel_shelf_list(
     for row in rows {
         out.push(row.map_err(|e| e.to_string())?);
     }
+    drop(stmt);
     drop(conn);
-
-    // 已登录则合并 Wenku8 在线书架（参考项目：bookcase.php）
     if let Some(cookie) = crate::novel_auth::current_cookie(&app) {
         if !cookie.is_empty() {
             if let Ok(online) = crate::novel_auth::wenku8_shelf_online(app, "net".to_string()) {
@@ -741,6 +740,7 @@ pub fn novel_chapter_cache_put(
 
 #[tauri::command]
 pub fn novel_search(
+    app: tauri::AppHandle,
     node: String,
     charset: String,
     query: String,
@@ -762,6 +762,7 @@ pub fn novel_search(
 
 #[tauri::command]
 pub fn novel_rank(
+    app: tauri::AppHandle,
     node: String,
     charset: String,
     sort: String,
@@ -778,6 +779,7 @@ pub fn novel_rank(
 
 #[tauri::command]
 pub fn novel_category(
+    app: tauri::AppHandle,
     node: String,
     charset: String,
     tag: String,

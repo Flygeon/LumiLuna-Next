@@ -10,10 +10,10 @@
 //!   由 `is_login_required` 判定，前端据此提示重新登录。
 
 use serde::{Deserialize, Serialize};
+use tauri::Manager;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, OnceLock};
 
-use crate::commands::DbState;
 use crate::novel::{fetch_html, NovelShelfItem};
 
 // ---- 常量 ----
@@ -198,6 +198,7 @@ pub fn wenku8_userinfo(app: tauri::AppHandle) -> Option<Wenku8UserInfo> {
 /// 注入到登录窗口的脚本：移除临时登录选项、轮询 cookie，
 /// 登录成功（cookie 含 jieqiUserInfo + jieqiVisitInfo）后提交并关闭窗口。
 /// 该脚本在登录窗口自身上下文内执行，因此可直接调用 invoke 与 window.close。
+/// 通过 WebviewWindowBuilder.initialization_script 注入（v2 已移除 eval）。
 const LOGIN_INJECT_JS: &str = r#"
 (() => {
   function stripTempCookie() {
@@ -234,26 +235,26 @@ const LOGIN_INJECT_JS: &str = r#"
 })();
 "#;
 
-/// 启动登录窗口的 JS 注入：找到指定 label 的 webview，
-/// 在其每次页面加载完成后注入抓取脚本（处理登录页跳转/重定向）。
+/// 打开登录窗口并由 Rust 侧注入抓取脚本。
+/// 使用 WebviewWindowBuilder.initialization_script（v2 无 eval API，
+/// 该方式在每次页面加载前注入，无需额外权限）。
 #[tauri::command]
-pub fn wenku8_login_inject(
-    app: tauri::AppHandle,
-    label: String,
-) -> Result<(), String> {
-    let wv = app
-        .get_webview_window(&label)
-        .ok_or_else(|| format!("找不到登录窗口：{label}"))?;
-    // 立即注入一次
-    let js = LOGIN_INJECT_JS.to_string();
-    let wv_once = wv.clone();
-    let _ = wv_once.eval(&js);
-    // 页面加载完成后再注入（处理 SPA/跳转）
-    let js2 = LOGIN_INJECT_JS.to_string();
-    let _ = wv.on_page_load(move |_wv, _event| {
-        let js = js2.clone();
-        let _ = _wv.eval(&js);
-    });
+pub fn wenku8_login_open(app: tauri::AppHandle) -> Result<(), String> {
+    let label = "wenku8-login";
+    // 若已存在则先关闭，避免重复窗口
+    if let Some(w) = app.get_webview_window(label) {
+        let _ = w.close();
+    }
+    tauri::WebviewWindowBuilder::new(&app, label, tauri::WebviewUrl::External(
+        "https://www.wenku8.net/login.php".parse().unwrap(),
+    ))
+    .title("登录轻小说网 Wenku8")
+    .inner_size(440.0, 680.0)
+    .resizable(true)
+    .center()
+    .initialization_script(LOGIN_INJECT_JS)
+    .build()
+    .map_err(|e| format!("创建登录窗口失败：{e}"))?;
     Ok(())
 }
 
