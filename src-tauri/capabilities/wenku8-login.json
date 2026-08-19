@@ -1,0 +1,13 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "wenku8-login",
+  "description": "Wenku8 登录弹窗能力（允许网页内调用 invoke 提交 cookie）",
+  "windows": ["wenku8-login"],
+  "permissions": [
+    "core:default",
+    "core:webview:allow-eval",
+    "core:webview:allow-internal-toggle-devtools",
+    "core:window:allow-close",
+    "core:window:allow-set-focus"
+  ]
+}
