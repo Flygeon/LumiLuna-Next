@@ -340,6 +340,27 @@ export interface NovelShelfItem {
   author: string;
   cover: string;
   addedAt: number;
+  /** true=来自 Wenku8 在线账号书架，false=本地收藏 */
+  online: boolean;
+}
+
+export interface Wenku8LoginStatus {
+  loggedIn: boolean;
+  uname?: string;
+  nickname?: string;
+}
+
+export interface Wenku8UserInfo {
+  uid: string;
+  uname: string;
+  nickname: string;
+  group: string;
+  avatar: string;
+  messageCount: string;
+  experience: string;
+  credit: string;
+  point: string;
+  vip: string;
 }
 
 export interface NovelProgress {

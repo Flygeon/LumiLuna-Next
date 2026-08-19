@@ -7,6 +7,8 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useSettingsStore } from "@/stores/settings";
 import { capabilities } from "@/capabilities";
 import { translate } from "@shared/i18n";
+import { requestRelogin } from "@/novel/wenku8Auth";
+import { isLoginRequiredError } from "@/novel/wenku8Login";
 import type { NovelChapter, NovelContent, NovelVolume } from "@shared/types";
 
 const props = defineProps<{
@@ -108,7 +110,12 @@ async function loadChapter(index: number) {
     beginSession();
     void capabilities.novelProgressSet(props.aid, ch.cid, ch.title, 0);
   } catch (e) {
-    error.value = e instanceof Error ? e.message : String(e);
+    if (isLoginRequiredError(e)) {
+      requestRelogin();
+      error.value = "登录态已失效，请重新登录。";
+    } else {
+      error.value = e instanceof Error ? e.message : String(e);
+    }
   } finally {
     loading.value = false;
   }

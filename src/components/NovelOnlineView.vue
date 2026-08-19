@@ -6,7 +6,9 @@ import { translate } from "@shared/i18n";
 import NovelCard from "@/components/NovelCard.vue";
 import NovelDetailPanel from "@/components/NovelDetailPanel.vue";
 import NovelReader from "@/components/NovelReader.vue";
-import type { NovelCover, NovelRecommendBlock, NovelShelfItem } from "@shared/types";
+import { openWenku8Login, isLoginRequiredError } from "@/novel/wenku8Login";
+import { reloginRequested, clearRelogin } from "@/novel/wenku8Auth";
+import type { NovelCover, NovelRecommendBlock, NovelShelfItem, Wenku8LoginStatus } from "@shared/types";
 
 const settings = useSettingsStore();
 const t = (key: string) => translate(settings.lang, key);
@@ -28,12 +30,55 @@ const homeError = ref("");
 const recommend = ref<NovelRecommendBlock[]>([]);
 const shelf = ref<NovelShelfItem[]>([]);
 
+// ---- Wenku8 登录态 ----
+const loginStatus = ref<Wenku8LoginStatus>({ loggedIn: false });
+const loggingIn = ref(false);
+const loginBanner = ref("");
+
+async function refreshLoginStatus() {
+  try {
+    loginStatus.value = await capabilities.wenku8LoginStatus();
+  } catch {
+    loginStatus.value = { loggedIn: false };
+  }
+}
+
+async function doLogin() {
+  loggingIn.value = true;
+  loginBanner.value = "";
+  clearRelogin();
+  try {
+    const status = await openWenku8Login();
+    loginStatus.value = status;
+    await loadShelf(); // 登录后立即刷新在线书架
+  } catch (e) {
+    loginBanner.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    loggingIn.value = false;
+  }
+}
+
+async function doLogout() {
+  try {
+    await capabilities.wenku8Logout();
+    loginStatus.value = { loggedIn: false };
+    await loadShelf();
+  } catch (e) {
+    console.warn("[Novel] 退出登录失败:", e);
+  }
+}
+
 async function loadShelf() {
   try {
     shelf.value = await capabilities.novelShelfList();
+    // 若抓取结果提示需要重新登录（在线书架被拦截），给出重登提示
   } catch (e) {
-    console.warn("[Novel] 书架加载失败:", e);
-    shelf.value = [];
+    if (isLoginRequiredError(e)) {
+      loginBanner.value = "登录态已失效，请重新登录以同步书架。";
+      await refreshLoginStatus();
+    } else {
+      console.warn("[Novel] 书架加载失败:", e);
+    }
   }
 }
 
@@ -106,6 +151,7 @@ function pickRank(sort: string) {
 }
 
 onMounted(() => {
+  void refreshLoginStatus();
   void loadHome();
 });
 </script>
@@ -133,6 +179,36 @@ onMounted(() => {
 
     <!-- 主页 -->
     <template v-else>
+      <!-- Wenku8 登录态提示条 -->
+      <div v-if="!loginStatus.loggedIn" class="login-bar login-bar--off">
+        <span class="material-symbols-outlined">account_circle</span>
+        <span class="login-text">{{ t("novel.loginHint") }}</span>
+        <button class="lm-btn lm-btn--filled" :disabled="loggingIn" @click="doLogin">
+          <span v-if="loggingIn" class="material-symbols-outlined spin">progress_activity</span>
+          <span v-else class="material-symbols-outlined">login</span>
+          {{ loggingIn ? t("novel.loggingIn") : t("novel.login") }}
+        </button>
+      </div>
+      <div v-else class="login-bar login-bar--on">
+        <span class="material-symbols-outlined">verified_user</span>
+        <span class="login-text">
+          {{ t("novel.loggedInAs") }} {{ loginStatus.nickname || loginStatus.uname || "" }}
+        </span>
+        <button class="lm-btn lm-btn--text" @click="doLogout">
+          <span class="material-symbols-outlined">logout</span>
+          {{ t("novel.logout") }}
+        </button>
+      </div>
+      <p v-if="loginBanner" class="login-banner">{{ loginBanner }}</p>
+      <div v-if="reloginRequested" class="login-bar login-bar--off">
+        <span class="material-symbols-outlined">error</span>
+        <span class="login-text">{{ t("novel.reloginHint") }}</span>
+        <button class="lm-btn lm-btn--filled" :disabled="loggingIn" @click="doLogin">
+          <span class="material-symbols-outlined">login</span>
+          {{ t("novel.relogin") }}
+        </button>
+      </div>
+
       <!-- 搜索 -->
       <div class="search-bar">
         <input
@@ -245,6 +321,44 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+.login-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--md-sys-shape-corner-extra-large);
+  font-size: var(--md-sys-typescale-body-medium-size);
+}
+.login-bar .material-symbols-outlined {
+  font-size: 22px;
+}
+.login-bar--off {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+.login-bar--on {
+  background: var(--md-sys-color-tertiary-container);
+  color: var(--md-sys-color-on-tertiary-container);
+}
+.login-text {
+  flex: 1;
+}
+.login-banner {
+  margin: 0;
+  padding: 8px 14px;
+  border-radius: var(--md-sys-shape-corner-medium);
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+  font-size: var(--md-sys-typescale-body-small-size);
+}
+.spin {
+  animation: lm-spin 1s linear infinite;
+}
+@keyframes lm-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 .section-head {
   display: flex;

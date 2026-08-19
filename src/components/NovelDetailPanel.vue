@@ -3,6 +3,8 @@ import { onMounted, ref } from "vue";
 import { useSettingsStore } from "@/stores/settings";
 import { capabilities } from "@/capabilities";
 import { translate } from "@shared/i18n";
+import { requestRelogin } from "@/novel/wenku8Auth";
+import { isLoginRequiredError } from "@/novel/wenku8Login";
 import type { NovelDetail, NovelVolume } from "@shared/types";
 
 const props = defineProps<{ aid: string; initialTitle?: string }>();
@@ -32,7 +34,12 @@ onMounted(async () => {
     volumes.value = vols;
     inShelf.value = shelf.some((s) => s.aid === props.aid);
   } catch (e) {
-    error.value = e instanceof Error ? e.message : String(e);
+    if (isLoginRequiredError(e)) {
+      requestRelogin();
+      error.value = "登录态已失效，请重新登录。";
+    } else {
+      error.value = e instanceof Error ? e.message : String(e);
+    }
   } finally {
     loading.value = false;
   }

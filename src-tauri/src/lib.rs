@@ -2,6 +2,7 @@ pub mod commands;
 pub mod media;
 pub mod netease;
 pub mod novel;
+pub mod novel_auth;
 pub mod tray;
 pub mod webdav;
 
@@ -199,6 +200,11 @@ pub fn run() {
             novel::novel_stats_list,
             novel::novel_source_breakdown,
             novel::novel_top_books,
+            novel_auth::wenku8_login_submit,
+            novel_auth::wenku8_login_status,
+            novel_auth::wenku8_logout,
+            novel_auth::wenku8_userinfo,
+            novel_auth::wenku8_shelf_online,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

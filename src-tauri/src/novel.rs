@@ -81,6 +81,8 @@ pub struct NovelShelfItem {
     pub author: String,
     pub cover: String,
     pub added_at: i64,
+    /// true 表示来自 Wenku8 在线账号书架，false 为本地收藏
+    pub online: bool,
 }
 
 #[derive(Serialize, Clone, Default)]
@@ -169,7 +171,13 @@ fn node_url(node: &str) -> &'static str {
 }
 
 /// 抓取 HTML 并按 charset 解码为字符串。
-fn fetch_html(node: &str, charset: &str, path: &str) -> Result<String, String> {
+/// 若已登录，自动注入 Wenku8 cookie（覆盖 .net / .cc 双节点）。
+pub(crate) fn fetch_html(
+    app: &tauri::AppHandle,
+    node: &str,
+    charset: &str,
+    path: &str,
+) -> Result<String, String> {
     let base = node_url(node).to_string();
     let mut url = format!("{base}{path}");
     if !url.contains('?') {
@@ -179,8 +187,13 @@ fn fetch_html(node: &str, charset: &str, path: &str) -> Result<String, String> {
     }
     url.push_str(if charset == "big5" { "charset=big5" } else { "charset=gbk" });
 
-    let resp = client()
-        .get(&url)
+    let cookie = crate::novel_auth::current_cookie(app);
+    let mut req = client().get(&url);
+    if let Some(c) = cookie {
+        req = req.header(reqwest::header::COOKIE, c);
+    }
+
+    let resp = req
         .send()
         .map_err(|e| format!("网络请求失败：{e}"))?;
     let status = resp.status();
@@ -569,7 +582,10 @@ fn epoch_ms_to_day(ms: i64) -> String {
 // ---- 书架 / 进度 / 缓存 命令 ----
 
 #[tauri::command]
-pub fn novel_shelf_list(state: State<'_, DbState>) -> Result<Vec<NovelShelfItem>, String> {
+pub fn novel_shelf_list(
+    state: State<'_, DbState>,
+    app: tauri::AppHandle,
+) -> Result<Vec<NovelShelfItem>, String> {
     let conn = state.0.lock().map_err(|_| "db lock".to_string())?;
     let mut stmt = conn
         .prepare("SELECT aid, title, author, cover, added_at FROM novel_shelf ORDER BY added_at DESC")
@@ -582,12 +598,30 @@ pub fn novel_shelf_list(state: State<'_, DbState>) -> Result<Vec<NovelShelfItem>
                 author: row.get(2)?,
                 cover: row.get(3)?,
                 added_at: row.get(4)?,
+                online: false,
             })
         })
         .map_err(|e| e.to_string())?;
     let mut out = Vec::new();
     for row in rows {
         out.push(row.map_err(|e| e.to_string())?);
+    }
+    drop(conn);
+
+    // 已登录则合并 Wenku8 在线书架（参考项目：bookcase.php）
+    if let Some(cookie) = crate::novel_auth::current_cookie(&app) {
+        if !cookie.is_empty() {
+            if let Ok(online) = crate::novel_auth::wenku8_shelf_online(app, "net".to_string()) {
+                // 在线项去重：本地已存在的 aid 不再重复
+                let local_ids: std::collections::HashSet<String> =
+                    out.iter().map(|i| i.aid.clone()).collect();
+                for item in online {
+                    if !local_ids.contains(&item.aid) {
+                        out.push(item);
+                    }
+                }
+            }
+        }
     }
     Ok(out)
 }
@@ -718,6 +752,7 @@ pub fn novel_search(
         percent_encode_gbk(&query)
     };
     let html = fetch_html(
+        &app,
         &node,
         &charset,
         &format!("/modules/article/search.php?searchtype=articlename&searchkey={q}&page={page}"),
@@ -733,6 +768,7 @@ pub fn novel_rank(
     page: i64,
 ) -> Result<Vec<NovelCover>, String> {
     let html = fetch_html(
+        &app,
         &node,
         &charset,
         &format!("/modules/article/toplist.php?sort={sort}&page={page}"),
@@ -754,6 +790,7 @@ pub fn novel_category(
         percent_encode_gbk(&tag)
     };
     let html = fetch_html(
+        &app,
         &node,
         &charset,
         &format!("/modules/article/tags.php?t={t}&v={sort}&page={page}"),
@@ -762,38 +799,53 @@ pub fn novel_category(
 }
 
 #[tauri::command]
-pub fn novel_recommend(node: String, charset: String) -> Result<Vec<NovelRecommendBlock>, String> {
-    let html = fetch_html(&node, &charset, "/index.php")?;
+pub fn novel_recommend(app: tauri::AppHandle, node: String, charset: String) -> Result<Vec<NovelRecommendBlock>, String> {
+    let html = fetch_html(&app, &node, &charset, "/index.php")?;
     Ok(parse_recommend(&html, node_url(&node)))
 }
 
 #[tauri::command]
 pub fn novel_detail(
+    app: tauri::AppHandle,
     node: String,
     charset: String,
     aid: String,
 ) -> Result<NovelDetail, String> {
     let html = fetch_html(
+        &app,
         &node,
         &charset,
         &format!("/modules/article/articleinfo.php?id={aid}"),
     )?;
+    if crate::novel_auth::is_login_required(&html) {
+        return Err("[WENKU8_LOGIN_REQUIRED] 登录态已失效，请重新登录".into());
+    }
     parse_detail(&html, &aid, node_url(&node))
 }
 
 #[tauri::command]
-pub fn novel_catalogue(node: String, charset: String, aid: String) -> Result<Vec<NovelVolume>, String> {
+pub fn novel_catalogue(
+    app: tauri::AppHandle,
+    node: String,
+    charset: String,
+    aid: String,
+) -> Result<Vec<NovelVolume>, String> {
     let html = fetch_html(
+        &app,
         &node,
         &charset,
         &format!("/modules/article/reader.php?aid={aid}"),
     )?;
+    if crate::novel_auth::is_login_required(&html) {
+        return Err("[WENKU8_LOGIN_REQUIRED] 登录态已失效，请重新登录".into());
+    }
     Ok(parse_catalogue(&html))
 }
 
 #[tauri::command]
 pub fn novel_content(
     state: State<'_, DbState>,
+    app: tauri::AppHandle,
     node: String,
     charset: String,
     aid: String,
@@ -817,10 +869,14 @@ pub fn novel_content(
         }
     }
     let html = fetch_html(
+        &app,
         &node,
         &charset,
         &format!("/modules/article/reader.php?aid={aid}&cid={cid}"),
     )?;
+    if crate::novel_auth::is_login_required(&html) {
+        return Err("[WENKU8_LOGIN_REQUIRED] 登录态已失效，请重新登录".into());
+    }
     let content = parse_content(&html, node_url(&node));
     // 写缓存（失败不影响阅读）
     {

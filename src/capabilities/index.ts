@@ -43,6 +43,8 @@ import type {
   NovelSourceStat,
   NovelTopBook,
   NovelVolume,
+  Wenku8LoginStatus,
+  Wenku8UserInfo,
   Song,
   TopTrackStat,
   WebDavEntry,
@@ -369,6 +371,28 @@ export const capabilities = {
   },
   novelTopBooks(limit?: number, days?: number): Promise<NovelTopBook[]> {
     return safeInvoke("novel_top_books", { limit: limit ?? null, days: days ?? null });
+  },
+
+  // ---- Wenku8 登录态（移植自 Hikari Novel）----
+  /** 提交从 WebView 抓取到的 cookie（需含 jieqiUserInfo + jieqiVisitInfo） */
+  wenku8LoginSubmit(cookie: string): Promise<Wenku8LoginStatus> {
+    return safeInvoke("wenku8_login_submit", { cookie });
+  },
+  /** 查询当前登录状态（不触发网络） */
+  wenku8LoginStatus(): Promise<Wenku8LoginStatus> {
+    return safeInvoke("wenku8_login_status");
+  },
+  /** 退出登录，清空本地 cookie */
+  wenku8Logout(): Promise<void> {
+    return safeInvoke("wenku8_logout");
+  },
+  /** 已保存的用户信息 */
+  wenku8Userinfo(): Promise<Wenku8UserInfo | null> {
+    return safeInvoke("wenku8_userinfo");
+  },
+  /** 在线书架（bookcase.php），未登录/过期会抛 [WENKU8_LOGIN_REQUIRED] */
+  wenku8ShelfOnline(node?: string): Promise<NovelShelfItem[]> {
+    return safeInvoke("wenku8_shelf_online", { node: node ?? "net" });
   },
 
   // ---- 系统 ----

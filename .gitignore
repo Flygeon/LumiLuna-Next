@@ -19,6 +19,9 @@ Thumbs.db
 .idea/
 *.swp
 
+# reference clone (not part of this project)
+小说阅读器参考/
+
 # ci artifacts
 
 # build artifacts (deliverables, do not commit)
