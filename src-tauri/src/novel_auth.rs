@@ -195,6 +195,68 @@ pub fn wenku8_userinfo(app: tauri::AppHandle) -> Option<Wenku8UserInfo> {
     state().lock().unwrap().user_info.clone()
 }
 
+/// 注入到登录窗口的脚本：移除临时登录选项、轮询 cookie，
+/// 登录成功（cookie 含 jieqiUserInfo + jieqiVisitInfo）后提交并关闭窗口。
+/// 该脚本在登录窗口自身上下文内执行，因此可直接调用 invoke 与 window.close。
+const LOGIN_INJECT_JS: &str = r#"
+(() => {
+  function stripTempCookie() {
+    try {
+      const sel = document.querySelector('select[name="usecookie"]');
+      if (sel) {
+        for (const opt of Array.from(sel.options)) {
+          if (opt.value === '0') opt.remove();
+        }
+        if (!sel.value) sel.value = '1';
+      }
+    } catch (e) {}
+  }
+  function hasAll() {
+    const c = document.cookie || '';
+    return c.includes('jieqiUserInfo') && c.includes('jieqiVisitInfo');
+  }
+  async function submit() {
+    try {
+      const cookie = document.cookie;
+      if (window.__TAURI__ && window.__TAURI__.core) {
+        await window.__TAURI__.core.invoke('wenku8_login_submit', { cookie });
+      }
+    } catch (e) { console.error('wenku8 submit failed', e); }
+    try { window.close(); } catch (e) {}
+  }
+  stripTempCookie();
+  if (hasAll()) { submit(); return; }
+  const iv = setInterval(() => {
+    stripTempCookie();
+    if (hasAll()) { clearInterval(iv); submit(); }
+  }, 600);
+  setTimeout(() => clearInterval(iv), 600000);
+})();
+"#;
+
+/// 启动登录窗口的 JS 注入：找到指定 label 的 webview，
+/// 在其每次页面加载完成后注入抓取脚本（处理登录页跳转/重定向）。
+#[tauri::command]
+pub fn wenku8_login_inject(
+    app: tauri::AppHandle,
+    label: String,
+) -> Result<(), String> {
+    let wv = app
+        .get_webview_window(&label)
+        .ok_or_else(|| format!("找不到登录窗口：{label}"))?;
+    // 立即注入一次
+    let js = LOGIN_INJECT_JS.to_string();
+    let wv_once = wv.clone();
+    let _ = wv_once.eval(&js);
+    // 页面加载完成后再注入（处理 SPA/跳转）
+    let js2 = LOGIN_INJECT_JS.to_string();
+    let _ = wv.on_page_load(move |_wv, _event| {
+        let js = js2.clone();
+        let _ = _wv.eval(&js);
+    });
+    Ok(())
+}
+
 /// 在线书架（bookcase.php）。需要登录态，未登录/过期时返回明确的“需登录”错误。
 #[tauri::command]
 pub fn wenku8_shelf_online(app: tauri::AppHandle, node: String) -> Result<Vec<NovelShelfItem>, String> {

@@ -5,58 +5,16 @@
 //   3. 登录成功后页面 cookie 中出现 jieqiUserInfo + jieqiVisitInfo
 //   4. 注入脚本读取 document.cookie 并直接 invoke Rust 命令提交、关闭窗口
 //
-// 注：依赖 WebView 内的 Tauri API（window.__TAURI__.core.invoke），
-// 因此登录窗口需要在 capabilities 中拥有 core:default 权限（见 default.json 的 wenku8-login-* 条目）。
+// 注：Tauri v2 前端 API 已移除 Webview.eval，因此注入由 Rust 侧
+// `wenku8_login_inject` 命令完成（窗口本身上下文内能调用 invoke 与 close）。
 
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import type { Wenku8LoginStatus } from "@shared/types";
 
 const LOGIN_URL = "https://www.wenku8.net/login.php";
 
-// 轮询间隔（毫秒）
-const POLL_INTERVAL = 600;
 // 超时（毫秒）：10 分钟
 const TIMEOUT = 10 * 60 * 1000;
-
-// 参考项目：移除 usecookie=0 选项，强制持久登录；
-// 登录成功后（cookie 含两个关键字段）直接 invoke 提交并关闭窗口。
-const INJECT_JS = `
-(() => {
-  function stripTempCookie() {
-    try {
-      const sel = document.querySelector('select[name="usecookie"]');
-      if (sel) {
-        for (const opt of Array.from(sel.options)) {
-          if (opt.value === '0') opt.remove();
-        }
-        if (!sel.value) sel.value = '1';
-      }
-    } catch (e) {}
-  }
-  function hasAll() {
-    const c = document.cookie || '';
-    return c.includes('jieqiUserInfo') && c.includes('jieqiVisitInfo');
-  }
-  async function submit() {
-    try {
-      const cookie = document.cookie;
-      if (window.__TAURI__ && window.__TAURI__.core) {
-        await window.__TAURI__.core.invoke('wenku8_login_submit', { cookie });
-      }
-    } catch (e) {
-      console.error('wenku8 submit failed', e);
-    }
-    try { window.close(); } catch (e) {}
-  }
-  stripTempCookie();
-  if (hasAll()) { submit(); return; }
-  const iv = setInterval(() => {
-    stripTempCookie();
-    if (hasAll()) { clearInterval(iv); submit(); }
-  }, ${POLL_INTERVAL});
-  setTimeout(() => clearInterval(iv), ${TIMEOUT});
-})();
-`;
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
@@ -95,26 +53,24 @@ export async function openWenku8Login(): Promise<Wenku8LoginStatus> {
     setTimeout(resolve, 1500);
   });
 
-  // 周期性注入脚本（页面可能跳转重载）
-  const start = Date.now();
-  const iv = setInterval(() => {
-    win.eval(INJECT_JS).catch(() => {});
-  }, 1500);
-  win.eval(INJECT_JS).catch(() => {});
+  // 由 Rust 侧在登录窗口内注入抓取脚本（v2 前端无 eval API）
+  const { capabilities } = await import("@/capabilities");
+  try {
+    await capabilities.wenku8LoginInject(label);
+  } catch (e) {
+    console.error("启动登录注入失败", e);
+  }
 
   // 等待窗口关闭（登录成功或用户取消）
+  const start = Date.now();
   await new Promise<void>((resolve) => {
-    const onClose = () => {
-      clearInterval(iv);
-      resolve();
-    };
+    const onClose = () => resolve();
     win.once("close-requested", onClose);
     win.once("destroyed", onClose);
     // 超时兜底
     const watchdog = setInterval(() => {
       if (Date.now() - start > TIMEOUT) {
         clearInterval(watchdog);
-        clearInterval(iv);
         win.close().catch(() => {});
         resolve();
       }
@@ -122,8 +78,6 @@ export async function openWenku8Login(): Promise<Wenku8LoginStatus> {
   });
 
   // 重新查询登录状态确认是否成功
-  // 通过 capabilities 查询（延迟引入避免循环依赖）
-  const { capabilities } = await import("@/capabilities");
   try {
     const status = await capabilities.wenku8LoginStatus();
     if (status.loggedIn) return status;

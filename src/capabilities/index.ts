@@ -394,6 +394,10 @@ export const capabilities = {
   wenku8ShelfOnline(node?: string): Promise<NovelShelfItem[]> {
     return safeInvoke("wenku8_shelf_online", { node: node ?? "net" });
   },
+  /** 启动登录窗口的 JS 注入（由 Rust 侧在窗口上下文内 eval 抓取脚本） */
+  wenku8LoginInject(label: string): Promise<void> {
+    return safeInvoke("wenku8_login_inject", { label });
+  },
 
   // ---- 系统 ----
   /** 在系统浏览器中打开 URL（浏览器预览退化 window.open） */
