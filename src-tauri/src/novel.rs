@@ -407,7 +407,7 @@ fn parse_catalogue(html: &str) -> Vec<NovelVolume> {
 
 fn parse_content(html: &str, base: &str) -> NovelContent {
     // 去掉目录导航 ul#contentdp
-    let re = Regex::new(r"(?is)<ul\s+id=[\"']contentdp[\"'][^>]*>.*?</ul>").unwrap();
+    let re = Regex::new(r#"(?is)<ul\s+id=["']contentdp["'][^>]*>.*?</ul>"#).unwrap();
     let html = re.replace_all(html, "").into_owned();
     let doc = Html::parse_document(&html);
     let content_sel = Selector::parse("#content").ok();
