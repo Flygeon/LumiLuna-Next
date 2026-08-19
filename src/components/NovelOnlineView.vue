@@ -23,6 +23,7 @@ const searchError = ref("");
 const rankSort = ref("allvisit");
 const rankResults = ref<NovelCover[]>([]);
 const rankLoading = ref(false);
+const homeError = ref("");
 
 const recommend = ref<NovelRecommendBlock[]>([]);
 const shelf = ref<NovelShelfItem[]>([]);
@@ -30,7 +31,8 @@ const shelf = ref<NovelShelfItem[]>([]);
 async function loadShelf() {
   try {
     shelf.value = await capabilities.novelShelfList();
-  } catch {
+  } catch (e) {
+    console.warn("[Novel] 书架加载失败:", e);
     shelf.value = [];
   }
 }
@@ -39,8 +41,11 @@ async function loadRank() {
   rankLoading.value = true;
   try {
     rankResults.value = await capabilities.novelRank(settings.wenku8Node, settings.novelCharset, rankSort.value, 1);
-  } catch {
+    homeError.value = "";
+  } catch (e) {
+    console.warn("[Novel] 排行榜加载失败:", e);
     rankResults.value = [];
+    homeError.value = e instanceof Error ? e.message : String(e);
   } finally {
     rankLoading.value = false;
   }
@@ -49,9 +54,15 @@ async function loadRank() {
 async function loadRecommend() {
   try {
     recommend.value = await capabilities.novelRecommend(settings.wenku8Node, settings.novelCharset);
-  } catch {
+  } catch (e) {
+    console.warn("[Novel] 推荐加载失败:", e);
     recommend.value = [];
   }
+}
+
+async function loadHome() {
+  homeError.value = "";
+  await Promise.all([loadShelf(), loadRank(), loadRecommend()]);
 }
 
 async function doSearch() {
@@ -95,9 +106,7 @@ function pickRank(sort: string) {
 }
 
 onMounted(() => {
-  void loadShelf();
-  void loadRank();
-  void loadRecommend();
+  void loadHome();
 });
 </script>
 
@@ -137,6 +146,13 @@ onMounted(() => {
         </button>
       </div>
       <p v-if="searchError" class="error">{{ searchError }}</p>
+      <div v-if="homeError" class="home-error">
+        <span>{{ homeError }}</span>
+        <button class="lm-btn lm-btn--text" @click="loadHome">
+          <span class="material-symbols-outlined">refresh</span>
+          {{ t("novel.retry") }}
+        </button>
+      </div>
       <div v-if="searchResults.length" class="search-results">
         <h3 class="section-title">{{ t("novel.searchResults") }}</h3>
         <div class="novel-grid">
@@ -213,6 +229,17 @@ onMounted(() => {
   margin: 0;
   font-size: var(--md-sys-typescale-body-small-size);
   color: var(--md-sys-color-error);
+}
+.home-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--md-sys-shape-corner-medium);
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+  font-size: var(--md-sys-typescale-body-small-size);
 }
 .section {
   display: flex;
