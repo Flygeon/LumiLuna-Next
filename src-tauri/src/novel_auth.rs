@@ -11,6 +11,7 @@
 
 use serde::{Deserialize, Serialize};
 use tauri::Manager;
+use std::io::Write;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, OnceLock};
 
@@ -204,6 +205,25 @@ pub fn wenku8_userinfo(app: tauri::AppHandle) -> Option<Wenku8UserInfo> {
     state().lock().unwrap().user_info.clone()
 }
 
+/// 调试日志：将信息追加到临时目录的日志文件，便于在无本地编译环境时
+/// 排查登录窗口白屏/卡死问题。路径：<系统临时目录>/lumiluna_login_debug.log
+/// （Windows 通常为 C:\Users\<用户>\AppData\Local\Temp\lumiluna_login_debug.log）。
+/// 时间戳使用 Unix 秒（含小数毫秒），便于按时间顺序阅读。
+fn login_debug_log(msg: &str) {
+    let path = std::env::temp_dir().join("lumiluna_login_debug.log");
+    if let Ok(mut f) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+    {
+        let t = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs_f64())
+            .unwrap_or(0.0);
+        let _ = writeln!(f, "[{:.3}] {}", t, msg);
+    }
+}
+
 /// 注入到登录窗口的脚本：移除临时登录选项、轮询 cookie，
 /// 登录成功（cookie 含 jieqiUserInfo + jieqiVisitInfo）后提交并关闭窗口。
 /// 通过 initialization_script 注入，在 DOMContentLoaded 后执行避免阻塞渲染。
@@ -216,6 +236,11 @@ const LOGIN_INJECT_JS: &str = r#"
       d.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#c00;color:#fff;font:12px/1.6 monospace;padding:6px 8px;white-space:pre-wrap;';
       d.textContent = 'LumiLuna 登录注入错误: ' + msg;
       (document.body || document.documentElement).appendChild(d);
+    } catch (e) {}
+    try {
+      if (window.__TAURI__ && window.__TAURI__.core) {
+        window.__TAURI__.core.invoke('wenku8_login_log', { msg: String(msg) }).catch(function(){});
+      }
     } catch (e) {}
   }
   function run() {
@@ -240,7 +265,7 @@ const LOGIN_INJECT_JS: &str = r#"
         if (window.__TAURI__ && window.__TAURI__.core) {
           await window.__TAURI__.core.invoke('wenku8_login_submit', { cookie });
         }
-      } catch (e) { console.error('wenku8 submit failed', e); }
+      } catch (e) { console.error('wenku8 submit failed', e); try { if (window.__TAURI__ && window.__TAURI__.core) window.__TAURI__.core.invoke('wenku8_login_log', { msg: 'submit failed: ' + (e && e.message || e) }).catch(function(){}); } catch (_) {} }
     }
     stripTempCookie();
     if (hasAll()) { submit(); return; }
@@ -267,18 +292,28 @@ const LOGIN_INJECT_JS: &str = r#"
 /// 设置浏览器 UA：wenku8 对 WebView2 默认 UA 会返回空白页（参考项目同样设置 Edge UA）。
 #[tauri::command]
 pub fn wenku8_login_open(app: tauri::AppHandle) -> Result<(), String> {
+    login_debug_log("===== wenku8_login_open 开始 =====");
     let label = "wenku8-login";
     // 若已存在则先关闭，避免重复窗口
     if let Some(w) = app.get_webview_window(label) {
+        login_debug_log("检测到已存在同名窗口，先关闭");
         let _ = w.close();
     }
     // 注意：不要使用 visible(false)+show()+set_focus() 的组合。
     // Tauri v2 中 build() 之后再 show()/set_focus() 在部分环境下会 panic，
     // 导致本命令不返回、窗口停在不可见状态，前端 await 永久卡死（表现为“卡在登录中”、窗口不出现）。
     // 直接用默认（可见）build() 创建窗口即可，窗口一定会出现。
-    let w = tauri::WebviewWindowBuilder::new(&app, label, tauri::WebviewUrl::External(
-        "https://www.wenku8.net/login.php".parse().unwrap(),
-    ))
+    let nav_label = label.to_string();
+    let load_label = label.to_string();
+    login_debug_log(&format!(
+        "目标 URL = https://www.wenku8.net/login.php, label = {}",
+        label
+    ));
+    let w = tauri::WebviewWindowBuilder::new(
+        &app,
+        label,
+        tauri::WebviewUrl::External("https://www.wenku8.net/login.php".parse().unwrap()),
+    )
     .title("登录轻小说网 Wenku8")
     .inner_size(440.0, 680.0)
     .resizable(true)
@@ -286,13 +321,40 @@ pub fn wenku8_login_open(app: tauri::AppHandle) -> Result<(), String> {
     .decorations(true)
     .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36 Edg/135.0.0.0")
     .initialization_script(LOGIN_INJECT_JS)
+    // 记录每一次导航（含被拦截/重定向），用于判断白屏是“页面没加载”还是“加载后渲染异常”
+    .on_navigation(move |url| {
+        login_debug_log(&format!("[{}][nav] -> {}", nav_label, url));
+        true
+    })
+    // 记录页面加载开始/结束事件及最终 URL
+    .on_page_load(move |_, payload| {
+        login_debug_log(&format!(
+            "[{}][load] {:?} {}",
+            load_label,
+            payload.event(),
+            payload.url()
+        ));
+    })
     .build()
-    .map_err(|e| format!("创建登录窗口失败：{e}"))?;
-    // 自动打开开发者工具，便于在无本地编译环境时排查白屏/网络问题。
-    // 机制与主窗口 open_devtools 命令一致（依赖当前构建的 devtools feature）；
-    // 绕过 F12/allow-internal-toggle-devtools 这条不可靠的路径。
-    let _ = w.open_devtools();
+    .map_err(|e| {
+        login_debug_log(&format!("创建登录窗口失败：{e}"));
+        format!("创建登录窗口失败：{e}")
+    })?;
+    login_debug_log("窗口创建成功（build 返回，窗口应已可见）");
+    // 自动打开开发者工具，便于排查白屏/网络问题（机制同主窗口 open_devtools）。
+    match w.open_devtools() {
+        Ok(_) => login_debug_log("open_devtools: OK"),
+        Err(e) => login_debug_log(&format!("open_devtools: 失败 {e}")),
+    }
+    login_debug_log("wenku8_login_open 结束（返回 Ok）");
     Ok(())
+}
+
+/// 注入脚本通过此命令将登录窗口内（前端 JS 侧）的报错写入同一个调试日志文件，
+/// 便于在白屏/卡死时无需开 devtools 也能拿到 JS 侧的错误信息。
+#[tauri::command]
+pub fn wenku8_login_log(msg: String) {
+    login_debug_log(&format!("[inject-js] {}", msg));
 }
 
 /// 在线书架（bookcase.php）。需要登录态，未登录/过期时返回明确的“需登录”错误。
