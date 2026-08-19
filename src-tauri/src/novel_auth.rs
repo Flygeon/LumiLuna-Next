@@ -561,6 +561,13 @@ pub fn wenku8_login_log(msg: String) {
     login_debug_log(&format!("[inject-js] {}", msg));
 }
 
+/// 主窗口通用诊断日志：将任意前端消息写入同一个调试日志文件。
+/// 用于全局 Vue/Window 错误处理器等不特定于登录的场景，前缀 [app]。
+#[tauri::command]
+pub fn app_log(msg: String) {
+    login_debug_log(&format!("[app] {}", msg));
+}
+
 /// 在线书架（bookcase.php）。需要登录态，未登录/过期时返回明确的“需登录”错误。
 #[tauri::command]
 pub fn wenku8_shelf_online(app: tauri::AppHandle, node: String) -> Result<Vec<NovelShelfItem>, String> {

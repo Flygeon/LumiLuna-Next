@@ -453,4 +453,8 @@ export const capabilities = {
   openDevtools(): Promise<void> {
     return safeInvoke("open_devtools");
   },
+  /** 通用诊断日志：写任意前端消息到同一调试日志文件（供 main.ts 全局错误处理器调用） */
+  appLog(msg: string): Promise<void> {
+    return safeInvoke("app_log", { msg });
+  },
 };
