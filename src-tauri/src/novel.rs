@@ -183,6 +183,13 @@ fn fetch_html(node: &str, charset: &str, path: &str) -> Result<String, String> {
         .get(&url)
         .send()
         .map_err(|e| format!("网络请求失败：{e}"))?;
+    let status = resp.status();
+    if !status.is_success() {
+        return Err(format!(
+            "Wenku8 返回 HTTP {}，可能被站点拦截，可尝试切换节点或稍后再试",
+            status.as_u16()
+        ));
+    }
     let bytes = resp
         .bytes()
         .map_err(|e| format!("读取响应失败：{e}"))?;
