@@ -52,6 +52,15 @@ function t(key: string) {
         </div>
         <span class="material-symbols-outlined t-arrow">chevron_right</span>
       </button>
+
+      <button class="t-card" @click="router.push('/novel-stats')">
+        <span class="t-icon material-symbols-outlined">menu_book</span>
+        <div class="t-body">
+          <div class="t-name">{{ t("settings.treasure.novelStats") }}</div>
+          <div class="t-desc">{{ t("settings.treasure.novelStatsHint") }}</div>
+        </div>
+        <span class="material-symbols-outlined t-arrow">chevron_right</span>
+      </button>
     </div>
   </div>
 </template>

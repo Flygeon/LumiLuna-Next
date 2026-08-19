@@ -85,6 +85,44 @@ const mode = computed(() => settings.pdfReadMode);
 /** 双页模式一次前进两页 */
 const step = computed(() => (mode.value === "dual" ? 2 : 1));
 
+// ---- 阅读统计打点（本地，章节级）----
+let readSessionId = "";
+let readSessionStart = 0;
+let readChapterKey = "";
+let readChapterTitle = "";
+
+function flushReadSession() {
+  if (!readSessionId || !readSessionStart) return;
+  const endedAt = Date.now();
+  const durationMs = Math.max(0, endedAt - readSessionStart);
+  if (durationMs >= 1000) {
+    void capabilities.novelReadSessionEnd({
+      id: readSessionId,
+      bookId: props.item.id,
+      source: "local",
+      title: props.item.title || props.item.name,
+      chapterKey: readChapterKey || "0",
+      chapterTitle: readChapterTitle || props.item.title || props.item.name,
+      startedAt: readSessionStart,
+      endedAt,
+      durationMs,
+      completed: false,
+    });
+  }
+  readSessionId = "";
+  readSessionStart = 0;
+  readChapterKey = "";
+  readChapterTitle = "";
+}
+
+function beginReadSession(key: string, title: string) {
+  flushReadSession();
+  readSessionId = crypto.randomUUID();
+  readSessionStart = Date.now();
+  readChapterKey = key;
+  readChapterTitle = title;
+}
+
 /** 当前背景主题（chrome 与 EPUB 正文共用） */
 const theme = computed(
   () => READER_THEMES[settings.readerTheme] ?? READER_THEMES.dark,
@@ -394,6 +432,7 @@ function onKey(e: KeyboardEvent) {
 
 onMounted(async () => {
   window.addEventListener("keydown", onKey);
+  beginReadSession(kind.value === "pdf" ? "p1" : "start", props.item.title || props.item.name);
   try {
     if (kind.value === "pdf") await openPdf();
     else await openEpub();
@@ -405,12 +444,21 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  flushReadSession(); // 关闭书籍时先结算阅读时长
   saveProgress(); // 关闭书籍时补存一次进度（应用退出也会走这里）
   window.removeEventListener("keydown", onKey);
   cancelRenders();
   rendition.value?.destroy();
   book.value?.destroy();
   void pdfLoadingTask.value?.destroy();
+});
+
+// 本地阅读打点：PDF 页码 / EPUB 章节位置变化时结算上一段
+watch(page, (v) => {
+  if (kind.value === "pdf" && pdfDoc.value) beginReadSession(`p${v}`, `第 ${v} 页`);
+});
+watch(currentHref, (v) => {
+  if (kind.value === "epub" && rendition.value) beginReadSession(v || "0", v || "");
 });
 
 // 切换阅读模式或缩放后重绘 PDF

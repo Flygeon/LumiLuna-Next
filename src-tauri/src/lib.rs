@@ -1,6 +1,7 @@
 pub mod commands;
 pub mod media;
 pub mod netease;
+pub mod novel;
 pub mod tray;
 pub mod webdav;
 
@@ -178,6 +179,26 @@ pub fn run() {
             netease::netease_daily_recommend_songs,
             netease::netease_personal_fm,
             netease::netease_logout,
+            novel::novel_search,
+            novel::novel_rank,
+            novel::novel_category,
+            novel::novel_recommend,
+            novel::novel_detail,
+            novel::novel_catalogue,
+            novel::novel_content,
+            novel::novel_shelf_list,
+            novel::novel_shelf_add,
+            novel::novel_shelf_remove,
+            novel::novel_progress_get,
+            novel::novel_progress_set,
+            novel::novel_chapter_cache_get,
+            novel::novel_chapter_cache_put,
+            novel::novel_read_session_start,
+            novel::novel_read_session_end,
+            novel::novel_stats_get,
+            novel::novel_stats_list,
+            novel::novel_source_breakdown,
+            novel::novel_top_books,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

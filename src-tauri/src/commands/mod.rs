@@ -61,7 +61,7 @@ impl ScanJobInfo {
 }
 
 /// 当前 schema 版本。递增后在 `migrate` 中追加对应分支。
-const SCHEMA_VERSION: i64 = 2;
+const SCHEMA_VERSION: i64 = 3;
 
 /// 建表 + 版本化迁移。对已存在的库是幂等的。
 pub fn init_db(conn: &rusqlite::Connection) -> rusqlite::Result<()> {
@@ -199,6 +199,63 @@ fn migrate(conn: &rusqlite::Connection) -> rusqlite::Result<()> {
             "#,
         )?;
         conn.pragma_update(None, "user_version", 2)?;
+    }
+    // v2 -> v3：在线小说书架 / 进度 / 章节缓存 / 阅读统计
+    if current < 3 {
+        conn.execute_batch(
+            r#"
+            CREATE TABLE IF NOT EXISTS novel_shelf (
+              aid TEXT PRIMARY KEY,
+              title TEXT NOT NULL DEFAULT '',
+              author TEXT NOT NULL DEFAULT '',
+              cover TEXT NOT NULL DEFAULT '',
+              added_at INTEGER NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS novel_progress (
+              aid TEXT PRIMARY KEY,
+              cid TEXT NOT NULL DEFAULT '',
+              chapter_title TEXT NOT NULL DEFAULT '',
+              position INTEGER NOT NULL DEFAULT 0,
+              updated_at INTEGER NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS novel_chapter_cache (
+              aid TEXT NOT NULL,
+              cid TEXT NOT NULL,
+              title TEXT NOT NULL DEFAULT '',
+              content TEXT NOT NULL,
+              cached_at INTEGER NOT NULL,
+              PRIMARY KEY (aid, cid)
+            );
+            CREATE TABLE IF NOT EXISTS novel_read_session (
+              id TEXT PRIMARY KEY,
+              book_id TEXT NOT NULL,
+              source TEXT NOT NULL,
+              title TEXT NOT NULL DEFAULT '',
+              chapter_key TEXT NOT NULL DEFAULT '',
+              chapter_title TEXT NOT NULL DEFAULT '',
+              started_at INTEGER NOT NULL,
+              ended_at INTEGER,
+              duration_ms INTEGER NOT NULL DEFAULT 0,
+              completed INTEGER NOT NULL DEFAULT 0
+            );
+            CREATE TABLE IF NOT EXISTS novel_read_daily (
+              day TEXT PRIMARY KEY,
+              read_count INTEGER NOT NULL DEFAULT 0,
+              total_ms INTEGER NOT NULL DEFAULT 0,
+              unique_books INTEGER NOT NULL DEFAULT 0,
+              local_ms INTEGER NOT NULL DEFAULT 0,
+              online_ms INTEGER NOT NULL DEFAULT 0
+            );
+            CREATE TABLE IF NOT EXISTS novel_read_day_book (
+              day TEXT NOT NULL,
+              book_id TEXT NOT NULL,
+              PRIMARY KEY (day, book_id)
+            );
+            CREATE INDEX IF NOT EXISTS idx_novel_session_book ON novel_read_session(book_id);
+            CREATE INDEX IF NOT EXISTS idx_novel_session_ended ON novel_read_session(ended_at);
+            "#,
+        )?;
+        conn.pragma_update(None, "user_version", 3)?;
     }
     Ok(())
 }

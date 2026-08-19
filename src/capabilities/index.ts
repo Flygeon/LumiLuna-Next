@@ -31,6 +31,18 @@ import type {
   NeteaseQrCheck,
   NeteaseRecommendPlaylist,
   NeteaseSong,
+  NovelContent,
+  NovelCover,
+  NovelDailyStat,
+  NovelDetail,
+  NovelProgress,
+  NovelReadSessionEnd,
+  NovelReadSessionStart,
+  NovelRecommendBlock,
+  NovelShelfItem,
+  NovelSourceStat,
+  NovelTopBook,
+  NovelVolume,
   Song,
   TopTrackStat,
   WebDavEntry,
@@ -295,6 +307,68 @@ export const capabilities = {
   },
   neteaseLogout(): Promise<void> {
     return safeInvoke("netease_logout");
+  },
+
+  // ---- 在线小说（Wenku8）----
+  novelSearch(node: string, charset: string, query: string, page = 1): Promise<NovelCover[]> {
+    return safeInvoke("novel_search", { node, charset, query, page });
+  },
+  novelRank(node: string, charset: string, sort: string, page = 1): Promise<NovelCover[]> {
+    return safeInvoke("novel_rank", { node, charset, sort, page });
+  },
+  novelCategory(node: string, charset: string, tag: string, sort: string, page = 1): Promise<NovelCover[]> {
+    return safeInvoke("novel_category", { node, charset, tag, sort, page });
+  },
+  novelRecommend(node: string, charset: string): Promise<NovelRecommendBlock[]> {
+    return safeInvoke("novel_recommend", { node, charset });
+  },
+  novelDetail(node: string, charset: string, aid: string): Promise<NovelDetail> {
+    return safeInvoke("novel_detail", { node, charset, aid });
+  },
+  novelCatalogue(node: string, charset: string, aid: string): Promise<NovelVolume[]> {
+    return safeInvoke("novel_catalogue", { node, charset, aid });
+  },
+  novelContent(node: string, charset: string, aid: string, cid: string, title: string): Promise<NovelContent> {
+    return safeInvoke("novel_content", { node, charset, aid, cid, title });
+  },
+  novelShelfList(): Promise<NovelShelfItem[]> {
+    return safeInvoke("novel_shelf_list");
+  },
+  novelShelfAdd(aid: string, title: string, author?: string, cover?: string): Promise<void> {
+    return safeInvoke("novel_shelf_add", { aid, title, author: author ?? null, cover: cover ?? null });
+  },
+  novelShelfRemove(aid: string): Promise<void> {
+    return safeInvoke("novel_shelf_remove", { aid });
+  },
+  novelProgressGet(aid: string): Promise<NovelProgress | null> {
+    return safeInvoke("novel_progress_get", { aid });
+  },
+  novelProgressSet(aid: string, cid: string, chapterTitle: string, position: number): Promise<void> {
+    return safeInvoke("novel_progress_set", { aid, cid, chapterTitle, position });
+  },
+  novelChapterCacheGet(aid: string, cid: string): Promise<NovelContent | null> {
+    return safeInvoke("novel_chapter_cache_get", { aid, cid });
+  },
+  novelChapterCachePut(aid: string, cid: string, title: string, content: NovelContent): Promise<void> {
+    return safeInvoke("novel_chapter_cache_put", { aid, cid, title, content });
+  },
+  novelReadSessionStart(input: NovelReadSessionStart): Promise<void> {
+    return safeInvoke("novel_read_session_start", { input });
+  },
+  novelReadSessionEnd(input: NovelReadSessionEnd): Promise<void> {
+    return safeInvoke("novel_read_session_end", { input });
+  },
+  novelStatsGet(day?: string): Promise<NovelDailyStat | null> {
+    return safeInvoke("novel_stats_get", { day: day ?? null });
+  },
+  novelStatsList(days?: number, fromDay?: string, toDay?: string): Promise<NovelDailyStat[]> {
+    return safeInvoke("novel_stats_list", { days: days ?? null, fromDay: fromDay ?? null, toDay: toDay ?? null });
+  },
+  novelSourceBreakdown(days?: number, fromDay?: string, toDay?: string): Promise<NovelSourceStat[]> {
+    return safeInvoke("novel_source_breakdown", { days: days ?? null, fromDay: fromDay ?? null, toDay: toDay ?? null });
+  },
+  novelTopBooks(limit?: number, days?: number): Promise<NovelTopBook[]> {
+    return safeInvoke("novel_top_books", { limit: limit ?? null, days: days ?? null });
   },
 
   // ---- 系统 ----

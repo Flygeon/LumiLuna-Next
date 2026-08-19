@@ -643,6 +643,40 @@ function resetDesktopLyricsBounds() {
       </div>
     </section>
 
+    <!-- 在线小说 -->
+    <section class="card">
+      <h3>{{ t("settings.onlineNovel") }}</h3>
+      <p class="hint">{{ t("settings.onlineNovelHint") }}</p>
+      <label class="row switch-row">
+        <span class="row-label">{{ t("settings.onlineNovelEnable") }}</span>
+        <input type="checkbox" v-model="settings.onlineNovelEnabled" />
+      </label>
+      <div v-if="settings.onlineNovelEnabled" class="row">
+        <div class="row-label"><span>{{ t("settings.wenku8Node") }}</span></div>
+        <div class="segmented">
+          <button
+            v-for="n in (['cc', 'net'] as const)"
+            :key="n"
+            class="seg"
+            :class="{ active: settings.wenku8Node === n }"
+            @click="settings.wenku8Node = n"
+          >{{ t("settings.wenku8Node_" + n) }}</button>
+        </div>
+      </div>
+      <div v-if="settings.onlineNovelEnabled" class="row">
+        <div class="row-label"><span>{{ t("settings.novelCharset") }}</span></div>
+        <div class="segmented">
+          <button
+            v-for="c in (['gbk', 'big5'] as const)"
+            :key="c"
+            class="seg"
+            :class="{ active: settings.novelCharset === c }"
+            @click="settings.novelCharset = c"
+          >{{ t("settings.novelCharset_" + c) }}</button>
+        </div>
+      </div>
+    </section>
+
     <!-- WebDAV -->
     <section class="card">
       <h3>{{ t("settings.webdav") }}</h3>

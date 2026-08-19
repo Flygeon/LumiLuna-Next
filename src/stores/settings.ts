@@ -34,6 +34,10 @@ export interface DesktopLyricsBounds {
 }
 /** 本地音乐库展示模式 */
 export type MusicViewMode = "grid" | "list";
+/** Wenku8 节点 */
+export type Wenku8Node = "cc" | "net";
+/** 小说页面字符集 */
+export type NovelCharset = "gbk" | "big5";
 
 const store = new LazyStore("settings.json");
 
@@ -99,6 +103,12 @@ const DEFAULTS = {
   webdavPass: "",
   /** 实验性：网易云账号（扫码登录，我的歌单 + 云盘） */
   neteaseEnabled: false,
+  /** 实验性：在线小说（Wenku8 抓取） */
+  onlineNovelEnabled: false,
+  /** Wenku8 节点：cc 主用 / net 备用 */
+  wenku8Node: "cc" as Wenku8Node,
+  /** 小说页面字符集：简中 GBK / 繁中 Big5 */
+  novelCharset: "gbk" as NovelCharset,
   /** 预设分享码偏好：both（默认，两种同时输出）/ chinese / original */
   shareCodePreference: "both" as ShareCodePreference,
   /** 桌面歌词 */
@@ -153,6 +163,9 @@ export const useSettingsStore = defineStore("settings", () => {
   const webdavUser = ref(DEFAULTS.webdavUser);
   const webdavPass = ref(DEFAULTS.webdavPass);
   const neteaseEnabled = ref(DEFAULTS.neteaseEnabled);
+  const onlineNovelEnabled = ref(DEFAULTS.onlineNovelEnabled);
+  const wenku8Node = ref<Wenku8Node>(DEFAULTS.wenku8Node);
+  const novelCharset = ref<NovelCharset>(DEFAULTS.novelCharset);
   const shareCodePreference = ref<ShareCodePreference>(DEFAULTS.shareCodePreference);
   const desktopLyricsEnabled = ref(DEFAULTS.desktopLyricsEnabled);
   const desktopLyricsFontSize = ref(DEFAULTS.desktopLyricsFontSize);
@@ -204,6 +217,9 @@ export const useSettingsStore = defineStore("settings", () => {
     webdavUser,
     webdavPass,
     neteaseEnabled,
+    onlineNovelEnabled,
+    wenku8Node,
+    novelCharset,
     shareCodePreference,
     desktopLyricsEnabled,
     desktopLyricsFontSize,

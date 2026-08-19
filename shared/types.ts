@@ -292,6 +292,111 @@ export interface NeteaseRecommendPlaylist {
   copywriter: string;
 }
 
+// ── 在线小说（Wenku8）──────────────────────────────────────────
+
+export interface NovelCover {
+  aid: string;
+  title: string;
+  imageUrl: string;
+  author?: string | null;
+}
+
+export interface NovelDetail {
+  aid: string;
+  title: string;
+  author: string;
+  status: string;
+  finUpdate: string;
+  imgUrl: string;
+  introduce: string;
+  tags: string[];
+  heat: string;
+  trending: string;
+}
+
+export interface NovelChapter {
+  cid: string;
+  title: string;
+}
+
+export interface NovelVolume {
+  title: string;
+  chapters: NovelChapter[];
+}
+
+export interface NovelContent {
+  text: string;
+  images: string[];
+}
+
+export interface NovelRecommendBlock {
+  title: string;
+  novels: NovelCover[];
+}
+
+export interface NovelShelfItem {
+  aid: string;
+  title: string;
+  author: string;
+  cover: string;
+  addedAt: number;
+}
+
+export interface NovelProgress {
+  aid: string;
+  cid: string;
+  chapterTitle: string;
+  position: number;
+  updatedAt: number;
+}
+
+export interface NovelReadSessionStart {
+  id: string;
+  bookId: string;
+  source: "local" | "online";
+  title: string;
+  chapterKey: string;
+  chapterTitle: string;
+  startedAt: number;
+}
+
+export interface NovelReadSessionEnd {
+  id: string;
+  bookId: string;
+  source: "local" | "online";
+  title: string;
+  chapterKey: string;
+  chapterTitle: string;
+  startedAt: number;
+  endedAt: number;
+  durationMs: number;
+  completed: boolean;
+}
+
+export interface NovelDailyStat {
+  day: string;
+  readCount: number;
+  totalMs: number;
+  uniqueBooks: number;
+  localMs: number;
+  onlineMs: number;
+}
+
+export interface NovelSourceStat {
+  source: string;
+  readCount: number;
+  totalMs: number;
+}
+
+export interface NovelTopBook {
+  bookId: string;
+  source: string;
+  title: string;
+  chapterTitle: string;
+  readCount: number;
+  totalMs: number;
+}
+
 /** SMTC 媒体信息（推送 Windows 系统媒体控件，换歌时调用） */
 export interface SmtcMedia {
   title: string;
