@@ -276,7 +276,7 @@ pub fn wenku8_login_open(app: tauri::AppHandle) -> Result<(), String> {
     // Tauri v2 中 build() 之后再 show()/set_focus() 在部分环境下会 panic，
     // 导致本命令不返回、窗口停在不可见状态，前端 await 永久卡死（表现为“卡在登录中”、窗口不出现）。
     // 直接用默认（可见）build() 创建窗口即可，窗口一定会出现。
-    tauri::WebviewWindowBuilder::new(&app, label, tauri::WebviewUrl::External(
+    let w = tauri::WebviewWindowBuilder::new(&app, label, tauri::WebviewUrl::External(
         "https://www.wenku8.net/login.php".parse().unwrap(),
     ))
     .title("登录轻小说网 Wenku8")
@@ -288,6 +288,10 @@ pub fn wenku8_login_open(app: tauri::AppHandle) -> Result<(), String> {
     .initialization_script(LOGIN_INJECT_JS)
     .build()
     .map_err(|e| format!("创建登录窗口失败：{e}"))?;
+    // 自动打开开发者工具，便于在无本地编译环境时排查白屏/网络问题。
+    // 机制与主窗口 open_devtools 命令一致（依赖当前构建的 devtools feature）；
+    // 绕过 F12/allow-internal-toggle-devtools 这条不可靠的路径。
+    let _ = w.open_devtools();
     Ok(())
 }
 
