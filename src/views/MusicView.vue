@@ -6,6 +6,7 @@ import LibraryToolbar from "@/components/LibraryToolbar.vue";
 import MediaGrid from "@/components/MediaGrid.vue";
 import TrackList from "@/components/TrackList.vue";
 import EmptyState from "@/components/EmptyState.vue";
+import NowPlayingFeed from "@/components/NowPlayingFeed.vue";
 import CachedCover from "@/components/CachedCover.vue";
 import { useLibraryStore } from "@/stores/library";
 import { usePlayerStore } from "@/stores/player";
@@ -71,7 +72,7 @@ onActivated(() => {
 
 // ---- 在线音乐（实验性）----
 const onlineMode = computed(() => settings.enableOnlineMusic);
-const tab = ref<"playlists" | "search">("playlists");
+const tab = ref<"feed" | "playlists" | "search">("feed");
 
 type Detail =
   | { type: "local" }
@@ -415,6 +416,26 @@ function playOnlineSongs(songs: OnlineSong[], index: number) {
     });
 }
 
+/** 现在就听信息流：直接播放 */
+function handleFeedPlaySongs(songs: OnlineSong[], index: number) {
+  playOnlineSongs(songs, index);
+}
+
+/** 现在就听信息流：打开推荐歌单 */
+async function openNeteasePlaylist(id: number, name: string) {
+  onlineLoading.value = true;
+  onlineError.value = "";
+  try {
+    const songs = await capabilities.neteasePlaylistDetail(id);
+    const online = await toOnlineSongs(songs);
+    detail.value = { type: "online", title: name, songs: online };
+  } catch (e) {
+    onlineError.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    onlineLoading.value = false;
+  }
+}
+
 /** 本地音乐：单击卡片即播放（原模式逻辑） */
 async function playLocal(item: MediaEntry, index: number) {
   error.value = "";
@@ -441,8 +462,13 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
 <template>
   <div class="view">
     <PageHeader :title="t('nav.music')" :description="t('navDesc.music')" />
-    <!-- 在线音乐：歌单 / 搜索 切换 -->
+    <!-- 在线音乐：推荐 / 歌单 / 搜索 切换 -->
     <div v-if="showOnlineRoot" class="online-tabs">
+      <button
+        class="seg"
+        :class="{ active: tab === 'feed' }"
+        @click="tab = 'feed'"
+      >{{ t("homeFeed.forYou") }}</button>
       <button
         class="seg"
         :class="{ active: tab === 'playlists' }"
@@ -454,6 +480,14 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
         @click="tab = 'search'"
       >{{ t("online.search") }}</button>
     </div>
+
+    <!-- 现在就听信息流 -->
+    <template v-if="showOnlineRoot && tab === 'feed'">
+      <NowPlayingFeed
+        @play-songs="handleFeedPlaySongs"
+        @open-playlist="openNeteasePlaylist"
+      />
+    </template>
 
     <!-- 歌单根列表 -->
     <template v-if="showOnlineRoot && tab === 'playlists'">

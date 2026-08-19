@@ -283,6 +283,15 @@ export interface NeteaseCommentsPage {
   hotComments: NeteaseComment[];
 }
 
+/** 网易云推荐歌单卡片 */
+export interface NeteaseRecommendPlaylist {
+  id: number;
+  name: string;
+  picUrl: string;
+  playCount: number;
+  copywriter: string;
+}
+
 /** SMTC 媒体信息（推送 Windows 系统媒体控件，换歌时调用） */
 export interface SmtcMedia {
   title: string;

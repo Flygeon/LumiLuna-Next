@@ -174,6 +174,9 @@ pub fn run() {
             netease::netease_song_comments,
             netease::netease_set_song_liked,
             netease::netease_likelist,
+            netease::netease_recommend_playlists,
+            netease::netease_daily_recommend_songs,
+            netease::netease_personal_fm,
             netease::netease_logout,
         ])
         .run(tauri::generate_context!())

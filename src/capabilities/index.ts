@@ -29,6 +29,7 @@ import type {
   NeteasePlaylist,
   NeteaseProfile,
   NeteaseQrCheck,
+  NeteaseRecommendPlaylist,
   NeteaseSong,
   Song,
   TopTrackStat,
@@ -282,6 +283,15 @@ export const capabilities = {
   },
   neteaseLikelist(uid: number): Promise<number[]> {
     return safeInvoke("netease_likelist", { uid });
+  },
+  neteaseRecommendPlaylists(limit = 20): Promise<NeteaseRecommendPlaylist[]> {
+    return safeInvoke("netease_recommend_playlists", { limit });
+  },
+  neteaseDailyRecommendSongs(): Promise<NeteaseSong[]> {
+    return safeInvoke("netease_daily_recommend_songs");
+  },
+  neteasePersonalFm(): Promise<NeteaseSong[]> {
+    return safeInvoke("netease_personal_fm");
   },
   neteaseLogout(): Promise<void> {
     return safeInvoke("netease_logout");

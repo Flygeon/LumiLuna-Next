@@ -1287,6 +1287,45 @@ pub struct NeteaseCommentsPage {
     pub hot_comments: Vec<NeteaseComment>,
 }
 
+#[derive(Serialize, Clone, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct NeteaseRecommendPlaylist {
+    pub id: i64,
+    pub name: String,
+    pub pic_url: String,
+    pub play_count: i64,
+    pub copywriter: String,
+}
+
+/// 把网易云歌曲 JSON 映射为前端 NeteaseSong（兼容 ar/artists 两种字段）
+fn map_song_item(v: &Value) -> Option<NeteaseSong> {
+    let id = v["id"].as_i64()?;
+    let artist = v["ar"]
+        .as_array()
+        .map(|ars| {
+            ars.iter()
+                .filter_map(|a| a["name"].as_str())
+                .collect::<Vec<_>>()
+                .join("/")
+        })
+        .or_else(|| {
+            v["artists"].as_array().map(|ars| {
+                ars.iter()
+                    .filter_map(|a| a["name"].as_str())
+                    .collect::<Vec<_>>()
+                    .join("/")
+            })
+        })
+        .unwrap_or_default();
+    Some(NeteaseSong {
+        id,
+        name: v["name"].as_str().unwrap_or("").to_string(),
+        artist,
+        album: v["al"]["name"].as_str().map(|s| s.to_string()),
+        pic_url: v["al"]["picUrl"].as_str().map(|s| s.to_string()),
+    })
+}
+
 // ---- Tauri 命令 ----
 
 /// 获取二维码 key（unikey），前端据此渲染二维码
@@ -1820,6 +1859,109 @@ fn netease_likelist_sync(app: tauri::AppHandle, uid: i64) -> Result<Vec<i64>, St
         .as_array()
         .map(|arr| arr.iter().filter_map(|v| v.as_i64()).collect())
         .unwrap_or_default())
+}
+
+/// 推荐歌单（为你推荐）
+#[tauri::command]
+pub async fn netease_recommend_playlists(
+    app: tauri::AppHandle,
+    limit: i64,
+) -> Result<Vec<NeteaseRecommendPlaylist>, String> {
+    tauri::async_runtime::spawn_blocking(move || netease_recommend_playlists_sync(app, limit))
+        .await
+        .map_err(|e| format!("网易云请求异常：{e}"))?
+}
+
+fn netease_recommend_playlists_sync(
+    app: tauri::AppHandle,
+    limit: i64,
+) -> Result<Vec<NeteaseRecommendPlaylist>, String> {
+    ensure_loaded(&app);
+    let (code, body) = api_call(
+        "weapi",
+        "/api/personalized/playlist",
+        &mut serde_json::json!({
+            "limit": limit,
+            "total": true,
+            "n": 1000,
+        }),
+    )?;
+    if code != 200 {
+        return Err(err_for_code(code));
+    }
+    Ok(body["result"]
+        .as_array()
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| {
+                    Some(NeteaseRecommendPlaylist {
+                        id: v["id"].as_i64()?,
+                        name: v["name"].as_str().unwrap_or("").to_string(),
+                        pic_url: v["picUrl"]
+                            .as_str()
+                            .or_else(|| v["coverImgUrl"].as_str())
+                            .unwrap_or("")
+                            .to_string(),
+                        play_count: v["playCount"].as_i64().unwrap_or(0),
+                        copywriter: v["copywriter"].as_str().unwrap_or("").to_string(),
+                    })
+                })
+                .collect()
+        })
+        .unwrap_or_default())
+}
+
+/// 每日推荐歌曲
+#[tauri::command]
+pub async fn netease_daily_recommend_songs(
+    app: tauri::AppHandle,
+) -> Result<Vec<NeteaseSong>, String> {
+    tauri::async_runtime::spawn_blocking(move || netease_daily_recommend_songs_sync(app))
+        .await
+        .map_err(|e| format!("网易云请求异常：{e}"))?
+}
+
+fn netease_daily_recommend_songs_sync(app: tauri::AppHandle) -> Result<Vec<NeteaseSong>, String> {
+    ensure_loaded(&app);
+    let (code, body) = api_call(
+        "weapi",
+        "/api/v3/discovery/recommend/songs",
+        &mut serde_json::json!({ "afresh": false }),
+    )?;
+    if code != 200 {
+        return Err(err_for_code(code));
+    }
+    let songs = body["data"]["dailySongs"]
+        .as_array()
+        .or_else(|| body["recommend"].as_array())
+        .cloned()
+        .unwrap_or_default();
+    Ok(songs
+        .iter()
+        .filter_map(map_song_item)
+        .collect())
+}
+
+/// 私人 FM
+#[tauri::command]
+pub async fn netease_personal_fm(app: tauri::AppHandle) -> Result<Vec<NeteaseSong>, String> {
+    tauri::async_runtime::spawn_blocking(move || netease_personal_fm_sync(app))
+        .await
+        .map_err(|e| format!("网易云请求异常：{e}"))?
+}
+
+fn netease_personal_fm_sync(app: tauri::AppHandle) -> Result<Vec<NeteaseSong>, String> {
+    ensure_loaded(&app);
+    let (code, body) = api_call(
+        "weapi",
+        "/api/v1/radio/get",
+        &mut serde_json::json!({}),
+    )?;
+    if code != 200 {
+        return Err(err_for_code(code));
+    }
+    let songs = body["data"].as_array().cloned().unwrap_or_default();
+    Ok(songs.iter().filter_map(map_song_item).collect())
 }
 
 /// 退出登录：清内存 + 删持久化文件
