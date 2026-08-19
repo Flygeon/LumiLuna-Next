@@ -318,47 +318,65 @@ const LOGIN_INJECT_JS: &str = r#"
 /// 该方式在每次页面加载前注入，无需额外权限）。
 /// 设置浏览器 UA：wenku8 对 WebView2 默认 UA 会返回空白页（参考项目同样设置 Edge UA）。
 #[tauri::command]
-pub fn wenku8_login_open(app: tauri::AppHandle) -> Result<(), String> {
-    login_debug_log("===== wenku8_login_open 开始 =====");
+pub async fn wenku8_login_open(app: tauri::AppHandle) -> Result<(), String> {
+    login_debug_log("===== wenku8_login_open 开始（async + spawn_blocking） =====");
     let label = "wenku8-login";
     // 若已存在则先关闭，避免重复窗口
     if let Some(w) = app.get_webview_window(label) {
         login_debug_log("检测到已存在同名窗口，先关闭");
         let _ = w.close();
     }
-    // 注意：不要使用 visible(false)+show()+set_focus() 的组合。
-    // Tauri v2 中 build() 之后再 show()/set_focus() 在部分环境下会 panic，
-    // 导致本命令不返回、窗口停在不可见状态，前端 await 永久卡死（表现为“卡在登录中”、窗口不出现）。
-    // 直接用默认（可见）build() 创建窗口即可，窗口一定会出现。
     login_debug_log(&format!(
         "目标 URL = https://www.wenku8.net/login.php, label = {}",
         label
     ));
-    login_debug_log("准备调用 build() 创建窗口");
-    let w = tauri::WebviewWindowBuilder::new(
-        &app,
-        label,
-        tauri::WebviewUrl::External("https://www.wenku8.net/login.php".parse().unwrap()),
-    )
-    .title("登录轻小说网 Wenku8")
-    .inner_size(440.0, 680.0)
-    .resizable(true)
-    .center()
-    .decorations(true)
-    .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36 Edg/135.0.0.0")
-    .initialization_script(LOGIN_INJECT_JS)
-    .build()
-    .map_err(|e| {
-        login_debug_log(&format!("创建登录窗口失败：{e}"));
-        format!("创建登录窗口失败：{e}")
-    })?;
-    login_debug_log("窗口创建成功（build 返回，窗口应已可见）");
-    // 自动打开开发者工具，便于排查白屏/网络问题（机制同主窗口 open_devtools）。
-    // 注意：Tauri v2 的 open_devtools() 返回 ()（infallible），不返回 Result。
-    w.open_devtools();
-    login_debug_log("open_devtools: 已调用");
-    login_debug_log("wenku8_login_open 结束（返回 Ok）");
-    Ok(())
+    // 关键修复（白屏/卡死根因）：
+    // 同步 command 默认在主线程事件循环内执行，而 WebviewWindowBuilder::build()
+    // 底层 with_webview 经 run_on_main_thread 派发到主线程并阻塞等待完成。
+    // 主线程正忙着执行本 command，被派发的窗口创建任务永远拿不到执行机会，
+    // 形成嵌套死锁——表现为日志停在 build 之前、连 map_err 都不会触发、
+    // 前端 await 永久卡死（“卡在登录中”/窗口不出现）。
+    // 改为 async command + spawn_blocking，把 build 放到独立 OS 线程执行，
+    // 其内部 run_on_main_thread 派发到主线程（有消息循环）不再嵌套，避免死锁。
+    login_debug_log("准备在 spawn_blocking 中调用 build()（避免主线程嵌套死锁）");
+    let app2 = app.clone();
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        let w = tauri::WebviewWindowBuilder::new(
+            &app2,
+            label,
+            tauri::WebviewUrl::External("https://www.wenku8.net/login.php".parse().unwrap()),
+        )
+        .title("登录轻小说网 Wenku8")
+        .inner_size(440.0, 680.0)
+        .resizable(true)
+        .center()
+        .decorations(true)
+        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36 Edg/135.0.0.0")
+        .initialization_script(LOGIN_INJECT_JS)
+        .build()
+        .map_err(|e| format!("创建登录窗口失败：{e}"))?;
+        // 自动打开开发者工具，便于排查白屏/网络问题（机制同主窗口 open_devtools）。
+        // 注意：Tauri v2 的 open_devtools() 返回 ()（infallible），不返回 Result。
+        w.open_devtools();
+        Ok::<(), String>(())
+    })
+    .await;
+    match result {
+        Ok(Ok(())) => {
+            login_debug_log("窗口创建成功（build 返回，窗口应已可见）");
+            login_debug_log("open_devtools: 已调用");
+            login_debug_log("wenku8_login_open 结束（返回 Ok）");
+            Ok(())
+        }
+        Ok(Err(e)) => {
+            login_debug_log(&format!("窗口创建失败：{e}"));
+            Err(e)
+        }
+        Err(e) => {
+            login_debug_log(&format!("spawn_blocking 任务异常：{e}"));
+            Err(format!("窗口创建任务异常：{e}"))
+        }
+    }
 }
 
 /// 注入脚本通过此命令将登录窗口内（前端 JS 侧）的报错写入同一个调试日志文件，
