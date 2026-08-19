@@ -583,20 +583,6 @@ function resetDesktopLyricsBounds() {
           </button>
         </div>
       </div>
-      <div class="row">
-        <div class="row-label"><span>{{ t("settings.playerLayout") }}</span></div>
-        <div class="segmented">
-          <button
-            v-for="l in (['classic', 'cover', 'lyrics'] as const)"
-            :key="l"
-            class="seg"
-            :class="{ active: settings.playerLayout === l }"
-            @click="settings.playerLayout = l"
-          >
-            {{ t("settings.playerLayout_" + l) }}
-          </button>
-        </div>
-      </div>
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.closeToTray") }}</span>
         <input type="checkbox" v-model="settings.closeToTray" />

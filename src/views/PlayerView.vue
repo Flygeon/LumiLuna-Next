@@ -122,7 +122,7 @@ onBeforeUnmount(() => {
       <div v-else class="right-placeholder"></div>
     </div>
 
-    <div class="player-body" :class="'layout-' + settings.playerLayout">
+    <div class="player-body">
       <!-- 左栏：封面 + 信息 + 进度 + 控制 -->
       <div class="left-col">
         <div class="cover-wrap" :class="{ hover: player.playing }">
@@ -245,33 +245,7 @@ onBeforeUnmount(() => {
             </span>
             {{ subModeLabel }}
           </button>
-          <div class="layout-toggle">
-            <button
-              class="lt-btn"
-              :class="{ active: settings.playerLayout === 'classic' }"
-              :title="t('settings.playerLayout_classic')"
-              @click="settings.playerLayout = 'classic'"
-            >
-              <span class="material-symbols-outlined">view_sidebar</span>
-            </button>
-            <button
-              class="lt-btn"
-              :class="{ active: settings.playerLayout === 'cover' }"
-              :title="t('settings.playerLayout_cover')"
-              @click="settings.playerLayout = 'cover'"
-            >
-              <span class="material-symbols-outlined">album</span>
-            </button>
-            <button
-              class="lt-btn"
-              :class="{ active: settings.playerLayout === 'lyrics' }"
-              :title="t('settings.playerLayout_lyrics')"
-              @click="settings.playerLayout = 'lyrics'"
-            >
-              <span class="material-symbols-outlined">lyrics</span>
-            </button>
           </div>
-        </div>
         <div class="right-content">
           <LyricsView v-if="rightTab === 'lyrics'" />
           <AudioEffectsPanel v-else-if="rightTab === 'effects'" />
@@ -362,29 +336,7 @@ onBeforeUnmount(() => {
   padding: 0 20px;
   z-index: 2;
 }
-/* 布局切换：只调整左右栏比例与封面尺寸，各栏始终可见 */
-.player-body.layout-cover .left-col {
-  flex: 7;
-}
-.player-body.layout-cover .right-col {
-  flex: 3;
-  min-width: 300px;
-}
-.player-body.layout-cover .cover-wrap {
-  width: min(56vw, 68vh);
-  border-radius: calc(min(56vw, 68vh) * 0.14);
-}
-.player-body.layout-lyrics .left-col {
-  flex: 3;
-  min-width: 300px;
-}
-.player-body.layout-lyrics .right-col {
-  flex: 7;
-}
-.player-body.layout-lyrics .cover-wrap {
-  width: min(30vw, 38vh);
-  border-radius: calc(min(30vw, 38vh) * 0.14);
-}
+
 .cover-wrap {
   width: min(42vw, 52vh);
   aspect-ratio: 1;
@@ -532,37 +484,7 @@ onBeforeUnmount(() => {
   border-radius: 12px;
   align-self: flex-start;
 }
-.layout-toggle {
-  display: flex;
-  gap: 2px;
-  padding: 2px;
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 12px;
-  align-self: flex-start;
-}
-.lt-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 28px;
-  border: none;
-  border-radius: 9px;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.65);
-  cursor: pointer;
-  transition: background 180ms ease;
-}
-.lt-btn:hover {
-  background: rgba(255, 255, 255, 0.12);
-}
-.lt-btn.active {
-  background: rgba(255, 255, 255, 0.92);
-  color: #000;
-}
-.lt-btn .material-symbols-outlined {
-  font-size: 17px;
-}
+
 .source-badge {
   display: inline-flex;
   align-items: center;

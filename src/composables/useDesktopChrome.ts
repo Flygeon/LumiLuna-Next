@@ -88,8 +88,18 @@ export function useDesktopChrome() {
   onMounted(async () => {
     if (!isTauri) return;
 
+    let win: ReturnType<typeof getCurrentWindow>;
     try {
-      const win = getCurrentWindow();
+      win = getCurrentWindow();
+    } catch {
+      return;
+    }
+
+    // 只在主窗口挂桌面 chrome；桌面歌词等子窗口自己负责关闭，
+    // 否则关闭拦截会把子窗口错误地 hide 掉，导致歌词窗关不掉。
+    if (win.label !== "main") return;
+
+    try {
       const unlistenClose = await win.onCloseRequested(async (event) => {
         event.preventDefault();
         if (settings.closeToTray) {
@@ -100,7 +110,7 @@ export function useDesktopChrome() {
       });
       unlisteners.push(unlistenClose);
     } catch {
-      /* 非 Tauri 或权限不足 */
+      /* 权限不足时静默 */
     }
 
     try {

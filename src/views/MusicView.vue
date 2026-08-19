@@ -567,9 +567,33 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
         <span v-if="detail.type !== 'local'" class="count tabular-nums">
           {{ detail.songs.length }} {{ t("online.tracks") }}
         </span>
+        <div
+          v-if="detail.type !== 'local'"
+          class="segmented view-toggle"
+        >
+          <button
+            class="seg"
+            :class="{ active: settings.musicViewMode === 'grid' }"
+            :title="t('settings.musicViewMode_grid')"
+            @click="settings.musicViewMode = 'grid'"
+          >
+            <span class="material-symbols-outlined">grid_view</span>
+          </button>
+          <button
+            class="seg"
+            :class="{ active: settings.musicViewMode === 'list' }"
+            :title="t('settings.musicViewMode_list')"
+            @click="settings.musicViewMode = 'list'"
+          >
+            <span class="material-symbols-outlined">view_list</span>
+          </button>
+        </div>
       </div>
 
-      <div v-if="detail.type === 'online' || detail.type === 'cloud'" class="online-grid">
+      <div
+        v-if="(detail.type === 'online' || detail.type === 'cloud') && settings.musicViewMode === 'grid'"
+        class="online-grid"
+      >
         <button
           v-for="(song, i) in detail.songs"
           :key="song.id"
@@ -584,6 +608,28 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
           <div class="s-meta">
             <div class="s-title" :title="song.name">{{ song.name }}</div>
             <div class="s-artist" :title="song.artist">{{ song.artist }}</div>
+          </div>
+        </button>
+      </div>
+
+      <div
+        v-else-if="(detail.type === 'online' || detail.type === 'cloud') && settings.musicViewMode === 'list'"
+        class="online-list"
+      >
+        <button
+          v-for="(song, i) in detail.songs"
+          :key="song.id"
+          class="online-row"
+          @click="playOnlineSongs(detail.songs, i)"
+          @contextmenu="onSongContext($event, song)"
+        >
+          <div class="o-thumb">
+            <CachedCover v-if="song.pic" :url="song.pic" :alt="song.name" />
+            <span v-else class="material-symbols-outlined">music_note</span>
+          </div>
+          <div class="o-main">
+            <div class="o-title" :title="song.name">{{ song.name }}</div>
+            <div class="o-artist" :title="song.artist">{{ song.artist || "—" }}</div>
           </div>
         </button>
       </div>
@@ -984,14 +1030,85 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
   text-overflow: ellipsis;
 }
 
+/* 在线歌单/搜索详情：列表模式行 */
+.online-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.online-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 10px;
+  border: none;
+  border-radius: var(--md-sys-shape-corner-medium);
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.online-row:hover {
+  background: var(--md-sys-color-surface-container);
+}
+.o-thumb {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--md-sys-shape-corner-small);
+  overflow: hidden;
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-outline);
+}
+.o-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.o-thumb .material-symbols-outlined {
+  font-size: 20px;
+}
+.o-main {
+  flex: 1;
+  min-width: 0;
+}
+.o-title {
+  font-size: var(--md-sys-typescale-body-medium-size);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.o-artist {
+  margin-top: 2px;
+  font-size: var(--md-sys-typescale-body-small-size);
+  color: var(--md-sys-color-on-surface-variant);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.o-duration {
+  flex: none;
+  min-width: 44px;
+  text-align: right;
+  font-size: var(--md-sys-typescale-body-small-size);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
 .local-head {
   display: flex;
   align-items: center;
   gap: 12px;
 }
-.local-head :deep(.library-toolbar) {
+/* LibraryToolbar 根节点类名是 .toolbar */
+.local-head :deep(.toolbar) {
   flex: 1;
-  margin: 0;
+  min-width: 0;
+  margin-bottom: 0;
 }
 .view-toggle {
   display: flex;
