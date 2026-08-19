@@ -39,6 +39,10 @@
       "identifier": "fs:allow-write-file",
       "allow": [{ "path": "**" }]
     },
+    {
+      "identifier": "fs:allow-write-text-file",
+      "allow": [{ "path": "**" }]
+    },
     "store:default",
     "opener:default",
     "opener:allow-open-path",
