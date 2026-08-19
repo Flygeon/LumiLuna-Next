@@ -24,6 +24,8 @@ import type {
   SmtcMedia,
   SmtcPlayback,
   NeteaseCloudPage,
+  NeteaseComment,
+  NeteaseCommentsPage,
   NeteasePlaylist,
   NeteaseProfile,
   NeteaseQrCheck,
@@ -267,6 +269,19 @@ export const capabilities = {
   },
   neteaseSongUrl(ids: number[]): Promise<{ id: number; url: string }[]> {
     return safeInvoke("netease_song_url", { ids });
+  },
+  neteaseSongComments(
+    id: number,
+    offset = 0,
+    limit = 20,
+  ): Promise<NeteaseCommentsPage> {
+    return safeInvoke("netease_song_comments", { id, offset, limit });
+  },
+  neteaseSetSongLiked(id: number, like: boolean): Promise<void> {
+    return safeInvoke("netease_set_song_liked", { id, like });
+  },
+  neteaseLikelist(uid: number): Promise<number[]> {
+    return safeInvoke("netease_likelist", { uid });
   },
   neteaseLogout(): Promise<void> {
     return safeInvoke("netease_logout");

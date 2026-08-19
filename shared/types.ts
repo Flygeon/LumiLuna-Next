@@ -249,6 +249,40 @@ export interface NeteaseQrCheck {
   avatarUrl?: string | null;
 }
 
+/** 网易云评论用户 */
+export interface NeteaseCommentUser {
+  userId?: number;
+  nickname?: string;
+  avatarUrl?: string;
+  vipType?: number;
+}
+
+/** 网易云评论回复引用 */
+export interface NeteaseCommentReply {
+  user?: NeteaseCommentUser;
+  content?: string;
+}
+
+/** 网易云评论 */
+export interface NeteaseComment {
+  commentId: number;
+  content: string;
+  time: number;
+  likedCount: number;
+  liked: boolean;
+  user?: NeteaseCommentUser;
+  beReplied?: NeteaseCommentReply[];
+  ipLocation?: { location?: string };
+}
+
+/** 网易云歌曲评论分页 */
+export interface NeteaseCommentsPage {
+  total: number;
+  more: boolean;
+  comments: NeteaseComment[];
+  hotComments: NeteaseComment[];
+}
+
 /** SMTC 媒体信息（推送 Windows 系统媒体控件，换歌时调用） */
 export interface SmtcMedia {
   title: string;

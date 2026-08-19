@@ -28,6 +28,8 @@ export const useNeteaseStore = defineStore("netease", () => {
   const playlists = ref<NeteasePlaylist[]>([]);
   const cloudCount = ref(0);
   const cloudHasMore = ref(false);
+  /** 我喜欢的音乐 ID 集合（网易云红心） */
+  const likedSongIds = ref<Set<number>>(new Set());
 
   // ---- 登录弹窗 ----
   const qrOpen = ref(false);
@@ -56,6 +58,7 @@ export const useNeteaseStore = defineStore("netease", () => {
       loggedIn.value = true;
       void refreshPlaylists();
       void refreshCloudCount();
+      void refreshLikedSongs();
     } catch {
       loggedIn.value = false;
       profile.value = null;
@@ -115,6 +118,7 @@ export const useNeteaseStore = defineStore("netease", () => {
           closeQr();
           void refreshPlaylists();
           void refreshCloudCount();
+          void refreshLikedSongs();
           return;
         }
         // 实测语义：801=等待扫码 802=已扫码待确认 800=二维码过期（停止轮询）
@@ -197,6 +201,7 @@ export const useNeteaseStore = defineStore("netease", () => {
       closeQr();
       void refreshPlaylists();
       void refreshCloudCount();
+      void refreshLikedSongs();
     } catch (e) {
       phoneError.value = String(e);
     } finally {
@@ -216,6 +221,7 @@ export const useNeteaseStore = defineStore("netease", () => {
     playlists.value = [];
     cloudCount.value = 0;
     cloudHasMore.value = false;
+    likedSongIds.value = new Set();
     clearSongUrlCache();
   }
 
@@ -244,6 +250,41 @@ export const useNeteaseStore = defineStore("netease", () => {
     return page.songs;
   }
 
+  /** 拉取我喜欢的音乐 ID 列表（登录后调用） */
+  async function refreshLikedSongs() {
+    if (!loggedIn.value || !profile.value) return;
+    try {
+      likedSongIds.value = new Set(await capabilities.neteaseLikelist(profile.value.userId));
+    } catch (e) {
+      console.warn("[网易云] 红心列表拉取失败:", e);
+    }
+  }
+
+  function isSongLiked(id: number | string): boolean {
+    const n = Number(id);
+    if (!Number.isFinite(n)) return false;
+    return likedSongIds.value.has(n);
+  }
+
+  /** 红心 / 取消红心，返回操作后的状态 */
+  async function toggleSongLiked(id: number | string): Promise<boolean> {
+    const n = Number(id);
+    if (!Number.isFinite(n) || !loggedIn.value) return false;
+    const next = !likedSongIds.value.has(n);
+    // 乐观更新，失败回滚
+    const prev = new Set(likedSongIds.value);
+    if (next) likedSongIds.value.add(n);
+    else likedSongIds.value.delete(n);
+    try {
+      await capabilities.neteaseSetSongLiked(n, next);
+      return next;
+    } catch (e) {
+      likedSongIds.value = prev;
+      console.warn("[网易云] 红心操作失败:", e);
+      return !next;
+    }
+  }
+
   return {
     loggedIn,
     profile,
@@ -270,5 +311,9 @@ export const useNeteaseStore = defineStore("netease", () => {
     refreshPlaylists,
     refreshCloudCount,
     loadCloudPage,
+    likedSongIds,
+    isSongLiked,
+    toggleSongLiked,
+    refreshLikedSongs,
   };
 });

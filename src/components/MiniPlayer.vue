@@ -2,15 +2,32 @@
 import { computed } from "vue";
 import { useRouter } from "vue-router";
 import { usePlayerStore } from "@/stores/player";
+import { useNeteaseStore } from "@/stores/netease";
 import PlayerControlIcon from "@/components/PlayerControlIcon.vue";
 import { formatTime } from "@/utils/format";
 
 const player = usePlayerStore();
+const netease = useNeteaseStore();
 const router = useRouter();
 
 const progress = computed(() =>
   player.duration ? (player.currentTime / player.duration) * 100 : 0,
 );
+
+const canLike = computed(() =>
+  netease.loggedIn &&
+  player.song?.kind === "online" &&
+  Number.isFinite(Number(player.song?.id)),
+);
+
+const liked = computed(() =>
+  player.song ? netease.isSongLiked(player.song.id) : false,
+);
+
+async function toggleLike() {
+  if (!player.song || !canLike.value) return;
+  await netease.toggleSongLiked(player.song.id);
+}
 
 function seek(e: MouseEvent) {
   const el = e.currentTarget as HTMLElement;
@@ -44,6 +61,15 @@ function seek(e: MouseEvent) {
       </div>
 
       <div class="controls" @click.stop>
+        <button
+          v-if="canLike"
+          class="lm-icon-btn like"
+          :class="{ on: liked }"
+          :title="liked ? '取消喜欢' : '喜欢'"
+          @click="toggleLike"
+        >
+          <span class="material-symbols-outlined" :class="{ filled: liked }">favorite</span>
+        </button>
         <button class="lm-icon-btn" title="上一首" @click="player.previous()">
           <span class="material-symbols-outlined filled">skip_previous</span>
         </button>
@@ -183,6 +209,12 @@ function seek(e: MouseEvent) {
   width: 26px;
   height: 23px;
   filter: drop-shadow(0 0 6px rgba(0, 0, 0, 0.18));
+}
+.like.on {
+  color: var(--md-sys-color-error);
+}
+.like .material-symbols-outlined {
+  font-size: 20px;
 }
 
 @media (max-width: 720px) {

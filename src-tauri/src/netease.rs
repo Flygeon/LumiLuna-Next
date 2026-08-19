@@ -1226,6 +1226,67 @@ pub struct NeteaseSongUrl {
     pub url: String,
 }
 
+// ---- 评论 / 红心（与前端 TS 一一对应）----
+
+#[derive(Serialize, Deserialize, Clone, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct NeteaseCommentUser {
+    #[serde(default)]
+    pub user_id: Option<i64>,
+    #[serde(default)]
+    pub nickname: Option<String>,
+    #[serde(default)]
+    pub avatar_url: Option<String>,
+    #[serde(default)]
+    pub vip_type: Option<i64>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct NeteaseCommentIpLocation {
+    #[serde(default)]
+    pub location: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct NeteaseCommentReply {
+    #[serde(default)]
+    pub user: Option<NeteaseCommentUser>,
+    #[serde(default)]
+    pub content: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct NeteaseComment {
+    #[serde(default)]
+    pub comment_id: i64,
+    #[serde(default)]
+    pub content: String,
+    #[serde(default)]
+    pub time: i64,
+    #[serde(default)]
+    pub liked_count: i64,
+    #[serde(default)]
+    pub liked: bool,
+    #[serde(default)]
+    pub user: Option<NeteaseCommentUser>,
+    #[serde(default)]
+    pub be_replied: Option<Vec<NeteaseCommentReply>>,
+    #[serde(default)]
+    pub ip_location: Option<NeteaseCommentIpLocation>,
+}
+
+#[derive(Serialize, Clone, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct NeteaseCommentsPage {
+    pub total: i64,
+    pub more: bool,
+    pub comments: Vec<NeteaseComment>,
+    pub hot_comments: Vec<NeteaseComment>,
+}
+
 // ---- Tauri 命令 ----
 
 /// 获取二维码 key（unikey），前端据此渲染二维码
@@ -1653,6 +1714,112 @@ fn netease_login_cellphone_sync(
         save_persist(&app, &persist)?;
     }
     Ok(account)
+}
+
+/// 歌曲评论（分页）
+#[tauri::command]
+pub async fn netease_song_comments(
+    app: tauri::AppHandle,
+    id: i64,
+    offset: i64,
+    limit: i64,
+) -> Result<NeteaseCommentsPage, String> {
+    tauri::async_runtime::spawn_blocking(move || netease_song_comments_sync(app, id, offset, limit))
+        .await
+        .map_err(|e| format!("网易云请求异常：{e}"))?
+}
+
+fn netease_song_comments_sync(
+    app: tauri::AppHandle,
+    id: i64,
+    offset: i64,
+    limit: i64,
+) -> Result<NeteaseCommentsPage, String> {
+    ensure_loaded(&app);
+    let (code, body) = api_call(
+        "weapi",
+        &format!("/api/v1/resource/comments/R_SO_4_{id}"),
+        &mut serde_json::json!({
+            "rid": id,
+            "limit": limit,
+            "offset": offset,
+            "beforeTime": 0,
+        }),
+    )?;
+    if code != 200 {
+        return Err(err_for_code(code));
+    }
+    let parse = |v: &Value| serde_json::from_value::<NeteaseComment>(v.clone()).unwrap_or_default();
+    Ok(NeteaseCommentsPage {
+        total: body["total"].as_i64().unwrap_or(0),
+        more: body["more"].as_bool().unwrap_or(false),
+        comments: body["comments"]
+            .as_array()
+            .map(|arr| arr.iter().map(parse).collect())
+            .unwrap_or_default(),
+        hot_comments: body["hotComments"]
+            .as_array()
+            .map(|arr| arr.iter().map(parse).collect())
+            .unwrap_or_default(),
+    })
+}
+
+/// 红心 / 取消红心
+#[tauri::command]
+pub async fn netease_set_song_liked(
+    app: tauri::AppHandle,
+    id: i64,
+    like: bool,
+) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || netease_set_song_liked_sync(app, id, like))
+        .await
+        .map_err(|e| format!("网易云请求异常：{e}"))?
+}
+
+fn netease_set_song_liked_sync(
+    app: tauri::AppHandle,
+    id: i64,
+    like: bool,
+) -> Result<(), String> {
+    ensure_loaded(&app);
+    let (code, _body) = api_call(
+        "weapi",
+        "/api/radio/like",
+        &mut serde_json::json!({
+            "alg": "itembased",
+            "trackId": id,
+            "like": like,
+            "time": "3",
+        }),
+    )?;
+    if code != 200 {
+        return Err(err_for_code(code));
+    }
+    Ok(())
+}
+
+/// 我喜欢的音乐 ID 列表
+#[tauri::command]
+pub async fn netease_likelist(app: tauri::AppHandle, uid: i64) -> Result<Vec<i64>, String> {
+    tauri::async_runtime::spawn_blocking(move || netease_likelist_sync(app, uid))
+        .await
+        .map_err(|e| format!("网易云请求异常：{e}"))?
+}
+
+fn netease_likelist_sync(app: tauri::AppHandle, uid: i64) -> Result<Vec<i64>, String> {
+    ensure_loaded(&app);
+    let (code, body) = api_call(
+        "eapi",
+        "/api/song/like/get",
+        &mut serde_json::json!({ "uid": uid }),
+    )?;
+    if code != 200 {
+        return Err(err_for_code(code));
+    }
+    Ok(body["ids"]
+        .as_array()
+        .map(|arr| arr.iter().filter_map(|v| v.as_i64()).collect())
+        .unwrap_or_default())
 }
 
 /// 退出登录：清内存 + 删持久化文件

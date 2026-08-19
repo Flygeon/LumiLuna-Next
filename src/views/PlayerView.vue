@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import { usePlayerStore } from "@/stores/player";
 import { useSettingsStore } from "@/stores/settings";
+import { useNeteaseStore } from "@/stores/netease";
 import { useRouter } from "vue-router";
 import { translate } from "@shared/i18n";
 import { isTauri } from "@/capabilities";
@@ -11,17 +12,29 @@ import FluidBackground from "@/components/FluidBackground.vue";
 import LyricsView from "@/components/LyricsView.vue";
 import PlayerControlIcon from "@/components/PlayerControlIcon.vue";
 import AudioEffectsPanel from "@/components/AudioEffectsPanel.vue";
+import CommentsPanel from "@/components/CommentsPanel.vue";
 import { formatDuration } from "@/utils/format";
 
 const player = usePlayerStore();
 const settings = useSettingsStore();
+const netease = useNeteaseStore();
 const router = useRouter();
 const rightTab = ref<"lyrics" | "queue" | "effects">("lyrics");
 const speed = ref(1);
 const isDragging = ref(false);
+const commentsOpen = ref(false);
 
 const { isMaximized, minimize, toggleMaximize, close, startDrag } =
   useWindowDrag();
+
+/** 当前在线歌曲的网易云 ID（仅网易云在线歌曲可查评论/红心） */
+const neteaseSongId = computed(() => {
+  if (!player.song || player.song.kind !== "online") return null;
+  const n = Number(player.song.id);
+  return Number.isFinite(n) && n > 0 ? n : null;
+});
+/** 评论按钮：仅登录网易云且当前为在线歌曲时显示 */
+const canShowComments = computed(() => netease.loggedIn && neteaseSongId.value != null);
 
 /** 当前歌曲是否有翻译/罗马音副行（无则切换按钮置灰） */
 const hasSubLine = computed(() =>
@@ -277,6 +290,24 @@ onBeforeUnmount(() => {
           <div v-else class="queue-empty">{{ t("actions.queue") }}</div>
         </div>
       </div>
+
+      <!-- 评论按钮（登录网易云且当前为在线歌曲时显示） -->
+      <button
+        v-if="canShowComments"
+        class="comment-btn"
+        :title="t('netease.comments')"
+        @click="commentsOpen = true"
+      >
+        <span class="material-symbols-outlined">chat_bubble</span>
+      </button>
+
+      <CommentsPanel
+        :open="commentsOpen"
+        :song-id="neteaseSongId"
+        :title="player.song?.title"
+        :artist="player.song?.artist"
+        @close="commentsOpen = false"
+      />
     </div>
   </div>
 </template>
@@ -642,5 +673,32 @@ onBeforeUnmount(() => {
   color: rgba(255, 255, 255, 0.5);
   text-align: center;
   margin-top: 40%;
+}
+.comment-btn {
+  position: absolute;
+  right: 24px;
+  bottom: 24px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  color: #000;
+  box-shadow: var(--md-elevation-3);
+  cursor: pointer;
+  transition: transform 160ms var(--md-sys-motion-easing-standard);
+}
+.comment-btn:hover {
+  transform: scale(1.06);
+}
+.comment-btn:active {
+  transform: scale(0.94);
+}
+.comment-btn .material-symbols-outlined {
+  font-size: 24px;
 }
 </style>
