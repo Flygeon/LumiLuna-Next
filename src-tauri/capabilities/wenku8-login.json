@@ -1,12 +1,15 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "wenku8-login",
-  "description": "Wenku8 登录弹窗能力（允许网页内调用 invoke 提交 cookie）",
+  "description": "Wenku8 登录弹窗能力（放行 wenku8 外部地址的 IPC，使注入脚本可调用 invoke 提交 cookie）",
   "windows": ["wenku8-login"],
   "permissions": [
     "core:default",
     "core:webview:allow-internal-toggle-devtools",
     "core:window:allow-close",
     "core:window:allow-set-focus"
-  ]
+  ],
+  "remote": {
+    "urls": ["https://www.wenku8.net", "https://*.wenku8.net", "https://*.wenku8.cc"]
+  }
 }
