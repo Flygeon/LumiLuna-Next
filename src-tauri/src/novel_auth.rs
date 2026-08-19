@@ -342,10 +342,9 @@ pub fn wenku8_login_open(app: tauri::AppHandle) -> Result<(), String> {
     })?;
     login_debug_log("窗口创建成功（build 返回，窗口应已可见）");
     // 自动打开开发者工具，便于排查白屏/网络问题（机制同主窗口 open_devtools）。
-    match w.open_devtools() {
-        Ok(_) => login_debug_log("open_devtools: OK"),
-        Err(e) => login_debug_log(&format!("open_devtools: 失败 {e}")),
-    }
+    // 注意：Tauri v2 的 open_devtools() 返回 ()（infallible），不返回 Result。
+    w.open_devtools();
+    login_debug_log("open_devtools: 已调用");
     login_debug_log("wenku8_login_open 结束（返回 Ok）");
     Ok(())
 }
