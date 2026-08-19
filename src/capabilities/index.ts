@@ -398,6 +398,10 @@ export const capabilities = {
   wenku8LoginOpen(): Promise<void> {
     return safeInvoke("wenku8_login_open");
   },
+  /** 轮询登录窗口 cookie：Rust 直接读 webview 全量 cookie（含 httpOnly），命中即保存并关窗 */
+  wenku8LoginPoll(): Promise<Wenku8LoginStatus> {
+    return safeInvoke("wenku8_login_poll");
+  },
   /** 前端（注入脚本/窗口监听）上报诊断日志到 Rust 侧日志文件 */
   wenku8LoginLog(msg: string): Promise<void> {
     return safeInvoke("wenku8_login_log", { msg });

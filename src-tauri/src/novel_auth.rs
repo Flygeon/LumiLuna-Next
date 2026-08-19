@@ -229,6 +229,105 @@ pub async fn wenku8_login_submit(
     })
 }
 
+/// 轮询登录窗口：直接读 webview 全部 cookie（含 httpOnly），
+/// 命中 jieqiUserInfo + jieqiVisitInfo 即保存登录态并关闭登录窗口。
+/// 由主窗口每 ~1.5s 调用一次（主窗口 invoke 可靠，不依赖远程页注入脚本
+/// 或 window.__TAURI__ 在远程 webview 中是否可用）。
+/// 若登录态已被快速通道（注入脚本 submit）先保存，直接返回成功。
+#[tauri::command]
+pub async fn wenku8_login_poll(app: tauri::AppHandle) -> Result<Wenku8LoginStatus, String> {
+    ensure_loaded(&app);
+    // 快速通道已先保存成功 → 直接返回成功，避免误判为“未登录/窗口已关”
+    {
+        let s = state().lock().unwrap();
+        if s.cookie.is_some() {
+            login_debug_log("[poll] 已存在登录态（快速通道已提交），返回成功");
+            return Ok(Wenku8LoginStatus {
+                logged_in: true,
+                uname: s.user_info.as_ref().map(|u| u.uname.clone()),
+                nickname: s.user_info.as_ref().map(|u| u.nickname.clone()),
+            });
+        }
+    }
+    let Some(w) = app.get_webview_window("wenku8-login") else {
+        // 窗口已关闭且未登录 → 视为取消
+        return Ok(Wenku8LoginStatus {
+            logged_in: false,
+            uname: None,
+            nickname: None,
+        });
+    };
+    // Windows 下 cookies() 必须在独立线程调用，避免同步命令主线程死锁（同 build 修复）
+    let w2 = w.clone();
+    let cookies = match tauri::async_runtime::spawn_blocking(move || w2.cookies()).await {
+        Ok(Ok(c)) => c,
+        Ok(Err(e)) => {
+            login_debug_log(&format!("[poll] cookies() 读取失败：{e}"));
+            return Ok(Wenku8LoginStatus {
+                logged_in: false,
+                uname: None,
+                nickname: None,
+            });
+        }
+        Err(e) => {
+            login_debug_log(&format!("[poll] cookies() 线程异常：{e}"));
+            return Ok(Wenku8LoginStatus {
+                logged_in: false,
+                uname: None,
+                nickname: None,
+            });
+        }
+    };
+    let found: Vec<String> = cookies
+        .iter()
+        .filter(|c| REQUIRED_COOKIE_KEYS.iter().any(|k| c.name().eq_ignore_ascii_case(k)))
+        .map(|c| format!("{}={}", c.name(), c.value()))
+        .collect();
+    if found.is_empty() {
+        return Ok(Wenku8LoginStatus {
+            logged_in: false,
+            uname: None,
+            nickname: None,
+        });
+    }
+    let cookie_str = found.join("; ");
+    // 必须同时含两个关键字段才视为登录成功
+    if !cookie_has_required(&cookie_str) {
+        return Ok(Wenku8LoginStatus {
+            logged_in: false,
+            uname: None,
+            nickname: None,
+        });
+    }
+    login_debug_log(&format!("[poll] 捕获 cookie：命中 {} 个关键字段", found.len()));
+    {
+        let mut s = state().lock().unwrap();
+        s.cookie = Some(cookie_str.trim().to_string());
+        s.user_info = None;
+    }
+    // 拉取用户信息并保存
+    let user = wenku8_fetch_userinfo(&app).ok().flatten();
+    {
+        let mut s = state().lock().unwrap();
+        s.user_info = user.clone();
+        save_persist(&app, &s)?;
+    }
+    login_debug_log("[poll] 成功：已保存登录态，准备关闭窗口");
+    // 延迟关闭登录窗口，确保本次 invoke 先返回
+    let app2 = app.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(300));
+        if let Some(w) = app2.get_webview_window("wenku8-login") {
+            let _ = w.close();
+        }
+    });
+    Ok(Wenku8LoginStatus {
+        logged_in: true,
+        uname: user.as_ref().map(|u| u.uname.clone()),
+        nickname: user.as_ref().map(|u| u.nickname.clone()),
+    })
+}
+
 /// 返回当前登录状态（不触发网络）。
 #[tauri::command]
 pub fn wenku8_login_status(app: tauri::AppHandle) -> Wenku8LoginStatus {

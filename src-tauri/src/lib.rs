@@ -207,6 +207,7 @@ pub fn run() {
             novel_auth::wenku8_shelf_online,
             novel_auth::wenku8_login_open,
             novel_auth::wenku8_login_log,
+            novel_auth::wenku8_login_poll,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

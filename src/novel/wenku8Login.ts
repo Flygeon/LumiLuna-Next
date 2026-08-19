@@ -1,22 +1,26 @@
-// Wenku8 登录流程（方案A：内嵌 WebView 抓 cookie）
+// Wenku8 登录流程（方案B：主窗口轮询 Rust 读 cookie）
 // 移植自参考项目 Flutter Hikari Novel 的登录机制：
 //   1. 打开 Wenku8 登录页（用户在网页内输入账号密码完成登录）
-//   2. 参考项目在 WebView 中注入 JS，删除 usecookie=0 选项，确保拿到持久登录态
-//   3. 登录成功后页面 cookie 中出现 jieqiUserInfo + jieqiVisitInfo
-//   4. 注入脚本读取 document.cookie 并直接 invoke Rust 命令提交、关闭窗口
+//   2. 登录成功后页面 cookie 中出现 jieqiUserInfo + jieqiVisitInfo
+//   3. 主窗口每 ~1.5s 轮询 wenku8_login_poll：Rust 直接读登录 webview 的
+//      cookie（含 httpOnly），命中即保存登录态并自动关闭窗口
 //
-// 注：Tauri v2 已移除前端 Webview.eval，注入脚本由 Rust 侧通过
-// WebviewWindowBuilder.initialization_script 在窗口创建时注入（无 eval 权限需求）。
+// 说明：注入脚本（initialization_script）仅作快速通道 + 诊断；远程 webview
+// 中 window.__TAURI__ 是否可用不影响本方案（主窗口 invoke 恒可靠）。
 
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import type { Wenku8LoginStatus } from "@shared/types";
 
 // 超时（毫秒）：10 分钟
 const TIMEOUT = 10 * 60 * 1000;
+// 轮询间隔（毫秒）
+const POLL_INTERVAL = 1500;
+
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 /**
- * 打开登录窗口，等待用户在网页内完成登录并抓取 cookie。
- * 成功时窗口内的脚本会自动提交并关闭；本函数等待窗口关闭后返回登录状态。
+ * 打开登录窗口，轮询等待用户在网页内完成登录。
+ * 登录成功后 Rust 自动保存 cookie 并关闭窗口，本函数返回登录状态。
  * 用户主动关闭窗口或超时则抛错。
  */
 export async function openWenku8Login(): Promise<Wenku8LoginStatus> {
@@ -55,58 +59,39 @@ export async function openWenku8Login(): Promise<Wenku8LoginStatus> {
     }
   }
 
-  // 等待窗口创建后再监听关闭
-  let win: WebviewWindow | null = await WebviewWindow.getByLabel(label);
+  const win: WebviewWindow | null = await WebviewWindow.getByLabel(label);
   const start = Date.now();
-  await new Promise<void>((resolve) => {
-    let settled = false;
+  let userClosed = false;
+  if (win) {
+    let handled = false;
     const onClose = () => {
-      if (settled) return;
-      settled = true;
-      resolve();
-    };
-    if (win) {
-      let closeHandled = false;
-      const handleClose = () => {
-        if (closeHandled) return;
-        closeHandled = true;
-        try {
-          capabilities
-            .wenku8LoginLog("[fe] onCloseRequested 触发（win 存在，准备关闭）")
-            .catch(() => {});
-        } catch (e) {}
-        // 关键：Tauri v2 点击 X 默认即关闭窗口（无 preventDefault 时）。
-        // 切勿在此处调用 win.close()——它会再次触发 onCloseRequested，
-        // 形成无限递归风暴，使窗口卡在“关闭中”永远关不掉（见 2026-08-20 日志）。
-        onClose();
-      };
-      win.onCloseRequested(handleClose).catch(() => onClose());
-      win.once("destroyed", handleClose);
-    } else {
+      if (handled) return;
+      handled = true;
+      userClosed = true;
       try {
         capabilities
-          .wenku8LoginLog("[fe] 警告：win 为 null，未注册关闭监听")
+          .wenku8LoginLog("[fe] 登录窗口已关闭（用户点 X 或登录成功自动关闭）")
           .catch(() => {});
       } catch (e) {}
-    }
-    // 超时兜底：强制关闭
-    const watchdog = setInterval(() => {
-      if (Date.now() - start > TIMEOUT) {
-        clearInterval(watchdog);
-        win?.close().catch(() => {});
-        onClose();
-      }
-    }, 1000);
-  });
-
-  // 重新查询登录状态确认是否成功
-  try {
-    const status = await capabilities.wenku8LoginStatus();
-    if (status.loggedIn) return status;
-  } catch {
-    /* ignore */
+    };
+    win.onCloseRequested(onClose).catch(() => {});
+    win.once("destroyed", onClose);
   }
-  throw new Error("登录未完成或已取消，请重试");
+
+  // 轮询：Rust 直接读登录 webview 的 cookie（含 httpOnly），命中即返回成功。
+  // 不依赖远程页注入脚本；用户点 X 关闭时 next 轮询判为取消。
+  while (Date.now() - start < TIMEOUT) {
+    try {
+      const status = await capabilities.wenku8LoginPoll();
+      if (status.loggedIn) return status;
+    } catch {
+      /* 窗口刚关闭时 poll 可能报错，忽略，交由 userClosed 判定 */
+    }
+    if (userClosed) throw new Error("登录未完成或已取消，请重试");
+    await sleep(POLL_INTERVAL);
+  }
+  win?.close().catch(() => {});
+  throw new Error("登录超时，请重试");
 }
 
 export function isLoginRequiredError(e: unknown): boolean {
