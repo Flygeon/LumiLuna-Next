@@ -88,3 +88,12 @@ lto = true
 opt-level = "s"
 strip = true
 panic = "abort"
+
+# Android debug 构建（tauri android build --debug）走 dev profile。dev 默认带
+# 全量 DWARF 调试符号，会把 aarch64 的 .so 撑到数百 MB（解压/安装后 300M+）。
+# 关掉调试信息 + strip 符号表即可把原生库瘦到几十 MB，同时保留 debug variant
+# 的 debug keystore 自动签名（仍可直接 sideload，决策4 不变）。
+# 只影响 dev 构建：桌面 CI 用 [profile.release]，本地不编译原生库，均不受影响。
+[profile.dev]
+debug = false
+strip = true

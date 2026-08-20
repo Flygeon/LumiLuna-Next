@@ -5,7 +5,7 @@ import PageHeader from "@/components/PageHeader.vue";
 import { useSettingsStore, type PdfReadMode, type ThemeMode, type PlayerBgMode, type LyricFontKey, type ShareCodePreference, type DesktopLyricsAnimation, type DesktopLyricsToolbar, type DesktopLyricsDoubleClick } from "@/stores/settings";
 import { useLibraryStore } from "@/stores/library";
 import AudioEffectsPanel from "@/components/AudioEffectsPanel.vue";
-import { capabilities } from "@/capabilities";
+import { capabilities, isMobile } from "@/capabilities";
 import { formatSize } from "@/utils/format";
 import { translate } from "@shared/i18n";
 import type { FfmpegStatus } from "@shared/types";
@@ -27,6 +27,14 @@ function t(key: string) {
 
 const LYRIC_FONT_KEYS: LyricFontKey[] = ["system", "sans", "serif", "kai", "yuan"];
 const LYRICS_ANIMATIONS: DesktopLyricsAnimation[] = ["fade", "slide", "scale", "glow"];
+
+/** 移动端「更多」分区入口：这些页面在桌面由侧边栏承载，移动端底部导航放不下。 */
+const moreEntries = [
+  { key: "favorites", path: "/favorites", icon: "favorite" },
+  { key: "history", path: "/history", icon: "history" },
+  { key: "trash", path: "/trash", icon: "delete" },
+  { key: "treasure", path: "/treasure", icon: "inventory_2" },
+];
 
 function notify(message: string) {
   toast.value = message;
@@ -205,6 +213,25 @@ function resetDesktopLyricsBounds() {
 <template>
   <div class="settings-view">
     <PageHeader :title="t('nav.settings')" :description="t('navDesc.settings')" />
+
+    <!-- 更多入口（仅移动端）：底部导航只放五个主分类，
+         收藏 / 历史 / 回收站 / 百宝箱 收纳到这里（决策12）。桌面侧边栏已有入口，不显示。 -->
+    <section v-if="isMobile" class="card">
+      <h3>{{ t("settings.moreSections") }}</h3>
+      <p class="hint">{{ t("settings.moreSectionsHint") }}</p>
+      <div class="more-list">
+        <button
+          v-for="item in moreEntries"
+          :key="item.key"
+          class="more-item"
+          @click="router.push(item.path)"
+        >
+          <span class="material-symbols-outlined">{{ item.icon }}</span>
+          <span class="more-label">{{ t("nav." + item.key) }}</span>
+          <span class="material-symbols-outlined chevron">chevron_right</span>
+        </button>
+      </div>
+    </section>
     <!-- 外观 -->
     <section class="card">
       <h3>{{ t("settings.appearance") }}</h3>
@@ -1021,6 +1048,45 @@ function resetDesktopLyricsBounds() {
   gap: 6px;
   margin-bottom: 12px;
 }
+/* ---- 移动端「更多」分区入口列表 ---- */
+.more-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.more-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  /* 触屏最小点按目标 48px（M3 无障碍） */
+  min-height: 48px;
+  padding: 8px 10px 8px 12px;
+  border: none;
+  background: var(--md-sys-color-surface-container-high);
+  border-radius: var(--md-sys-shape-corner-medium);
+  color: var(--md-sys-color-on-surface);
+  font-family: inherit;
+  font-size: var(--md-sys-typescale-body-medium-size);
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+}
+.more-item:active {
+  background: var(--md-sys-color-surface-container-highest);
+}
+.more-item > .material-symbols-outlined {
+  font-size: 20px;
+  color: var(--md-sys-color-on-surface-variant);
+}
+.more-label {
+  flex: 1;
+  min-width: 0;
+}
+.more-item .chevron {
+  color: var(--md-sys-color-outline);
+}
+
 .dir-item {
   display: flex;
   align-items: center;

@@ -223,6 +223,8 @@ export const messages = {
       clearScanDirs: "清除目录（全局扫描）",
       globalScanHint: "当前：全局扫描",
       appearance: "外观",
+      moreSections: "更多",
+      moreSectionsHint: "移动端底部导航仅保留五个主分类，收藏 / 历史 / 回收站 / 百宝箱 从这里进入。",
       minSize: "最小文件体积",
       minSizeHint:
         "小于该体积的文件不会出现在各分类中，用于过滤缩略图、图标等碎文件。仅影响展示，不会删除文件。",
@@ -679,6 +681,8 @@ desktopLyrics: "桌面歌词",
       clearScanDirs: "Clear Directories (Global Scan)",
       globalScanHint: "Current: Global scan",
       appearance: "Appearance",
+      moreSections: "More",
+      moreSectionsHint: "The mobile bottom bar keeps only the five main categories; open Favorites / History / Trash / Treasure from here.",
       minSize: "Minimum File Size",
       minSizeHint:
         "Files smaller than this are hidden from all categories — useful for filtering out thumbnails and icons. Display only; no files are deleted.",

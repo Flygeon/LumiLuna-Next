@@ -126,12 +126,33 @@
   --lm-miniplayer-height: 72px;
   --lm-content-pad: 24px;
   --lm-titlebar-height: 48px;
+  /* 底部导航高度（仅移动端使用，桌面为 0） */
+  --lm-bottomnav-height: 0px;
+  /* 迷你播放条距底距离（移动端要让位给底部导航 + 安全区） */
+  --lm-miniplayer-bottom: 0px;
+  /* 屏幕安全区（刘海/手势条）；桌面无 env() 时回退 0 */
+  --lm-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --lm-safe-top: env(safe-area-inset-top, 0px);
 
   /* 播放器令牌（Apple Music 蓝本，写死勿改） */
   --am-ease-out-back: cubic-bezier(0.25, 0.8, 0.25, 1);
   --am-ease-lyric: cubic-bezier(0.19, 0.11, 0, 1);
   --am-lyric-offset: 0px;
   --am-line-gap: 20px;
+}
+
+/* ---- 移动端（Android/iOS）布局覆盖 ----
+ * 由 main.ts 依据 capabilities.isMobile（UA 判定）给 <html> 加 .is-mobile。
+ * 刻意不用 @media (max-width)：桌面窄窗不等于移动端，用户要求「其他端不变」。
+ * 侧边 nav-rail 宽度归零后，所有引用 --lm-nav-width 的既有布局
+ * （MiniPlayer 左偏移等）自动贴边，无需逐组件改。 */
+html.is-mobile {
+  --lm-nav-width: 0px;
+  --lm-bottomnav-height: 64px;
+  /* 迷你播放条浮在底部导航之上 */
+  --lm-miniplayer-bottom: calc(64px + var(--lm-safe-bottom));
+  /* 手机屏窄，收紧内容边距 */
+  --lm-content-pad: 16px;
 }
 
 /* 深色主题 */

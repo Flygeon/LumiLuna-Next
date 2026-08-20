@@ -5,7 +5,7 @@ import { useSettingsStore } from "@/stores/settings";
 import { usePlayerStore } from "@/stores/player";
 import { useAudioEffectsStore } from "@/stores/audioEffects";
 import { useLibraryStore } from "@/stores/library";
-import { isTauri, isDesktop } from "@/capabilities";
+import { isTauri, isDesktop, isMobile } from "@/capabilities";
 import MiniPlayer from "@/components/MiniPlayer.vue";
 import ContextMenu from "@/components/ContextMenu.vue";
 import TextPrompt from "@/components/TextPrompt.vue";
@@ -118,6 +118,16 @@ const bottomItems = [
   { key: "settings", path: "/settings", icon: "settings" },
 ];
 
+/** 移动端底部导航：仅五个主入口（屏宽有限，M3 Navigation Bar 建议 3-5 项）。
+ *  收藏 / 历史 / 回收站 / 百宝箱 收进「设置」页的「更多」分区。 */
+const mobileNavItems = computed(() => [
+  { key: "images", path: "/images", icon: "image", type: "image" },
+  { key: "videos", path: "/videos", icon: "movie", type: "video" },
+  { key: "music", path: "/music", icon: "music_note", type: "audio" },
+  { key: "books", path: "/books", icon: "menu_book", type: "book" },
+  { key: "settings", path: "/settings", icon: "settings", type: null },
+]);
+
 function t(key: string) {
   return translate(settings.lang, key);
 }
@@ -175,9 +185,9 @@ router.afterEach((to) => {
 
     <!-- 主体：左侧导航 + 内容区 -->
     <div class="app-body">
-      <!-- 左侧导航 Rail -->
+      <!-- 左侧导航 Rail（移动端改用底部导航栏） -->
       <nav
-        v-if="!isPlayerPage && !isDesktopLyricsPage"
+        v-if="!isMobile && !isPlayerPage && !isDesktopLyricsPage"
         class="nav-rail lm-glass"
       >
         <div v-if="!isTauri" class="brand">
@@ -239,6 +249,33 @@ router.afterEach((to) => {
         </main>
       </div>
     </div>
+
+    <!-- 移动端底部导航栏（M3 Navigation Bar，决策12）：五个主入口；
+         收藏/历史/回收站/百宝箱 见「设置 → 更多」 -->
+    <nav
+      v-if="isMobile && !isPlayerPage && !isDesktopLyricsPage"
+      class="bottom-nav lm-glass"
+    >
+      <button
+        v-for="item in mobileNavItems"
+        :key="item.key"
+        class="bn-item"
+        :class="{ active: isActive(item.path) }"
+        @click="router.push(item.path)"
+      >
+        <span class="bn-indicator">
+          <span
+            class="material-symbols-outlined"
+            :class="{ filled: isActive(item.path) }"
+          >{{ item.icon }}</span>
+          <span
+            v-if="countOf(item.type)"
+            class="badge tabular-nums"
+          >{{ countOf(item.type) > 999 ? "999+" : countOf(item.type) }}</span>
+        </span>
+        <span class="bn-label">{{ t("nav." + item.key) }}</span>
+      </button>
+    </nav>
 
     <MiniPlayer v-if="player.song && !isPlayerPage && !isDesktopLyricsPage" />
 
@@ -408,11 +445,81 @@ router.afterEach((to) => {
   flex: 1;
   overflow-y: auto;
   padding: var(--lm-content-pad);
-  /* 迷你播放条不遮挡末行内容 */
-  padding-bottom: var(--lm-content-pad);
+  /* 迷你播放条 + 移动端底部导航 + 手势条安全区都不遮挡末行内容。
+     桌面下 --lm-bottomnav-height / --lm-safe-bottom 均为 0，公式两端通用。 */
+  padding-bottom: calc(
+    var(--lm-content-pad) + var(--lm-bottomnav-height) + var(--lm-safe-bottom)
+  );
 }
 .has-player .main-content {
-  padding-bottom: calc(var(--lm-miniplayer-height) + var(--lm-content-pad));
+  padding-bottom: calc(
+    var(--lm-miniplayer-height) + var(--lm-content-pad) +
+      var(--lm-bottomnav-height) + var(--lm-safe-bottom)
+  );
+}
+
+/* ---- 移动端底部导航栏（M3 Navigation Bar）---- */
+.bottom-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 60; /* 高于 MiniPlayer(50)：播放条浮在导航之上但不遮挡点击 */
+  display: flex;
+  align-items: stretch;
+  height: calc(var(--lm-bottomnav-height) + var(--lm-safe-bottom));
+  padding-bottom: var(--lm-safe-bottom);
+  border-top: 1px solid var(--lm-hairline);
+}
+.bn-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 6px 0 8px;
+  border: none;
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  font-family: inherit;
+  /* 触屏：去掉点击高亮与长按选中，避免误触感 */
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  cursor: pointer;
+}
+.bn-indicator {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 32px;
+  border-radius: 16px;
+  transition:
+    background var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard),
+    transform 200ms var(--md-sys-motion-spring);
+}
+.bn-item.active .bn-indicator {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+.bn-item:active .bn-indicator {
+  transform: scale(0.9);
+}
+.bn-indicator .material-symbols-outlined {
+  font-size: 22px;
+}
+.bn-label {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+.bn-item.active .bn-label {
+  color: var(--md-sys-color-on-surface);
+  font-weight: 600;
 }
 
 /* 路由切换：淡入上浮 */

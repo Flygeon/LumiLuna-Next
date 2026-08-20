@@ -2,7 +2,13 @@ import { createApp } from "vue";
 import { createPinia } from "pinia";
 import App from "./App.vue";
 import router from "./router";
+import { isMobile } from "@/capabilities";
 import "@/tokens/theme.css";
+
+// 移动端布局开关：在挂载前给 <html> 打标记，theme.css 的 html.is-mobile
+// 覆盖块随即生效（nav 宽度归零、底部导航高度、安全区内边距），
+// 避免首帧按桌面布局渲染再跳变。
+if (isMobile) document.documentElement.classList.add("is-mobile");
 
 // 全局全局错误处理：将 Vue 渲染错误、window JS 错误、未捕获 Promise 异常
 // 写入 lumiluna_login_debug.log（与 wenku8 登录日志共享同一文件），

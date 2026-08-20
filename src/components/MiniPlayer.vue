@@ -96,7 +96,8 @@ function seek(e: MouseEvent) {
   position: fixed;
   left: var(--lm-nav-width);
   right: 0;
-  bottom: 0;
+  /* 桌面为 0；移动端抬到底部导航 + 安全区之上（见 theme.css html.is-mobile） */
+  bottom: var(--lm-miniplayer-bottom, 0px);
   height: var(--lm-miniplayer-height);
   z-index: 50;
   border-top: 1px solid var(--lm-hairline);

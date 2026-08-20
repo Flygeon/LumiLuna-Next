@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import { ref, watch } from "vue";
 import { LazyStore } from "@tauri-apps/plugin-store";
-import { capabilities } from "@/capabilities";
+import { capabilities, isMobile } from "@/capabilities";
 import { applySeedColor } from "@/utils/dynamicTheme";
 import type { MusicServer, OnlinePlaylistEntry } from "@shared/types";
 import type { LyricSourcePref } from "@/utils/preciseLyrics";
@@ -59,16 +59,19 @@ const DEFAULTS = {
   lyricTranslationGap: 4,
   /** 歌词副行显示：翻译 / 罗马音 */
   lyricSubMode: "translation" as LyricSubMode,
-  /** 逐字歌词（Apple Music 式逐字填充 + 唱完上浮） */
-  wordLyrics: true,
+  /** 逐字歌词（Apple Music 式逐字填充 + 唱完上浮）
+   *  决策11：移动端默认关闭（逐字需高频 rAF 重排 + 逐字宽度测量，中低端机掉帧）。
+   *  仅改默认值——用户在设置里手动开启后会被持久化，不受此影响。 */
+  wordLyrics: !isMobile,
   /** 更精确的逐字歌词：播放时按 QQ → 酷狗 → [登录网易云后 Meting] → 本地回退链取逐字歌词 */
   preciseLyrics: false,
   /** 各歌曲手动选择的歌词来源偏好（key = 归一化标题|时长ms，值 = qq/kg/meting/local） */
   lyricSourcePrefs: {} as Record<string, LyricSourcePref>,
   /** 自动识别前奏/间奏：隐藏作词/作曲/编曲为三点，长间奏插入三点 */
   detectInstrumental: true,
-  /** 播放器背景：动态模糊 / 仅图片模糊 / 关闭 */
-  playerBg: "animated" as PlayerBgMode,
+  /** 播放器背景：动态模糊 / 仅图片模糊 / 关闭
+   *  决策11：移动端默认 image（不启动 canvas 动画循环，省 GPU/电量），保留封面模糊观感。 */
+  playerBg: (isMobile ? "image" : "animated") as PlayerBgMode,
   lyricBlur: true,
   scanDirs: [] as string[],
   gridColumns: 6,
