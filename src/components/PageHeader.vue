@@ -56,14 +56,14 @@ defineProps<{
 /* 移动端：标题栏尾部控件在窄屏放不下时整体换行（trailing 是 flex:none，
    不换行就会把标题挤成一两个字）；副标题改为折行显示，别用省略号吃掉说明。
    :global 是因为 .is-mobile 挂在 <html> 上，不在本组件 scope 内。 */
-:global(html.is-mobile) .page-head {
+:global(html.is-mobile .page-head) {
   flex-wrap: wrap;
   align-items: flex-start;
 }
-:global(html.is-mobile) .page-head-text {
+:global(html.is-mobile .page-head .page-head-text) {
   flex: 1 1 60%;
 }
-:global(html.is-mobile) .page-head-desc {
+:global(html.is-mobile .page-head .page-head-desc) {
   white-space: normal;
   overflow: visible;
 }

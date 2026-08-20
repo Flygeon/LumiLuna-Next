@@ -941,6 +941,25 @@ function resetDesktopLyricsBounds() {
   color: var(--md-sys-color-on-surface-variant);
 }
 
+/* 移动端：设置项是「标签 + 控件」单行布局，而中文标签没有空格可断，
+   min-content 就是整串文字，遇到分段控件/色板这类宽控件必然横向溢出。
+   放开换行让控件掉到第二行；卡片内边距同时收窄给内容让宽。
+   :global 是因为 .is-mobile 挂在 <html> 上，不在本组件 scope 内。 */
+:global(html.is-mobile .settings-view .card) {
+  padding: 16px 14px;
+}
+:global(html.is-mobile .settings-view .row) {
+  flex-wrap: wrap;
+  row-gap: 8px;
+  column-gap: 10px;
+}
+:global(html.is-mobile .settings-view .row-label) {
+  flex: 1 1 auto;
+}
+:global(html.is-mobile .settings-view .swatches) {
+  justify-content: flex-start;
+}
+
 .switch-row {
   cursor: pointer;
 }

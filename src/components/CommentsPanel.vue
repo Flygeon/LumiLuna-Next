@@ -243,6 +243,11 @@ function nicknameOf(c: NeteaseComment): string {
   box-shadow: var(--md-elevation-3);
   overflow: hidden;
 }
+/* 移动端满屏抽屉：顶部会被状态栏压住、底部被手势条遮住，让出安全区。
+   :global 是因为 .is-mobile 挂在 <html> 上，不在本组件 scope 内。 */
+:global(html.is-mobile .comment-panel) {
+  padding: calc(16px + var(--lm-safe-top)) 16px calc(12px + var(--lm-safe-bottom));
+}
 
 /* 从左侧滑入：遮罩淡入 + 面板滑动；关闭时反向播放同一动画 */
 .comment-fade-enter-active,

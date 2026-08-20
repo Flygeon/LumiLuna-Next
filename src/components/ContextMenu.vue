@@ -19,6 +19,9 @@ const menuRef = ref<HTMLDivElement | null>(null);
 const activeIndex = ref(-1);
 /** 贴边翻转位移（margin 实现，避免与入场 scale 动画的 transform 冲突） */
 const flip = ref({ x: 0, y: 0 });
+/** 打开时刻，用于「刚打开不立即关闭」的宽限判定 */
+let openedAt = 0;
+const OPEN_GRACE_MS = 300;
 
 const menuStyle = computed(() => ({
   left: menu.x + "px",
@@ -46,6 +49,7 @@ watch(
   (v) => {
     activeIndex.value = -1;
     if (!v) flip.value = { x: 0, y: 0 };
+    else openedAt = performance.now();
   },
 );
 onUpdated(measureFlip);
@@ -86,19 +90,33 @@ function onKeydown(e: KeyboardEvent) {
 
 function onGlobalMousedown(e: MouseEvent) {
   if (!menu.visible) return;
+  // 刚打开的极短时间内不关：移动端长按 500ms 触发菜单，抬手时 WebView 可能
+  // 补发一组兼容 mouse 事件，那次 mousedown 会把刚弹出的菜单立刻关掉。
+  if (performance.now() - openedAt < OPEN_GRACE_MS) return;
   const el = menuRef.value;
   // 菜单内部点击不关（item 的 click 处理）；菜单外（含空白处右键）都关闭
   if (!el || !el.contains(e.target as Node)) closeContextMenu();
 }
 
+/** 触屏关闭：不等抬手后的兼容 mouse 事件，按下即判定，响应更干脆 */
+function onGlobalTouchStart(e: TouchEvent) {
+  if (!menu.visible) return;
+  if (performance.now() - openedAt < OPEN_GRACE_MS) return;
+  const el = menuRef.value;
+  const target = e.target as Node | null;
+  if (!el || !target || !el.contains(target)) closeContextMenu();
+}
+
 onMounted(() => {
   window.addEventListener("mousedown", onGlobalMousedown);
+  window.addEventListener("touchstart", onGlobalTouchStart, { passive: true });
   window.addEventListener("keydown", onKeydown);
   window.addEventListener("resize", closeContextMenu);
   window.addEventListener("scroll", closeContextMenu, true);
 });
 onBeforeUnmount(() => {
   window.removeEventListener("mousedown", onGlobalMousedown);
+  window.removeEventListener("touchstart", onGlobalTouchStart);
   window.removeEventListener("keydown", onKeydown);
   window.removeEventListener("resize", closeContextMenu);
   window.removeEventListener("scroll", closeContextMenu, true);
@@ -194,5 +212,15 @@ onBeforeUnmount(() => {
   opacity: 0.4;
   cursor: default;
   pointer-events: none;
+}
+
+/* 移动端：菜单由长按触发，条目按 M3 触摸目标放到 48px；宽度也放宽一点，
+   免得中文条目频繁省略号。
+   :global 是因为 .is-mobile 挂在 <html> 上，且本组件 Teleport 到 body。 */
+:global(html.is-mobile .ctx-menu) {
+  min-width: 208px;
+}
+:global(html.is-mobile .ctx-menu .ctx-item) {
+  height: 48px;
 }
 </style>

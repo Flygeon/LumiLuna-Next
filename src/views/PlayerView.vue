@@ -748,57 +748,57 @@ onBeforeUnmount(() => {
  * 硬编码 425px 会横向溢出 360dp 屏幕。
  * 这里改为：封面+信息+进度+控制 在上，歌词区占据剩余高度在下。
  * :global 是因为 .is-mobile 挂在 <html>，不在本组件 scope 内。 */
-:global(html.is-mobile) .player-body {
+:global(html.is-mobile .player-page .player-body) {
   flex-direction: column;
   /* 顶栏（返回/标签）高度 + 状态栏安全区 */
   padding-top: calc(52px + var(--lm-safe-top));
 }
-:global(html.is-mobile) .left-col {
+:global(html.is-mobile .player-page .left-col) {
   flex: none;
   width: 100%;
   justify-content: flex-start;
   padding: 0 16px;
 }
-:global(html.is-mobile) .cover-wrap {
+:global(html.is-mobile .player-page .cover-wrap) {
   /* 留出足够高度给下方歌词区 */
   width: min(58vw, 30vh);
   border-radius: 18px;
 }
-:global(html.is-mobile) .song-info {
+:global(html.is-mobile .player-page .song-info) {
   margin-top: 16px;
 }
-:global(html.is-mobile) .song-info .title {
+:global(html.is-mobile .player-page .song-info .title) {
   font-size: 19px;
 }
-:global(html.is-mobile) .progress-section {
+:global(html.is-mobile .player-page .progress-section) {
   margin-top: 14px;
 }
 /* 解除 425px 硬编码，改为跟随屏宽 */
-:global(html.is-mobile) .progress-section,
-:global(html.is-mobile) .progress-bar,
-:global(html.is-mobile) .controls {
+:global(html.is-mobile .player-page .progress-section),
+:global(html.is-mobile .player-page .progress-bar),
+:global(html.is-mobile .player-page .controls) {
   width: 100%;
   max-width: 425px;
 }
-:global(html.is-mobile) .controls {
+:global(html.is-mobile .player-page .controls) {
   margin-top: 10px;
 }
 /* 触屏没有 hover：5px 细条既难点也看不出可拖动，故直接给到 hover 态的
    粗度，并让拖柄常驻 */
-:global(html.is-mobile) .progress-bar {
+:global(html.is-mobile .player-page .progress-bar) {
   height: 10px;
 }
-:global(html.is-mobile) .progress-thumb {
+:global(html.is-mobile .player-page .progress-thumb) {
   opacity: 1;
 }
-:global(html.is-mobile) .right-col {
+:global(html.is-mobile .player-page .right-col) {
   flex: 1;
   min-height: 0;
   width: 100%;
   padding: 4px 12px calc(8px + var(--lm-safe-bottom));
 }
 /* 顶栏绝对定位在 top:0，移动端会被状态栏压住，让出顶部安全区 */
-:global(html.is-mobile) .player-topbar {
+:global(html.is-mobile .player-page .player-topbar) {
   padding-top: calc(16px + var(--lm-safe-top));
 }
 .queue-list {

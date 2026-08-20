@@ -501,32 +501,33 @@ const infoRows = computed(() => {
 }
 
 /* ============ 移动端适配 ============
-   .is-mobile 挂在 <html> 上，不在本组件 scope 内，故用 :global()。
+   .is-mobile 挂在 <html> 上，不在本组件 scope 内，故用 :global()：
+   整条选择器都要放进括号，且用根类名 .viewer 限定（详见 BookReader.vue 同段注释）。
    桌面样式未改动。 */
 
 /* fixed inset:0 全屏浮层：顶栏会被状态栏压住，底部会被手势条遮住 */
-:global(html.is-mobile) .viewer {
+:global(html.is-mobile .viewer) {
   padding-top: var(--lm-safe-top);
   padding-bottom: var(--lm-safe-bottom);
 }
-:global(html.is-mobile) .vbtn {
+:global(html.is-mobile .viewer .vbtn) {
   width: 44px;
   height: 44px;
 }
-:global(html.is-mobile) .bar {
+:global(html.is-mobile .viewer .bar) {
   gap: 8px;
   padding: 8px 10px;
 }
 /* 340px 抽屉在 360dp 屏上几乎全屏遮挡；同时它是 absolute，锚在 .viewer 的
    padding box（含安全区），需自己补顶部内边距，否则标题被状态栏压住 */
-:global(html.is-mobile) .info {
+:global(html.is-mobile .viewer .info) {
   width: min(340px, 86vw);
   padding: calc(62px + var(--lm-safe-top)) 18px calc(18px + var(--lm-safe-bottom));
 }
-:global(html.is-mobile) .nav {
+:global(html.is-mobile .viewer .nav) {
   width: 46px;
   height: 46px;
 }
-:global(html.is-mobile) .prev { left: 6px; }
-:global(html.is-mobile) .next { right: 6px; }
+:global(html.is-mobile .viewer .prev) { left: 6px; }
+:global(html.is-mobile .viewer .next) { right: 6px; }
 </style>

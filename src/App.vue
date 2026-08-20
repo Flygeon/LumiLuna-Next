@@ -305,6 +305,14 @@ router.afterEach((to) => {
 .app-shell.desktop-lyrics-page {
   background: transparent;
 }
+/* 移动端软键盘弹出时可视高度会收缩，而 100vh 是「大视口」高度、不跟随，
+   居中弹窗（重命名等）会被键盘盖掉一半。dvh 跟随实际可视高度；老 WebView
+   不认 dvh 会整条声明失效，故用 @supports 包住，兜底仍是上面的 100vh。 */
+@supports (height: 100dvh) {
+  :global(html.is-mobile .app-shell) {
+    height: 100dvh;
+  }
+}
 .app-shell.desktop-lyrics-page .main-content {
   padding: 0;
 }

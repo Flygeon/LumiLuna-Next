@@ -390,7 +390,7 @@ function subtitleOf(item: MediaEntry): string {
 }
 /* 触屏没有 hover：收藏按钮若只在 hover 时显形，移动端永远点不到，故常驻。
    :global 是因为 .is-mobile 挂在 <html> 上，不在本组件 scope 内。 */
-:global(html.is-mobile) .overlay {
+:global(html.is-mobile .virtual-root .overlay) {
   opacity: 1;
 }
 /* 已收藏的项常驻显示心形 */

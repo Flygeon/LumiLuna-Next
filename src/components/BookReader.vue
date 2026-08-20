@@ -1594,47 +1594,51 @@ const PDF_MODES = [
 
 /* ============ 移动端适配 ============
    .is-mobile 挂在 <html> 上（main.ts 按 UA 判定），不在本组件 scope 内，
-   故用 :global()。桌面样式一行未改，其他端表现完全不变。 */
+   故用 :global()。桌面样式一行未改，其他端表现完全不变。
+   注意：整条选择器必须写在 :global(...) 括号内。写成 `:global(html.is-mobile) .bar`
+   时 scoped 编译器只保留括号里的部分、丢掉后面的 .bar，规则会退化成
+   `html.is-mobile{...}` 直接砸在 <html> 上（曾因此把 display:none 撒到全局）。
+   代价是括号内不带 data-v- 属性，故一律用根类名 .reader 限定作用域。 */
 
 /* 阅读器是 fixed inset:0 全屏浮层：顶栏会被状态栏压住、底部会被手势条
    遮住，这里在根容器上让出安全区（padding 收缩内容盒，stage 自动变矮）。 */
-:global(html.is-mobile) .reader {
+:global(html.is-mobile .reader) {
   padding-top: var(--lm-safe-top);
   padding-bottom: var(--lm-safe-bottom);
 }
 
 /* 顶栏在 360dp 下塞不下「标题 + 页码 + 一排工具」：让工具整体换到第二行
    （flex:1 1 100% 强制独占一行），工具内部再兜底 wrap。 */
-:global(html.is-mobile) .bar {
+:global(html.is-mobile .reader .bar) {
   flex-wrap: wrap;
   column-gap: 8px;
   row-gap: 2px;
   padding: 6px 8px;
 }
-:global(html.is-mobile) .tools {
+:global(html.is-mobile .reader .tools) {
   flex: 1 1 100%;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 4px;
 }
 /* 触摸目标放大到 44px（M3 建议 ≥48dp，44 是顶栏高度与可点性的折中） */
-:global(html.is-mobile) .rbtn {
+:global(html.is-mobile .reader .rbtn) {
   width: 44px;
   height: 44px;
 }
-:global(html.is-mobile) .mode-btn {
+:global(html.is-mobile .reader .mode-btn) {
   width: 38px;
   height: 38px;
 }
 /* 面板内的色板需要更大的可点面积 */
-:global(html.is-mobile) .swatch {
+:global(html.is-mobile .reader .swatch) {
   width: 28px;
   height: 28px;
 }
 
 /* 设置面板改底部弹层：顶栏在移动端会换行、高度不固定，原来的
    top:54px 锚点会与顶栏重叠；锚到底部则与顶栏高度解耦。 */
-:global(html.is-mobile) .reader-settings {
+:global(html.is-mobile .reader .reader-settings) {
   position: fixed;
   top: auto;
   left: 12px;
@@ -1646,29 +1650,29 @@ const PDF_MODES = [
 }
 
 /* 目录抽屉是 fixed，不吃根容器的 padding，需自己让出安全区 */
-:global(html.is-mobile) .toc-panel {
+:global(html.is-mobile .reader .toc-panel) {
   padding-top: var(--lm-safe-top);
   padding-bottom: var(--lm-safe-bottom);
 }
-:global(html.is-mobile) .toc-item {
+:global(html.is-mobile .reader .toc-item) {
   padding-top: 13px;
   padding-bottom: 13px;
 }
 
 /* 正文区左右留白收窄：桌面的 56px/48px 在 360dp 屏上会吃掉 1/3 宽度 */
-:global(html.is-mobile) .epub-host {
+:global(html.is-mobile .reader .epub-host) {
   padding: 0 8px;
 }
-:global(html.is-mobile) .pdf-scroll {
+:global(html.is-mobile .reader .pdf-scroll) {
   padding: 12px;
 }
 
 /* 悬浮翻页圆钮在窄屏会直接压在正文上（正文左右只剩 20px 留白），
    移动端隐藏，改用两侧点击热区 + 左右滑动手势（onTouchStart/End）。 */
-:global(html.is-mobile) .nav {
+:global(html.is-mobile .reader .nav) {
   display: none;
 }
-:global(html.is-mobile) .tapzone {
+:global(html.is-mobile .reader .tapzone) {
   width: 26%;
 }
 </style>

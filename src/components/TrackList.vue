@@ -249,10 +249,10 @@ function onRowContext(e: MenuAnchor, item: MediaEntry, index: number) {
    标题只剩 50 来 px，所以移动端只留「更多」——它打开的正是长按/右键
    那份菜单，收藏/下一首播放/加入队列都在里面。
    :global 是因为 .is-mobile 挂在 <html> 上，不在本组件 scope 内。 */
-:global(html.is-mobile) .r-actions {
+:global(html.is-mobile .track-row .r-actions) {
   opacity: 1;
 }
-:global(html.is-mobile) .r-action:not(.r-action--more) {
+:global(html.is-mobile .track-row .r-action:not(.r-action--more)) {
   display: none;
 }
 .r-action {

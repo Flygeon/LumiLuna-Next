@@ -238,21 +238,21 @@ function clearSearch() {
 /* 移动端：搜索框独占一行（min-width 240px 会把排序 chip 挤出屏幕），
    chip 行允许折行，扫描文案不再撑最小宽。
    :global 是因为 .is-mobile 挂在 <html> 上，不在本组件 scope 内。 */
-:global(html.is-mobile) .search {
+:global(html.is-mobile .toolbar .search) {
   flex: 1 1 100%;
   min-width: 0;
   height: 44px;
 }
-:global(html.is-mobile) .sorts {
+:global(html.is-mobile .toolbar .sorts) {
   flex-wrap: wrap;
 }
-:global(html.is-mobile) .chip {
+:global(html.is-mobile .toolbar .chip) {
   height: 36px;
 }
-:global(html.is-mobile) .scan-text {
+:global(html.is-mobile .toolbar .scan-text) {
   min-width: 0;
 }
-:global(html.is-mobile) .bar {
+:global(html.is-mobile .toolbar .bar) {
   width: 90px;
 }
 </style>

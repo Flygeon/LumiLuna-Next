@@ -120,7 +120,7 @@ function seek(e: MouseEvent) {
 /* 触屏没有 hover：让进度小球常驻，否则 4px 高的细条完全看不出可拖动。
    （精确拖拽仍请在全屏播放页操作——这里扩大热区会与「点击打开播放页」抢手势）
    :global 是因为 .is-mobile 挂在 <html> 上，不在本组件 scope 内。 */
-:global(html.is-mobile) .knob {
+:global(html.is-mobile .mini-player .knob) {
   opacity: 1;
 }
 .fill {

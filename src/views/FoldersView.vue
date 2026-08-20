@@ -242,11 +242,11 @@ async function open(item: MediaEntry) {
 /* 移动端：260px 目录树 + 20px 间距会只给内容区留 48px，改上下堆叠。
    目录树限高并自带滚动，分隔线由右边框改下边框。
    :global 是因为 .is-mobile 挂在 <html> 上，不在本组件 scope 内。 */
-:global(html.is-mobile) .folders-body {
+:global(html.is-mobile .folders-view .folders-body) {
   grid-template-columns: minmax(0, 1fr);
   gap: 12px;
 }
-:global(html.is-mobile) .tree {
+:global(html.is-mobile .folders-view .tree) {
   max-height: 34vh;
   padding-right: 0;
   padding-bottom: 8px;
