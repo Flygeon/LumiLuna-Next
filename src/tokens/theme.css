@@ -155,6 +155,16 @@ html.is-mobile {
   --lm-content-pad: 16px;
 }
 
+/* 长按弹菜单的元素：抑制 WebView 原生长按行为（文本选择气泡、图片保存、
+ * 点击蓝色高亮），否则会与应用内 M3 菜单叠加。data-long-press 由
+ * v-long-press 指令在移动端挂载时打上。 */
+html.is-mobile [data-long-press] {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* 深色主题 */
 [data-theme="dark"] {
   color-scheme: dark;

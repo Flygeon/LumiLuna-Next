@@ -445,6 +445,9 @@ router.afterEach((to) => {
   flex: 1;
   overflow-y: auto;
   padding: var(--lm-content-pad);
+  /* 移动端没有自定义标题栏，内容会顶到状态栏下方，需让出顶部安全区。
+     桌面 --lm-safe-top 为 0，公式两端通用。 */
+  padding-top: calc(var(--lm-content-pad) + var(--lm-safe-top));
   /* 迷你播放条 + 移动端底部导航 + 手势条安全区都不遮挡末行内容。
      桌面下 --lm-bottomnav-height / --lm-safe-bottom 均为 0，公式两端通用。 */
   padding-bottom: calc(

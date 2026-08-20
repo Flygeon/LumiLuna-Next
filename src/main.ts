@@ -3,6 +3,7 @@ import { createPinia } from "pinia";
 import App from "./App.vue";
 import router from "./router";
 import { isMobile } from "@/capabilities";
+import { vLongPress } from "@/composables/useLongPress";
 import "@/tokens/theme.css";
 
 // 移动端布局开关：在挂载前给 <html> 打标记，theme.css 的 html.is-mobile
@@ -34,6 +35,8 @@ async function reportError(tag: string, payload: Record<string, unknown>) {
 const app = createApp(App);
 app.use(createPinia());
 app.use(router);
+// 触屏长按 = 桌面右键菜单（移动端才生效，桌面为 no-op）
+app.directive("long-press", vLongPress);
 
 // Vue 渲染/生命周期错误
 app.config.errorHandler = (err, instance, info) => {

@@ -28,14 +28,22 @@ const state = reactive<ContextMenuState>({
   onSelect: null,
 });
 
-/** 在右键事件位置弹出菜单 */
+/** 菜单触发位置：桌面传右键 MouseEvent，移动端长按传合成坐标 */
+export type MenuAnchor =
+  | MouseEvent
+  | { clientX: number; clientY: number };
+
+/** 在右键/长按位置弹出菜单 */
 export function openContextMenu(
-  e: MouseEvent,
+  e: MenuAnchor,
   items: MenuItem[],
   onSelect: (id: string) => void,
 ): void {
-  e.preventDefault();
-  e.stopPropagation();
+  // 长按合成坐标没有 preventDefault/stopPropagation，需按存在性调用
+  if (typeof (e as MouseEvent).preventDefault === "function") {
+    (e as MouseEvent).preventDefault();
+    (e as MouseEvent).stopPropagation();
+  }
   state.x = e.clientX;
   state.y = e.clientY;
   state.items = items;

@@ -13,7 +13,7 @@ import { usePlayerStore } from "@/stores/player";
 import { useSettingsStore } from "@/stores/settings";
 import { useNeteaseStore } from "@/stores/netease";
 import { capabilities } from "@/capabilities";
-import { openContextMenu } from "@/composables/useContextMenu";
+import { openContextMenu, type MenuAnchor } from "@/composables/useContextMenu";
 import { promptText } from "@/composables/useTextPrompt";
 import { toOnlineSongs } from "@/utils/netease";
 import { translate } from "@shared/i18n";
@@ -323,7 +323,7 @@ function removePlaylist(id: string) {
 // ---- 右键菜单：歌单重命名 / 歌曲下载 ----
 
 /** 所有在线歌单（预设/用户）均可右键重命名；用户歌单额外可移除；本地歌单无菜单 */
-function onPlaylistContext(e: MouseEvent, card: PlaylistCard) {
+function onPlaylistContext(e: MenuAnchor, card: PlaylistCard) {
   if (!card.id) return;
   // 网易云云盘/我的歌单不支持重命名/移除
   if (card.key === "cloud" || card.key.startsWith("mine:")) return;
@@ -358,7 +358,7 @@ async function renamePlaylist(card: (typeof playlistCards.value)[number]) {
   }
 }
 
-function onSongContext(e: MouseEvent, song: OnlineSong) {
+function onSongContext(e: MenuAnchor, song: OnlineSong) {
   openContextMenu(
     e,
     [
@@ -530,6 +530,7 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
           class="song-card"
           @click="openPlaylist(c)"
           @contextmenu="onPlaylistContext($event, c)"
+          v-long-press="(pos: MenuAnchor) => onPlaylistContext(pos, c)"
         >
           <button
             v-if="c.key.startsWith('user:')"
@@ -634,6 +635,7 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
           class="song-card"
           @click="playOnlineSongs(detail.songs, i)"
           @contextmenu="onSongContext($event, song)"
+          v-long-press="(pos: MenuAnchor) => onSongContext(pos, song)"
         >
           <div class="thumb">
             <CachedCover v-if="song.pic" :url="song.pic" :alt="song.name" />
@@ -656,6 +658,7 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
           class="online-row"
           @click="playOnlineSongs(detail.songs, i)"
           @contextmenu="onSongContext($event, song)"
+          v-long-press="(pos: MenuAnchor) => onSongContext(pos, song)"
         >
           <div class="o-thumb">
             <CachedCover v-if="song.pic" :url="song.pic" :alt="song.name" />

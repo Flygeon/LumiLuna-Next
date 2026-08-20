@@ -9,7 +9,7 @@ import { useLibraryStore } from "@/stores/library";
 import { usePlayerStore } from "@/stores/player";
 import { useSettingsStore } from "@/stores/settings";
 import { capabilities } from "@/capabilities";
-import { openContextMenu } from "@/composables/useContextMenu";
+import { openContextMenu, type MenuAnchor } from "@/composables/useContextMenu";
 import { translate } from "@shared/i18n";
 import { formatDuration } from "@/utils/format";
 import type { MediaEntry } from "@shared/types";
@@ -104,7 +104,7 @@ function onMenuSelect(id: string, item: MediaEntry, index: number) {
   }
 }
 
-function onRowContext(e: MouseEvent, item: MediaEntry, index: number) {
+function onRowContext(e: MenuAnchor, item: MediaEntry, index: number) {
   openContextMenu(e, menuOf(item), (id) => onMenuSelect(id, item, index));
 }
 </script>
@@ -122,6 +122,7 @@ function onRowContext(e: MouseEvent, item: MediaEntry, index: number) {
         tabindex="0"
         @click="emit('open', item, index)"
         @contextmenu="onRowContext($event, item, index)"
+        v-long-press="(pos: MenuAnchor) => onRowContext(pos, item, index)"
         @keydown.enter="emit('open', item, index)"
         @keydown.space.prevent="emit('open', item, index)"
       >

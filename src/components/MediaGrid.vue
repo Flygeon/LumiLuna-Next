@@ -11,8 +11,8 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useLibraryStore } from "@/stores/library";
 import { useSettingsStore } from "@/stores/settings";
-import { capabilities } from "@/capabilities";
-import { openContextMenu } from "@/composables/useContextMenu";
+import { capabilities, isMobile } from "@/capabilities";
+import { openContextMenu, type MenuAnchor } from "@/composables/useContextMenu";
 import {
   TYPE_ICONS,
   formatDuration,
@@ -56,7 +56,7 @@ function t(key: string) {
 }
 
 /** 右键卡片：定位到文件位置 */
-function onContextMenu(e: MouseEvent, item: MediaEntry) {
+function onContextMenu(e: MenuAnchor, item: MediaEntry) {
   openContextMenu(
     e,
     [{ id: "reveal", label: t("context.revealInExplorer"), icon: "folder_open" }],
@@ -79,13 +79,20 @@ const width = ref(0);
 const scrollTop = ref(0);
 const viewportH = ref(800);
 
+/** 移动端有效卡片最小宽：手机屏宽（常见 360dp）下，桌面的 180/260 会算出
+ *  单列，浏览体验很差。上限收到 150 让图片/书籍稳定 2 列、视频 2 列。
+ *  桌面不受影响（直接用调用方传入值）。 */
+const MOBILE_MIN_WIDTH_CAP = 150;
+const effMinWidth = computed(() =>
+  isMobile ? Math.min(props.minWidth, MOBILE_MIN_WIDTH_CAP) : props.minWidth,
+);
+
 const columns = computed(() =>
-  Math.max(1, Math.floor((width.value + GAP_X) / (props.minWidth + GAP_X))),
+  Math.max(1, Math.floor((width.value + GAP_X) / (effMinWidth.value + GAP_X))),
 );
 const cellW = computed(
   () => (width.value - GAP_X * (columns.value - 1)) / columns.value,
-);
-/** 由 aspect（"16/9" 或 "1"）推算缩略图高度 */
+);/** 由 aspect（"16/9" 或 "1"）推算缩略图高度 */
 const ratio = computed(() => {
   const [w, h] = props.aspect.split("/").map(Number);
   return h ? w / h : (w || 1);
@@ -242,6 +249,7 @@ function subtitleOf(item: MediaEntry): string {
         tabindex="0"
         @click="emit('open', v.item, v.index)"
         @contextmenu="onContextMenu($event, v.item)"
+        v-long-press="(pos: MenuAnchor) => onContextMenu(pos, v.item)"
         @keydown.enter="emit('open', v.item, v.index)"
         @keydown.space.prevent="emit('open', v.item, v.index)"
       >
@@ -378,6 +386,11 @@ function subtitleOf(item: MediaEntry): string {
 }
 .cell:hover .overlay,
 .cell:focus-within .overlay {
+  opacity: 1;
+}
+/* 触屏没有 hover：收藏按钮若只在 hover 时显形，移动端永远点不到，故常驻。
+   :global 是因为 .is-mobile 挂在 <html> 上，不在本组件 scope 内。 */
+:global(html.is-mobile) .overlay {
   opacity: 1;
 }
 /* 已收藏的项常驻显示心形 */
