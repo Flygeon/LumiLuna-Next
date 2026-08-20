@@ -111,15 +111,21 @@ async function loadHome() {
 }
 
 async function doSearch() {
+  void capabilities.appLog(`[novel-online] doSearch 被触发 q=${JSON.stringify(searchQuery.value)}`).catch(() => {});
   const q = searchQuery.value.trim();
-  if (!q) return;
+  if (!q) {
+    void capabilities.appLog(`[novel-online] doSearch 空查询，忽略`).catch(() => {});
+    return;
+  }
   searching.value = true;
   searchError.value = "";
   try {
     searchResults.value = await capabilities.novelSearch(settings.wenku8Node, settings.novelCharset, q, 1);
+    void capabilities.appLog(`[novel-online] doSearch OK results=${searchResults.value.length}`).catch(() => {});
   } catch (e) {
     searchError.value = e instanceof Error ? e.message : String(e);
     searchResults.value = [];
+    void capabilities.appLog(`[novel-online] doSearch 异常: ${searchError.value}`).catch(() => {});
   } finally {
     searching.value = false;
   }
