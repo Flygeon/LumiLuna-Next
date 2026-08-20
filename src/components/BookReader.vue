@@ -11,7 +11,7 @@
  */
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue";
 import { readFile } from "@tauri-apps/plugin-fs";
-import { capabilities, isTauri } from "@/capabilities";
+import { capabilities, isMobile, isTauri } from "@/capabilities";
 import {
   useSettingsStore,
   type ReaderFontKey,
@@ -33,6 +33,24 @@ const READER_THEMES: Record<
   green: { label: "护眼绿", bg: "#d6e3d2", fg: "#35433a", link: "#1a5c9e" },
 };
 const READER_THEME_KEYS = Object.keys(READER_THEMES) as ReaderThemeKey[];
+
+/**
+ * 纯文本书页的盒模型。桌面双栏；移动端强制单栏——手机屏宽（常见 360dp）
+ * 分两栏后每列不足 150px，一行只能塞 5-6 个汉字，完全不可读。
+ *
+ * 必须集中在此定义：JS 分页探针（splitTextIntoPages）靠复刻 .text-page 的
+ * 盒模型来判断溢出边界，两边取值一旦不一致，分页位置就会错。所以模板与
+ * 探针共用这一份常量，CSS 里不再写死列数与内边距。
+ */
+const TEXT_PAGE_BOX = isMobile
+  ? { columns: 1, gapPx: 0, padXPx: 20, padYPx: 24 }
+  : { columns: 2, gapPx: 48, padXPx: 48, padYPx: 32 };
+/** 绑定到 .text-page 的行内样式，与探针同源 */
+const textPageStyle = {
+  columnCount: String(TEXT_PAGE_BOX.columns),
+  columnGap: `${TEXT_PAGE_BOX.gapPx}px`,
+  padding: `${TEXT_PAGE_BOX.padYPx}px ${TEXT_PAGE_BOX.padXPx}px`,
+};
 
 /** 阅读器正文字体（系统字体栈，Windows / macOS 均可用） */
 const READER_FONTS: Record<ReaderFontKey, { label: string; value: string }> = {
@@ -479,9 +497,11 @@ async function loadTextChapter(index: number) {
 }
 
 /**
- * 将章节正文按页拆分。每页严格 2 列（CSS column-count:2 + overflow:hidden）。
+ * 将章节正文按页拆分。每页严格 TEXT_PAGE_BOX.columns 列
+ * （桌面 2 列 / 移动端 1 列，CSS column-count + overflow:hidden）。
  * 用隐藏测量元素逐段添加，检测 scrollWidth 溢出来确定分页边界——
- * 根除 CSS multicolumn 在 overflow:auto 下产生 3+ 列的浏览器怪癖。
+ * 根除 CSS multicolumn 在 overflow:auto 下产生多余列的浏览器怪癖。
+ * （溢出内容会在 inline 方向生成额外列，故单栏时同样能靠 scrollWidth 判定）
  */
 async function splitTextIntoPages() {
   // 消费一次待恢复页码：无论走哪条分支都清空，避免残留到后续（如字号变更）重排
@@ -521,10 +541,10 @@ async function splitTextIntoPages() {
     `width:${cw}px`,
     `height:${ch}px`,
     "overflow:hidden",
-    "column-count:2",
-    "column-gap:48px",
+    `column-count:${TEXT_PAGE_BOX.columns}`,
+    `column-gap:${TEXT_PAGE_BOX.gapPx}px`,
     "column-fill:auto",
-    "padding:32px 48px",
+    `padding:${TEXT_PAGE_BOX.padYPx}px ${TEXT_PAGE_BOX.padXPx}px`,
     "box-sizing:border-box",
     `font-family:${cs.fontFamily}`,
     `font-size:${cs.fontSize}`,
@@ -674,6 +694,39 @@ function onTapZone(dir: "prev" | "next") {
   void (dir === "prev" ? prevPage() : nextPage());
 }
 
+// ---- 移动端左右滑动翻页 ----
+// 移动端隐藏了悬浮翻页按钮（44px 圆钮会压住正文），点击热区只占两侧
+// 各 26%，中间大片区域需要手势才能翻页。滑动是阅读器的默认预期交互。
+// 只认「横向为主」的滑动，纵向滚动（PDF 滚动模式）不受影响；也不
+// preventDefault，避免吞掉原生滚动。
+const SWIPE_MIN_PX = 48;
+let touchX = 0;
+let touchY = 0;
+let touchTracking = false;
+
+function onTouchStart(e: TouchEvent) {
+  if (!isMobile || e.touches.length !== 1) {
+    touchTracking = false;
+    return;
+  }
+  touchX = e.touches[0].clientX;
+  touchY = e.touches[0].clientY;
+  touchTracking = true;
+}
+
+function onTouchEnd(e: TouchEvent) {
+  if (!touchTracking) return;
+  touchTracking = false;
+  if (menuOpen.value || sidebarOpen.value || !canNav.value) return;
+  const t = e.changedTouches[0];
+  if (!t) return;
+  const dx = t.clientX - touchX;
+  const dy = t.clientY - touchY;
+  if (Math.abs(dx) < SWIPE_MIN_PX || Math.abs(dx) <= Math.abs(dy)) return;
+  // 左滑（dx<0）= 下一页，与横向翻页方向一致
+  void (dx < 0 ? nextPage() : prevPage());
+}
+
 function onKey(e: KeyboardEvent) {
   // 菜单/侧边栏展开时 Esc 先收面板，避免误关整个阅读器
   if (e.key === "Escape") {
@@ -817,8 +870,9 @@ const PDF_MODES = [
             <span class="material-symbols-outlined">{{ m.icon }}</span>
           </button>
         </div>
-        <!-- 背景颜色切换：直接展示在顶栏 -->
-        <div class="swatches" title="背景颜色">
+        <!-- 背景颜色切换：桌面直接展示在顶栏；移动端顶栏塞不下这一排，
+             收进「阅读设置」面板（见下方 set-row.swatch-row） -->
+        <div v-if="!isMobile" class="swatches" title="背景颜色">
           <button
             v-for="k in READER_THEME_KEYS"
             :key="k"
@@ -856,6 +910,21 @@ const PDF_MODES = [
     </transition>
     <transition name="pop">
       <div v-if="menuOpen" class="reader-settings" @click.stop>
+        <!-- 移动端：顶栏放不下的背景色板挪到这里 -->
+        <div v-if="isMobile" class="set-row">
+          <span class="set-label">背景</span>
+          <div class="swatches">
+            <button
+              v-for="k in READER_THEME_KEYS"
+              :key="k"
+              class="swatch"
+              :class="{ active: settings.readerTheme === k }"
+              :style="{ background: READER_THEMES[k].bg }"
+              :title="READER_THEMES[k].label"
+              @click="settings.readerTheme = k"
+            ></button>
+          </div>
+        </div>
         <div class="set-row">
           <span class="set-label">字号</span>
           <input
@@ -959,7 +1028,7 @@ const PDF_MODES = [
       </aside>
     </transition>
 
-    <div class="stage">
+    <div class="stage" @touchstart.passive="onTouchStart" @touchend.passive="onTouchEnd">
       <div v-if="loading" class="state">
         <div class="spinner"></div>
         <p>正在打开…</p>
@@ -1013,6 +1082,7 @@ const PDF_MODES = [
             v-for="(page, pi) in textPages"
             :key="pi"
             class="text-page"
+            :style="textPageStyle"
           >
             <h2 v-if="pi === 0" class="text-chapter-title">{{ textCurrentTitle }}</h2>
             <p
@@ -1423,15 +1493,13 @@ const PDF_MODES = [
 .text-track::-webkit-scrollbar {
   display: none;
 }
-/* 单页：严格 2 列，内容溢出时自动分到下一页 */
+/* 单页：列数/列间距/内边距由 textPageStyle 行内注入（与分页探针同源，
+   桌面 2 列、移动端 1 列），此处只留与分页无关的盒属性 */
 .text-page {
   flex: 0 0 100%;
   height: 100%;
   overflow: hidden;
-  column-count: 2;
-  column-gap: 48px;
   column-fill: auto;
-  padding: 32px 48px;
   box-sizing: border-box;
   scroll-snap-align: start;
 }
@@ -1522,5 +1590,85 @@ const PDF_MODES = [
 .next { right: 8px; }
 .nav .material-symbols-outlined {
   font-size: 26px;
+}
+
+/* ============ 移动端适配 ============
+   .is-mobile 挂在 <html> 上（main.ts 按 UA 判定），不在本组件 scope 内，
+   故用 :global()。桌面样式一行未改，其他端表现完全不变。 */
+
+/* 阅读器是 fixed inset:0 全屏浮层：顶栏会被状态栏压住、底部会被手势条
+   遮住，这里在根容器上让出安全区（padding 收缩内容盒，stage 自动变矮）。 */
+:global(html.is-mobile) .reader {
+  padding-top: var(--lm-safe-top);
+  padding-bottom: var(--lm-safe-bottom);
+}
+
+/* 顶栏在 360dp 下塞不下「标题 + 页码 + 一排工具」：让工具整体换到第二行
+   （flex:1 1 100% 强制独占一行），工具内部再兜底 wrap。 */
+:global(html.is-mobile) .bar {
+  flex-wrap: wrap;
+  column-gap: 8px;
+  row-gap: 2px;
+  padding: 6px 8px;
+}
+:global(html.is-mobile) .tools {
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+}
+/* 触摸目标放大到 44px（M3 建议 ≥48dp，44 是顶栏高度与可点性的折中） */
+:global(html.is-mobile) .rbtn {
+  width: 44px;
+  height: 44px;
+}
+:global(html.is-mobile) .mode-btn {
+  width: 38px;
+  height: 38px;
+}
+/* 面板内的色板需要更大的可点面积 */
+:global(html.is-mobile) .swatch {
+  width: 28px;
+  height: 28px;
+}
+
+/* 设置面板改底部弹层：顶栏在移动端会换行、高度不固定，原来的
+   top:54px 锚点会与顶栏重叠；锚到底部则与顶栏高度解耦。 */
+:global(html.is-mobile) .reader-settings {
+  position: fixed;
+  top: auto;
+  left: 12px;
+  right: 12px;
+  bottom: calc(12px + var(--lm-safe-bottom));
+  width: auto;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+/* 目录抽屉是 fixed，不吃根容器的 padding，需自己让出安全区 */
+:global(html.is-mobile) .toc-panel {
+  padding-top: var(--lm-safe-top);
+  padding-bottom: var(--lm-safe-bottom);
+}
+:global(html.is-mobile) .toc-item {
+  padding-top: 13px;
+  padding-bottom: 13px;
+}
+
+/* 正文区左右留白收窄：桌面的 56px/48px 在 360dp 屏上会吃掉 1/3 宽度 */
+:global(html.is-mobile) .epub-host {
+  padding: 0 8px;
+}
+:global(html.is-mobile) .pdf-scroll {
+  padding: 12px;
+}
+
+/* 悬浮翻页圆钮在窄屏会直接压在正文上（正文左右只剩 20px 留白），
+   移动端隐藏，改用两侧点击热区 + 左右滑动手势（onTouchStart/End）。 */
+:global(html.is-mobile) .nav {
+  display: none;
+}
+:global(html.is-mobile) .tapzone {
+  width: 26%;
 }
 </style>

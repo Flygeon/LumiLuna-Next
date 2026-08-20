@@ -90,8 +90,15 @@ function onWheel(e: WheelEvent) {
 let dragging = false;
 let startX = 0;
 let startY = 0;
+/** 按下时的原始坐标，用于未缩放状态下判定滑动切图 */
+let downX = 0;
+let downY = 0;
+/** 滑动切换下一张/上一张的最小水平位移 */
+const SWIPE_MIN_PX = 60;
 
 function onPointerDown(e: PointerEvent) {
+  downX = e.clientX;
+  downY = e.clientY;
   if (zoom.value <= 1) return;
   dragging = true;
   startX = e.clientX - panX.value;
@@ -103,7 +110,18 @@ function onPointerMove(e: PointerEvent) {
   panX.value = e.clientX - startX;
   panY.value = e.clientY - startY;
 }
-function onPointerUp() {
+function onPointerUp(e?: PointerEvent) {
+  // 未缩放时的横向滑动 = 切换上/下一个。触屏没有键盘方向键，
+  // 悬浮箭头虽在但滑动才是相册的默认预期；缩放后该手势归平移，故只在
+  // zoom<=1 时生效。stage 已设 touch-action:none，不会与页面滚动冲突。
+  if (e && e.type === "pointerup" && !dragging && zoom.value <= 1 && e.pointerType !== "mouse") {
+    const dx = e.clientX - downX;
+    const dy = e.clientY - downY;
+    if (Math.abs(dx) >= SWIPE_MIN_PX && Math.abs(dx) > Math.abs(dy)) {
+      if (dx < 0) next();
+      else prev();
+    }
+  }
   dragging = false;
 }
 
@@ -481,4 +499,34 @@ const infoRows = computed(() => {
 .slide-leave-to {
   transform: translateX(100%);
 }
+
+/* ============ 移动端适配 ============
+   .is-mobile 挂在 <html> 上，不在本组件 scope 内，故用 :global()。
+   桌面样式未改动。 */
+
+/* fixed inset:0 全屏浮层：顶栏会被状态栏压住，底部会被手势条遮住 */
+:global(html.is-mobile) .viewer {
+  padding-top: var(--lm-safe-top);
+  padding-bottom: var(--lm-safe-bottom);
+}
+:global(html.is-mobile) .vbtn {
+  width: 44px;
+  height: 44px;
+}
+:global(html.is-mobile) .bar {
+  gap: 8px;
+  padding: 8px 10px;
+}
+/* 340px 抽屉在 360dp 屏上几乎全屏遮挡；同时它是 absolute，锚在 .viewer 的
+   padding box（含安全区），需自己补顶部内边距，否则标题被状态栏压住 */
+:global(html.is-mobile) .info {
+  width: min(340px, 86vw);
+  padding: calc(62px + var(--lm-safe-top)) 18px calc(18px + var(--lm-safe-bottom));
+}
+:global(html.is-mobile) .nav {
+  width: 46px;
+  height: 46px;
+}
+:global(html.is-mobile) .prev { left: 6px; }
+:global(html.is-mobile) .next { right: 6px; }
 </style>
