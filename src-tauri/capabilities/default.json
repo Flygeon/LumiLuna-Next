@@ -48,8 +48,6 @@
     "opener:allow-open-path",
     "opener:allow-open-url",
     "opener:allow-reveal-item-in-dir",
-    "global-shortcut:allow-register",
-    "global-shortcut:allow-unregister",
     {
       "identifier": "http:default",
       "allow": [

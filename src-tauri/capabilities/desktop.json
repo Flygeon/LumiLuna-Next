@@ -1,0 +1,11 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "desktop-only",
+  "description": "桌面专属能力：全局快捷键（tauri-plugin-global-shortcut 仅在桌面 target 编译，Android/iOS 无此插件权限，故按 platforms 限定平台，避免移动端 ACL 校验失败）",
+  "platforms": ["linux", "macOS", "windows"],
+  "windows": ["main"],
+  "permissions": [
+    "global-shortcut:allow-register",
+    "global-shortcut:allow-unregister"
+  ]
+}
