@@ -234,4 +234,25 @@ function clearSearch() {
   color: var(--md-sys-color-on-surface-variant);
   min-width: 120px;
 }
+
+/* 移动端：搜索框独占一行（min-width 240px 会把排序 chip 挤出屏幕），
+   chip 行允许折行，扫描文案不再撑最小宽。
+   :global 是因为 .is-mobile 挂在 <html> 上，不在本组件 scope 内。 */
+:global(html.is-mobile) .search {
+  flex: 1 1 100%;
+  min-width: 0;
+  height: 44px;
+}
+:global(html.is-mobile) .sorts {
+  flex-wrap: wrap;
+}
+:global(html.is-mobile) .chip {
+  height: 36px;
+}
+:global(html.is-mobile) .scan-text {
+  min-width: 0;
+}
+:global(html.is-mobile) .bar {
+  width: 90px;
+}
 </style>

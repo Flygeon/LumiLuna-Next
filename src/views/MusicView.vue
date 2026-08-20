@@ -1007,6 +1007,13 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 16px;
 }
+/* 移动端：360dp 屏减去页边距只剩 328px，180px 下限会算成单列（一张卡横跨
+   整屏，浏览效率很低），下调到 140px 稳定出两列。
+   :global 是因为 .is-mobile 挂在 <html> 上，不在本组件 scope 内。 */
+:global(html.is-mobile) .online-grid {
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+}
 .song-card {
   position: relative;
   display: flex;

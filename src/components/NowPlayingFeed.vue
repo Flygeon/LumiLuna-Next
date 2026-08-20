@@ -281,6 +281,12 @@ onMounted(loadAll);
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 16px;
 }
+/* 移动端：180px 下限在 328px 可用宽下只能排一列，下调后稳定两列。
+   :global 是因为 .is-mobile 挂在 <html> 上，不在本组件 scope 内。 */
+:global(html.is-mobile) .playlist-grid {
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+}
 .playlist-card {
   display: flex;
   flex-direction: column;
