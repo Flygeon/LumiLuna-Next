@@ -357,9 +357,13 @@ fn parse_detail(html: &str, aid: &str, base: &str) -> Result<NovelDetail, String
                 author = tds[1].text().collect::<Vec<_>>().join("").trim().to_string();
                 status = tds[2].text().collect::<Vec<_>>().join("").trim().to_string();
                 fin_update = tds[3].text().collect::<Vec<_>>().join("").trim().to_string();
-                if author.len() > 5 { author = author[5..].to_string(); }
-                if status.len() > 5 { status = status[5..].to_string(); }
-                if fin_update.len() > 5 { fin_update = fin_update[5..].to_string(); }
+                // 关键修复：去掉“作者：”等前缀（去前 5 个字符）。
+                // 原实现用字节索引切片 author[5..]——中文 UTF-8 每字 3 字节，
+                // len()>5 时 [5..] 常落在字符中间，panic "not a char boundary"，
+                // 同步 command 主线程 panic 直接闪退（见 lumiluna_login_debug.log [PANIC]）。
+                if author.chars().count() > 5 { author = author.chars().skip(5).collect(); }
+                if status.chars().count() > 5 { status = status.chars().skip(5).collect(); }
+                if fin_update.chars().count() > 5 { fin_update = fin_update.chars().skip(5).collect(); }
             }
         }
     }
