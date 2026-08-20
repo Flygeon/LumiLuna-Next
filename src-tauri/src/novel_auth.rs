@@ -383,6 +383,7 @@ fn login_debug_log(msg: &str) {
 /// 然后提交 cookie（交给 Rust 校验；若前端 document.cookie 因 httpOnly 缺失，
 /// Rust 侧会直接读 webview 全量 cookie 兜底）。全程写诊断日志到同一日志文件。
 /// 通过 initialization_script 注入，每次页面加载（含登录后跳转主页）都会重新执行。
+#[cfg(desktop)] // 仅桌面弹窗登录使用；移动端走表单直登，避免 dead_code 警告
 const LOGIN_INJECT_JS: &str = r#"
 (function () {
   function showErr(msg) {
@@ -492,6 +493,7 @@ const LOGIN_INJECT_JS: &str = r#"
 /// 使用 WebviewWindowBuilder.initialization_script（v2 无 eval API，
 /// 该方式在每次页面加载前注入，无需额外权限）。
 /// 设置浏览器 UA：wenku8 对 WebView2 默认 UA 会返回空白页（参考项目同样设置 Edge UA）。
+#[cfg(desktop)] // 桌面：独立 WebView 登录窗口 + 注入抓取脚本
 #[tauri::command]
 pub async fn wenku8_login_open(app: tauri::AppHandle) -> Result<(), String> {
     login_debug_log("===== wenku8_login_open 开始（async + spawn_blocking） =====");
@@ -552,6 +554,16 @@ pub async fn wenku8_login_open(app: tauri::AppHandle) -> Result<(), String> {
             Err(format!("窗口创建任务异常：{e}"))
         }
     }
+}
+
+/// 移动端无多窗口/独立 WebView 窗口能力，桌面式弹窗登录不适用。
+/// 按拍板方案（决策9：表单直登）应由前端走登录表单；此处返回哨兵错误供前端识别，
+/// 触发移动端表单登录 UI。
+/// TODO(Phase 2)：实现 wenku8 表单直登（POST /login.php）并复用会话保存逻辑。
+#[cfg(mobile)]
+#[tauri::command]
+pub async fn wenku8_login_open(_app: tauri::AppHandle) -> Result<(), String> {
+    Err("[WENKU8_MOBILE_FORM_LOGIN] 移动端请使用表单登录".into())
 }
 
 /// 注入脚本通过此命令将登录窗口内（前端 JS 侧）的报错写入同一个调试日志文件，
