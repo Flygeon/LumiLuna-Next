@@ -9,7 +9,7 @@
  * 文件通过 Tauri fs 读成 ArrayBuffer 再喂给两个库，避免依赖
  * asset:// 的 range 请求行为差异。
  */
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue";
 import { readFile } from "@tauri-apps/plugin-fs";
 import { capabilities, isTauri } from "@/capabilities";
 import {
@@ -387,6 +387,11 @@ const textCurrentCid = ref("");
 const textCurrentTitle = ref("");
 const textContent = ref<NovelContent | null>(null);
 const textScrollEl = ref<HTMLDivElement | null>(null);
+const textTrackEl = ref<HTMLDivElement | null>(null);
+/** 按页拆分后的段落列表（每页 = 一组段落，CSS multicolumn 自动分 2 列） */
+const textPages = ref<string[][]>([]);
+/** 当前页码（0-based），顶栏显示进度 */
+const textCurrentPage = ref(0);
 
 let textSessionId = "";
 let textSessionStart = 0;
@@ -455,8 +460,93 @@ async function loadTextChapter(index: number) {
     }
   } finally {
     loading.value = false;
-    if (textScrollEl.value) textScrollEl.value.scrollLeft = 0;
+    await splitTextIntoPages();
+    if (textTrackEl.value) textTrackEl.value.scrollLeft = 0;
   }
+}
+
+/**
+ * 将章节正文按页拆分。每页严格 2 列（CSS column-count:2 + overflow:hidden）。
+ * 用隐藏测量元素逐段添加，检测 scrollWidth 溢出来确定分页边界——
+ * 根除 CSS multicolumn 在 overflow:auto 下产生 3+ 列的浏览器怪癖。
+ */
+async function splitTextIntoPages() {
+  const container = textScrollEl.value;
+  if (!container || !textContent.value) {
+    textPages.value = [];
+    textCurrentPage.value = 0;
+    return;
+  }
+  const allParas = (textContent.value.text || "").split("\n\n").filter((p) => p.trim());
+  if (!allParas.length) {
+    textPages.value = [];
+    textCurrentPage.value = 0;
+    return;
+  }
+  // 等 DOM 更新后拿容器尺寸
+  await nextTick();
+  const cw = container.clientWidth;
+  const ch = container.clientHeight;
+  if (cw === 0 || ch === 0) {
+    // 容器不可见（loading 遮盖等），退化为单页
+    textPages.value = [allParas];
+    textCurrentPage.value = 0;
+    return;
+  }
+  const cs = getComputedStyle(container);
+  const paraMB = settings.readerParaSpacing + "em";
+
+  // 隐藏测量元素：复刻 .text-page 的盒模型与字体
+  const probe = document.createElement("div");
+  probe.style.cssText = [
+    "position:absolute",
+    "top:-9999px",
+    "left:-9999px",
+    `width:${cw}px`,
+    `height:${ch}px`,
+    "overflow:hidden",
+    "column-count:2",
+    "column-gap:48px",
+    "column-fill:auto",
+    "padding:32px 48px",
+    "box-sizing:border-box",
+    `font-family:${cs.fontFamily}`,
+    `font-size:${cs.fontSize}`,
+    `line-height:${cs.lineHeight}`,
+    "visibility:hidden",
+  ].join(";");
+  document.body.appendChild(probe);
+
+  const paraHTML = (p: string) =>
+    `<p style="margin:0 0 ${paraMB};white-space:pre-wrap;word-break:break-word;">${p}</p>`;
+  const titleHTML = () =>
+    `<h2 style="margin:0 0 16px;font-size:18px;font-weight:600;text-align:center;break-inside:avoid;">${textCurrentTitle.value}</h2>`;
+
+  const pages: string[][] = [];
+  let cur: string[] = [];
+  let firstPage = true;
+
+  for (const para of allParas) {
+    cur.push(para);
+    let html = "";
+    if (firstPage) html += titleHTML();
+    html += cur.map(paraHTML).join("");
+    probe.innerHTML = html;
+    if (probe.scrollWidth > cw + 1) {
+      // 溢出：最后一段移到下一页
+      cur.pop();
+      if (cur.length) pages.push(cur);
+      cur = [para];
+      firstPage = false;
+    }
+  }
+  if (cur.length) pages.push(cur);
+  document.body.removeChild(probe);
+
+  textPages.value = pages.length ? pages : [[]];
+  textCurrentPage.value = 0;
+  await nextTick();
+  if (textTrackEl.value) textTrackEl.value.scrollLeft = 0;
 }
 
 function textPrev() {
@@ -504,13 +594,11 @@ async function nextPage() {
       await renderPdf();
     }
   } else if (kind.value === "text") {
-    const el = textScrollEl.value;
-    if (el) {
-      const maxScroll = el.scrollWidth - el.clientWidth;
-      if (el.scrollLeft + 2 < maxScroll) {
-        el.scrollLeft += el.clientWidth;
-        return;
-      }
+    if (textCurrentPage.value < textPages.value.length - 1) {
+      textCurrentPage.value++;
+      const el = textScrollEl.value;
+      if (el) el.scrollTo({ left: textCurrentPage.value * el.clientWidth });
+      return;
     }
     textNext();
   } else {
@@ -526,9 +614,10 @@ async function prevPage() {
       await renderPdf();
     }
   } else if (kind.value === "text") {
-    const el = textScrollEl.value;
-    if (el && el.scrollLeft > 2) {
-      el.scrollLeft -= el.clientWidth;
+    if (textCurrentPage.value > 0) {
+      textCurrentPage.value--;
+      const el = textScrollEl.value;
+      if (el) el.scrollTo({ left: textCurrentPage.value * el.clientWidth });
       return;
     }
     textPrev();
@@ -617,7 +706,8 @@ watch([mode, zoom], () => {
   if (kind.value === "pdf" && pdfDoc.value) void renderPdf();
 });
 
-// 阅读设置（背景/字体/字号/行距/段间距）变化时，同步覆写 EPUB 正文样式
+// 阅读设置（背景/字体/字号/行距/段间距）变化时，同步覆写 EPUB 正文样式；
+// 在线文本模式则重新分页（字号/行距变化会改变内容高度）
 watch(
   () => [
     settings.readerTheme,
@@ -628,6 +718,7 @@ watch(
   ],
   () => {
     if (kind.value === "epub" && rendition.value) applyEpubTheme();
+    if (kind.value === "text" && textContent.value) void splitTextIntoPages();
   },
 );
 
@@ -665,7 +756,9 @@ const PDF_MODES = [
                   ? `${page}-${page + 1} / ${totalPages}`
                   : `${page} / ${totalPages}`
               : kind === "text"
-                ? `${textCurrentIndex + 1} / ${textChapters.length}`
+                ? textPages.length > 1
+                  ? `${textCurrentIndex + 1}/${textChapters.length} 章 · ${textCurrentPage + 1}/${textPages.length} 页`
+                  : `${textCurrentIndex + 1} / ${textChapters.length}`
                 : `第 ${page} 节`
           }}
         </span>
@@ -885,15 +978,21 @@ const PDF_MODES = [
           visibility: loading || error ? 'hidden' : 'visible',
         }"
       >
-        <template v-if="textContent">
-          <h2 class="text-chapter-title">{{ textCurrentTitle }}</h2>
-          <p
-            v-for="(para, i) in (textContent?.text || '').split('\n\n').filter(p => p.trim())"
-            :key="i"
-            class="text-para"
-            :style="{ marginBottom: settings.readerParaSpacing + 'em' }"
-          >{{ para }}</p>
-        </template>
+        <div v-if="textContent" class="text-track" ref="textTrackEl">
+          <div
+            v-for="(page, pi) in textPages"
+            :key="pi"
+            class="text-page"
+          >
+            <h2 v-if="pi === 0" class="text-chapter-title">{{ textCurrentTitle }}</h2>
+            <p
+              v-for="(para, i) in page"
+              :key="i"
+              class="text-para"
+              :style="{ marginBottom: settings.readerParaSpacing + 'em' }"
+            >{{ para }}</p>
+          </div>
+        </div>
       </div>
 
       <!-- 左/右点击翻页热区；中间留空保持内容可交互 -->
@@ -1275,22 +1374,36 @@ const PDF_MODES = [
   padding: 0 56px;
 }
 
-/* 在线小说纯文本 —— 双栏书页 */
+/* 在线小说纯文本 —— 双栏书页（JS 分页，每页严格 2 列） */
 .text-content {
   height: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow: hidden;
+  position: relative;
+  color: var(--reader-fg);
+}
+/* 横向轨道：承载所有分页，scrollLeft 控制翻页 */
+.text-track {
+  display: flex;
+  height: 100%;
+  /* scroll-snap 让翻页自动对齐页面边界，杜绝停在两页之间看到 3 列 */
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.text-track::-webkit-scrollbar {
+  display: none;
+}
+/* 单页：严格 2 列，内容溢出时自动分到下一页 */
+.text-page {
+  flex: 0 0 100%;
+  height: 100%;
+  overflow: hidden;
   column-count: 2;
   column-gap: 48px;
   column-fill: auto;
   padding: 32px 48px;
-  color: var(--reader-fg);
-  /* 隐藏滚动条，翻页由按钮/热区控制 */
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-.text-content::-webkit-scrollbar {
-  display: none;
+  box-sizing: border-box;
+  scroll-snap-align: start;
 }
 .text-chapter-title {
   margin: 0 0 16px;
