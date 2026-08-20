@@ -386,6 +386,7 @@ const textCurrentIndex = ref(0);
 const textCurrentCid = ref("");
 const textCurrentTitle = ref("");
 const textContent = ref<NovelContent | null>(null);
+const textScrollEl = ref<HTMLDivElement | null>(null);
 
 let textSessionId = "";
 let textSessionStart = 0;
@@ -454,6 +455,7 @@ async function loadTextChapter(index: number) {
     }
   } finally {
     loading.value = false;
+    if (textScrollEl.value) textScrollEl.value.scrollLeft = 0;
   }
 }
 
@@ -502,6 +504,14 @@ async function nextPage() {
       await renderPdf();
     }
   } else if (kind.value === "text") {
+    const el = textScrollEl.value;
+    if (el) {
+      const maxScroll = el.scrollWidth - el.clientWidth;
+      if (el.scrollLeft + 2 < maxScroll) {
+        el.scrollLeft += el.clientWidth;
+        return;
+      }
+    }
     textNext();
   } else {
     await rendition.value?.next();
@@ -516,6 +526,11 @@ async function prevPage() {
       await renderPdf();
     }
   } else if (kind.value === "text") {
+    const el = textScrollEl.value;
+    if (el && el.scrollLeft > 2) {
+      el.scrollLeft -= el.clientWidth;
+      return;
+    }
     textPrev();
   } else {
     await rendition.value?.prev();
@@ -861,6 +876,7 @@ const PDF_MODES = [
       <!-- 在线小说纯文本 -->
       <div
         v-if="kind === 'text'"
+        ref="textScrollEl"
         class="text-content"
         :style="{
           fontFamily: readerFont.value,
@@ -1259,24 +1275,36 @@ const PDF_MODES = [
   padding: 0 56px;
 }
 
-/* 在线小说纯文本 */
+/* 在线小说纯文本 —— 双栏书页 */
 .text-content {
   height: 100%;
-  overflow-y: auto;
-  padding: 24px clamp(20px, 8vw, 120px);
+  overflow-x: auto;
+  overflow-y: hidden;
+  column-count: 2;
+  column-gap: 48px;
+  column-fill: auto;
+  padding: 32px 48px;
   color: var(--reader-fg);
+  /* 隐藏滚动条，翻页由按钮/热区控制 */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.text-content::-webkit-scrollbar {
+  display: none;
 }
 .text-chapter-title {
-  margin: 0 0 20px;
-  font-size: 20px;
+  margin: 0 0 16px;
+  font-size: 18px;
   font-weight: 600;
   color: var(--reader-fg);
+  column-span: all;
+  text-align: center;
 }
 .text-para {
-  margin: 0 0 1em;
+  margin: 0 0 0.6em;
   white-space: pre-wrap;
   word-break: break-word;
-  text-indent: 2em;
+  text-indent: 0;
   color: var(--reader-fg);
 }
 
