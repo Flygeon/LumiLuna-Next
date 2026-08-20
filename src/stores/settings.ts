@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import { ref, watch } from "vue";
 import { LazyStore } from "@tauri-apps/plugin-store";
 import { capabilities } from "@/capabilities";
+import { applySeedColor } from "@/utils/dynamicTheme";
 import type { MusicServer, OnlinePlaylistEntry } from "@shared/types";
 import type { LyricSourcePref } from "@/utils/preciseLyrics";
 
@@ -43,6 +44,8 @@ const store = new LazyStore("settings.json");
 
 const DEFAULTS = {
   theme: "system" as ThemeMode,
+  /** MD3 动态配色的种子色（十六进制）；由它实时生成整套颜色令牌 */
+  seedColor: "#1A5C9E",
   lang: "zh" as "zh" | "en",
   lyricFontSize: 30,
   lyricLineHeight: 2.5,
@@ -130,6 +133,7 @@ const DEFAULTS = {
 
 export const useSettingsStore = defineStore("settings", () => {
   const theme = ref<ThemeMode>(DEFAULTS.theme);
+  const seedColor = ref(DEFAULTS.seedColor);
   const lang = ref<"zh" | "en">(DEFAULTS.lang);
   const lyricFontSize = ref(DEFAULTS.lyricFontSize);
   const lyricLineHeight = ref(DEFAULTS.lyricLineHeight);
@@ -184,6 +188,7 @@ export const useSettingsStore = defineStore("settings", () => {
   // 单一注册表：新增设置项只需在此加一行，load/save 自动覆盖
   const fields = {
     theme,
+    seedColor,
     lang,
     lyricFontSize,
     lyricLineHeight,
@@ -281,6 +286,8 @@ export const useSettingsStore = defineStore("settings", () => {
       (theme.value === "system" &&
         window.matchMedia("(prefers-color-scheme: dark)").matches);
     document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+    // 依据当前深/浅模式，用种子色重算整套 MD3 颜色令牌
+    applySeedColor(seedColor.value, dark);
   }
 
   function applyTheme(mode: ThemeMode) {
@@ -293,6 +300,12 @@ export const useSettingsStore = defineStore("settings", () => {
         if (theme.value === "system") resolveTheme();
       });
     }
+  }
+
+  /** 切换配色种子色并立即重算令牌 */
+  function applyColorScheme(hex: string) {
+    seedColor.value = hex;
+    resolveTheme();
   }
 
   watch(
@@ -327,5 +340,6 @@ export const useSettingsStore = defineStore("settings", () => {
     load,
     save,
     applyTheme,
+    applyColorScheme,
   };
 });

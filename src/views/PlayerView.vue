@@ -117,7 +117,7 @@ function toggleComments() {
   commentsOpen.value = !commentsOpen.value;
 }
 
-/** 顶栏功能面板：点击外部或按 Esc 关闭 */
+/** 功能面板：点击外部或按 Esc 关闭 */
 function onDocPointerDown(e: PointerEvent) {
   if (
     panelOpen.value &&
@@ -151,80 +151,11 @@ onBeforeUnmount(() => {
   <div class="player-page">
     <FluidBackground />
 
-    <!-- 顶部覆盖层（空白处可拖拽窗口；居中为功能面板按钮） -->
+    <!-- 顶部覆盖层（空白处可拖拽窗口） -->
     <div class="player-topbar" @pointerdown="startDrag">
       <button class="back" @click="router.back()" @pointerdown.stop>
         <span class="material-symbols-outlined">arrow_back</span> {{ t("player.back") }}
       </button>
-
-      <!-- 居中功能按钮：悬浮展开歌词 / 队列 / 音效 + 逐字方案 + 翻译 -->
-      <div ref="panelAnchor" class="panel-anchor" @pointerdown.stop>
-        <button
-          class="panel-toggle"
-          :class="{ active: panelOpen }"
-          :title="t('player.tools')"
-          :aria-label="t('player.tools')"
-          @click="panelOpen = !panelOpen"
-        >
-          <span class="material-symbols-outlined">tune</span>
-        </button>
-
-        <Transition name="panel-pop">
-          <div v-if="panelOpen" class="tools-panel">
-            <div class="segment">
-              <button
-                class="seg-btn"
-                :class="{ active: rightTab === 'lyrics' }"
-                @click="rightTab = 'lyrics'"
-              >{{ t("actions.lyrics") }}</button>
-              <button
-                class="seg-btn"
-                :class="{ active: rightTab === 'queue' }"
-                @click="rightTab = 'queue'"
-              >{{ t("actions.queue") }}</button>
-              <button
-                class="seg-btn"
-                :class="{ active: rightTab === 'effects' }"
-                @click="rightTab = 'effects'"
-              >{{ t("player.effects") }}</button>
-            </div>
-
-            <div v-if="sourceBadge || hasSubLine" class="tools-extra">
-              <button
-                v-if="sourceBadge"
-                class="source-badge"
-                :class="player.lyricsSource"
-                :title="sourceBadge.hint"
-                @click="player.switchLyricSource()"
-              >
-                <span class="material-symbols-outlined">
-                  {{
-                    player.lyricsSource === "qq"
-                      ? "verified"
-                      : player.lyricsSource === "kg"
-                        ? "graphic_eq"
-                        : player.lyricsSource === "meting"
-                          ? "cloud"
-                          : "info"
-                  }}
-                </span>
-                {{ sourceBadge.text }}
-              </button>
-              <button
-                v-if="hasSubLine"
-                class="source-badge sub"
-                :title="t('player.lyricSubModeSwitch')"
-                @click="cycleSubMode"
-              >
-                <span class="material-symbols-outlined">
-                  {{ settings.lyricSubMode === "translation" ? "translate" : "abc" }}
-                </span>
-                {{ subModeLabel }}
-              </button>
-            </div>
-          </div>
-        </Transition>
-      </div>
     </div>
 
     <div class="player-body">
@@ -298,12 +229,80 @@ onBeforeUnmount(() => {
             </button>
           </div>
           <div class="ctrl-group right">
+            <!-- 功能面板：向上悬浮展开歌词 / 队列 / 音效 + 逐字方案 + 翻译 -->
+            <div ref="panelAnchor" class="panel-anchor" @pointerdown.stop>
+              <button
+                class="side-btn panel-toggle"
+                :class="{ active: panelOpen }"
+                :title="t('player.tools')"
+                :aria-label="t('player.tools')"
+                @click="panelOpen = !panelOpen"
+              >
+                <span class="material-symbols-outlined">tune</span>
+              </button>
+
+              <Transition name="panel-pop">
+                <div v-if="panelOpen" class="tools-panel">
+                  <div class="segment">
+                    <button
+                      class="seg-btn"
+                      :class="{ active: rightTab === 'lyrics' }"
+                      @click="rightTab = 'lyrics'"
+                    >{{ t("actions.lyrics") }}</button>
+                    <button
+                      class="seg-btn"
+                      :class="{ active: rightTab === 'queue' }"
+                      @click="rightTab = 'queue'"
+                    >{{ t("actions.queue") }}</button>
+                    <button
+                      class="seg-btn"
+                      :class="{ active: rightTab === 'effects' }"
+                      @click="rightTab = 'effects'"
+                    >{{ t("player.effects") }}</button>
+                  </div>
+
+                  <div v-if="sourceBadge || hasSubLine" class="tools-extra">
+                    <button
+                      v-if="sourceBadge"
+                      class="source-badge"
+                      :class="player.lyricsSource"
+                      :title="sourceBadge.hint"
+                      @click="player.switchLyricSource()"
+                    >
+                      <span class="material-symbols-outlined">
+                        {{
+                          player.lyricsSource === "qq"
+                            ? "verified"
+                            : player.lyricsSource === "kg"
+                              ? "graphic_eq"
+                              : player.lyricsSource === "meting"
+                                ? "cloud"
+                                : "info"
+                        }}
+                      </span>
+                      {{ sourceBadge.text }}
+                    </button>
+                    <button
+                      v-if="hasSubLine"
+                      class="source-badge sub"
+                      :title="t('player.lyricSubModeSwitch')"
+                      @click="cycleSubMode"
+                    >
+                      <span class="material-symbols-outlined">
+                        {{ settings.lyricSubMode === "translation" ? "translate" : "abc" }}
+                      </span>
+                      {{ subModeLabel }}
+                    </button>
+                  </div>
+                </div>
+              </Transition>
+            </div>
             <button class="side-btn speed" @click="cycleSpeed">{{ speed }}x</button>
           </div>
         </div>
       </div>
 
-      <!-- 右栏：歌词 / 队列 / 音效内容（切换控件已移入顶栏功能面板） -->
+      <!-- 右栏：歌词 / 队列 / 音效内容（切换控件已移入底部控制栏功能面板） -->
       <div class="right-col">
         <div class="right-content">
           <LyricsView v-if="rightTab === 'lyrics'" />
@@ -383,41 +382,25 @@ onBeforeUnmount(() => {
   opacity: 1;
 }
 
-/* 顶栏居中功能面板 */
+/* 底部控制栏功能面板（向上展开） */
 .panel-anchor {
   position: relative;
   display: flex;
   align-items: center;
 }
-.panel-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border: none;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
-  color: #fff;
-  cursor: pointer;
-  transition: background 160ms ease, transform 160ms ease;
-}
 .panel-toggle:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-.panel-toggle:active {
-  transform: scale(0.92);
+  opacity: 1;
 }
 .panel-toggle.active {
-  background: #fff;
-  color: #000;
+  opacity: 1;
+  color: #fff;
 }
 .panel-toggle .material-symbols-outlined {
-  font-size: 22px;
+  font-size: 21px;
 }
 .tools-panel {
   position: absolute;
-  top: calc(100% + 12px);
+  bottom: calc(100% + 12px);
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -454,7 +437,7 @@ onBeforeUnmount(() => {
 .panel-pop-enter-from,
 .panel-pop-leave-to {
   opacity: 0;
-  transform: translateX(-50%) translateY(-10px) scale(0.94);
+  transform: translateX(-50%) translateY(10px) scale(0.94);
 }
 .player-body {
   height: 100%;

@@ -278,8 +278,8 @@ onMounted(loadAll);
 }
 .playlist-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
 }
 .playlist-card {
   display: flex;
@@ -305,6 +305,16 @@ onMounted(loadAll);
   background: var(--md-sys-color-surface-container);
   box-shadow: inset 0 0 0 1px var(--lm-hairline);
   color: var(--md-sys-color-outline);
+  transition:
+    transform 220ms var(--md-sys-motion-spring-soft),
+    box-shadow 220ms var(--md-sys-motion-easing-standard);
+}
+.playlist-card:hover .playlist-cover {
+  transform: translateY(-4px) scale(1.015);
+  box-shadow: var(--md-elevation-3), inset 0 0 0 1px var(--lm-hairline);
+}
+.playlist-card:active .playlist-cover {
+  transform: translateY(-1px) scale(0.995);
 }
 .playlist-cover img {
   width: 100%;

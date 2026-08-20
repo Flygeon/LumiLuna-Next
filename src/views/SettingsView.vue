@@ -80,6 +80,29 @@ function setTheme(mode: ThemeMode) {
   settings.applyTheme(mode);
 }
 
+// ---- 配色方案（Material You 种子色）----
+const COLOR_SEEDS = [
+  { key: "blue", hex: "#1A5C9E" },
+  { key: "teal", hex: "#00696E" },
+  { key: "violet", hex: "#6750A4" },
+  { key: "green", hex: "#4C662B" },
+  { key: "amber", hex: "#8F4C00" },
+  { key: "rose", hex: "#B3261E" },
+  { key: "pink", hex: "#8B4A6C" },
+] as const;
+
+const isCustomSeed = computed(
+  () => !COLOR_SEEDS.some((c) => c.hex.toLowerCase() === settings.seedColor.toLowerCase()),
+);
+
+function pickSeed(hex: string) {
+  settings.applyColorScheme(hex);
+}
+
+function onCustomSeed(event: Event) {
+  settings.applyColorScheme((event.target as HTMLInputElement).value);
+}
+
 // ---- WebDAV ----
 
 const davTesting = ref(false);
@@ -220,6 +243,55 @@ function resetDesktopLyricsBounds() {
           >English</button>
         </div>
       </div>
+
+      <div class="row">
+        <div class="row-label">
+          <span>{{ t("settings.colorScheme") }}</span>
+        </div>
+        <div class="swatches">
+          <button
+            v-for="c in COLOR_SEEDS"
+            :key="c.key"
+            class="swatch"
+            :class="{ active: settings.seedColor.toLowerCase() === c.hex.toLowerCase() }"
+            :style="{ '--sw': c.hex }"
+            :title="t('settings.colorSeed_' + c.key)"
+            :aria-label="t('settings.colorSeed_' + c.key)"
+            @click="pickSeed(c.hex)"
+          >
+            <span class="material-symbols-outlined">check</span>
+          </button>
+          <label
+            class="swatch custom"
+            :class="{ active: isCustomSeed }"
+            :style="{ '--sw': settings.seedColor }"
+            :title="t('settings.colorCustom')"
+          >
+            <span class="material-symbols-outlined">{{ isCustomSeed ? "check" : "colorize" }}</span>
+            <input type="color" :value="settings.seedColor" @input="onCustomSeed" />
+          </label>
+        </div>
+      </div>
+      <p class="hint">{{ t("settings.colorSchemeHint") }}</p>
+
+      <div class="row">
+        <div class="row-label">
+          <span>{{ t("settings.closeAction") }}</span>
+        </div>
+        <div class="segmented">
+          <button
+            class="seg"
+            :class="{ active: settings.closeToTray }"
+            @click="settings.closeToTray = true"
+          >{{ t("settings.closeAction_tray") }}</button>
+          <button
+            class="seg"
+            :class="{ active: !settings.closeToTray }"
+            @click="settings.closeToTray = false"
+          >{{ t("settings.closeAction_quit") }}</button>
+        </div>
+      </div>
+      <p class="hint">{{ t("settings.closeToTrayHint") }}</p>
     </section>
 
     <!-- 扫描目录 -->
@@ -549,8 +621,6 @@ function resetDesktopLyricsBounds() {
     </section>
 
     <!-- 播放器 -->
-
-    <!-- 播放器 -->
     <section class="card">
       <h3>{{ t("settings.playback") }}</h3>
       <p class="hint">{{ t("settings.playerBgHint") }}</p>
@@ -582,11 +652,6 @@ function resetDesktopLyricsBounds() {
           </button>
         </div>
       </div>
-      <label class="row switch-row">
-        <span class="row-label">{{ t("settings.closeToTray") }}</span>
-        <input type="checkbox" v-model="settings.closeToTray" />
-      </label>
-      <p class="hint">{{ t("settings.closeToTrayHint") }}</p>
       <p class="hint">{{ t("player.hotkeysHint") }}</p>
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.lyricBlur") }}</span>
@@ -873,6 +938,70 @@ function resetDesktopLyricsBounds() {
   background: var(--md-sys-color-secondary-container);
   color: var(--md-sys-color-on-secondary-container);
   font-weight: 600;
+}
+
+/* 配色方案色板 */
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+.swatch {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--sw, var(--md-sys-color-primary));
+  color: #fff;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+  transition:
+    transform 160ms var(--md-sys-motion-spring),
+    box-shadow 160ms var(--md-sys-motion-easing-standard);
+}
+.swatch:hover {
+  transform: scale(1.12);
+}
+.swatch:active {
+  transform: scale(0.94);
+}
+.swatch .material-symbols-outlined {
+  font-size: 18px;
+  opacity: 0;
+  transform: scale(0.4);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  transition:
+    opacity 160ms var(--md-sys-motion-easing-standard),
+    transform 160ms var(--md-sys-motion-spring);
+}
+.swatch.active {
+  box-shadow:
+    0 0 0 2px var(--md-sys-color-surface),
+    0 0 0 4px var(--sw, var(--md-sys-color-primary));
+}
+.swatch.active .material-symbols-outlined {
+  opacity: 1;
+  transform: scale(1);
+}
+/* 自定义色：原生取色器铺满圆点但透明，仅保留点击唤起 */
+.swatch.custom .material-symbols-outlined {
+  opacity: 1;
+  transform: scale(1);
+}
+.swatch.custom input[type="color"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: none;
+  opacity: 0;
+  cursor: pointer;
 }
 
 .dir-list {
