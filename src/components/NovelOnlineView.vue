@@ -5,7 +5,7 @@ import { capabilities } from "@/capabilities";
 import { translate } from "@shared/i18n";
 import NovelCard from "@/components/NovelCard.vue";
 import NovelDetailPanel from "@/components/NovelDetailPanel.vue";
-import NovelReader from "@/components/NovelReader.vue";
+import BookReader from "@/components/BookReader.vue";
 import { openWenku8Login, isLoginRequiredError } from "@/novel/wenku8Login";
 import { reloginRequested, clearRelogin } from "@/novel/wenku8Auth";
 import type { NovelCover, NovelRecommendBlock, NovelShelfItem, Wenku8LoginStatus } from "@shared/types";
@@ -161,12 +161,14 @@ onMounted(() => {
 <template>
   <div class="novel-online">
     <!-- 阅读器 -->
-    <NovelReader
+    <BookReader
       v-if="view === 'reader'"
-      :aid="selected.aid"
-      :title="selected.title"
-      :initial-cid="readerInit.cid"
-      :initial-chapter-title="readerInit.chapterTitle"
+      :novel-source="{
+        aid: selected.aid,
+        title: selected.title,
+        initialCid: readerInit.cid,
+        initialChapterTitle: readerInit.chapterTitle,
+      }"
       @close="onReaderClose"
     />
 
@@ -263,6 +265,14 @@ onMounted(() => {
           <NovelCard v-for="n in block.novels" :key="n.aid" :item="n" @open="openNovel(n)" />
         </div>
       </section>
+
+      <!-- 空态 -->
+      <div
+        v-if="!rankLoading && !homeError && !searchResults.length && !rankResults.length && !recommend.length && !shelf.length"
+        class="state"
+      >
+        {{ t("novel.empty") }}
+      </div>
     </template>
   </div>
 </template>

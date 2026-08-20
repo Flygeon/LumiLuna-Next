@@ -18,7 +18,9 @@ import {
   type ReaderThemeKey,
 } from "@/stores/settings";
 import { loadPdfjs, toArrayBuffer } from "@/utils/pdf";
-import type { MediaEntry } from "@shared/types";
+import { isLoginRequiredError } from "@/novel/wenku8Login";
+import { requestRelogin } from "@/novel/wenku8Auth";
+import type { MediaEntry, NovelContent, NovelVolume } from "@shared/types";
 
 /** 阅读器背景主题：背景色 / 前景色 / 链接色 三元组 */
 const READER_THEMES: Record<
@@ -53,7 +55,15 @@ const READER_FONTS: Record<ReaderFontKey, { label: string; value: string }> = {
 };
 const READER_FONT_KEYS = Object.keys(READER_FONTS) as ReaderFontKey[];
 
-const props = defineProps<{ item: MediaEntry }>();
+const props = defineProps<{
+  item?: MediaEntry;
+  novelSource?: {
+    aid: string;
+    title: string;
+    initialCid?: string;
+    initialChapterTitle?: string;
+  };
+}>();
 const emit = defineEmits<{ (e: "close"): void }>();
 
 const settings = useSettingsStore();
@@ -78,9 +88,11 @@ const currentHref = ref("");
 /** 当前 CFI（进度保存用，非响应式） */
 let progressLocation = "";
 
-const kind = computed(() =>
-  props.item.ext.toLowerCase() === "pdf" ? "pdf" : "epub",
-);
+const kind = computed(() => {
+  if (props.novelSource) return "text" as const;
+  if (props.item?.ext.toLowerCase() === "pdf") return "pdf" as const;
+  return "epub" as const;
+});
 const mode = computed(() => settings.pdfReadMode);
 /** 双页模式一次前进两页 */
 const step = computed(() => (mode.value === "dual" ? 2 : 1));
@@ -98,11 +110,11 @@ function flushReadSession() {
   if (durationMs >= 1000) {
     void capabilities.novelReadSessionEnd({
       id: readSessionId,
-      bookId: props.item.id,
+      bookId: props.item?.id ?? "",
       source: "local",
-      title: props.item.title || props.item.name,
+      title: props.item?.title || props.item?.name || "",
       chapterKey: readChapterKey || "0",
-      chapterTitle: readChapterTitle || props.item.title || props.item.name,
+      chapterTitle: readChapterTitle || props.item?.title || props.item?.name || "",
       startedAt: readSessionStart,
       endedAt,
       durationMs,
@@ -131,9 +143,9 @@ const theme = computed(
 const readerFont = computed(
   () => READER_FONTS[settings.readerFont] ?? READER_FONTS.system,
 );
-/** EPUB 是否可翻页（PDF 滚动模式下不显示点击翻页） */
+/** EPUB/在线文本是否可翻页（PDF 滚动模式下不显示点击翻页） */
 const canNav = computed(
-  () => !loading.value && !error.value && (kind.value === "epub" || mode.value !== "scroll"),
+  () => !loading.value && !error.value && (kind.value !== "pdf" || mode.value !== "scroll"),
 );
 
 // 这些库的实例不需要响应式深追踪
@@ -144,7 +156,7 @@ const pdfLoadingTask = shallowRef<any>(null);
 let renderTasks: any[] = [];
 
 async function loadBytes(): Promise<ArrayBuffer> {
-  if (!isTauri) throw new Error("仅在应用内可读取本地文件");
+  if (!isTauri || !props.item) throw new Error("仅在应用内可读取本地文件");
   const bytes = await readFile(props.item.path);
   return toArrayBuffer(bytes);
 }
@@ -289,9 +301,11 @@ async function openEpub() {
 
   // 恢复上次阅读进度（CFI 精确定位）
   try {
-    const progress = await capabilities.getBookProgress(props.item.id);
-    if (progress?.location) {
-      await rendition.value.display(progress.location);
+    if (props.item) {
+      const progress = await capabilities.getBookProgress(props.item.id);
+      if (progress?.location) {
+        await rendition.value.display(progress.location);
+      }
     }
   } catch {
     /* 恢复失败忽略，回到开头 */
@@ -317,7 +331,7 @@ function flattenToc(
 /** 保存阅读进度（EPUB：CFI + 章节 + 粗略百分比） */
 function saveProgress() {
   const location = progressLocation;
-  if (!location || kind.value !== "epub") return;
+  if (!location || kind.value !== "epub" || !props.item) return;
   const percent = totalPages.value ? ((page.value - 1) / totalPages.value) * 100 : 0;
   void capabilities
     .saveBookProgress(props.item.id, location, page.value, Math.round(percent))
@@ -364,6 +378,119 @@ async function goToChapter(item: { href: string }) {
   }
 }
 
+// ---- 在线小说纯文本 ----
+
+const textVolumes = ref<NovelVolume[]>([]);
+const textChapters = ref<{ cid: string; title: string }[]>([]);
+const textCurrentIndex = ref(0);
+const textCurrentCid = ref("");
+const textCurrentTitle = ref("");
+const textContent = ref<NovelContent | null>(null);
+
+let textSessionId = "";
+let textSessionStart = 0;
+let textChapterKey = "";
+
+function flattenTextChapters(volumes: NovelVolume[]) {
+  const list: { cid: string; title: string }[] = [];
+  for (const v of volumes) list.push(...v.chapters);
+  return list;
+}
+
+function flushTextSession() {
+  if (!textSessionId || !textSessionStart || !textChapterKey) return;
+  const endedAt = Date.now();
+  const durationMs = Math.max(0, endedAt - textSessionStart);
+  if (durationMs >= 1000) {
+    void capabilities.novelReadSessionEnd({
+      id: textSessionId,
+      bookId: props.novelSource!.aid,
+      source: "online",
+      title: props.novelSource!.title,
+      chapterKey: textChapterKey,
+      chapterTitle: textCurrentTitle.value,
+      startedAt: textSessionStart,
+      endedAt,
+      durationMs,
+      completed: false,
+    });
+  }
+  textSessionId = "";
+  textSessionStart = 0;
+  textChapterKey = "";
+}
+
+function beginTextSession() {
+  flushTextSession();
+  textSessionId = crypto.randomUUID();
+  textSessionStart = Date.now();
+  textChapterKey = textCurrentCid.value;
+}
+
+async function loadTextChapter(index: number) {
+  if (index < 0 || index >= textChapters.value.length) return;
+  textCurrentIndex.value = index;
+  const ch = textChapters.value[index];
+  textCurrentCid.value = ch.cid;
+  textCurrentTitle.value = ch.title;
+  loading.value = true;
+  error.value = "";
+  try {
+    textContent.value = await capabilities.novelContent(
+      settings.wenku8Node,
+      settings.novelCharset,
+      props.novelSource!.aid,
+      ch.cid,
+      ch.title,
+    );
+    beginTextSession();
+    void capabilities.novelProgressSet(props.novelSource!.aid, ch.cid, ch.title, 0);
+  } catch (e) {
+    if (isLoginRequiredError(e)) {
+      requestRelogin();
+      error.value = "登录态已失效，请重新登录。";
+    } else {
+      error.value = e instanceof Error ? e.message : String(e);
+    }
+  } finally {
+    loading.value = false;
+  }
+}
+
+function textPrev() {
+  if (textCurrentIndex.value > 0) void loadTextChapter(textCurrentIndex.value - 1);
+}
+function textNext() {
+  if (textCurrentIndex.value < textChapters.value.length - 1) void loadTextChapter(textCurrentIndex.value + 1);
+}
+
+async function initText() {
+  loading.value = true;
+  error.value = "";
+  try {
+    textVolumes.value = await capabilities.novelCatalogue(settings.wenku8Node, settings.novelCharset, props.novelSource!.aid);
+    textChapters.value = flattenTextChapters(textVolumes.value);
+    let start = 0;
+    const progress = await capabilities.novelProgressGet(props.novelSource!.aid);
+    if (progress) {
+      const idx = textChapters.value.findIndex((c) => c.cid === progress.cid);
+      if (idx >= 0) start = idx;
+    } else if (props.novelSource!.initialCid) {
+      const idx = textChapters.value.findIndex((c) => c.cid === props.novelSource!.initialCid);
+      if (idx >= 0) start = idx;
+    }
+    if (textChapters.value.length === 0) {
+      error.value = "目录为空，无法阅读";
+      loading.value = false;
+      return;
+    }
+    await loadTextChapter(start);
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : String(e);
+    loading.value = false;
+  }
+}
+
 // ---- 通用导航 ----
 
 async function nextPage() {
@@ -374,6 +501,8 @@ async function nextPage() {
       page.value += step.value;
       await renderPdf();
     }
+  } else if (kind.value === "text") {
+    textNext();
   } else {
     await rendition.value?.next();
   }
@@ -386,6 +515,8 @@ async function prevPage() {
       page.value = Math.max(1, page.value - step.value);
       await renderPdf();
     }
+  } else if (kind.value === "text") {
+    textPrev();
   } else {
     await rendition.value?.prev();
   }
@@ -400,7 +531,7 @@ async function setZoom(delta: number) {
       220,
       Math.max(60, settings.readerFontPct + delta * 20),
     );
-    applyEpubTheme();
+    if (kind.value === "epub") applyEpubTheme();
   }
 }
 
@@ -432,20 +563,25 @@ function onKey(e: KeyboardEvent) {
 
 onMounted(async () => {
   window.addEventListener("keydown", onKey);
-  beginReadSession(kind.value === "pdf" ? "p1" : "start", props.item.title || props.item.name);
-  try {
-    if (kind.value === "pdf") await openPdf();
-    else await openEpub();
-  } catch (e) {
-    error.value = `无法打开此文件：${e instanceof Error ? e.message : String(e)}`;
-  } finally {
-    loading.value = false;
+  if (kind.value === "text") {
+    await initText();
+  } else {
+    beginReadSession(kind.value === "pdf" ? "p1" : "start", props.item?.title || props.item?.name || "");
+    try {
+      if (kind.value === "pdf") await openPdf();
+      else await openEpub();
+    } catch (e) {
+      error.value = `无法打开此文件：${e instanceof Error ? e.message : String(e)}`;
+    } finally {
+      loading.value = false;
+    }
   }
 });
 
 onBeforeUnmount(() => {
-  flushReadSession(); // 关闭书籍时先结算阅读时长
-  saveProgress(); // 关闭书籍时补存一次进度（应用退出也会走这里）
+  flushReadSession();
+  flushTextSession();
+  saveProgress();
   window.removeEventListener("keydown", onKey);
   cancelRenders();
   rendition.value?.destroy();
@@ -481,7 +617,7 @@ watch(
 );
 
 function openExternally() {
-  void capabilities.openFile(props.item.path);
+  if (props.item?.path) void capabilities.openFile(props.item.path);
 }
 
 const PDF_MODES = [
@@ -503,8 +639,8 @@ const PDF_MODES = [
       <button class="rbtn" title="关闭 (Esc)" @click="emit('close')">
         <span class="material-symbols-outlined">close</span>
       </button>
-      <div class="title" :title="item.path">{{ item.title || item.name }}</div>
-      <div class="pager" v-if="totalPages">
+      <div class="title" :title="item?.path">{{ novelSource?.title || item?.title || item?.name }}</div>
+      <div class="pager" v-if="totalPages || textChapters.length">
         <span class="tabular-nums">
           {{
             kind === "pdf"
@@ -513,14 +649,16 @@ const PDF_MODES = [
                 : mode === "dual" && page + 1 <= totalPages
                   ? `${page}-${page + 1} / ${totalPages}`
                   : `${page} / ${totalPages}`
-              : `第 ${page} 节`
+              : kind === "text"
+                ? `${textCurrentIndex + 1} / ${textChapters.length}`
+                : `第 ${page} 节`
           }}
         </span>
       </div>
       <div class="tools">
-        <!-- 目录侧边栏（EPUB） -->
+        <!-- 目录侧边栏（EPUB / 在线文本） -->
         <button
-          v-if="kind === 'epub'"
+          v-if="kind === 'epub' || kind === 'text'"
           class="rbtn"
           :class="{ active: sidebarOpen }"
           title="目录"
@@ -561,7 +699,6 @@ const PDF_MODES = [
         </button>
         <!-- 更多设置二级菜单（字号/字体/行距/段间距） -->
         <button
-          v-if="kind === 'epub'"
           class="rbtn"
           :class="{ active: menuOpen }"
           title="阅读设置"
@@ -569,7 +706,7 @@ const PDF_MODES = [
         >
           <span class="material-symbols-outlined">tune</span>
         </button>
-        <button class="rbtn" title="用系统应用打开" @click="openExternally">
+        <button v-if="item" class="rbtn" title="用系统应用打开" @click="openExternally">
           <span class="material-symbols-outlined">open_in_new</span>
         </button>
       </div>
@@ -637,7 +774,7 @@ const PDF_MODES = [
       </div>
     </transition>
 
-    <!-- 目录侧边栏（EPUB）：遮罩 + 面板 -->
+    <!-- 目录侧边栏（EPUB / 在线文本）：遮罩 + 面板 -->
     <transition name="fade">
       <div v-if="sidebarOpen" class="toc-backdrop" @click="sidebarOpen = false"></div>
     </transition>
@@ -646,20 +783,40 @@ const PDF_MODES = [
         <div class="toc-head">
           <span class="material-symbols-outlined">toc</span>
           <span class="toc-title">目录</span>
-          <span v-if="totalPages" class="toc-pct tabular-nums">
-            {{ Math.round(((page - 1) / totalPages) * 100) }}%
+          <span v-if="totalPages || textChapters.length" class="toc-pct tabular-nums">
+            {{
+              kind === "text" && textChapters.length
+                ? Math.round((textCurrentIndex / textChapters.length) * 100) + "%"
+                : totalPages
+                  ? Math.round(((page - 1) / totalPages) * 100) + "%"
+                  : ""
+            }}
           </span>
         </div>
         <div class="toc-list">
-          <button
-            v-for="(item, i) in toc"
-            :key="item.href + i"
-            class="toc-item"
-            :class="{ active: isTocActive(item), sub: item.depth > 0 }"
-            :style="{ paddingLeft: 14 + item.depth * 18 + 'px' }"
-            @click="goToChapter(item)"
-          >{{ item.label }}</button>
-          <p v-if="!toc.length" class="toc-empty">本书无目录</p>
+          <!-- EPUB 目录 -->
+          <template v-if="kind === 'epub'">
+            <button
+              v-for="(item, i) in toc"
+              :key="item.href + i"
+              class="toc-item"
+              :class="{ active: isTocActive(item), sub: item.depth > 0 }"
+              :style="{ paddingLeft: 14 + item.depth * 18 + 'px' }"
+              @click="goToChapter(item)"
+            >{{ item.label }}</button>
+          </template>
+          <!-- 在线文本目录 -->
+          <template v-if="kind === 'text'">
+            <button
+              v-for="(ch, i) in textChapters"
+              :key="ch.cid"
+              class="toc-item"
+              :class="{ active: i === textCurrentIndex }"
+              @click="sidebarOpen = false; loadTextChapter(i)"
+            >{{ ch.title }}</button>
+          </template>
+          <p v-if="kind === 'epub' && !toc.length" class="toc-empty">本书无目录</p>
+          <p v-if="kind === 'text' && !textChapters.length" class="toc-empty">暂无目录</p>
         </div>
       </aside>
     </transition>
@@ -673,7 +830,7 @@ const PDF_MODES = [
       <div v-else-if="error" class="state">
         <span class="material-symbols-outlined big">error</span>
         <p>{{ error }}</p>
-        <button class="lm-btn lm-btn--filled" @click="openExternally">
+        <button v-if="item" class="lm-btn lm-btn--filled" @click="openExternally">
           用系统应用打开
         </button>
       </div>
@@ -700,6 +857,28 @@ const PDF_MODES = [
         class="epub-host"
         :style="{ visibility: loading || error ? 'hidden' : 'visible' }"
       ></div>
+
+      <!-- 在线小说纯文本 -->
+      <div
+        v-if="kind === 'text'"
+        class="text-content"
+        :style="{
+          fontFamily: readerFont.value,
+          fontSize: settings.readerFontPct + '%',
+          lineHeight: settings.readerLineHeight,
+          visibility: loading || error ? 'hidden' : 'visible',
+        }"
+      >
+        <template v-if="textContent">
+          <h2 class="text-chapter-title">{{ textCurrentTitle }}</h2>
+          <p
+            v-for="(para, i) in textContent.text.split('\n\n').filter((p: string) => p.trim())"
+            :key="i"
+            class="text-para"
+            :style="{ marginBottom: settings.readerParaSpacing + 'em' }"
+          >{{ para }}</p>
+        </template>
+      </div>
 
       <!-- 左/右点击翻页热区；中间留空保持内容可交互 -->
       <button
@@ -1078,6 +1257,27 @@ const PDF_MODES = [
   height: 100%;
   width: 100%;
   padding: 0 56px;
+}
+
+/* 在线小说纯文本 */
+.text-content {
+  height: 100%;
+  overflow-y: auto;
+  padding: 24px clamp(20px, 8vw, 120px);
+  color: var(--reader-fg);
+}
+.text-chapter-title {
+  margin: 0 0 20px;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--reader-fg);
+}
+.text-para {
+  margin: 0 0 1em;
+  white-space: pre-wrap;
+  word-break: break-word;
+  text-indent: 2em;
+  color: var(--reader-fg);
 }
 
 .state {

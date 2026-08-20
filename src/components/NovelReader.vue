@@ -255,7 +255,7 @@ onBeforeUnmount(() => {
       </div>
     </Transition>
 
-    <div class="reader-content" :style="{ fontFamily, fontSize: settings.readerFontPct + 'px', lineHeight: settings.readerLineHeight }">
+    <div class="reader-content" :style="{ fontFamily, fontSize: settings.readerFontPct + '%', lineHeight: settings.readerLineHeight }">
       <p v-if="loading" class="state">{{ t("novel.loading") }}</p>
       <p v-else-if="error" class="state error">{{ error }}</p>
       <template v-else-if="content">
