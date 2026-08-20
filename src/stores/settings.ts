@@ -121,6 +121,8 @@ const DEFAULTS = {
   desktopLyricsLocked: false,
   desktopLyricsAlwaysOnTop: true,
   desktopLyricsShowNext: false,
+  desktopLyricsShowTranslation: false,
+  desktopLyricsClickThrough: false,
   desktopLyricsToolbar: "click" as DesktopLyricsToolbar,
   desktopLyricsDoubleClick: "toggle" as DesktopLyricsDoubleClick,
   desktopLyricsAnimation: "fade" as DesktopLyricsAnimation,
@@ -177,6 +179,8 @@ export const useSettingsStore = defineStore("settings", () => {
   const desktopLyricsLocked = ref(DEFAULTS.desktopLyricsLocked);
   const desktopLyricsAlwaysOnTop = ref(DEFAULTS.desktopLyricsAlwaysOnTop);
   const desktopLyricsShowNext = ref(DEFAULTS.desktopLyricsShowNext);
+  const desktopLyricsShowTranslation = ref(DEFAULTS.desktopLyricsShowTranslation);
+  const desktopLyricsClickThrough = ref(DEFAULTS.desktopLyricsClickThrough);
   const desktopLyricsToolbar = ref<DesktopLyricsToolbar>(DEFAULTS.desktopLyricsToolbar);
   const desktopLyricsDoubleClick = ref<DesktopLyricsDoubleClick>(DEFAULTS.desktopLyricsDoubleClick);
   const desktopLyricsAnimation = ref<DesktopLyricsAnimation>(DEFAULTS.desktopLyricsAnimation);
@@ -232,6 +236,8 @@ export const useSettingsStore = defineStore("settings", () => {
     desktopLyricsLocked,
     desktopLyricsAlwaysOnTop,
     desktopLyricsShowNext,
+    desktopLyricsShowTranslation,
+    desktopLyricsClickThrough,
     desktopLyricsToolbar,
     desktopLyricsDoubleClick,
     desktopLyricsAnimation,

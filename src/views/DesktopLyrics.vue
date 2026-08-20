@@ -60,6 +60,12 @@ const subText = computed(() => {
     return `下一句 · ${next.value.text}`;
   return "";
 });
+/** 当前行的中文翻译（仅在开启且有翻译且与原文不同时显示） */
+const translationText = computed(() => {
+  if (!settings.desktopLyricsShowTranslation) return "";
+  const tr = current.value?.translation;
+  return tr && tr !== mainText.value ? tr : "";
+});
 
 /** 控制栏是否可见（always 模式 / click 模式且已展开） */
 const toolbarVisible = computed(
@@ -167,6 +173,7 @@ onMounted(async () => {
     });
     const win = WebviewWindow.getCurrent();
     void win.setAlwaysOnTop(settings.desktopLyricsAlwaysOnTop);
+    void win.setIgnoreCursorEvents(settings.desktopLyricsClickThrough);
     unlistenMoved = await win.onMoved(scheduleReportBounds);
     unlistenResized = await win.onResized(scheduleReportBounds);
     emitDesktopLyricsReady();
@@ -179,6 +186,13 @@ watch(
   () => settings.desktopLyricsAlwaysOnTop,
   (v) => {
     if (isTauri) void WebviewWindow.getCurrent().setAlwaysOnTop(v);
+  },
+);
+
+watch(
+  () => settings.desktopLyricsClickThrough,
+  (v) => {
+    if (isTauri) void WebviewWindow.getCurrent().setIgnoreCursorEvents(v);
   },
 );
 
@@ -206,9 +220,10 @@ onBeforeUnmount(() => {
   >
     <div class="lyrics-main" @click.stop="toggleToolbar">
       <Transition :name="'dl-' + settings.desktopLyricsAnimation" mode="out-in">
-        <p :key="currentIndex" class="line current">
-          {{ mainText }}
-        </p>
+        <div :key="currentIndex" class="line-stack">
+          <p class="line current">{{ mainText }}</p>
+          <p v-if="translationText" class="line translation">{{ translationText }}</p>
+        </div>
       </Transition>
       <p v-if="subText" class="line next">{{ subText }}</p>
     </div>
@@ -321,6 +336,19 @@ html {
 .line.next {
   font-size: 0.6em;
   opacity: 0.55;
+  font-weight: 500;
+}
+.line-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  max-width: 100%;
+  min-width: 0;
+}
+.line.translation {
+  font-size: 0.62em;
+  opacity: 0.82;
   font-weight: 500;
 }
 

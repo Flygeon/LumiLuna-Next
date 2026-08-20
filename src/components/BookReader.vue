@@ -392,6 +392,8 @@ const textTrackEl = ref<HTMLDivElement | null>(null);
 const textPages = ref<string[][]>([]);
 /** 当前页码（0-based），顶栏显示进度 */
 const textCurrentPage = ref(0);
+/** 待恢复的页码：initText 从阅读进度读到后暂存，首次分页完成时消费一次 */
+let pendingRestorePage = 0;
 
 let textSessionId = "";
 let textSessionStart = 0;
@@ -433,6 +435,17 @@ function beginTextSession() {
   textChapterKey = textCurrentCid.value;
 }
 
+/** 保存在线阅读进度：当前章节 cid + 章节内页码（position）。翻页与卸载时调用。 */
+function saveTextProgress() {
+  if (kind.value !== "text" || !props.novelSource || !textCurrentCid.value) return;
+  void capabilities.novelProgressSet(
+    props.novelSource.aid,
+    textCurrentCid.value,
+    textCurrentTitle.value,
+    textCurrentPage.value,
+  );
+}
+
 async function loadTextChapter(index: number) {
   if (index < 0 || index >= textChapters.value.length) return;
   textCurrentIndex.value = index;
@@ -471,6 +484,9 @@ async function loadTextChapter(index: number) {
  * 根除 CSS multicolumn 在 overflow:auto 下产生 3+ 列的浏览器怪癖。
  */
 async function splitTextIntoPages() {
+  // 消费一次待恢复页码：无论走哪条分支都清空，避免残留到后续（如字号变更）重排
+  const restoreTarget = pendingRestorePage;
+  pendingRestorePage = 0;
   const container = textScrollEl.value;
   if (!container || !textContent.value) {
     textPages.value = [];
@@ -544,9 +560,16 @@ async function splitTextIntoPages() {
   document.body.removeChild(probe);
 
   textPages.value = pages.length ? pages : [[]];
-  textCurrentPage.value = 0;
+  const restorePage = Math.min(
+    Math.max(0, restoreTarget),
+    textPages.value.length - 1,
+  );
+  textCurrentPage.value = restorePage;
   await nextTick();
-  if (textTrackEl.value) textTrackEl.value.scrollLeft = 0;
+  // .text-content(textScrollEl, overflow:hidden) 才是真正的横向滚动容器
+  if (textScrollEl.value) {
+    textScrollEl.value.scrollLeft = restorePage * textScrollEl.value.clientWidth;
+  }
 }
 
 function textPrev() {
@@ -566,7 +589,11 @@ async function initText() {
     const progress = await capabilities.novelProgressGet(props.novelSource!.aid);
     if (progress) {
       const idx = textChapters.value.findIndex((c) => c.cid === progress.cid);
-      if (idx >= 0) start = idx;
+      if (idx >= 0) {
+        start = idx;
+        // 恢复章节内页码；具体页号在分页完成后 clamp 并消费
+        pendingRestorePage = Math.max(0, progress.position || 0);
+      }
     } else if (props.novelSource!.initialCid) {
       const idx = textChapters.value.findIndex((c) => c.cid === props.novelSource!.initialCid);
       if (idx >= 0) start = idx;
@@ -598,6 +625,7 @@ async function nextPage() {
       textCurrentPage.value++;
       const el = textScrollEl.value;
       if (el) el.scrollTo({ left: textCurrentPage.value * el.clientWidth });
+      saveTextProgress();
       return;
     }
     textNext();
@@ -618,6 +646,7 @@ async function prevPage() {
       textCurrentPage.value--;
       const el = textScrollEl.value;
       if (el) el.scrollTo({ left: textCurrentPage.value * el.clientWidth });
+      saveTextProgress();
       return;
     }
     textPrev();
@@ -686,6 +715,7 @@ onBeforeUnmount(() => {
   flushReadSession();
   flushTextSession();
   saveProgress();
+  saveTextProgress();
   window.removeEventListener("keydown", onKey);
   cancelRenders();
   rendition.value?.destroy();

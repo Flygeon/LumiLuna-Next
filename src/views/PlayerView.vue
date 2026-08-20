@@ -366,7 +366,7 @@ onBeforeUnmount(() => {
 .back {
   position: absolute;
   left: 24px;
-  top: 50%;
+  top: calc(50% + 6px);
   transform: translateY(-50%);
   border: none;
   background: transparent;

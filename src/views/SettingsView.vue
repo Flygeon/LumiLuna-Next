@@ -535,6 +535,11 @@ function resetDesktopLyricsBounds() {
         <input type="checkbox" v-model="settings.desktopLyricsShowNext" />
       </label>
 
+      <label class="row switch-row">
+        <span class="row-label">{{ t("settings.desktopLyricsShowTranslation") }}</span>
+        <input type="checkbox" v-model="settings.desktopLyricsShowTranslation" />
+      </label>
+
       <div class="row">
         <div class="row-label"><span>{{ t("settings.desktopLyricsToolbar") }}</span></div>
         <div class="segmented">
@@ -607,6 +612,12 @@ function resetDesktopLyricsBounds() {
         <span class="row-label">{{ t("settings.desktopLyricsLocked") }}</span>
         <input type="checkbox" v-model="settings.desktopLyricsLocked" />
       </label>
+
+      <label class="row switch-row">
+        <span class="row-label">{{ t("settings.desktopLyricsClickThrough") }}</span>
+        <input type="checkbox" v-model="settings.desktopLyricsClickThrough" />
+      </label>
+      <p class="hint">{{ t("settings.desktopLyricsClickThroughHint") }}</p>
 
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.desktopLyricsAlwaysOnTop") }}</span>
