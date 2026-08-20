@@ -179,7 +179,7 @@ onMounted(() => {
 
     <!-- 主页 -->
     <template v-else>
-      <!-- Wenku8 登录态提示条 -->
+      <!-- Wenku8 登录态提示条：仅未登录时显示；已登录不显示任何登录条 -->
       <div v-if="!loginStatus.loggedIn" class="login-bar login-bar--off">
         <span class="material-symbols-outlined">account_circle</span>
         <span class="login-text">{{ t("novel.loginHint") }}</span>
@@ -187,16 +187,6 @@ onMounted(() => {
           <span v-if="loggingIn" class="material-symbols-outlined spin">progress_activity</span>
           <span v-else class="material-symbols-outlined">login</span>
           {{ loggingIn ? t("novel.loggingIn") : t("novel.login") }}
-        </button>
-      </div>
-      <div v-else class="login-bar login-bar--on">
-        <span class="material-symbols-outlined">verified_user</span>
-        <span class="login-text">
-          {{ t("novel.loggedInAs") }} {{ loginStatus.nickname || loginStatus.uname || "" }}
-        </span>
-        <button class="lm-btn lm-btn--text" @click="doLogout">
-          <span class="material-symbols-outlined">logout</span>
-          {{ t("novel.logout") }}
         </button>
       </div>
       <p v-if="loginBanner" class="login-banner">{{ loginBanner }}</p>
@@ -208,6 +198,14 @@ onMounted(() => {
           {{ t("novel.relogin") }}
         </button>
       </div>
+
+      <!-- 书架（置顶） -->
+      <section v-if="shelf.length" class="section">
+        <h3 class="section-title">{{ t("novel.shelf") }}</h3>
+        <div class="novel-grid">
+          <NovelCard v-for="n in shelf" :key="n.aid" :item="n" :subtitle="n.author" @open="openNovel(n)" />
+        </div>
+      </section>
 
       <!-- 搜索 -->
       <div class="search-bar">
@@ -261,14 +259,6 @@ onMounted(() => {
         <h3 class="section-title">{{ block.title }}</h3>
         <div class="novel-grid">
           <NovelCard v-for="n in block.novels" :key="n.aid" :item="n" @open="openNovel(n)" />
-        </div>
-      </section>
-
-      <!-- 书架 -->
-      <section v-if="shelf.length" class="section">
-        <h3 class="section-title">{{ t("novel.shelf") }}</h3>
-        <div class="novel-grid">
-          <NovelCard v-for="n in shelf" :key="n.aid" :item="n" :subtitle="n.author" @open="openNovel(n)" />
         </div>
       </section>
     </template>
