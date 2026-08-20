@@ -717,6 +717,58 @@ onBeforeUnmount(() => {
   flex: 1;
   overflow: hidden;
 }
+
+/* ---- 移动端播放页：横向双栏 → 竖向堆叠 ----
+ * 桌面是 左栏(封面+信息+进度+控制) | 右栏(歌词/队列/音效) 的横向布局，
+ * 手机竖屏下两栏各不到 190px 完全不可用；且 progress/controls 有三处
+ * 硬编码 425px 会横向溢出 360dp 屏幕。
+ * 这里改为：封面+信息+进度+控制 在上，歌词区占据剩余高度在下。
+ * :global 是因为 .is-mobile 挂在 <html>，不在本组件 scope 内。 */
+:global(html.is-mobile) .player-body {
+  flex-direction: column;
+  /* 顶栏（返回/标签）高度 + 状态栏安全区 */
+  padding-top: calc(52px + var(--lm-safe-top));
+}
+:global(html.is-mobile) .left-col {
+  flex: none;
+  width: 100%;
+  justify-content: flex-start;
+  padding: 0 16px;
+}
+:global(html.is-mobile) .cover-wrap {
+  /* 留出足够高度给下方歌词区 */
+  width: min(58vw, 30vh);
+  border-radius: 18px;
+}
+:global(html.is-mobile) .song-info {
+  margin-top: 16px;
+}
+:global(html.is-mobile) .song-info .title {
+  font-size: 19px;
+}
+:global(html.is-mobile) .progress-section {
+  margin-top: 14px;
+}
+/* 解除 425px 硬编码，改为跟随屏宽 */
+:global(html.is-mobile) .progress-section,
+:global(html.is-mobile) .progress-bar,
+:global(html.is-mobile) .controls {
+  width: 100%;
+  max-width: 425px;
+}
+:global(html.is-mobile) .controls {
+  margin-top: 10px;
+}
+:global(html.is-mobile) .right-col {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  padding: 4px 12px calc(8px + var(--lm-safe-bottom));
+}
+/* 顶栏绝对定位在 top:0，移动端会被状态栏压住，让出顶部安全区 */
+:global(html.is-mobile) .player-topbar {
+  padding-top: calc(16px + var(--lm-safe-top));
+}
 .queue-list {
   display: flex;
   flex-direction: column;
