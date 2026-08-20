@@ -64,6 +64,34 @@ async function safeInvoke<T>(
   return invoke<T>(cmd, args);
 }
 
+/** 小说阅读链路的带日志调用：invoke 前先写“准备调用”，成功后写结果长度，失败写错误。
+ *  用于定位“点击书籍闪退”——若 Rust 同步 command 主线程 panic 闪退，
+ *  日志最后一条就是本次调用与参数，能确定触发点。 */
+async function loggedNovelInvoke<T>(
+  cmd: string,
+  args: Record<string, unknown>,
+  tag: string,
+  aid: string,
+  cid?: string,
+): Promise<T> {
+  const label = `[novel-call] ${tag} aid=${aid}${cid ? ` cid=${cid}` : ""}`;
+  void safeInvoke("app_log", { msg: `${label} -> invoke ${cmd}` }).catch(() => {});
+  try {
+    const r = await safeInvoke<T>(cmd, args);
+    const len =
+      r && typeof r === "object"
+        ? JSON.stringify(r).length
+        : String(r ?? "").length;
+    void safeInvoke("app_log", { msg: `${label} OK len=${len}` }).catch(() => {});
+    return r;
+  } catch (e) {
+    void safeInvoke("app_log", {
+      msg: `${label} ERR: ${(e as Error)?.message ?? String(e)}`,
+    }).catch(() => {});
+    throw e;
+  }
+}
+
 export const capabilities = {
   // ---- 扫描 ----
   scanStart(config: ScanConfig): Promise<{ jobId: string }> {
@@ -324,14 +352,15 @@ export const capabilities = {
   novelRecommend(node: string, charset: string): Promise<NovelRecommendBlock[]> {
     return safeInvoke("novel_recommend", { node, charset });
   },
+  /** 带日志的调用：记录点击书籍→detail/catalogue/content 的完整参数与结果，用于定位“点书闪退” */
   novelDetail(node: string, charset: string, aid: string): Promise<NovelDetail> {
-    return safeInvoke("novel_detail", { node, charset, aid });
+    return loggedNovelInvoke<NovelDetail>("novel_detail", { node, charset, aid }, "detail", aid);
   },
   novelCatalogue(node: string, charset: string, aid: string): Promise<NovelVolume[]> {
-    return safeInvoke("novel_catalogue", { node, charset, aid });
+    return loggedNovelInvoke<NovelVolume[]>("novel_catalogue", { node, charset, aid }, "catalogue", aid);
   },
   novelContent(node: string, charset: string, aid: string, cid: string, title: string): Promise<NovelContent> {
-    return safeInvoke("novel_content", { node, charset, aid, cid, title });
+    return loggedNovelInvoke<NovelContent>("novel_content", { node, charset, aid, cid, title }, "content", aid, cid);
   },
   novelShelfList(): Promise<NovelShelfItem[]> {
     return safeInvoke("novel_shelf_list");
