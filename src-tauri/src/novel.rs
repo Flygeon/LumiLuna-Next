@@ -207,7 +207,7 @@ pub(crate) fn fetch_html(
         .bytes()
         .map_err(|e| format!("读取响应失败：{e}"))?;
 
-    let (text, had_errors, _) = if charset == "big5" {
+    let (text, _, has_errors) = if charset == "big5" {
         encoding_rs::BIG5.decode(&bytes)
     } else {
         encoding_rs::GBK.decode(&bytes)
@@ -215,8 +215,8 @@ pub(crate) fn fetch_html(
 
     // 编码嗅探：如果 GBK/BIG5 解码出现替换字符（�），说明实际编码可能是 UTF-8
     // wenku8 某些页面（如搜索页）可能返回 UTF-8，忽略 URL 里的 charset 参数
-    let text = if had_errors {
-        let (utf8_text, utf8_errors, _) = encoding_rs::UTF_8.decode(&bytes);
+    let text = if has_errors {
+        let (utf8_text, _, utf8_errors) = encoding_rs::UTF_8.decode(&bytes);
         if !utf8_errors {
             utf8_text.into_owned()
         } else {

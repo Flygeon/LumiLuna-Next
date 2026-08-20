@@ -1,7 +1,6 @@
 use chrono::{Local, NaiveDate};
-use rusqlite::{params, Connection};
+use rusqlite::params;
 use serde::{Deserialize, Serialize};
-use std::sync::Mutex;
 use tauri::State;
 
 use crate::commands::{now_ms, DbState};
