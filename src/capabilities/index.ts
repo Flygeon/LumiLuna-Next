@@ -83,6 +83,14 @@ async function loggedNovelInvoke<T>(
         ? JSON.stringify(r).length
         : String(r ?? "").length;
     void safeInvoke("app_log", { msg: `${label} OK len=${len}` }).catch(() => {});
+    // content 场景：额外记录返回正文的开头，确认是真实章节内容而非缓存脏数据/主页导航
+    if (tag === "content" && r && typeof r === "object") {
+      const c = r as { text?: string; images?: unknown[] };
+      const preview = (c.text ?? "").slice(0, 120);
+      void safeInvoke("app_log", {
+        msg: `${label} textPreview=[${preview.replace(/\n/g, "\\n")}] images=${c.images?.length ?? 0}`,
+      }).catch(() => {});
+    }
     return r;
   } catch (e) {
     void safeInvoke("app_log", {
