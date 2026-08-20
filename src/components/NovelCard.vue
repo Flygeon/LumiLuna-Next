@@ -41,6 +41,12 @@ const cover = computed(() => {
   font-family: inherit;
   text-align: left;
   cursor: pointer;
+  outline: none;
+}
+.novel-card:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 4px;
+  border-radius: var(--md-sys-shape-corner-large);
 }
 .cover {
   display: flex;
@@ -53,6 +59,16 @@ const cover = computed(() => {
   background: var(--md-sys-color-surface-container);
   box-shadow: inset 0 0 0 1px var(--lm-hairline);
   color: var(--md-sys-color-outline);
+  transition:
+    transform 220ms var(--md-sys-motion-spring-soft),
+    box-shadow 220ms var(--md-sys-motion-easing-standard);
+}
+.novel-card:hover .cover {
+  transform: translateY(-4px) scale(1.015);
+  box-shadow: var(--md-elevation-3), inset 0 0 0 1px var(--lm-hairline);
+}
+.novel-card:active .cover {
+  transform: translateY(-1px) scale(0.995);
 }
 .cover img {
   width: 100%;

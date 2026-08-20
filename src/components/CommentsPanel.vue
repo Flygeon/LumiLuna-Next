@@ -228,7 +228,7 @@ function nicknameOf(c: NeteaseComment): string {
   z-index: 500;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   background: rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(3px);
 }
@@ -241,12 +241,25 @@ function nicknameOf(c: NeteaseComment): string {
   padding: 20px 24px 16px;
   background: var(--md-sys-color-surface-container-high);
   box-shadow: var(--md-elevation-3);
-  animation: comment-slide 260ms var(--md-sys-motion-easing-emphasized-decelerate);
   overflow: hidden;
 }
-@keyframes comment-slide {
-  from { transform: translateX(100%); }
-  to { transform: none; }
+
+/* 从左侧滑入：遮罩淡入 + 面板滑动；关闭时反向播放同一动画 */
+.comment-fade-enter-active,
+.comment-fade-leave-active {
+  transition: opacity 320ms var(--md-sys-motion-easing-standard);
+}
+.comment-fade-enter-from,
+.comment-fade-leave-to {
+  opacity: 0;
+}
+.comment-fade-enter-active .comment-panel,
+.comment-fade-leave-active .comment-panel {
+  transition: transform 320ms var(--md-sys-motion-easing-emphasized-decelerate);
+}
+.comment-fade-enter-from .comment-panel,
+.comment-fade-leave-to .comment-panel {
+  transform: translateX(-100%);
 }
 .comment-head {
   flex: none;

@@ -403,8 +403,8 @@ onMounted(() => {
 }
 .novel-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 16px;
 }
 .state {
   padding: 24px 0;

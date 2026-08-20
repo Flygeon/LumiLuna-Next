@@ -5,9 +5,7 @@ import { useSettingsStore } from "@/stores/settings";
 import { useNeteaseStore } from "@/stores/netease";
 import { useRouter } from "vue-router";
 import { translate } from "@shared/i18n";
-import { isTauri } from "@/capabilities";
 import { useWindowDrag } from "@/composables/useWindowDrag";
-import WindowControls from "@/components/WindowControls.vue";
 import FluidBackground from "@/components/FluidBackground.vue";
 import LyricsView from "@/components/LyricsView.vue";
 import PlayerControlIcon from "@/components/PlayerControlIcon.vue";
@@ -23,9 +21,10 @@ const rightTab = ref<"lyrics" | "queue" | "effects">("lyrics");
 const speed = ref(1);
 const isDragging = ref(false);
 const commentsOpen = ref(false);
+const panelOpen = ref(false);
+const panelAnchor = ref<HTMLElement | null>(null);
 
-const { isMaximized, minimize, toggleMaximize, close, startDrag } =
-  useWindowDrag();
+const { startDrag } = useWindowDrag();
 
 /** 当前在线歌曲的网易云 ID（仅网易云在线歌曲可查评论/红心） */
 const neteaseSongId = computed(() => {
@@ -112,15 +111,39 @@ function cycleSpeed() {
   player.setPlaybackRate(speed.value);
 }
 
+/** 点击专辑封面：切换评论面板（仅网易云在线歌曲可用） */
+function toggleComments() {
+  if (!canShowComments.value) return;
+  commentsOpen.value = !commentsOpen.value;
+}
+
+/** 顶栏功能面板：点击外部或按 Esc 关闭 */
+function onDocPointerDown(e: PointerEvent) {
+  if (
+    panelOpen.value &&
+    panelAnchor.value &&
+    !panelAnchor.value.contains(e.target as Node)
+  ) {
+    panelOpen.value = false;
+  }
+}
+function onDocKeyDown(e: KeyboardEvent) {
+  if (e.key === "Escape" && panelOpen.value) panelOpen.value = false;
+}
+
 onMounted(() => {
   // audio 元素由 store 全局持有，这里只确保已起播
   player.initAudio();
   player.setPlaybackRate(speed.value);
+  document.addEventListener("pointerdown", onDocPointerDown, true);
+  document.addEventListener("keydown", onDocKeyDown);
 });
 
 onBeforeUnmount(() => {
   // 不中断播放，退出后由 MiniPlayer 接管
   player.detachAudio();
+  document.removeEventListener("pointerdown", onDocPointerDown, true);
+  document.removeEventListener("keydown", onDocKeyDown);
 });
 </script>
 
@@ -128,28 +151,98 @@ onBeforeUnmount(() => {
   <div class="player-page">
     <FluidBackground />
 
-    <!-- 顶部覆盖层 -->
-    <div class="player-topbar">
-      <button class="back" @click="router.back()"><span class="material-symbols-outlined">arrow_back</span> {{ t("player.back") }}</button>
-      <div class="now-title" @pointerdown="startDrag">{{ t("player.nowPlaying") }}</div>
-      <WindowControls
-        v-if="isTauri"
-        :is-maximized="isMaximized"
-        :minimize="minimize"
-        :toggle-maximize="toggleMaximize"
-        :close="close"
-      />
-      <div v-else class="right-placeholder"></div>
+    <!-- 顶部覆盖层（空白处可拖拽窗口；居中为功能面板按钮） -->
+    <div class="player-topbar" @pointerdown="startDrag">
+      <button class="back" @click="router.back()" @pointerdown.stop>
+        <span class="material-symbols-outlined">arrow_back</span> {{ t("player.back") }}
+      </button>
+
+      <!-- 居中功能按钮：悬浮展开歌词 / 队列 / 音效 + 逐字方案 + 翻译 -->
+      <div ref="panelAnchor" class="panel-anchor" @pointerdown.stop>
+        <button
+          class="panel-toggle"
+          :class="{ active: panelOpen }"
+          :title="t('player.tools')"
+          :aria-label="t('player.tools')"
+          @click="panelOpen = !panelOpen"
+        >
+          <span class="material-symbols-outlined">tune</span>
+        </button>
+
+        <Transition name="panel-pop">
+          <div v-if="panelOpen" class="tools-panel">
+            <div class="segment">
+              <button
+                class="seg-btn"
+                :class="{ active: rightTab === 'lyrics' }"
+                @click="rightTab = 'lyrics'"
+              >{{ t("actions.lyrics") }}</button>
+              <button
+                class="seg-btn"
+                :class="{ active: rightTab === 'queue' }"
+                @click="rightTab = 'queue'"
+              >{{ t("actions.queue") }}</button>
+              <button
+                class="seg-btn"
+                :class="{ active: rightTab === 'effects' }"
+                @click="rightTab = 'effects'"
+              >{{ t("player.effects") }}</button>
+            </div>
+
+            <div v-if="sourceBadge || hasSubLine" class="tools-extra">
+              <button
+                v-if="sourceBadge"
+                class="source-badge"
+                :class="player.lyricsSource"
+                :title="sourceBadge.hint"
+                @click="player.switchLyricSource()"
+              >
+                <span class="material-symbols-outlined">
+                  {{
+                    player.lyricsSource === "qq"
+                      ? "verified"
+                      : player.lyricsSource === "kg"
+                        ? "graphic_eq"
+                        : player.lyricsSource === "meting"
+                          ? "cloud"
+                          : "info"
+                  }}
+                </span>
+                {{ sourceBadge.text }}
+              </button>
+              <button
+                v-if="hasSubLine"
+                class="source-badge sub"
+                :title="t('player.lyricSubModeSwitch')"
+                @click="cycleSubMode"
+              >
+                <span class="material-symbols-outlined">
+                  {{ settings.lyricSubMode === "translation" ? "translate" : "abc" }}
+                </span>
+                {{ subModeLabel }}
+              </button>
+            </div>
+          </div>
+        </Transition>
+      </div>
     </div>
 
     <div class="player-body">
       <!-- 左栏：封面 + 信息 + 进度 + 控制 -->
       <div class="left-col">
-        <div class="cover-wrap" :class="{ hover: player.playing }">
+        <div
+          class="cover-wrap"
+          :class="{ clickable: canShowComments }"
+          @click="toggleComments"
+        >
           <div class="cover" v-if="player.song?.cover">
             <img :src="player.song.cover" alt="" />
           </div>
           <div class="cover default" v-else><span class="material-symbols-outlined">music_note</span></div>
+          <div v-if="canShowComments" class="cover-hint">
+            <span class="material-symbols-outlined">chat_bubble</span>
+            {{ t("netease.comments") }}
+          </div>
         </div>
 
         <div class="song-info">
@@ -210,59 +303,8 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
-      <!-- 右栏：歌词/队列 -->
+      <!-- 右栏：歌词 / 队列 / 音效内容（切换控件已移入顶栏功能面板） -->
       <div class="right-col">
-        <div class="right-head">
-          <div class="segment">
-            <button
-              class="seg-btn"
-              :class="{ active: rightTab === 'lyrics' }"
-              @click="rightTab = 'lyrics'"
-            >{{ t("actions.lyrics") }}</button>
-            <button
-              class="seg-btn"
-              :class="{ active: rightTab === 'queue' }"
-              @click="rightTab = 'queue'"
-            >{{ t("actions.queue") }}</button>
-            <button
-              class="seg-btn"
-              :class="{ active: rightTab === 'effects' }"
-              @click="rightTab = 'effects'"
-            >{{ t("player.effects") }}</button>
-          </div>
-          <button
-            v-if="sourceBadge"
-            class="source-badge"
-            :class="player.lyricsSource"
-            :title="sourceBadge.hint"
-            @click="player.switchLyricSource()"
-          >
-            <span class="material-symbols-outlined">
-              {{
-                player.lyricsSource === "qq"
-                  ? "verified"
-                  : player.lyricsSource === "kg"
-                    ? "graphic_eq"
-                    : player.lyricsSource === "meting"
-                      ? "cloud"
-                      : "info"
-              }}
-            </span>
-            {{ sourceBadge.text }}
-          </button>
-          <button
-            v-if="hasSubLine"
-            class="source-badge sub"
-            :class="{ disabled: !hasSubLine }"
-            :title="t('player.lyricSubModeSwitch')"
-            @click="cycleSubMode"
-          >
-            <span class="material-symbols-outlined">
-              {{ settings.lyricSubMode === "translation" ? "translate" : "abc" }}
-            </span>
-            {{ subModeLabel }}
-          </button>
-          </div>
         <div class="right-content">
           <LyricsView v-if="rightTab === 'lyrics'" />
           <AudioEffectsPanel v-else-if="rightTab === 'effects'" />
@@ -291,16 +333,6 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
-      <!-- 评论按钮（登录网易云且当前为在线歌曲时显示） -->
-      <button
-        v-if="canShowComments"
-        class="comment-btn"
-        :title="t('netease.comments')"
-        @click="commentsOpen = true"
-      >
-        <span class="material-symbols-outlined">chat_bubble</span>
-      </button>
-
       <CommentsPanel
         :open="commentsOpen"
         :song-id="neteaseSongId"
@@ -327,12 +359,16 @@ onBeforeUnmount(() => {
   right: 0;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   padding: 16px 24px;
   z-index: 10;
   background: linear-gradient(to bottom, rgba(0,0,0,0.5), transparent);
 }
 .back {
+  position: absolute;
+  left: 24px;
+  top: 50%;
+  transform: translateY(-50%);
   border: none;
   background: transparent;
   color: #fff;
@@ -343,12 +379,82 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 4px;
 }
-.now-title {
-  font-size: 14px;
-  opacity: 0.8;
+.back:hover {
+  opacity: 1;
 }
-.right-placeholder {
-  width: 60px;
+
+/* 顶栏居中功能面板 */
+.panel-anchor {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.panel-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  cursor: pointer;
+  transition: background 160ms ease, transform 160ms ease;
+}
+.panel-toggle:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+.panel-toggle:active {
+  transform: scale(0.92);
+}
+.panel-toggle.active {
+  background: #fff;
+  color: #000;
+}
+.panel-toggle .material-symbols-outlined {
+  font-size: 22px;
+}
+.tools-panel {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  min-width: 240px;
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(28, 28, 30, 0.82);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  z-index: 30;
+}
+.tools-panel .segment {
+  align-self: stretch;
+  justify-content: center;
+  margin: 0;
+}
+.tools-extra {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+.panel-pop-enter-active,
+.panel-pop-leave-active {
+  transition:
+    opacity 200ms var(--md-sys-motion-easing-emphasized-decelerate),
+    transform 200ms var(--md-sys-motion-easing-emphasized-decelerate);
+}
+.panel-pop-enter-from,
+.panel-pop-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-10px) scale(0.94);
 }
 .player-body {
   height: 100%;
@@ -373,6 +479,7 @@ onBeforeUnmount(() => {
 }
 
 .cover-wrap {
+  position: relative;
   width: min(42vw, 52vh);
   aspect-ratio: 1;
   border-radius: calc(min(42vw, 52vh) * 0.14);
@@ -386,6 +493,33 @@ onBeforeUnmount(() => {
 .cover-wrap:hover {
   transform: scale(1.05);
   filter: brightness(0.85);
+}
+.cover-wrap.clickable {
+  cursor: pointer;
+}
+.cover-hint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 16px 12px 14px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.62), transparent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  opacity: 0;
+  transition: opacity 220ms var(--md-sys-motion-easing-standard);
+  pointer-events: none;
+}
+.cover-wrap.clickable:hover .cover-hint {
+  opacity: 1;
+}
+.cover-hint .material-symbols-outlined {
+  font-size: 18px;
 }
 .cover {
   width: 100%;
@@ -525,13 +659,6 @@ onBeforeUnmount(() => {
 .speed {
   font-size: 13px;
   width: 44px;
-}
-.right-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 16px;
 }
 .segment {
   display: flex;
@@ -673,32 +800,5 @@ onBeforeUnmount(() => {
   color: rgba(255, 255, 255, 0.5);
   text-align: center;
   margin-top: 40%;
-}
-.comment-btn {
-  position: absolute;
-  right: 24px;
-  bottom: 24px;
-  z-index: 20;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  border: none;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.92);
-  color: #000;
-  box-shadow: var(--md-elevation-3);
-  cursor: pointer;
-  transition: transform 160ms var(--md-sys-motion-easing-standard);
-}
-.comment-btn:hover {
-  transform: scale(1.06);
-}
-.comment-btn:active {
-  transform: scale(0.94);
-}
-.comment-btn .material-symbols-outlined {
-  font-size: 24px;
 }
 </style>

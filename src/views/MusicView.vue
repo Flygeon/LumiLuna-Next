@@ -1024,11 +1024,13 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
   justify-content: center;
   width: 100%;
   aspect-ratio: 1;
-  border-radius: var(--md-sys-shape-corner-medium);
+  border-radius: var(--md-sys-shape-corner-large);
   overflow: hidden;
   background: var(--md-sys-color-surface-container);
   box-shadow: inset 0 0 0 1px var(--lm-hairline);
-  transition: transform 200ms var(--md-sys-motion-spring-soft), box-shadow 200ms;
+  transition:
+    transform 220ms var(--md-sys-motion-spring-soft),
+    box-shadow 220ms var(--md-sys-motion-easing-standard);
 }
 .song-card .thumb img {
   width: 100%;
@@ -1041,8 +1043,11 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
   opacity: 0.7;
 }
 .song-card:hover .thumb {
-  transform: translateY(-3px);
-  box-shadow: var(--md-elevation-2), inset 0 0 0 1px var(--lm-hairline);
+  transform: translateY(-4px) scale(1.015);
+  box-shadow: var(--md-elevation-3), inset 0 0 0 1px var(--lm-hairline);
+}
+.song-card:active .thumb {
+  transform: translateY(-1px) scale(0.995);
 }
 .s-meta {
   padding: 0 2px;
