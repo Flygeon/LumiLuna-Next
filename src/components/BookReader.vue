@@ -872,7 +872,7 @@ const PDF_MODES = [
         <template v-if="textContent">
           <h2 class="text-chapter-title">{{ textCurrentTitle }}</h2>
           <p
-            v-for="(para, i) in textContent.text.split('\n\n').filter((p: string) => p.trim())"
+            v-for="(para, i) in (textContent?.text || '').split('\n\n').filter(p => p.trim())"
             :key="i"
             class="text-para"
             :style="{ marginBottom: settings.readerParaSpacing + 'em' }"

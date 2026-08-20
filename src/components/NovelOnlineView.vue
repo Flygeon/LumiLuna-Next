@@ -160,17 +160,18 @@ onMounted(() => {
 
 <template>
   <div class="novel-online">
-    <!-- 阅读器 -->
-    <BookReader
-      v-if="view === 'reader'"
-      :novel-source="{
-        aid: selected.aid,
-        title: selected.title,
-        initialCid: readerInit.cid,
-        initialChapterTitle: readerInit.chapterTitle,
-      }"
-      @close="onReaderClose"
-    />
+    <!-- 阅读器（Teleport 到 body 避免 NovelOnlineView 的 transform 动画破坏 fixed 定位） -->
+    <Teleport to="body" v-if="view === 'reader'">
+      <BookReader
+        :novel-source="{
+          aid: selected.aid,
+          title: selected.title,
+          initialCid: readerInit.cid,
+          initialChapterTitle: readerInit.chapterTitle,
+        }"
+        @close="onReaderClose"
+      />
+    </Teleport>
 
     <!-- 详情 -->
     <NovelDetailPanel
