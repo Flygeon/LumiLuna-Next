@@ -92,11 +92,16 @@ function beginSession() {
 }
 
 async function loadChapter(index: number) {
-  if (index < 0 || index >= chapters.value.length) return;
+  void capabilities.appLog(`[reader] loadChapter 开始 index=${index} chapters=${chapters.value.length}`).catch(() => {});
+  if (index < 0 || index >= chapters.value.length) {
+    void capabilities.appLog(`[reader] loadChapter 越界 index=${index} total=${chapters.value.length}`).catch(() => {});
+    return;
+  }
   currentIndex.value = index;
   const ch = chapters.value[index];
   currentCid.value = ch.cid;
   currentTitle.value = ch.title;
+  void capabilities.appLog(`[reader] loadChapter 选中 cid=${ch.cid} title=${ch.title}`).catch(() => {});
   loading.value = true;
   error.value = "";
   try {
@@ -107,9 +112,11 @@ async function loadChapter(index: number) {
       ch.cid,
       ch.title,
     );
+    void capabilities.appLog(`[reader] loadChapter content 返回 textLen=${content.value?.text?.length ?? -1} imageCount=${content.value?.images?.length ?? -1}`).catch(() => {});
     beginSession();
     void capabilities.novelProgressSet(props.aid, ch.cid, ch.title, 0);
   } catch (e) {
+    void capabilities.appLog(`[reader] loadChapter 异常: ${e instanceof Error ? e.message : String(e)}`).catch(() => {});
     if (isLoginRequiredError(e)) {
       requestRelogin();
       error.value = "登录态已失效，请重新登录。";
@@ -118,6 +125,7 @@ async function loadChapter(index: number) {
     }
   } finally {
     loading.value = false;
+    void capabilities.appLog(`[reader] loadChapter 结束 loading=false error=${error.value || "无"}`).catch(() => {});
   }
 }
 
@@ -130,11 +138,15 @@ function next() {
 }
 
 async function init() {
+  void capabilities.appLog(`[reader] init() 入口 aid=${props.aid} initialCid=${props.initialCid ?? "null"} initialTitle=${props.initialChapterTitle ?? "null"}`).catch(() => {});
   loading.value = true;
   error.value = "";
   try {
+    void capabilities.appLog(`[reader] init() 开始拉目录 aid=${props.aid}`).catch(() => {});
     volumes.value = await capabilities.novelCatalogue(settings.wenku8Node, settings.novelCharset, props.aid);
+    void capabilities.appLog(`[reader] init() 目录返回 volumes=${volumes.value.length}`).catch(() => {});
     flattenChapters();
+    void capabilities.appLog(`[reader] init() 扁平后 chapters=${chapters.value.length}`).catch(() => {});
     let start = 0;
     let usedSource = "first";
     const progress = await capabilities.novelProgressGet(props.aid);
@@ -151,25 +163,26 @@ async function init() {
         usedSource = "initialCid";
       }
     }
-    void capabilities
-      .appLog(
-        `[reader] init aid=${props.aid} chapters=${chapters.value.length} start=${start} source=${usedSource}`,
-      )
-      .catch(() => {});
+    void capabilities.appLog(`[reader] init() start=${start} source=${usedSource}`).catch(() => {});
     if (chapters.value.length === 0) {
       error.value = "目录为空，无法阅读";
       loading.value = false;
+      void capabilities.appLog(`[reader] init() 目录为空，返回`).catch(() => {});
       return;
     }
     if (!chapters.value[start]) {
       error.value = `章节索引越界 (start=${start}, total=${chapters.value.length})`;
       loading.value = false;
+      void capabilities.appLog(`[reader] init() 越界 start=${start} total=${chapters.value.length}`).catch(() => {});
       return;
     }
+    void capabilities.appLog(`[reader] init() 准备 loadChapter(${start})`).catch(() => {});
     await loadChapter(start);
+    void capabilities.appLog(`[reader] init() loadChapter 完成`).catch(() => {});
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e);
     loading.value = false;
+    void capabilities.appLog(`[reader] init() 异常: ${error.value}`).catch(() => {});
   }
 }
 
@@ -178,12 +191,27 @@ function close() {
   emit("close");
 }
 
-onMounted(init);
-onBeforeUnmount(flushSession);
+watch(loading, (v) => void capabilities.appLog(`[reader] watch loading=${v}`).catch(() => {}));
+watch(error, (v) => { if (v) void capabilities.appLog(`[reader] watch error=${v}`).catch(() => {}); });
+watch(content, (v) => void capabilities.appLog(`[reader] watch content=${v ? "有内容 textLen=" + (v.text?.length ?? 0) : "null"}`).catch(() => {}));
+
+function renderLog(): string {
+  void capabilities.appLog(`[reader] 模板根渲染 aid=${props.aid} loading=${loading.value} error=${error.value ? "有" : "无"} content=${content.value ? "有" : "无"}`).catch(() => {});
+  return "";
+}
+
+onMounted(() => {
+  void capabilities.appLog(`[reader] onMounted 组件已挂载 aid=${props.aid}`).catch(() => {});
+  void init();
+});
+onBeforeUnmount(() => {
+  void capabilities.appLog(`[reader] onBeforeUnmount 组件即将卸载 aid=${props.aid}`).catch(() => {});
+  flushSession();
+});
 </script>
 
 <template>
-  <div class="novel-reader" :style="{ background: theme.bg, color: theme.fg }">
+  <div class="novel-reader" :style="{ background: theme.bg, color: theme.fg }" :data-dbg="renderLog()">
     <div class="reader-topbar">
       <button class="tool-btn" @click="close">
         <span class="material-symbols-outlined">arrow_back</span>

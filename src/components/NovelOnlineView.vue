@@ -131,8 +131,10 @@ function openNovel(item: NovelCover | NovelShelfItem) {
 }
 
 function openReader(cid: string, chapterTitle: string) {
+  void capabilities.appLog(`[novel-online] openReader 被调用 aid=${selected.value.aid} cid=${cid} title=${chapterTitle} 当前 view=${view.value}`);
   readerInit.value = { cid, chapterTitle };
   view.value = "reader";
+  void capabilities.appLog(`[novel-online] view 已设为 reader=${view.value === "reader"}`);
 }
 
 function onReaderClose() {

@@ -81,7 +81,10 @@ async function toggleShelf() {
           <button
             v-if="volumes.length && volumes[0].chapters.length"
             class="lm-btn lm-btn--filled"
-            @click="emit('read', volumes[0].chapters[0].cid, volumes[0].chapters[0].title)"
+            @click="
+              void capabilities.appLog(`[detail-panel] 立即阅读点击 aid=${props.aid} cid=${volumes[0].chapters[0].cid} title=${volumes[0].chapters[0].title}`);
+              emit('read', volumes[0].chapters[0].cid, volumes[0].chapters[0].title);
+            "
           >
             <span class="material-symbols-outlined">menu_book</span>
             {{ t("novel.readNow") }}
