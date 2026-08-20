@@ -201,7 +201,7 @@ function renderLog(): string {
 }
 
 onMounted(() => {
-  void capabilities.appLog(`[reader] onMounted 组件已挂载 aid=${props.aid}`).catch(() => {});
+  void capabilities.appLog(`[reader] onMounted 组件已挂载 aid=${props.aid}（已 Teleport 到 body，fixed 应相对视口）`).catch(() => {});
   void init();
 });
 onBeforeUnmount(() => {
@@ -211,7 +211,8 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="novel-reader" :style="{ background: theme.bg, color: theme.fg }" :data-dbg="renderLog()">
+  <Teleport to="body">
+    <div class="novel-reader" :style="{ background: theme.bg, color: theme.fg }" :data-dbg="renderLog()">
     <div class="reader-topbar">
       <button class="tool-btn" @click="close">
         <span class="material-symbols-outlined">arrow_back</span>
@@ -273,7 +274,8 @@ onBeforeUnmount(() => {
       <button class="nav-btn" :disabled="currentIndex <= 0" @click="prev">上一章</button>
       <button class="nav-btn" :disabled="currentIndex >= chapters.length - 1" @click="next">下一章</button>
     </div>
-  </div>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>
