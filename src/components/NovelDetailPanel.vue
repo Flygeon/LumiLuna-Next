@@ -77,10 +77,20 @@ async function toggleShelf() {
           <span class="material-symbols-outlined">arrow_back</span>
           {{ t("novel.back") }}
         </button>
-        <button class="lm-btn lm-btn--tonal" :disabled="shelfBusy" @click="toggleShelf">
-          <span class="material-symbols-outlined">{{ inShelf ? "bookmark_remove" : "bookmark_add" }}</span>
-          {{ inShelf ? t("novel.removeShelf") : t("novel.addShelf") }}
-        </button>
+        <div class="head-actions">
+          <button
+            v-if="volumes.length && volumes[0].chapters.length"
+            class="lm-btn lm-btn--filled"
+            @click="emit('read', volumes[0].chapters[0].cid, volumes[0].chapters[0].title)"
+          >
+            <span class="material-symbols-outlined">menu_book</span>
+            {{ t("novel.readNow") }}
+          </button>
+          <button class="lm-btn lm-btn--tonal" :disabled="shelfBusy" @click="toggleShelf">
+            <span class="material-symbols-outlined">{{ inShelf ? "bookmark_remove" : "bookmark_add" }}</span>
+            {{ inShelf ? t("novel.removeShelf") : t("novel.addShelf") }}
+          </button>
+        </div>
       </div>
 
       <div class="hero">
@@ -142,6 +152,11 @@ async function toggleShelf() {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+}
+.head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 .back {
   display: inline-flex;

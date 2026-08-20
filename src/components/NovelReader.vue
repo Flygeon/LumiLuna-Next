@@ -131,17 +131,40 @@ function next() {
 
 async function init() {
   loading.value = true;
+  error.value = "";
   try {
     volumes.value = await capabilities.novelCatalogue(settings.wenku8Node, settings.novelCharset, props.aid);
     flattenChapters();
     let start = 0;
+    let usedSource = "first";
     const progress = await capabilities.novelProgressGet(props.aid);
     if (progress) {
       const idx = chapters.value.findIndex((c) => c.cid === progress.cid);
-      if (idx >= 0) start = idx;
+      if (idx >= 0) {
+        start = idx;
+        usedSource = "progress";
+      }
     } else if (props.initialCid) {
       const idx = chapters.value.findIndex((c) => c.cid === props.initialCid);
-      if (idx >= 0) start = idx;
+      if (idx >= 0) {
+        start = idx;
+        usedSource = "initialCid";
+      }
+    }
+    void capabilities
+      .appLog(
+        `[reader] init aid=${props.aid} chapters=${chapters.value.length} start=${start} source=${usedSource}`,
+      )
+      .catch(() => {});
+    if (chapters.value.length === 0) {
+      error.value = "目录为空，无法阅读";
+      loading.value = false;
+      return;
+    }
+    if (!chapters.value[start]) {
+      error.value = `章节索引越界 (start=${start}, total=${chapters.value.length})`;
+      loading.value = false;
+      return;
     }
     await loadChapter(start);
   } catch (e) {
@@ -208,7 +231,13 @@ onBeforeUnmount(flushSession);
       <p v-else-if="error" class="state error">{{ error }}</p>
       <template v-else-if="content">
         <h2 class="chapter-title">{{ currentTitle }}</h2>
-        <p v-for="(para, i) in content.text.split('\n\n')" :key="i" class="para" :style="{ marginBottom: settings.readerParaSpacing + 'em' }">{{ para }}</p>
+        <p v-if="!content.text" class="state">本章暂无内容（可能章节缓存异常，建议清除 novel_chapter_cache 后重试）</p>
+        <p
+          v-for="(para, i) in content.text.split('\n\n').filter((p) => p.trim())"
+          :key="i"
+          class="para"
+          :style="{ marginBottom: settings.readerParaSpacing + 'em' }"
+        >{{ para }}</p>
       </template>
     </div>
 
