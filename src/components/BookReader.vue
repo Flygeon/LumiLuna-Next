@@ -1297,8 +1297,8 @@ const PDF_MODES = [
   font-size: 18px;
   font-weight: 600;
   color: var(--reader-fg);
-  column-span: all;
   text-align: center;
+  break-inside: avoid;
 }
 .text-para {
   margin: 0 0 0.6em;

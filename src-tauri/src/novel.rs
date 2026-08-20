@@ -207,12 +207,25 @@ pub(crate) fn fetch_html(
         .bytes()
         .map_err(|e| format!("读取响应失败：{e}"))?;
 
-    let (text, _, _) = if charset == "big5" {
+    let (text, had_errors, _) = if charset == "big5" {
         encoding_rs::BIG5.decode(&bytes)
     } else {
         encoding_rs::GBK.decode(&bytes)
     };
-    Ok(text.into_owned())
+
+    // 编码嗅探：如果 GBK/BIG5 解码出现替换字符（�），说明实际编码可能是 UTF-8
+    // wenku8 某些页面（如搜索页）可能返回 UTF-8，忽略 URL 里的 charset 参数
+    let text = if had_errors {
+        let (utf8_text, utf8_errors, _) = encoding_rs::UTF_8.decode(&bytes);
+        if !utf8_errors {
+            utf8_text.into_owned()
+        } else {
+            text.into_owned() // UTF-8 也失败，回退到原始解码
+        }
+    } else {
+        text.into_owned()
+    };
+    Ok(text)
 }
 
 fn normalize_image(src: &str, base: &str) -> String {
@@ -250,54 +263,60 @@ fn extract_aid(href: &str) -> String {
 fn parse_list(html: &str, base: &str) -> Vec<NovelCover> {
     let doc = Html::parse_document(html);
     let content_sel = Selector::parse("#content").ok();
-    let Some(content) = content_sel.and_then(|s| doc.select(&s).next()) else {
-        return Vec::new();
-    };
+    let content = content_sel.and_then(|s| doc.select(&s).next());
 
     let mut out = Vec::new();
     let mut seen = std::collections::HashSet::new();
 
     // 首选：参考项目的固定布局
-    if let Ok(item_sel) = Selector::parse(r#"div[style="width:373px;height:136px;float:left;margin:5px 0px 5px 5px;"]"#) {
-        let img_sel = Selector::parse("img").ok();
-        let a_sel = Selector::parse("a").ok();
-        for item in content.select(&item_sel) {
-            let img = img_sel
-                .as_ref()
-                .and_then(|s| item.select(s).next())
-                .and_then(|e| e.value().attr("src"))
-                .map(|s| normalize_image(s, base))
-                .unwrap_or_default();
+    if let Some(content) = content.as_ref() {
+        if let Ok(item_sel) = Selector::parse(r#"div[style="width:373px;height:136px;float:left;margin:5px 0px 5px 5px;"]"#) {
+            let img_sel = Selector::parse("img").ok();
+            let a_sel = Selector::parse("a").ok();
+            for item in content.select(&item_sel) {
+                let img = img_sel
+                    .as_ref()
+                    .and_then(|s| item.select(s).next())
+                    .and_then(|e| e.value().attr("src"))
+                    .map(|s| normalize_image(s, base))
+                    .unwrap_or_default();
 
-            let mut title = String::new();
-            let mut href = String::new();
-            if let Some(a_sel) = &a_sel {
-                for a in item.select(a_sel) {
-                    if title.is_empty() {
-                        title = a.value().attr("title").unwrap_or("").trim().to_string();
-                    }
-                    let h = a.value().attr("href").unwrap_or("").to_string();
-                    if h.contains("book/") || h.contains("aid=") {
-                        href = h;
+                let mut title = String::new();
+                let mut href = String::new();
+                if let Some(a_sel) = &a_sel {
+                    for a in item.select(a_sel) {
+                        if title.is_empty() {
+                            title = a.value().attr("title").unwrap_or("").trim().to_string();
+                        }
+                        let h = a.value().attr("href").unwrap_or("").to_string();
+                        if h.contains("book/") || h.contains("aid=") {
+                            href = h;
+                        }
                     }
                 }
-            }
-            let aid = extract_aid(&href);
-            if !title.is_empty() && !aid.is_empty() && seen.insert(aid.clone()) {
-                out.push(NovelCover {
-                    aid,
-                    title,
-                    image_url: img,
-                    author: None,
-                });
+                let aid = extract_aid(&href);
+                if !title.is_empty() && !aid.is_empty() && seen.insert(aid.clone()) {
+                    out.push(NovelCover {
+                        aid,
+                        title,
+                        image_url: img,
+                        author: None,
+                    });
+                }
             }
         }
     }
 
-    // 回退：Wenku8 改版或样式不匹配时，从 #content 内 book/xxx.htm 链接兜底
+    // 回退：Wenku8 改版或样式不匹配时，从 book/xxx.htm 链接兜底提取
     if out.is_empty() {
         if let Ok(a_sel) = Selector::parse(r#"a[href*="book/"]"#) {
-            for a in content.select(&a_sel) {
+            let anchor_iter: Box<dyn Iterator<Item = scraper::ElementRef<'_>>> =
+                if let Some(content) = content.as_ref() {
+                    Box::new(content.select(&a_sel))
+                } else {
+                    Box::new(doc.select(&a_sel))
+                };
+            for a in anchor_iter {
                 let href = a.value().attr("href").unwrap_or("").to_string();
                 let aid = extract_aid(&href);
                 if aid.is_empty() {
