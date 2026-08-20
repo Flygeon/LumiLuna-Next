@@ -8,7 +8,7 @@
 
 </div>
 
-LumiLuna 基于 **Tauri 2 + Vue 3 + TypeScript + Material Design 3** 构建：一套 Web 前端 + Rust 原生后端，所有数据都留在本地，无需云端、无需账号。
+LumiLuna 基于 **Tauri 2 + Vue 3 + TypeScript + Material Design 3** 构建：一套 Web 前端 + Rust 原生后端，所有数据都留在本地。
 
 音乐播放器**类Apple Music样式**——流体动态背景、封面驱动取色、逐字卡拉OK 歌词；整个应用严格遵循 **Material Design 3** 设计系统。
 
