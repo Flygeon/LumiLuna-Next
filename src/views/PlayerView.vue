@@ -98,11 +98,34 @@ function formatTime(s: number) {
   return `${m}:${sec < 10 ? "0" : ""}${sec}`;
 }
 
-function onProgressClick(e: MouseEvent) {
+function seekFromEvent(e: MouseEvent) {
   const bar = (e.currentTarget as HTMLElement);
   const rect = bar.getBoundingClientRect();
-  const pct = (e.clientX - rect.left) / rect.width;
+  const pct = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
   player.seek(pct * player.duration);
+}
+
+/**
+ * 进度条拖动定位。用 pointer 事件而非 mouse 事件：Android WebView（Chromium）
+ * 对触摸只在抬手后补发一组兼容 mouse 事件，拖动过程中不派发 mousemove，
+ * 原来的 mousedown/mousemove 组合在触屏上只能点选、无法拖动。
+ * pointer 事件对鼠标与触摸统一，桌面行为不变（按下即定位、拖动跟随）。
+ * setPointerCapture 让手指滑出进度条边界后仍继续跟随。
+ */
+function onProgressDown(e: PointerEvent) {
+  isDragging.value = true;
+  (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  seekFromEvent(e);
+}
+function onProgressMove(e: PointerEvent) {
+  if (!isDragging.value) return;
+  seekFromEvent(e);
+}
+function onProgressUp(e: PointerEvent) {
+  if (!isDragging.value) return;
+  isDragging.value = false;
+  const el = e.currentTarget as HTMLElement;
+  if (el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
 }
 
 function cycleSpeed() {
@@ -187,11 +210,10 @@ onBeforeUnmount(() => {
           <div
             class="progress-bar"
             :class="{ dragging: isDragging }"
-            @mousedown="isDragging = true"
-            @mousemove="isDragging && onProgressClick($event)"
-            @mouseup="isDragging = false"
-            @mouseleave="isDragging = false"
-            @click="onProgressClick"
+            @pointerdown="onProgressDown"
+            @pointermove="onProgressMove"
+            @pointerup="onProgressUp"
+            @pointercancel="onProgressUp"
           >
             <div
               class="progress-fill"
@@ -546,6 +568,8 @@ onBeforeUnmount(() => {
   border-radius: 4px;
   position: relative;
   cursor: pointer;
+  /* 拖动定位靠 pointer 事件，禁掉浏览器默认手势（触屏下会被判成页面滚动） */
+  touch-action: none;
   transition: height 250ms cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 .progress-bar:hover,
@@ -758,6 +782,14 @@ onBeforeUnmount(() => {
 }
 :global(html.is-mobile) .controls {
   margin-top: 10px;
+}
+/* 触屏没有 hover：5px 细条既难点也看不出可拖动，故直接给到 hover 态的
+   粗度，并让拖柄常驻 */
+:global(html.is-mobile) .progress-bar {
+  height: 10px;
+}
+:global(html.is-mobile) .progress-thumb {
+  opacity: 1;
 }
 :global(html.is-mobile) .right-col {
   flex: 1;

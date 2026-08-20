@@ -160,7 +160,7 @@ function onRowContext(e: MenuAnchor, item: MediaEntry, index: number) {
             <span class="material-symbols-outlined">queue_music</span>
           </button>
           <button
-            class="lm-icon-btn r-action"
+            class="lm-icon-btn r-action r-action--more"
             :title="t('actions.more')"
             @click.stop="onRowContext($event, item, index)"
           >
@@ -244,6 +244,16 @@ function onRowContext(e: MenuAnchor, item: MediaEntry, index: number) {
 .track-row:hover .r-actions,
 .track-row:focus-visible .r-actions {
   opacity: 1;
+}
+/* 触屏没有 hover，行内操作永远不显形。但四个按钮共占 142px，360dp 屏上
+   标题只剩 50 来 px，所以移动端只留「更多」——它打开的正是长按/右键
+   那份菜单，收藏/下一首播放/加入队列都在里面。
+   :global 是因为 .is-mobile 挂在 <html> 上，不在本组件 scope 内。 */
+:global(html.is-mobile) .r-actions {
+  opacity: 1;
+}
+:global(html.is-mobile) .r-action:not(.r-action--more) {
+  display: none;
 }
 .r-action {
   width: 34px;
