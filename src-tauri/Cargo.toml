@@ -15,12 +15,13 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["tray-icon", "image-png", "devtools", "protocol-asset"] }
+# tray-icon 是桌面专属 feature，移到下面的 desktop target 表按平台启用。
+tauri = { version = "2", features = ["image-png", "devtools", "protocol-asset"] }
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-store = "2"
 tauri-plugin-opener = "2"
-tauri-plugin-global-shortcut = "2"
+# tauri-plugin-global-shortcut 桌面专属，移到 desktop target 表。
 tauri-plugin-http = "2"
 
 serde = { version = "1", features = ["derive"] }
@@ -40,7 +41,8 @@ rayon = "1"
 base64 = "0.22"
 getrandom = "0.2"
 chrono = "0.4"
-reqwest = { version = "0.12", default-features = false, features = ["blocking", "stream", "native-tls", "charset", "gzip"] }
+# TLS 后端按平台拆分（见下方 target 表）：基础特性不含 TLS，桌面用 native-tls、移动用 rustls。
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "stream", "charset", "gzip"] }
 # WebDAV 直接用到的传递依赖需显式声明（Rust 不允许隐式使用传递依赖）
 url = "2"
 httpdate = "1"
@@ -61,6 +63,19 @@ flate2 = "1"
 roxmltree = "0.20"
 # WebDAV 媒体本地代理：绑定 127.0.0.1 随机端口的轻量 HTTP 服务（SMTC 封面服务同款，跨平台）
 tiny_http = "0.12"
+
+# 桌面（非移动）专属依赖：系统托盘、全局快捷键、native-tls（走系统 TLS 栈）。
+# 注意：Cargo 的 target 表只认内建 cfg（target_os 等），不认 tauri 的 desktop/mobile
+# 自定义 cfg（那是 build 期才注入的），因此这里必须用 target_os 排除 android/ios。
+# 每个 reqwest 声明都要 default-features = false，否则默认特性会把 native-tls 重新拉回来。
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-global-shortcut = "2"
+reqwest = { version = "0.12", default-features = false, features = ["native-tls"] }
+
+# 移动端（Android/iOS）：改用 rustls 纯 Rust TLS，免去 OpenSSL 交叉编译（NDK）负担。
+[target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies]
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
 
 # Windows 系统媒体控件（SMTC）：把本应用注册为系统媒体会话。
 # 仅在 Windows 编译，Linux/macOS 构建不受影响。

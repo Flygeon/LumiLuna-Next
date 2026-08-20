@@ -56,6 +56,17 @@ import { mockInvoke } from "./mock";
 export const isTauri =
   typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
+/** 平台细分：Tauri 本身只区分「是否原生」，移动端需再按 UA 粗判 OS，用于门控
+ *  桌面专属能力（系统托盘、多窗口、窗口拖拽、自定义标题栏、全局快捷键等）。
+ *  WebView 的 UA 含 Android / iOS 设备标识，无需额外引入 plugin-os 依赖。 */
+const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+export const isAndroid = isTauri && /Android/i.test(ua);
+export const isIOS = isTauri && /iPhone|iPad|iPod/i.test(ua);
+/** 移动端（Android/iOS）Tauri 运行时 */
+export const isMobile = isAndroid || isIOS;
+/** 桌面 Tauri 运行时：有窗口控制 / 系统托盘 / 多窗口 / 全局快捷键 */
+export const isDesktop = isTauri && !isMobile;
+
 async function safeInvoke<T>(
   cmd: string,
   args?: Record<string, unknown>,

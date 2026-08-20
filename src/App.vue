@@ -5,7 +5,7 @@ import { useSettingsStore } from "@/stores/settings";
 import { usePlayerStore } from "@/stores/player";
 import { useAudioEffectsStore } from "@/stores/audioEffects";
 import { useLibraryStore } from "@/stores/library";
-import { isTauri } from "@/capabilities";
+import { isTauri, isDesktop } from "@/capabilities";
 import MiniPlayer from "@/components/MiniPlayer.vue";
 import ContextMenu from "@/components/ContextMenu.vue";
 import TextPrompt from "@/components/TextPrompt.vue";
@@ -170,8 +170,8 @@ router.afterEach((to) => {
       'desktop-lyrics-page': isDesktopLyricsPage,
     }"
   >
-    <!-- Windows 自定义标题栏（仅 Tauri 桌面版，播放页与桌面歌词页隐藏） -->
-    <WindowTitleBar v-if="isTauri && !isPlayerPage && !isDesktopLyricsPage" />
+    <!-- 自定义标题栏（仅桌面 Tauri；移动端无窗口控制，播放页与桌面歌词页隐藏） -->
+    <WindowTitleBar v-if="isDesktop && !isPlayerPage && !isDesktopLyricsPage" />
 
     <!-- 主体：左侧导航 + 内容区 -->
     <div class="app-body">

@@ -3,6 +3,7 @@ pub mod media;
 pub mod netease;
 pub mod novel;
 pub mod novel_auth;
+#[cfg(desktop)]
 pub mod tray;
 pub mod webdav;
 
@@ -105,13 +106,21 @@ pub struct Song {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    #[allow(unused_mut)]
+    let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
-        .plugin(tauri_plugin_http::init())
+        .plugin(tauri_plugin_http::init());
+
+    // 全局快捷键插件为桌面专属，移动端不注册（依赖也仅在桌面 target 引入）
+    #[cfg(desktop)]
+    {
+        builder = builder.plugin(tauri_plugin_global_shortcut::Builder::new().build());
+    }
+
+    builder
         .setup(|app| {
             // 索引库落盘在 app data 目录，重启后保留扫描结果
             let conn = open_db(app.handle())?;
@@ -119,9 +128,10 @@ pub fn run() {
             app.manage(commands::JobState(std::sync::Mutex::new(
                 std::collections::HashMap::new(),
             )));
-            // Windows 系统媒体控件（SMTC）会话
+            // 系统媒体控件（SMTC）会话：仅 Windows 生效，其他平台为空操作
             commands::smtc::setup(app.handle());
-            // 系统托盘（播放控制 / 显示主界面 / 退出）
+            // 系统托盘（桌面专属：播放控制 / 显示主界面 / 退出）
+            #[cfg(desktop)]
             if let Err(error) = tray::setup(app.handle()) {
                 eprintln!("setup tray failed: {error}");
             }

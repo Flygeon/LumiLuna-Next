@@ -2,7 +2,7 @@ name: Build
 
 on:
   push:
-    branches: [main]
+    branches: [main, android]
     tags: ['v*']
   pull_request:
     branches: [main]
@@ -86,6 +86,62 @@ jobs:
         with:
           name: linux-build
           path: src-tauri/target/release/bundle/appimage/*.AppImage
+
+  # Android 移植（arm64-v8a，minSdk 24）。debug 版：用 SDK 自带 debug keystore
+  # 自动签名，可直接 sideload；无需配置签名密钥。gen/android 由 CI 现场生成，不入库。
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Rust (aarch64-linux-android)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+          key: android
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android NDK
+        run: |
+          sdkmanager "ndk;26.3.11579264"
+          echo "NDK_HOME=$ANDROID_HOME/ndk/26.3.11579264" >> "$GITHUB_ENV"
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Init Android project (generates gen/android)
+        run: npx tauri android init --skip-targets-install
+
+      - name: Build Android APK (arm64-v8a, debug)
+        run: npx tauri android build --debug --target aarch64 --apk
+
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk-debug
+          path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          if-no-files-found: error
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')

@@ -7,7 +7,7 @@
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { LogicalPosition, LogicalSize } from "@tauri-apps/api/dpi";
 import { emitTo } from "@tauri-apps/api/event";
-import { isTauri } from "@/capabilities";
+import { isTauri, isMobile } from "@/capabilities";
 import type { DesktopLyricsBounds } from "@/stores/settings";
 
 export const DESKTOP_LYRICS_LABEL = "desktop-lyrics";
@@ -57,7 +57,8 @@ export async function isDesktopLyricsWindow(): Promise<boolean> {
 export async function openDesktopLyricsWindow(
   bounds: DesktopLyricsBounds,
 ): Promise<void> {
-  if (!isTauri) return;
+  // 移动端无多窗口/透明/置顶，桌面歌词独立窗口不适用（改用应用内 LyricsView）
+  if (!isTauri || isMobile) return;
   const existing = await WebviewWindow.getByLabel(DESKTOP_LYRICS_LABEL);
   if (existing) {
     existing.show();
