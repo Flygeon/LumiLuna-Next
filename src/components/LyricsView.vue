@@ -14,6 +14,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { usePlayerStore } from "@/stores/player";
 import { useSettingsStore, type LyricFontKey } from "@/stores/settings";
+import { isMobile } from "@/capabilities";
 import { translate } from "@shared/i18n";
 
 const player = usePlayerStore();
@@ -39,6 +40,18 @@ const LYRIC_FONTS: Record<LyricFontKey, string> = {
 };
 const lyricFontFamily = computed(
   () => LYRIC_FONTS[settings.lyricFont] ?? LYRIC_FONTS.system,
+);
+
+/**
+ * 行字号。桌面直接用设置值；移动端再套一个 6.2vw 的上限——设置里的默认值是按
+ * 桌面右栏（600px 上下）调的，放到 360dp 屏上一行只能塞 8~9 个字，还会连着
+ * 折行把整块歌词顶出容器。用 min() 而不是直接换算：用户把字号调小仍然生效，
+ * 平板（600dp 起）的上限也会跟着放宽。
+ */
+const lyricFontSize = computed(() =>
+  isMobile
+    ? `min(${settings.lyricFontSize}px, 6.2vw)`
+    : `${settings.lyricFontSize}px`,
 );
 
 /**
@@ -220,7 +233,7 @@ function rafLoop() {
         class="lyric-item"
         :class="{ active: i === player.activeLine, instrumental: line.instrumental }"
         :style="{
-          fontSize: settings.lyricFontSize + 'px',
+          fontSize: lyricFontSize,
           lineHeight: settings.lyricLineHeight,
           fontFamily: lyricFontFamily,
         }"
@@ -400,5 +413,12 @@ function rafLoop() {
   font-size: 13px;
   margin-top: 8px;
   opacity: 0.7;
+}
+
+/* ---- 移动端 ----
+   25px 左右留白在 360dp 屏上白吃掉 1/7 宽度；行字号的上限见 lyricFontSize。
+   整条选择器都写在 :global() 内并用根类名限定（Vue scoped 会丢掉括号外的部分）。 */
+:global(html.is-mobile .lyrics-container .lyric-item) {
+  padding: 0 8px;
 }
 </style>

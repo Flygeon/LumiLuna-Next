@@ -5,6 +5,7 @@ import { useSettingsStore } from "@/stores/settings";
 import { useNeteaseStore } from "@/stores/netease";
 import { useRouter } from "vue-router";
 import { translate } from "@shared/i18n";
+import { isMobile } from "@/capabilities";
 import { useWindowDrag } from "@/composables/useWindowDrag";
 import FluidBackground from "@/components/FluidBackground.vue";
 import LyricsView from "@/components/LyricsView.vue";
@@ -18,6 +19,12 @@ const settings = useSettingsStore();
 const netease = useNeteaseStore();
 const router = useRouter();
 const rightTab = ref<"lyrics" | "queue" | "effects">("lyrics");
+/**
+ * 移动端「封面 ⇄ 歌词/队列/音效」就地切换。
+ * 手机竖屏一屏放不下 封面+信息+进度+控制+歌词，进入播放页默认只显示封面区
+ * （pane 关闭）；点封面才把封面+歌名换成歌词行。桌面右栏恒显，不受此值影响。
+ */
+const mobilePaneOpen = ref(false);
 const speed = ref(1);
 const isDragging = ref(false);
 const commentsOpen = ref(false);
@@ -140,6 +147,46 @@ function toggleComments() {
   commentsOpen.value = !commentsOpen.value;
 }
 
+/**
+ * 封面点击。
+ * 桌面：开/关评论面板（原行为不变）。
+ * 移动端：封面是唯一够大的可点区域，改为切到歌词——评论移到底部工具面板里，
+ * 因为手机上「看歌词」比「看评论」高频得多。
+ */
+function onCoverClick() {
+  if (isMobile) {
+    rightTab.value = "lyrics";
+    mobilePaneOpen.value = true;
+    return;
+  }
+  toggleComments();
+}
+
+/** 移动端歌词/队列/音效面板收起，回到封面 */
+function backToCover() {
+  mobilePaneOpen.value = false;
+}
+
+/** 工具面板里选标签：移动端顺带把面板本身收起，否则会盖住刚切出来的内容 */
+function pickTab(tab: "lyrics" | "queue" | "effects") {
+  rightTab.value = tab;
+  if (isMobile) {
+    mobilePaneOpen.value = true;
+    panelOpen.value = false;
+  }
+}
+
+/** 分段按钮高亮：移动端 pane 收起（正显示封面）时三个标签都不高亮 */
+function isTab(tab: "lyrics" | "queue" | "effects") {
+  return rightTab.value === tab && (!isMobile || mobilePaneOpen.value);
+}
+
+/** 移动端从工具面板打开评论 */
+function openCommentsFromPanel() {
+  panelOpen.value = false;
+  commentsOpen.value = true;
+}
+
 /** 功能面板：点击外部或按 Esc 关闭 */
 function onDocPointerDown(e: PointerEvent) {
   if (
@@ -171,7 +218,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="player-page">
+  <div class="player-page" :class="{ 'pane-open': mobilePaneOpen }">
     <FluidBackground />
 
     <!-- 顶部覆盖层（空白处可拖拽窗口） -->
@@ -186,14 +233,19 @@ onBeforeUnmount(() => {
       <div class="left-col">
         <div
           class="cover-wrap"
-          :class="{ clickable: canShowComments }"
-          @click="toggleComments"
+          :class="{ clickable: isMobile || canShowComments }"
+          @click="onCoverClick"
         >
           <div class="cover" v-if="player.song?.cover">
             <img :src="player.song.cover" alt="" />
           </div>
           <div class="cover default" v-else><span class="material-symbols-outlined">music_note</span></div>
-          <div v-if="canShowComments" class="cover-hint">
+          <!-- 移动端提示「点封面看歌词」，且触屏无 hover，故常驻显示 -->
+          <div v-if="isMobile" class="cover-hint always">
+            <span class="material-symbols-outlined">lyrics</span>
+            {{ t("actions.lyrics") }}
+          </div>
+          <div v-else-if="canShowComments" class="cover-hint">
             <span class="material-symbols-outlined">chat_bubble</span>
             {{ t("netease.comments") }}
           </div>
@@ -268,20 +320,40 @@ onBeforeUnmount(() => {
                   <div class="segment">
                     <button
                       class="seg-btn"
-                      :class="{ active: rightTab === 'lyrics' }"
-                      @click="rightTab = 'lyrics'"
+                      :class="{ active: isTab('lyrics') }"
+                      @click="pickTab('lyrics')"
                     >{{ t("actions.lyrics") }}</button>
                     <button
                       class="seg-btn"
-                      :class="{ active: rightTab === 'queue' }"
-                      @click="rightTab = 'queue'"
+                      :class="{ active: isTab('queue') }"
+                      @click="pickTab('queue')"
                     >{{ t("actions.queue") }}</button>
                     <button
                       class="seg-btn"
-                      :class="{ active: rightTab === 'effects' }"
-                      @click="rightTab = 'effects'"
+                      :class="{ active: isTab('effects') }"
+                      @click="pickTab('effects')"
                     >{{ t("player.effects") }}</button>
                   </div>
+
+                  <!-- 移动端：封面点击已改为切歌词，评论入口收到这里（二级菜单） -->
+                  <button
+                    v-if="isMobile && canShowComments"
+                    class="panel-row-btn"
+                    @click="openCommentsFromPanel"
+                  >
+                    <span class="material-symbols-outlined">chat_bubble</span>
+                    {{ t("netease.comments") }}
+                  </button>
+                  <!-- 移动端：pane 展开时给一条回到封面的路（歌词行本身要点击跳转，
+                       不能拿来当返回热区） -->
+                  <button
+                    v-if="isMobile && mobilePaneOpen"
+                    class="panel-row-btn"
+                    @click="backToCover"
+                  >
+                    <span class="material-symbols-outlined">album</span>
+                    {{ t("player.showCover") }}
+                  </button>
 
                   <div v-if="sourceBadge || hasSubLine" class="tools-extra">
                     <button
@@ -324,8 +396,19 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
-      <!-- 右栏：歌词 / 队列 / 音效内容（切换控件已移入底部控制栏功能面板） -->
+      <!-- 右栏：歌词 / 队列 / 音效内容（切换控件已移入底部控制栏功能面板）
+           移动端由 .pane-open 控制显隐，并靠 CSS order 排到进度/控制之上，
+           视觉上「顶替」封面与歌名的位置 -->
       <div class="right-col">
+        <button
+          v-if="isMobile"
+          class="pane-back"
+          :aria-label="t('player.showCover')"
+          :title="t('player.showCover')"
+          @click="backToCover"
+        >
+          <span class="material-symbols-outlined">album</span>
+        </button>
         <div class="right-content">
           <LyricsView v-if="rightTab === 'lyrics'" />
           <AudioEffectsPanel v-else-if="rightTab === 'effects'" />
@@ -450,6 +533,52 @@ onBeforeUnmount(() => {
   justify-content: center;
   gap: 8px;
 }
+/* 工具面板里的整行按钮（移动端二级菜单项：评论 / 回到封面） */
+.panel-row-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  align-self: stretch;
+  height: 44px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.panel-row-btn:active {
+  background: rgba(255, 255, 255, 0.18);
+}
+.panel-row-btn .material-symbols-outlined {
+  font-size: 19px;
+}
+/* 移动端歌词/队列/音效面板右上角的「回到封面」（仅 isMobile 渲染） */
+.pane-back {
+  position: absolute;
+  top: 0;
+  right: 6px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  cursor: pointer;
+}
+.pane-back:active {
+  background: rgba(255, 255, 255, 0.22);
+}
+.pane-back .material-symbols-outlined {
+  font-size: 20px;
+}
 .panel-pop-enter-active,
 .panel-pop-leave-active {
   transition:
@@ -521,6 +650,10 @@ onBeforeUnmount(() => {
   pointer-events: none;
 }
 .cover-wrap.clickable:hover .cover-hint {
+  opacity: 1;
+}
+/* 触屏无 hover，提示需常驻 */
+.cover-hint.always {
   opacity: 1;
 }
 .cover-hint .material-symbols-outlined {
@@ -757,7 +890,9 @@ onBeforeUnmount(() => {
   flex: none;
   width: 100%;
   justify-content: flex-start;
-  padding: 0 16px;
+  /* 移动端 left-col 恒为最下方元素（pane 展开时 right-col 靠 order 排到上面），
+     手势条安全区在这里让出 */
+  padding: 0 16px calc(8px + var(--lm-safe-bottom));
 }
 :global(html.is-mobile .player-page .cover-wrap) {
   /* 留出足够高度给下方歌词区 */
@@ -795,7 +930,29 @@ onBeforeUnmount(() => {
   flex: 1;
   min-height: 0;
   width: 100%;
-  padding: 4px 12px calc(8px + var(--lm-safe-bottom));
+  padding: 4px 12px 0;
+}
+
+/* ---- 移动端封面 ⇄ 歌词 就地切换 ----
+ * 默认（刚进播放页）pane 收起：不显示歌词区，封面块垂直居中撑满整屏。
+ * 点封面后 pane 展开：封面与歌名隐藏，歌词/队列/音效用 order:-1 排到
+ * 进度条与控制栏之上，正好顶替封面原来的位置。 */
+:global(html.is-mobile .player-page:not(.pane-open) .right-col) {
+  display: none;
+}
+:global(html.is-mobile .player-page:not(.pane-open) .left-col) {
+  flex: 1;
+  min-height: 0;
+  justify-content: center;
+}
+:global(html.is-mobile .player-page.pane-open .cover-wrap),
+:global(html.is-mobile .player-page.pane-open .song-info) {
+  display: none;
+}
+:global(html.is-mobile .player-page.pane-open .right-col) {
+  order: -1;
+  /* .pane-back 绝对定位的包含块 */
+  position: relative;
 }
 /* 顶栏绝对定位在 top:0，移动端会被状态栏压住，让出顶部安全区 */
 :global(html.is-mobile .player-page .player-topbar) {

@@ -152,7 +152,25 @@ html.is-mobile {
   /* 迷你播放条浮在底部导航之上 */
   --lm-miniplayer-bottom: calc(64px + var(--lm-safe-bottom));
   /* 手机屏窄，收紧内容边距 */
-  --lm-content-pad: 16px;
+  --lm-content-pad: min(16px, 4vw);
+
+  /* ---- 窄屏字号收敛 ----
+   * 令牌值是按桌面（900dp+）定的，直接搬到 360dp 屏上偏大：标题一行就吃掉
+   * 半屏宽，chip/行高连带被撑高。这里用 min(定值, Nvw) 让字号只在窄屏收缩：
+   * 系数取「定值 ÷ 400」，于是 ≥400dp（含绝大多数 1080p 手机的 411dp、
+   * 平板、横屏）完全走原值，360dp 上收约 10%。
+   * 不写死小一号，是为了不牺牲宽屏移动设备的可读性。 */
+  --md-sys-typescale-title-large-size: min(22px, 5.5vw);
+  --md-sys-typescale-title-large-line-height: min(28px, 7vw);
+  --md-sys-typescale-title-medium-size: min(16px, 4vw);
+  --md-sys-typescale-title-medium-line-height: min(24px, 6vw);
+  --md-sys-typescale-body-large-size: min(16px, 4vw);
+  --md-sys-typescale-body-large-line-height: min(24px, 6vw);
+  --md-sys-typescale-body-medium-size: min(14px, 3.5vw);
+  --md-sys-typescale-body-medium-line-height: min(20px, 5vw);
+  --md-sys-typescale-label-large-size: min(14px, 3.5vw);
+  --md-sys-typescale-headline-size: min(32px, 8vw);
+  --md-sys-typescale-headline-line-height: min(40px, 10vw);
 }
 
 /* 长按弹菜单的元素：抑制 WebView 原生长按行为（文本选择气泡、图片保存、

@@ -301,6 +301,14 @@ async function openEpub() {
   // 每个章节内容注入完成后，套用当前阅读样式；display 后再补一次兜底
   rendition.value.hooks.content.register((contents: any) => {
     contents?.addStylesheetCss?.(buildThemeCss(), "lumiluna");
+    // epub.js 把正文渲染进 iframe，父文档 .stage 上的 touch 监听收不到 iframe
+    // 内的手势——中间大片区域滑动完全没反应。这里在 iframe 文档上挂同一组
+    // 处理函数（只用 dx/dy 差值，iframe 内的坐标系不影响判定）。
+    const doc: Document | undefined = contents?.document;
+    if (doc && isMobile) {
+      doc.addEventListener("touchstart", onTouchStart, { passive: true });
+      doc.addEventListener("touchend", onTouchEnd, { passive: true });
+    }
   });
   applyEpubTheme();
   await rendition.value.display();
