@@ -4,7 +4,12 @@ import { LazyStore } from "@tauri-apps/plugin-store";
 import { capabilities } from "@/capabilities";
 import { applySeedColor, clearSeedTokens } from "@/utils/dynamicTheme";
 import { applySkin } from "@/utils/skinLoader";
-import { activeSkinDoc, skinModeLock, skinSafeMode } from "@/utils/skinRuntime";
+import {
+  activePrepared,
+  activeSkinDoc,
+  skinModeLock,
+  skinSafeMode,
+} from "@/utils/skinRuntime";
 import type { MusicServer, OnlinePlaylistEntry } from "@shared/types";
 import type { LyricSourcePref } from "@/utils/preciseLyrics";
 
@@ -311,7 +316,7 @@ export const useSettingsStore = defineStore("settings", () => {
     const skin = activeSkinDoc.value;
     const seedAllowed = !skinSafeMode.value && (!skin || skin.manifest.seedColor);
     if (!seedAllowed) clearSeedTokens();
-    applySkin(skinSafeMode.value ? null : skin, dark);
+    applySkin(skinSafeMode.value ? null : skin, dark, activePrepared.value ?? undefined);
     if (seedAllowed) applySeedColor(seedColor.value, dark);
   }
 

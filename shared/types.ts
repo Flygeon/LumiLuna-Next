@@ -574,6 +574,11 @@ export interface SkinMeta {
   /** 皮肤作者声明已适配种子色动态配色 */
   seedColor: boolean;
   accent?: string | null;
+  /** 皮肤格式版本：1 = 纯 JSON，2 = ZIP 资产包 */
+  formatVersion: number;
+  /** v2 能力徽标：是否携带背景图 / 图标包 */
+  hasBackground: boolean;
+  hasIcons: boolean;
 }
 
 /** 皮肤库条目：status = ok | broken（损坏条目仅展示与可删除） */
@@ -582,4 +587,17 @@ export interface SkinEntry {
   status: "ok" | "broken";
   error?: string | null;
   meta?: SkinMeta | null;
+}
+
+/** skin_load 返回：json 原文 + 库内资产文件清单（v1 皮肤清单为空） */
+export interface LoadedSkin {
+  json?: string | null;
+  files: string[];
+}
+
+/** skin_stage_zip 返回：staging 令牌 + skin.json 原文 + 解包文件清单 */
+export interface StagedSkin {
+  staging: string;
+  json: string;
+  files: string[];
 }

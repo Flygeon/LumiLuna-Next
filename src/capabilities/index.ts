@@ -47,6 +47,8 @@ import type {
   Wenku8UserInfo,
   Song,
   SkinEntry,
+  LoadedSkin,
+  StagedSkin,
   TopTrackStat,
   WebDavEntry,
   WebDavStatus,
@@ -505,6 +507,22 @@ export const capabilities = {
   skinReadExternalFile(path: string): Promise<string> {
     return safeInvoke("skin_read_external_file", { path });
   },
+  /** v2 ZIP 导入第一阶段：解压到 staging 并返回 json 原文与文件清单 */
+  skinStageZip(path: string): Promise<StagedSkin> {
+    return safeInvoke("skin_stage_zip", { path });
+  },
+  /** v2 ZIP 导入第二阶段：校验通过后原子换入库 */
+  skinCommit(staging: string, id: string): Promise<void> {
+    return safeInvoke("skin_commit", { staging, id });
+  },
+  /** v2 ZIP 导入放弃：丢弃 staging */
+  skinAbort(staging: string): Promise<void> {
+    return safeInvoke("skin_abort", { staging });
+  },
+  /** skins 目录绝对路径（前端拼 asset:// URL 用） */
+  skinDir(): Promise<string> {
+    return safeInvoke("skin_dir");
+  },
   /** 固化保存皮肤（同 id 覆盖 = 更新）；json 为前端校验后的规范化文档 */
   skinSave(id: string, json: string): Promise<void> {
     return safeInvoke("skin_save", { id, json });
@@ -513,20 +531,22 @@ export const capabilities = {
   skinList(): Promise<SkinEntry[]> {
     return safeInvoke("skin_list");
   },
-  /** 读取皮肤全文；不存在返回 null */
-  skinLoad(id: string): Promise<string | null> {
+  /** 读取皮肤 json 原文与资产清单；json 为 null 表示皮肤不存在 */
+  skinLoad(id: string): Promise<LoadedSkin> {
     return safeInvoke("skin_load", { id });
   },
   /** 删除皮肤目录 */
   skinDelete(id: string): Promise<void> {
     return safeInvoke("skin_delete", { id });
   },
-  /** 选择皮肤文件（.json），返回路径或 null */
+  /** 选择皮肤文件（.json / .zip），返回路径或 null */
   async pickSkinFile(): Promise<string | null> {
     if (!isTauri) return null;
     const result = await dialogOpen({
       multiple: false,
-      filters: [{ name: "LumiLuna 皮肤", extensions: ["json"] }],
+      filters: [
+        { name: "LumiLuna 皮肤", extensions: ["json", "zip"] },
+      ],
     });
     if (typeof result === "string") return result;
     if (result && typeof result === "object" && "path" in result) {

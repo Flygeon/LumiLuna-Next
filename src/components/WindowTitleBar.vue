@@ -66,7 +66,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <header v-if="isTauri" class="window-title-bar lm-glass">
+  <header v-if="isTauri" class="window-title-bar lm-glass" data-lm-region="titlebar">
     <!-- 品牌 + 可拖拽区 -->
     <div
       class="tb-drag"

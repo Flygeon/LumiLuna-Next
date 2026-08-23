@@ -37,7 +37,7 @@ function seek(e: MouseEvent) {
 </script>
 
 <template>
-  <div class="mini-player lm-glass">
+  <div class="mini-player lm-glass" data-lm-region="miniplayer">
     <!-- 进度条置顶，点击可跳转 -->
     <div class="track" @click.stop="seek">
       <div class="fill" :style="{ width: progress + '%' }">

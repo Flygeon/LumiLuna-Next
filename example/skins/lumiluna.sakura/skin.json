@@ -1,0 +1,108 @@
+{
+  "formatVersion": 2,
+  "manifest": {
+    "id": "lumiluna.sakura",
+    "name": "樱小路露娜",
+    "version": "1.0.0",
+    "author": "LumiLuna",
+    "description": "v2 格式测试皮肤：背景图片（浅/深双模式遮罩）+ SVG 图标包（导航九图标，颜色自动跟随文字色）+ 布局令牌（加宽侧栏、增强毛玻璃）三合一演示。",
+    "modes": ["light", "dark"],
+    "seedColor": false,
+    "accent": "#E88BB0"
+  },
+  "tokens": {
+    "light": {
+      "--md-sys-color-primary": "#A84E76",
+      "--md-sys-color-on-primary": "#FFFFFF",
+      "--md-sys-color-primary-container": "#FFD9E6",
+      "--md-sys-color-on-primary-container": "#3E1124",
+      "--md-sys-color-secondary": "#7A5460",
+      "--md-sys-color-on-secondary": "#FFFFFF",
+      "--md-sys-color-secondary-container": "#FFD9E2",
+      "--md-sys-color-on-secondary-container": "#2F111A",
+      "--md-sys-color-tertiary": "#86563F",
+      "--md-sys-color-on-tertiary": "#FFFFFF",
+      "--md-sys-color-tertiary-container": "#FFDCC8",
+      "--md-sys-color-on-tertiary-container": "#351102",
+      "--md-sys-color-surface": "#FFF8FA",
+      "--md-sys-color-on-surface": "#221A1D",
+      "--md-sys-color-surface-dim": "#E7D9DE",
+      "--md-sys-color-surface-bright": "#FFF8FA",
+      "--md-sys-color-surface-container-lowest": "#FFFFFF",
+      "--md-sys-color-surface-container-low": "#FCF1F4",
+      "--md-sys-color-surface-container": "#F7EBEF",
+      "--md-sys-color-surface-container-high": "#F1E5E9",
+      "--md-sys-color-surface-container-highest": "#EBDFE3",
+      "--md-sys-color-on-surface-variant": "#4E444A",
+      "--md-sys-color-outline": "#80747B",
+      "--md-sys-color-outline-variant": "#D2C2C9",
+      "--md-sys-color-inverse-surface": "#382E32",
+      "--md-sys-color-inverse-on-surface": "#FCEEF2",
+      "--md-sys-color-inverse-primary": "#F7B1CE",
+      "--md-sys-color-on-background": "#221A1D",
+      "--md-sys-color-background": "#FFF8FA",
+      "--lm-scrim-surface": "rgba(255, 248, 250, 0.74)",
+      "--lm-hairline": "rgba(168, 78, 118, 0.14)",
+      "--lm-nav-width": "104px",
+      "--lm-content-pad": "28px",
+      "--lm-surface-blur": "32px"
+    },
+    "dark": {
+      "--md-sys-color-primary": "#F2B8CE",
+      "--md-sys-color-on-primary": "#4A1F33",
+      "--md-sys-color-primary-container": "#633349",
+      "--md-sys-color-on-primary-container": "#FFD9E6",
+      "--md-sys-color-secondary": "#E6BDC7",
+      "--md-sys-color-on-secondary": "#442A32",
+      "--md-sys-color-secondary-container": "#5D4049",
+      "--md-sys-color-on-secondary-container": "#FFD9E2",
+      "--md-sys-color-tertiary": "#F2BB98",
+      "--md-sys-color-on-tertiary": "#4A2A17",
+      "--md-sys-color-tertiary-container": "#66402B",
+      "--md-sys-color-on-tertiary-container": "#FFDCC8",
+      "--md-sys-color-surface": "#1A1215",
+      "--md-sys-color-on-surface": "#F0DFE4",
+      "--md-sys-color-surface-dim": "#1A1215",
+      "--md-sys-color-surface-bright": "#42373B",
+      "--md-sys-color-surface-container-lowest": "#140D10",
+      "--md-sys-color-surface-container-low": "#221A1D",
+      "--md-sys-color-surface-container": "#271E22",
+      "--md-sys-color-surface-container-high": "#32282C",
+      "--md-sys-color-surface-container-highest": "#3E3337",
+      "--md-sys-color-on-surface-variant": "#D6C2C9",
+      "--md-sys-color-outline": "#9F8C93",
+      "--md-sys-color-outline-variant": "#4E444A",
+      "--md-sys-color-inverse-surface": "#F0DFE4",
+      "--md-sys-color-inverse-on-surface": "#382E32",
+      "--md-sys-color-inverse-primary": "#A84E76",
+      "--md-sys-color-on-background": "#F0DFE4",
+      "--md-sys-color-background": "#1A1215",
+      "--lm-scrim-surface": "rgba(26, 18, 21, 0.76)",
+      "--lm-hairline": "rgba(242, 184, 206, 0.12)",
+      "--lm-nav-width": "104px",
+      "--lm-content-pad": "28px",
+      "--lm-surface-blur": "32px"
+    }
+  },
+  "css": "/* 樱小路露娜：药丸导航 + 粉色微光（背景与图标由结构化字段提供） */\n.nav-item .indicator { border-radius: 999px; }\n.nav-item.active .indicator { box-shadow: 0 4px 14px color-mix(in srgb, var(--md-sys-color-primary) 35%, transparent); }\n.lm-btn--filled:hover { box-shadow: 0 4px 16px color-mix(in srgb, var(--md-sys-color-primary) 45%, transparent); }\n[data-theme=\"dark\"] .lm-glass { backdrop-filter: blur(var(--lm-surface-blur)) saturate(150%); }",
+  "background": {
+    "light": {
+      "image": "assets/bg.png",
+      "size": "cover",
+      "position": "center",
+      "overlay": 0.3
+    },
+    "dark": {
+      "image": "assets/bg.png",
+      "size": "cover",
+      "position": "center",
+      "overlay": 0.52
+    }
+  },
+  "icons": {
+    "mode": "svg",
+    "svg": {
+      "dir": "assets/icons"
+    }
+  }
+}

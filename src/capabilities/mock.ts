@@ -2,7 +2,7 @@
  * 纯浏览器预览用的 mock 后端（`npm run dev` 无 Tauri 环境时生效）。
  * 只为让 UI 可见，不追求行为等价。
  */
-import type { FfmpegStatus, ListenSourceStat, ListenStats, MediaEntry, NeteaseCloudPage, NeteasePlaylist, NeteaseProfile, NeteaseQrCheck, NeteaseSong, ScanProgress, SkinEntry, TopTrackStat, WebDavEntry, WebDavStatus } from "@shared/types";
+import type { FfmpegStatus, ListenSourceStat, ListenStats, LoadedSkin, MediaEntry, NeteaseCloudPage, NeteasePlaylist, NeteaseProfile, NeteaseQrCheck, NeteaseSong, ScanProgress, SkinEntry, TopTrackStat, WebDavEntry, WebDavStatus } from "@shared/types";
 
 /** 内联 SVG 占位封面，避免依赖外部图片 */
 function placeholderCover(label: string, hue: number): string {
@@ -406,11 +406,17 @@ export function mockInvoke<T>(
       // 浏览器预览没有系统媒体控件，直接静默成功
       return as(undefined);
 
-    // ---- 皮肤系统（内存 Map 模拟皮肤库；内置皮肤经 skin_save 播种）----
+    // ---- 皮肤系统（内存 Map 模拟皮肤库；浏览器预览不支持 ZIP 导入）----
     case "is_safe_mode":
       return as(false);
     case "skin_read_external_file":
       throw new Error("浏览器预览不支持读取本地文件，请在 Tauri 环境测试皮肤导入");
+    case "skin_stage_zip":
+    case "skin_commit":
+    case "skin_abort":
+      throw new Error("浏览器预览不支持 ZIP 皮肤导入，请在 Tauri 环境测试");
+    case "skin_dir":
+      return as("C:/MockAppData/skins");
     case "skin_save":
       mockSkins.set(String(args?.id), String(args?.json));
       return as(undefined);
@@ -418,7 +424,8 @@ export function mockInvoke<T>(
       return as(
         [...mockSkins.keys()].sort().map((id) => {
           try {
-            const m = JSON.parse(mockSkins.get(id)!).manifest;
+            const v = JSON.parse(mockSkins.get(id)!);
+            const m = v.manifest;
             return {
               id,
               status: "ok",
@@ -432,6 +439,9 @@ export function mockInvoke<T>(
                 modes: m.modes,
                 seedColor: m.seedColor ?? false,
                 accent: m.accent ?? null,
+                formatVersion: v.formatVersion ?? 1,
+                hasBackground: v.background != null,
+                hasIcons: v.icons != null,
               },
             } satisfies SkinEntry;
           } catch (e) {
@@ -439,8 +449,10 @@ export function mockInvoke<T>(
           }
         }),
       );
-    case "skin_load":
-      return as(mockSkins.get(String(args?.id)) ?? null);
+    case "skin_load": {
+      const json = mockSkins.get(String(args?.id));
+      return as({ json: json ?? null, files: [] } satisfies LoadedSkin);
+    }
     case "skin_delete":
       mockSkins.delete(String(args?.id));
       return as(undefined);

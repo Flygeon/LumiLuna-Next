@@ -27,6 +27,32 @@ export interface SkinDocument {
   manifest: SkinManifest;
   tokens?: { light?: Record<string, string>; dark?: Record<string, string> };
   css?: string;
+  /** v2：背景图（浅/深分别配置） */
+  background?: {
+    light?: SkinBackgroundLayer;
+    dark?: SkinBackgroundLayer;
+  };
+  /** v2：图标包（SVG 逐名替换 / 整字体替换） */
+  icons?: SkinIcons;
+}
+
+/** v2：单模式背景层配置 */
+export interface SkinBackgroundLayer {
+  /** zip 内相对路径（assets/...）或 http(s) URL */
+  image: string;
+  size?: string;
+  position?: string;
+  /** 内容遮罩浓度 0–1（浅色基白 / 深色基黑），保证前景可读 */
+  overlay?: number;
+}
+
+/** v2：图标包 */
+export interface SkinIcons {
+  mode: "svg" | "font";
+  /** SVG 模式：目录内 <Material图标名>.svg */
+  svg?: { dir: string };
+  /** 字体模式：woff2/woff/ttf + 可选附加 css */
+  font?: { file: string; css?: string };
 }
 
 export interface SkinWarning {
@@ -111,6 +137,15 @@ const ELEVATION_TOKENS = new Set([
   "--md-elevation-3",
 ]);
 
+/** v2 布局令牌（白名单 + 硬范围，方案书 v2 §6.1）：越界一律拒收 */
+const LAYOUT_TOKENS: Record<string, { min: number; max: number }> = {
+  "--lm-nav-width": { min: 56, max: 240 },
+  "--lm-content-pad": { min: 0, max: 64 },
+  "--lm-titlebar-height": { min: 32, max: 64 },
+  "--lm-miniplayer-height": { min: 48, max: 160 },
+  "--lm-surface-blur": { min: 0, max: 48 },
+};
+
 /** CSS 上限（§11.3）：单个皮肤 256 KB */
 export const SKIN_CSS_LIMIT = 256 * 1024;
 
@@ -141,7 +176,29 @@ function checkTokenValue(token: string, value: string): string | null {
   if (ELEVATION_TOKENS.has(token)) {
     return ELEVATION_VALUE_RE.test(value) ? null : "包含非法字符";
   }
+  const layout = LAYOUT_TOKENS[token];
+  if (layout) {
+    const m = /^(\d+(?:\.\d+)?)px$/.exec(value.trim());
+    if (!m) return "应为 px 长度值";
+    const n = Number(m[1]);
+    if (n < layout.min || n > layout.max) {
+      return `超出允许范围 ${layout.min}–${layout.max}px（收到 ${value.trim()}）`;
+    }
+    return null;
+  }
   return "不在令牌白名单内";
+}
+
+/** 判断令牌是否属于白名单（布局令牌也计入） */
+function isWhitelistedToken(token: string): boolean {
+  return (
+    COLOR_TOKENS.has(token) ||
+    LENGTH_TOKENS.has(token) ||
+    DURATION_TOKENS.has(token) ||
+    EASING_TOKENS.has(token) ||
+    ELEVATION_TOKENS.has(token) ||
+    token in LAYOUT_TOKENS
+  );
 }
 
 /** 检出 css 中的远程引用（@import / url() 指向 http(s)），宁误报不漏报 */
@@ -167,13 +224,16 @@ export function compareVersions(a: string, b: string): number {
 
 /**
  * 校验一份皮肤（接受文件原文或已解析对象），返回规范化文档。
- * opts.appVersion 用于 minAppVersion 门槛校验。
+ * opts.appVersion 用于 minAppVersion 门槛校验；
+ * opts.files 为 ZIP 解包清单（v2），用于资产引用存在性校验。
  */
 export function validateSkin(
   raw: unknown,
-  opts?: { appVersion?: string },
+  opts?: { appVersion?: string; files?: string[] },
 ): SkinValidation {
   const errors: string[] = [];
+  /** 收集远程引用（css + v2 结构化字段），统一走知情确认（v1 D5） */
+  const remoteRefs = new Set<string>();
 
   // ---- 解析 ----
   let doc: Record<string, unknown>;
@@ -191,13 +251,30 @@ export function validateSkin(
 
   // ---- formatVersion ----
   const formatVersion = doc.formatVersion;
-  if (formatVersion !== 1) {
+  if (formatVersion !== 1 && formatVersion !== 2) {
     return {
       ok: false,
-      errors: [`formatVersion 不受支持（当前支持 1，收到 ${String(formatVersion)}），请更新应用或使用 v1 格式皮肤`],
+      errors: [`formatVersion 不受支持（当前支持 1、2，收到 ${String(formatVersion)}），请更新应用或使用受支持格式的皮肤`],
       warnings: [],
     };
   }
+
+  /** 资产引用：必须是清单内相对路径或 http(s) URL；远程引用记入警告 */
+  const checkAssetRef = (ref: unknown): { value?: string; error?: string } => {
+    if (typeof ref !== "string" || !ref.trim()) return { error: "必须是非空字符串" };
+    const r = ref.trim();
+    if (/^https?:\/\//i.test(r)) {
+      remoteRefs.add(r);
+      return { value: r };
+    }
+    if (!/^[^\\:"<>|*?]+$/.test(r) || r.includes("..") || r.startsWith("/")) {
+      return { error: "必须是包内相对路径（如 assets/bg.png）或 http(s) URL" };
+    }
+    if (opts?.files && !opts.files.includes(r)) {
+      return { error: `引用的文件不在皮肤包内：${r}` };
+    }
+    return { value: r };
+  };
 
   // ---- manifest ----
   const manifestRaw = doc.manifest;
@@ -306,10 +383,10 @@ export function validateSkin(
             errors.push(`tokens.${scope}.${key}：值应为字符串`);
             continue;
           }
-          const problem =
-            !COLOR_TOKENS.has(key) && !LENGTH_TOKENS.has(key) && !DURATION_TOKENS.has(key) &&
-            !EASING_TOKENS.has(key) && !ELEVATION_TOKENS.has(key)
-              ? "不在令牌白名单内"
+          const problem = !isWhitelistedToken(key)
+            ? "不在令牌白名单内"
+            : formatVersion < 2 && key in LAYOUT_TOKENS
+              ? "布局令牌仅 v2 格式支持（请将 formatVersion 设为 2）"
               : checkTokenValue(key, value);
           if (problem) errors.push(`tokens.${scope}.${key}：${problem}`);
           else set[key] = value.trim();
@@ -336,10 +413,113 @@ export function validateSkin(
     errors.push("tokens 与 css 至少提供其一（空皮肤没有意义）");
   }
 
+  // ---- v2：background ----
+  let background: SkinDocument["background"];
+  if (doc.background !== undefined && doc.background !== null) {
+    if (formatVersion < 2) {
+      errors.push("background：仅 v2 格式支持（请将 formatVersion 设为 2）");
+    } else if (typeof doc.background !== "object" || Array.isArray(doc.background)) {
+      errors.push("background：应为对象");
+    } else {
+      const bgRaw = doc.background as Record<string, unknown>;
+      background = {};
+      for (const scope of ["light", "dark"] as const) {
+        const layerRaw = bgRaw[scope];
+        if (layerRaw === undefined || layerRaw === null) continue;
+        if (typeof layerRaw !== "object" || Array.isArray(layerRaw)) {
+          errors.push(`background.${scope}：应为对象`);
+          continue;
+        }
+        const l = layerRaw as Record<string, unknown>;
+        const image = checkAssetRef(l.image);
+        if (image.value) {
+          const size = l.size === undefined ? undefined : l.size;
+          if (size !== undefined && !/^(cover|contain|[0-9.]+(px|%)( [0-9.]+(px|%))?)$/.test(String(size).trim())) {
+            errors.push(`background.${scope}.size：只允许 cover / contain / 长度值`);
+          }
+          const position = l.position === undefined ? undefined : String(l.position).trim();
+          if (position !== undefined && position !== "" && !/^[a-z%0-9. -]{1,32}$/.test(position)) {
+            errors.push(`background.${scope}.position：包含非法字符`);
+          }
+          let overlay = 0.3;
+          if (l.overlay !== undefined) {
+            if (typeof l.overlay !== "number" || l.overlay < 0 || l.overlay > 1) {
+              errors.push(`background.${scope}.overlay：应为 0–1 之间的数字`);
+            } else {
+              overlay = l.overlay;
+            }
+          }
+          background[scope] = {
+            image: image.value,
+            size: size !== undefined ? String(size).trim() : "cover",
+            position: position || "center",
+            overlay,
+          };
+        } else if (image.error) {
+          errors.push(`background.${scope}.image：${image.error}`);
+        }
+      }
+      if (!background.light && !background.dark) {
+        errors.push("background：light / dark 至少配置其一");
+      }
+    }
+  }
+
+  // ---- v2：icons ----
+  let icons: SkinIcons | undefined;
+  if (doc.icons !== undefined && doc.icons !== null) {
+    if (formatVersion < 2) {
+      errors.push("icons：仅 v2 格式支持（请将 formatVersion 设为 2）");
+    } else if (typeof doc.icons !== "object" || Array.isArray(doc.icons)) {
+      errors.push("icons：应为对象");
+    } else {
+      const i = doc.icons as Record<string, unknown>;
+      const mode = i.mode;
+      if (mode !== "svg" && mode !== "font") {
+        errors.push('icons.mode：只允许 "svg" / "font"');
+      } else if (mode === "svg") {
+        const dir = i.svg && typeof i.svg === "object" ? (i.svg as Record<string, unknown>).dir : undefined;
+        const dirOk = typeof dir === "string" && dir.trim() ? dir.trim().replace(/\/+$/, "") : null;
+        if (!dirOk) {
+          errors.push("icons.svg.dir：svg 模式必填（包内图标目录，如 assets/icons）");
+        } else {
+          // 清单存在性：dir 下至少 1 个合法命名的 .svg
+          const svgs = (opts?.files ?? []).filter(
+            (f) => f.startsWith(`${dirOk}/`) && f.endsWith(".svg"),
+          );
+          if (svgs.length === 0) {
+            errors.push(`icons.svg.dir：目录 ${dirOk} 下没有 .svg 图标`);
+          } else if (svgs.some((f) => !/^[a-z0-9_]+$/.test(f.slice(dirOk.length + 1, -4)))) {
+            errors.push(`icons.svg：图标文件名须为小写字母/数字/下划线（Material 图标名），如 home.svg`);
+          }
+          icons = { mode: "svg", svg: { dir: dirOk } };
+        }
+      } else {
+        const f = i.font && typeof i.font === "object" ? (i.font as Record<string, unknown>) : {};
+        const file = checkAssetRef(f.file);
+        if (file.value) {
+          if (!/\.(woff2|woff|ttf)$/i.test(file.value)) {
+            errors.push("icons.font.file：只支持 .woff2 / .woff / .ttf 字体");
+          } else {
+            let cssRef: string | undefined;
+            if (f.css !== undefined && f.css !== null) {
+              const c = checkAssetRef(f.css);
+              if (c.value) cssRef = c.value;
+              else errors.push(`icons.font.css：${c.error}`);
+            }
+            icons = { mode: "font", font: { file: file.value, ...(cssRef ? { css: cssRef } : {}) } };
+          }
+        } else {
+          errors.push(`icons.font.file：${file.error ?? "font 模式必填"}`);
+        }
+      }
+    }
+  }
+
   if (errors.length) return { ok: false, errors, warnings: [] };
 
   const skin: SkinDocument = {
-    formatVersion: 1,
+    formatVersion,
     manifest: {
       id,
       name,
@@ -355,11 +535,13 @@ export function validateSkin(
     },
     ...(tokens ? { tokens } : {}),
     ...(css ? { css } : {}),
+    ...(background && (background.light || background.dark) ? { background } : {}),
+    ...(icons ? { icons } : {}),
   };
 
   const warnings: SkinWarning[] = [];
-  const refs = css ? findRemoteRefs(css) : [];
-  if (refs.length) warnings.push({ kind: "remote-ref", refs });
+  if (css) for (const r of findRemoteRefs(css)) remoteRefs.add(r);
+  if (remoteRefs.size) warnings.push({ kind: "remote-ref", refs: [...remoteRefs] });
 
   return { ok: true, errors: [], warnings, skin };
 }

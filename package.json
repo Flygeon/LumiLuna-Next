@@ -10,7 +10,8 @@
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "test": "vitest run"
+    "test": "vitest run",
+    "pack:skins": "node scripts/pack-example-skins.mjs"
   },
   "dependencies": {
     "@material/material-color-utilities": "^0.3.0",
@@ -35,6 +36,7 @@
     "@types/pako": "^2.0.3",
     "@types/qrcode": "^1.5.6",
     "@vitejs/plugin-vue": "^5.2.1",
+    "fflate": "^0.8.3",
     "typescript": "^5.7.2",
     "vite": "^6.0.3",
     "vitest": "^4.1.11",

@@ -12,6 +12,7 @@ import ContextMenu from "@/components/ContextMenu.vue";
 import TextPrompt from "@/components/TextPrompt.vue";
 import WindowTitleBar from "@/components/WindowTitleBar.vue";
 import { useDesktopChrome } from "@/composables/useDesktopChrome";
+import { activeSkinDoc, skinBgActive, skinSafeMode } from "@/utils/skinRuntime";
 import { translate } from "@shared/i18n";
 import { listen, type Event, type UnlistenFn } from "@tauri-apps/api/event";
 import { getCurrentWebview, type DragDropEvent } from "@tauri-apps/api/webview";
@@ -145,21 +146,25 @@ onMounted(async () => {
   void library.refreshCounts();
 });
 
-// ---- 皮肤拖拽导入（全窗口任意位置，方案书 §8）----
+// ---- 皮肤拖拽导入（全窗口任意位置，支持 v1 .json 与 v2 .zip）----
 const skinDropOver = ref(false);
 let unDragDrop: UnlistenFn | null = null;
+function isSkinFile(x: string): boolean {
+  const l = x.toLowerCase();
+  return l.endsWith(".json") || l.endsWith(".zip");
+}
 onMounted(async () => {
   if (!isTauri) return;
   try {
     unDragDrop = await getCurrentWebview().onDragDropEvent((e: Event<DragDropEvent>) => {
       const p = e.payload;
       if (p.type === "enter") {
-        skinDropOver.value = p.paths.some((x: string) => x.toLowerCase().endsWith(".json"));
+        skinDropOver.value = p.paths.some(isSkinFile);
       } else if (p.type === "leave") {
         skinDropOver.value = false;
       } else if (p.type === "drop") {
         skinDropOver.value = false;
-        const file = p.paths.find((x: string) => x.toLowerCase().endsWith(".json"));
+        const file = p.paths.find(isSkinFile);
         if (file) void skins.importFromFile(file);
         else skins.notice = t("settings.skinDropUnsupported");
       }
@@ -198,11 +203,19 @@ router.afterEach((to) => {
 <template>
   <div
     class="app-shell"
+    data-lm-region="shell"
     :class="{
       'has-player': player.song && !isPlayerPage,
       'desktop-lyrics-page': isDesktopLyricsPage,
     }"
   >
+    <!-- 皮肤背景图层（v2：变量由 skinLoader 写入；播放器页/桌面歌词页不渲染） -->
+    <div
+      v-if="skinBgActive && !isPlayerPage && !isDesktopLyricsPage"
+      class="lm-skin-bg"
+      aria-hidden="true"
+    ></div>
+
     <!-- Windows 自定义标题栏（仅 Tauri 桌面版，播放页与桌面歌词页隐藏） -->
     <WindowTitleBar v-if="isTauri && !isPlayerPage && !isDesktopLyricsPage" />
 
@@ -212,6 +225,7 @@ router.afterEach((to) => {
       <nav
         v-if="!isPlayerPage && !isDesktopLyricsPage"
         class="nav-rail lm-glass"
+        data-lm-region="nav"
       >
         <div v-if="!isTauri" class="brand">
           <span class="material-symbols-outlined brand-mark">blur_on</span>
@@ -260,7 +274,7 @@ router.afterEach((to) => {
       </nav>
 
       <!-- 内容区 -->
-      <div class="content">
+      <div class="content" data-lm-region="content">
         <main ref="mainEl" class="main-content">
           <router-view v-slot="{ Component }">
             <transition :name="isPlayerPage ? 'player' : 'page'" mode="out-in">
@@ -340,6 +354,29 @@ router.afterEach((to) => {
   width: 100vw;
   overflow: hidden;
   background: var(--md-sys-color-background);
+}
+
+/* ---- 皮肤背景图层（v2）：z-index 0 铺底，内容层在其上 ---- */
+.lm-skin-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background-image: var(--lm-skin-bg-image, none);
+  background-size: var(--lm-skin-bg-size, cover);
+  background-position: var(--lm-skin-bg-position, center);
+  background-repeat: no-repeat;
+  pointer-events: none;
+}
+.lm-skin-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--lm-skin-bg-overlay, transparent);
+}
+/* 背景激活时内容层抬到背景之上 */
+.app-shell:has(> .lm-skin-bg) .app-body {
+  position: relative;
+  z-index: 1;
 }
 .app-shell.desktop-lyrics-page {
   background: transparent;

@@ -122,6 +122,8 @@
   /* 毛玻璃表面与发丝分隔线（设计指南 0.1「内容即英雄」） */
   --lm-scrim-surface: rgba(252, 252, 252, 0.72);
   --lm-hairline: rgba(0, 0, 0, 0.08);
+  /* 毛玻璃模糊量（v2 皮肤布局令牌，白名单范围 0–48px） */
+  --lm-surface-blur: 28px;
   --lm-nav-width: 88px;
   --lm-miniplayer-height: 72px;
   --lm-content-pad: 24px;
@@ -261,8 +263,8 @@ body {
 /* M3 毛玻璃表面 */
 .lm-glass {
   background: var(--lm-scrim-surface);
-  backdrop-filter: blur(28px) saturate(180%);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  backdrop-filter: blur(var(--lm-surface-blur)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--lm-surface-blur)) saturate(180%);
 }
 
 /* 填充态图标（导航选中项） */

@@ -320,6 +320,21 @@ function resetDesktopLyricsBounds() {
             <span class="skin-name">{{ s.meta?.name ?? s.id }}</span>
             <span v-if="s.meta" class="skin-badges">
               <span
+                class="fmt"
+                :class="`v${s.meta.formatVersion}`"
+                :title="t('settings.skinFmtTitle').replace('{v}', String(s.meta.formatVersion))"
+              >v{{ s.meta.formatVersion }}</span>
+              <span
+                v-if="s.meta.hasBackground"
+                class="material-symbols-outlined mode"
+                :title="t('settings.skinHasBackground')"
+              >wallpaper</span>
+              <span
+                v-if="s.meta.hasIcons"
+                class="material-symbols-outlined mode"
+                :title="t('settings.skinHasIcons')"
+              >interests</span>
+              <span
                 class="material-symbols-outlined mode"
                 :title="s.meta.modes.join(' / ')"
               >{{ modeIcon(s.meta.modes) }}</span>
@@ -1233,6 +1248,22 @@ function resetDesktopLyricsBounds() {
 }
 .skin-badges .material-symbols-outlined {
   font-size: 14px;
+}
+.skin-badges .fmt {
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: 0.3px;
+}
+.skin-badges .fmt.v2 {
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+}
+.skin-badges .fmt.v1 {
+  background: var(--md-sys-color-surface-container-highest);
+  color: var(--md-sys-color-on-surface-variant);
 }
 .skin-badges .ver {
   font-size: 10px;
