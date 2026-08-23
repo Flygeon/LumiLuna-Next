@@ -2,7 +2,7 @@
  * 纯浏览器预览用的 mock 后端（`npm run dev` 无 Tauri 环境时生效）。
  * 只为让 UI 可见，不追求行为等价。
  */
-import type { FfmpegStatus, ListenSourceStat, ListenStats, MediaEntry, NeteaseCloudPage, NeteasePlaylist, NeteaseProfile, NeteaseQrCheck, NeteaseSong, ScanProgress, TopTrackStat, WebDavEntry, WebDavStatus } from "@shared/types";
+import type { FfmpegStatus, ListenSourceStat, ListenStats, MediaEntry, NeteaseCloudPage, NeteasePlaylist, NeteaseProfile, NeteaseQrCheck, NeteaseSong, ScanProgress, SkinEntry, TopTrackStat, WebDavEntry, WebDavStatus } from "@shared/types";
 
 /** 内联 SVG 占位封面，避免依赖外部图片 */
 function placeholderCover(label: string, hue: number): string {
@@ -74,6 +74,9 @@ function entry(
 
 const HUES: Record<string, number> = { audio: 265, image: 195, video: 20, book: 145 };
 const LABELS: Record<string, string> = { audio: "♪", image: "IMG", video: "VIDEO", book: "BOOK" };
+
+// ---- 皮肤库内存模拟（浏览器预览用）----
+const mockSkins = new Map<string, string>();
 
 // ---- WebDAV 演示目录树（浏览器预览用，真实行为由 Rust 代理提供）----
 
@@ -402,6 +405,46 @@ export function mockInvoke<T>(
     case "smtc_set_playback":
       // 浏览器预览没有系统媒体控件，直接静默成功
       return as(undefined);
+
+    // ---- 皮肤系统（内存 Map 模拟皮肤库；内置皮肤经 skin_save 播种）----
+    case "is_safe_mode":
+      return as(false);
+    case "skin_read_external_file":
+      throw new Error("浏览器预览不支持读取本地文件，请在 Tauri 环境测试皮肤导入");
+    case "skin_save":
+      mockSkins.set(String(args?.id), String(args?.json));
+      return as(undefined);
+    case "skin_list":
+      return as(
+        [...mockSkins.keys()].sort().map((id) => {
+          try {
+            const m = JSON.parse(mockSkins.get(id)!).manifest;
+            return {
+              id,
+              status: "ok",
+              error: null,
+              meta: {
+                name: m.name,
+                version: m.version,
+                author: m.author,
+                description: m.description ?? null,
+                minAppVersion: m.minAppVersion ?? null,
+                modes: m.modes,
+                seedColor: m.seedColor ?? false,
+                accent: m.accent ?? null,
+              },
+            } satisfies SkinEntry;
+          } catch (e) {
+            return { id, status: "broken", error: String(e), meta: null } satisfies SkinEntry;
+          }
+        }),
+      );
+    case "skin_load":
+      return as(mockSkins.get(String(args?.id)) ?? null);
+    case "skin_delete":
+      mockSkins.delete(String(args?.id));
+      return as(undefined);
+
     default:
       return as(null);
   }

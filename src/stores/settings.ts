@@ -2,7 +2,9 @@ import { defineStore } from "pinia";
 import { ref, watch } from "vue";
 import { LazyStore } from "@tauri-apps/plugin-store";
 import { capabilities } from "@/capabilities";
-import { applySeedColor } from "@/utils/dynamicTheme";
+import { applySeedColor, clearSeedTokens } from "@/utils/dynamicTheme";
+import { applySkin } from "@/utils/skinLoader";
+import { activeSkinDoc, skinModeLock, skinSafeMode } from "@/utils/skinRuntime";
 import type { MusicServer, OnlinePlaylistEntry } from "@shared/types";
 import type { LyricSourcePref } from "@/utils/preciseLyrics";
 
@@ -46,6 +48,10 @@ const DEFAULTS = {
   theme: "system" as ThemeMode,
   /** MD3 动态配色的种子色（十六进制）；由它实时生成整套颜色令牌 */
   seedColor: "#1A5C9E",
+  /** 激活皮肤的 id；空串 = 默认皮肤（动态配色） */
+  activeSkin: "",
+  /** 已删除的内置皮肤 id（删除即记忆，不再播种复活） */
+  hiddenBuiltinSkins: [] as string[],
   lang: "zh" as "zh" | "en",
   lyricFontSize: 30,
   lyricLineHeight: 2.5,
@@ -136,6 +142,8 @@ const DEFAULTS = {
 export const useSettingsStore = defineStore("settings", () => {
   const theme = ref<ThemeMode>(DEFAULTS.theme);
   const seedColor = ref(DEFAULTS.seedColor);
+  const activeSkin = ref(DEFAULTS.activeSkin);
+  const hiddenBuiltinSkins = ref<string[]>([...DEFAULTS.hiddenBuiltinSkins]);
   const lang = ref<"zh" | "en">(DEFAULTS.lang);
   const lyricFontSize = ref(DEFAULTS.lyricFontSize);
   const lyricLineHeight = ref(DEFAULTS.lyricLineHeight);
@@ -193,6 +201,8 @@ export const useSettingsStore = defineStore("settings", () => {
   const fields = {
     theme,
     seedColor,
+    activeSkin,
+    hiddenBuiltinSkins,
     lang,
     lyricFontSize,
     lyricLineHeight,
@@ -287,13 +297,22 @@ export const useSettingsStore = defineStore("settings", () => {
 
   let mediaQuery: MediaQueryList | null = null;
   function resolveTheme() {
-    const dark =
-      theme.value === "dark" ||
-      (theme.value === "system" &&
-        window.matchMedia("(prefers-color-scheme: dark)").matches);
+    // 单模式皮肤强制锁定解析结果（方案书 §6.4）：settings.theme 保留用户原偏好，
+    // 换回双模式皮肤后自动恢复
+    const lock = skinModeLock.value;
+    const dark = lock
+      ? lock === "dark"
+      : theme.value === "dark" ||
+        (theme.value === "system" &&
+          window.matchMedia("(prefers-color-scheme: dark)").matches);
     document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
-    // 依据当前深/浅模式，用种子色重算整套 MD3 颜色令牌
-    applySeedColor(seedColor.value, dark);
+    // 令牌写入顺序（§3 层次）：清种子残留 → 皮肤令牌/CSS → 种子色（最后写入，
+    // 同为内联样式时后者覆盖前者；clearSeedTokens 必须先于 applySkin，否则会抹掉皮肤颜色）
+    const skin = activeSkinDoc.value;
+    const seedAllowed = !skinSafeMode.value && (!skin || skin.manifest.seedColor);
+    if (!seedAllowed) clearSeedTokens();
+    applySkin(skinSafeMode.value ? null : skin, dark);
+    if (seedAllowed) applySeedColor(seedColor.value, dark);
   }
 
   function applyTheme(mode: ThemeMode) {
@@ -347,5 +366,6 @@ export const useSettingsStore = defineStore("settings", () => {
     save,
     applyTheme,
     applyColorScheme,
+    resolveTheme,
   };
 });

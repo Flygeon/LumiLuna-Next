@@ -46,6 +46,7 @@ import type {
   Wenku8LoginStatus,
   Wenku8UserInfo,
   Song,
+  SkinEntry,
   TopTrackStat,
   WebDavEntry,
   WebDavStatus,
@@ -493,5 +494,44 @@ export const capabilities = {
   /** 通用诊断日志：写任意前端消息到同一调试日志文件（供 main.ts 全局错误处理器调用） */
   appLog(msg: string): Promise<void> {
     return safeInvoke("app_log", { msg });
+  },
+
+  // ---- 皮肤系统（方案书 §7/§8）----
+  /** 启动参数含 --safe-mode：皮肤逃生通道 */
+  appSafeMode(): Promise<boolean> {
+    return safeInvoke("is_safe_mode");
+  },
+  /** 读取用户选中的外部皮肤文件原文 */
+  skinReadExternalFile(path: string): Promise<string> {
+    return safeInvoke("skin_read_external_file", { path });
+  },
+  /** 固化保存皮肤（同 id 覆盖 = 更新）；json 为前端校验后的规范化文档 */
+  skinSave(id: string, json: string): Promise<void> {
+    return safeInvoke("skin_save", { id, json });
+  },
+  /** 扫描皮肤库目录 */
+  skinList(): Promise<SkinEntry[]> {
+    return safeInvoke("skin_list");
+  },
+  /** 读取皮肤全文；不存在返回 null */
+  skinLoad(id: string): Promise<string | null> {
+    return safeInvoke("skin_load", { id });
+  },
+  /** 删除皮肤目录 */
+  skinDelete(id: string): Promise<void> {
+    return safeInvoke("skin_delete", { id });
+  },
+  /** 选择皮肤文件（.json），返回路径或 null */
+  async pickSkinFile(): Promise<string | null> {
+    if (!isTauri) return null;
+    const result = await dialogOpen({
+      multiple: false,
+      filters: [{ name: "LumiLuna 皮肤", extensions: ["json"] }],
+    });
+    if (typeof result === "string") return result;
+    if (result && typeof result === "object" && "path" in result) {
+      return (result as { path: string }).path;
+    }
+    return null;
   },
 };

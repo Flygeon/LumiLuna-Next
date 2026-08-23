@@ -562,3 +562,24 @@ export interface TopTrackStat {
   totalMs: number;
   srcUrl?: string | null;
 }
+/** 皮肤清单元信息（skin_list 返回；字段语义见 doc/皮肤系统开发方案书.md §4） */
+export interface SkinMeta {
+  name: string;
+  version: string;
+  author: string;
+  description?: string | null;
+  minAppVersion?: string | null;
+  /** 支持的模式子集：light / dark */
+  modes: string[];
+  /** 皮肤作者声明已适配种子色动态配色 */
+  seedColor: boolean;
+  accent?: string | null;
+}
+
+/** 皮肤库条目：status = ok | broken（损坏条目仅展示与可删除） */
+export interface SkinEntry {
+  id: string;
+  status: "ok" | "broken";
+  error?: string | null;
+  meta?: SkinMeta | null;
+}

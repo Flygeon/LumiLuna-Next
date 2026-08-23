@@ -72,3 +72,13 @@ export function applySeedColor(seed: string, dark: boolean): void {
     root.style.setProperty(cssVar, hexFromArgb(role.getArgb(scheme)));
   }
 }
+
+/** 清除 applySeedColor 写入的内联颜色令牌。
+ *  皮肤系统在「皮肤不适配种子色」时调用，确保种子的残留内联值
+ *  不会盖住皮肤令牌（内联样式优先级高于一切选择器）。 */
+export function clearSeedTokens(): void {
+  if (typeof document === "undefined") return;
+  for (const [cssVar] of TOKEN_MAP) {
+    document.documentElement.style.removeProperty(cssVar);
+  }
+}

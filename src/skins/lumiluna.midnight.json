@@ -1,0 +1,49 @@
+{
+  "formatVersion": 1,
+  "manifest": {
+    "id": "lumiluna.midnight",
+    "name": "午夜",
+    "version": "1.0.0",
+    "author": "LumiLuna",
+    "description": "AMOLED 纯黑 + 主色微光。modes 仅 [\"dark\"]：激活后自动切深色并锁定浅/深切换——单模式皮肤的参考实现。",
+    "modes": ["dark"],
+    "seedColor": false,
+    "accent": "#8AB4F8"
+  },
+  "tokens": {
+    "dark": {
+      "--md-sys-color-primary": "#8AB4F8",
+      "--md-sys-color-on-primary": "#062E5F",
+      "--md-sys-color-primary-container": "#0E3B6E",
+      "--md-sys-color-on-primary-container": "#CFE3FF",
+      "--md-sys-color-secondary": "#AEC2DE",
+      "--md-sys-color-on-secondary": "#1F3348",
+      "--md-sys-color-secondary-container": "#213449",
+      "--md-sys-color-on-secondary-container": "#C9DDF9",
+      "--md-sys-color-tertiary": "#C9B7E8",
+      "--md-sys-color-on-tertiary": "#30214B",
+      "--md-sys-color-tertiary-container": "#3E2D5C",
+      "--md-sys-color-on-tertiary-container": "#E4D6FF",
+      "--md-sys-color-surface": "#000000",
+      "--md-sys-color-on-surface": "#E4E6EA",
+      "--md-sys-color-surface-dim": "#000000",
+      "--md-sys-color-surface-bright": "#26262B",
+      "--md-sys-color-surface-container-lowest": "#000000",
+      "--md-sys-color-surface-container-low": "#0A0A0D",
+      "--md-sys-color-surface-container": "#101014",
+      "--md-sys-color-surface-container-high": "#16161B",
+      "--md-sys-color-surface-container-highest": "#1D1D23",
+      "--md-sys-color-on-surface-variant": "#9FA3AE",
+      "--md-sys-color-outline": "#6C707C",
+      "--md-sys-color-outline-variant": "#3A3D46",
+      "--md-sys-color-inverse-surface": "#E4E6EA",
+      "--md-sys-color-inverse-on-surface": "#30333A",
+      "--md-sys-color-inverse-primary": "#2E629E",
+      "--md-sys-color-on-background": "#E4E6EA",
+      "--md-sys-color-background": "#000000",
+      "--lm-scrim-surface": "rgba(0, 0, 0, 0.88)",
+      "--lm-hairline": "rgba(255, 255, 255, 0.08)"
+    }
+  },
+  "css": "/* 午夜：AMOLED 纯黑表面 + 主按钮微光晕 */\n.lm-glass { backdrop-filter: blur(30px) saturate(150%); -webkit-backdrop-filter: blur(30px) saturate(150%); }\n.lm-btn--filled { box-shadow: 0 0 20px color-mix(in srgb, var(--md-sys-color-primary) 40%, transparent); }\n.lm-btn--filled:hover { box-shadow: 0 0 28px color-mix(in srgb, var(--md-sys-color-primary) 55%, transparent); }"
+}

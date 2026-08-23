@@ -3,6 +3,7 @@ pub mod book;
 pub mod ffmpeg;
 pub mod metadata;
 pub mod scan;
+pub mod skin;
 pub mod smtc;
 pub mod song;
 pub mod stats;

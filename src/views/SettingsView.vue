@@ -3,12 +3,14 @@ import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import PageHeader from "@/components/PageHeader.vue";
 import { useSettingsStore, type PdfReadMode, type ThemeMode, type PlayerBgMode, type LyricFontKey, type ShareCodePreference, type DesktopLyricsAnimation, type DesktopLyricsToolbar, type DesktopLyricsDoubleClick } from "@/stores/settings";
+import { useSkinsStore } from "@/stores/skins";
 import { useLibraryStore } from "@/stores/library";
 import AudioEffectsPanel from "@/components/AudioEffectsPanel.vue";
 import { capabilities } from "@/capabilities";
 import { formatSize } from "@/utils/format";
+import { activeSkinDoc, skinModeLock, skinSafeMode } from "@/utils/skinRuntime";
 import { translate } from "@shared/i18n";
-import type { FfmpegStatus } from "@shared/types";
+import type { FfmpegStatus, SkinEntry } from "@shared/types";
 
 const settings = useSettingsStore();
 const library = useLibraryStore();
@@ -101,6 +103,64 @@ function pickSeed(hex: string) {
 
 function onCustomSeed(event: Event) {
   settings.applyColorScheme((event.target as HTMLInputElement).value);
+}
+
+// ---- 皮肤（方案书 §9）----
+
+const skins = useSkinsStore();
+
+/** 皮肤未适配种子色（且非安全模式）时，配色方案行置灰 */
+const seedLocked = computed(
+  () => !!activeSkinDoc.value && !skinSafeMode.value && !activeSkinDoc.value.manifest.seedColor,
+);
+/** dark-only / light-only 皮肤锁定浅深切换（安全模式下皮肤不生效、锁随之解除） */
+const themeLocked = computed(() => !!skinModeLock.value && !skinSafeMode.value);
+const themeLockHint = computed(() =>
+  themeLocked.value
+    ? t("settings.skinModeLocked").replace(
+        "{mode}",
+        t(skinModeLock.value === "dark" ? "settings.dark" : "settings.light"),
+      )
+    : "",
+);
+
+function modeIcon(modes: string[]): string {
+  if (modes.length === 1) return modes[0] === "dark" ? "dark_mode" : "light_mode";
+  return "contrast";
+}
+
+function skinCardTitle(s: SkinEntry): string {
+  if (s.status === "broken") return `${s.id}：${s.error ?? t("settings.skinBroken")}`;
+  const m = s.meta!;
+  return `${m.name} · ${m.author} · v${m.version}${m.description ? `\n${m.description}` : ""}`;
+}
+
+function onSkinCard(s: SkinEntry) {
+  if (s.status === "broken") {
+    notify(`${t("settings.skinBroken")}：${s.error ?? s.id}`);
+    return;
+  }
+  void skins.activate(s.id);
+}
+
+async function importSkin() {
+  const path = await capabilities.pickSkinFile();
+  if (path) await skins.importFromFile(path);
+}
+
+/** 两步删除：第一次点击进入确认态（3 秒超时回退），第二次执行 */
+const confirmDeleteSkin = ref<string | null>(null);
+let deleteTimer: number | undefined;
+function onDeleteSkin(id: string) {
+  if (confirmDeleteSkin.value === id) {
+    confirmDeleteSkin.value = null;
+    if (deleteTimer) window.clearTimeout(deleteTimer);
+    void skins.remove(id);
+  } else {
+    confirmDeleteSkin.value = id;
+    if (deleteTimer) window.clearTimeout(deleteTimer);
+    deleteTimer = window.setTimeout(() => (confirmDeleteSkin.value = null), 3000);
+  }
 }
 
 // ---- WebDAV ----
@@ -219,12 +279,81 @@ function resetDesktopLyricsBounds() {
             :key="mode"
             class="seg"
             :class="{ active: settings.theme === mode }"
+            :disabled="themeLocked"
             @click="setTheme(mode)"
           >
             {{ t("settings." + mode) }}
           </button>
         </div>
       </div>
+      <p v-if="themeLockHint" class="hint">{{ themeLockHint }}</p>
+
+      <!-- 皮肤 -->
+      <div class="row column">
+        <div class="row-label">
+          <span>{{ t("settings.skins") }}</span>
+        </div>
+        <div class="skin-list">
+          <div
+            class="skin-card"
+            :class="{ active: !settings.activeSkin }"
+            @click="skins.activate('')"
+          >
+            <span class="skin-dot" :style="{ '--sw': settings.seedColor }"></span>
+            <span class="skin-name">{{ t("settings.skinDefault") }}</span>
+          </div>
+          <div
+            v-for="s in skins.list"
+            :key="s.id"
+            class="skin-card"
+            :class="{
+              active: settings.activeSkin === s.id,
+              broken: s.status === 'broken',
+            }"
+            :title="skinCardTitle(s)"
+            @click="onSkinCard(s)"
+          >
+            <span
+              class="skin-dot"
+              :style="{ '--sw': s.meta?.accent || 'var(--md-sys-color-primary)' }"
+            ></span>
+            <span class="skin-name">{{ s.meta?.name ?? s.id }}</span>
+            <span v-if="s.meta" class="skin-badges">
+              <span
+                class="material-symbols-outlined mode"
+                :title="s.meta.modes.join(' / ')"
+              >{{ modeIcon(s.meta.modes) }}</span>
+              <span
+                v-if="s.meta.seedColor"
+                class="material-symbols-outlined seed"
+                :title="t('settings.skinSeedAdapted')"
+              >colorize</span>
+              <span class="ver tabular-nums">{{ s.meta.version }}</span>
+            </span>
+            <button
+              class="lm-icon-btn small danger skin-del"
+              :class="{ confirming: confirmDeleteSkin === s.id }"
+              :title="confirmDeleteSkin === s.id ? t('settings.skinDeleteConfirm') : t('settings.skinDelete')"
+              @click.stop="onDeleteSkin(s.id)"
+            >
+              <span class="material-symbols-outlined">
+                {{ confirmDeleteSkin === s.id ? "check" : "close" }}
+              </span>
+            </button>
+          </div>
+          <button class="skin-card import" @click="importSkin">
+            <span class="material-symbols-outlined">add</span>
+            <span class="skin-name">{{ t("settings.skinImport") }}</span>
+          </button>
+        </div>
+        <div v-if="settings.activeSkin" class="actions skin-actions">
+          <button class="lm-btn lm-btn--text" @click="skins.activate('')">
+            <span class="material-symbols-outlined">restart_alt</span>
+            {{ t("settings.skinRestoreDefault") }}
+          </button>
+        </div>
+      </div>
+      <p class="hint">{{ t("settings.skinsHint") }}</p>
 
       <div class="row">
         <div class="row-label">
@@ -248,7 +377,7 @@ function resetDesktopLyricsBounds() {
         <div class="row-label">
           <span>{{ t("settings.colorScheme") }}</span>
         </div>
-        <div class="swatches">
+        <div class="swatches" :class="{ disabled: seedLocked }">
           <button
             v-for="c in COLOR_SEEDS"
             :key="c.key"
@@ -257,6 +386,7 @@ function resetDesktopLyricsBounds() {
             :style="{ '--sw': c.hex }"
             :title="t('settings.colorSeed_' + c.key)"
             :aria-label="t('settings.colorSeed_' + c.key)"
+            :disabled="seedLocked"
             @click="pickSeed(c.hex)"
           >
             <span class="material-symbols-outlined">check</span>
@@ -268,11 +398,13 @@ function resetDesktopLyricsBounds() {
             :title="t('settings.colorCustom')"
           >
             <span class="material-symbols-outlined">{{ isCustomSeed ? "check" : "colorize" }}</span>
-            <input type="color" :value="settings.seedColor" @input="onCustomSeed" />
+            <input type="color" :value="settings.seedColor" :disabled="seedLocked" @input="onCustomSeed" />
           </label>
         </div>
       </div>
-      <p class="hint">{{ t("settings.colorSchemeHint") }}</p>
+      <p class="hint">
+        {{ seedLocked ? t("settings.skinSeedLocked") : t("settings.colorSchemeHint") }}
+      </p>
 
       <div class="row">
         <div class="row-label">
@@ -1013,6 +1145,113 @@ function resetDesktopLyricsBounds() {
   border: none;
   opacity: 0;
   cursor: pointer;
+}
+/* 种子色被皮肤门控时整组置灰 */
+.swatches.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* ---- 皮肤卡片列表 ---- */
+.row.column {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+.skin-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.skin-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 128px;
+  max-width: 210px;
+  padding: 10px 12px;
+  border: none;
+  border-radius: var(--md-sys-shape-corner-medium);
+  background: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface);
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    background var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard),
+    transform 160ms var(--md-sys-motion-spring),
+    box-shadow 160ms var(--md-sys-motion-easing-standard);
+}
+.skin-card:hover {
+  background: var(--md-sys-color-surface-container-high);
+  transform: translateY(-1px);
+}
+.skin-card.active {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+  box-shadow: 0 0 0 2px var(--md-sys-color-primary);
+}
+.skin-card.broken {
+  opacity: 0.55;
+  cursor: not-allowed;
+  border: 1px dashed var(--md-sys-color-outline);
+}
+.skin-card.import {
+  border: 1px dashed var(--md-sys-color-outline-variant);
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+}
+.skin-card.import:hover {
+  color: var(--md-sys-color-primary);
+  border-color: var(--md-sys-color-primary);
+  background: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent);
+}
+.skin-card.import .material-symbols-outlined {
+  font-size: 20px;
+}
+.skin-dot {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--sw, var(--md-sys-color-primary));
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15);
+}
+.skin-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--md-sys-typescale-body-medium-size);
+  font-weight: 500;
+}
+.skin-badges {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: auto;
+  opacity: 0.75;
+}
+.skin-badges .material-symbols-outlined {
+  font-size: 14px;
+}
+.skin-badges .ver {
+  font-size: 10px;
+  color: var(--md-sys-color-on-surface-variant);
+}
+.skin-del {
+  width: 24px;
+  height: 24px;
+  opacity: 0;
+}
+.skin-card:hover .skin-del {
+  opacity: 1;
+}
+.skin-del.confirming {
+  opacity: 1;
+  color: var(--md-sys-color-error);
+}
+.skin-actions {
+  margin-top: 0;
 }
 
 .dir-list {

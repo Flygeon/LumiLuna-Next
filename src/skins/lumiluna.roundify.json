@@ -1,0 +1,36 @@
+{
+  "formatVersion": 1,
+  "manifest": {
+    "id": "lumiluna.roundify",
+    "name": "圆角狂想",
+    "version": "1.0.0",
+    "author": "LumiLuna",
+    "description": "果冻感演示皮肤：颜色交给种子色动态生成（manifest.seedColor = true 的参考实现），皮肤只负责圆角、弹跳曲线与全局基元的微交互。",
+    "modes": ["light", "dark"],
+    "seedColor": true,
+    "accent": "#B469D9"
+  },
+  "tokens": {
+    "light": {
+      "--md-sys-shape-corner-extra-small": "10px",
+      "--md-sys-shape-corner-small": "14px",
+      "--md-sys-shape-corner-medium": "18px",
+      "--md-sys-shape-corner-large": "24px",
+      "--md-sys-shape-corner-extra-large": "34px",
+      "--md-sys-motion-spring": "cubic-bezier(0.34, 1.56, 0.64, 1)",
+      "--md-sys-motion-spring-soft": "cubic-bezier(0.34, 1.3, 0.64, 1)",
+      "--lm-scrim-surface": "rgba(255, 255, 255, 0.65)"
+    },
+    "dark": {
+      "--md-sys-shape-corner-extra-small": "10px",
+      "--md-sys-shape-corner-small": "14px",
+      "--md-sys-shape-corner-medium": "18px",
+      "--md-sys-shape-corner-large": "24px",
+      "--md-sys-shape-corner-extra-large": "34px",
+      "--md-sys-motion-spring": "cubic-bezier(0.34, 1.56, 0.64, 1)",
+      "--md-sys-motion-spring-soft": "cubic-bezier(0.34, 1.3, 0.64, 1)",
+      "--lm-scrim-surface": "rgba(20, 20, 23, 0.65)"
+    }
+  },
+  "css": "/* 圆角狂想：只动全局基元类（组件 scoped 样式带 data-v 哈希，皮肤选择器够不到） */\n.lm-btn { border-radius: 999px; }\n.lm-btn:hover { transform: translateY(-1px); }\n.lm-btn:active { transform: scale(0.94); }\n.lm-icon-btn:active { transform: scale(0.86) rotate(-8deg); }\n.lm-glass { backdrop-filter: blur(36px) saturate(190%); -webkit-backdrop-filter: blur(36px) saturate(190%); }"
+}

@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useSettingsStore } from "@/stores/settings";
+import { useSkinsStore } from "@/stores/skins";
 import { usePlayerStore } from "@/stores/player";
 import { useAudioEffectsStore } from "@/stores/audioEffects";
 import { useLibraryStore } from "@/stores/library";
@@ -12,7 +13,8 @@ import TextPrompt from "@/components/TextPrompt.vue";
 import WindowTitleBar from "@/components/WindowTitleBar.vue";
 import { useDesktopChrome } from "@/composables/useDesktopChrome";
 import { translate } from "@shared/i18n";
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { listen, type Event, type UnlistenFn } from "@tauri-apps/api/event";
+import { getCurrentWebview, type DragDropEvent } from "@tauri-apps/api/webview";
 import {
   DL_BOUNDS_EVENT,
   DL_CONTROL_EVENT,
@@ -26,6 +28,7 @@ import type { DesktopLyricsBounds } from "@/stores/settings";
 
 const settings = useSettingsStore();
 const player = usePlayerStore();
+const skins = useSkinsStore();
 // 托盘命令 + 关闭最小化到托盘 + 应用内热键
 useDesktopChrome();
 // ---- 桌面歌词控制器 ----
@@ -135,9 +138,39 @@ function countOf(type: string | null): number {
 
 onMounted(async () => {
   await settings.load();
+  // 皮肤加载（含 --safe-mode 检测、内置皮肤播种、激活皮肤解析）须在主题解析前完成
+  await skins.load();
   settings.applyTheme(settings.theme);
   void audioEffects.init();
   void library.refreshCounts();
+});
+
+// ---- 皮肤拖拽导入（全窗口任意位置，方案书 §8）----
+const skinDropOver = ref(false);
+let unDragDrop: UnlistenFn | null = null;
+onMounted(async () => {
+  if (!isTauri) return;
+  try {
+    unDragDrop = await getCurrentWebview().onDragDropEvent((e: Event<DragDropEvent>) => {
+      const p = e.payload;
+      if (p.type === "enter") {
+        skinDropOver.value = p.paths.some((x: string) => x.toLowerCase().endsWith(".json"));
+      } else if (p.type === "leave") {
+        skinDropOver.value = false;
+      } else if (p.type === "drop") {
+        skinDropOver.value = false;
+        const file = p.paths.find((x: string) => x.toLowerCase().endsWith(".json"));
+        if (file) void skins.importFromFile(file);
+        else skins.notice = t("settings.skinDropUnsupported");
+      }
+    });
+  } catch {
+    /* 拖拽事件不可用时静默（非桌面环境） */
+  }
+});
+onBeforeUnmount(() => {
+  unDragDrop?.();
+  unDragDrop = null;
 });
 
 // ---- 滚动位置记忆 ----
@@ -251,6 +284,49 @@ router.afterEach((to) => {
       <div v-if="player.lyricNotice" class="lyric-toast">
         <span class="material-symbols-outlined">info</span>
         {{ player.lyricNotice }}
+      </div>
+    </transition>
+
+    <!-- 皮肤系统全局通知（导入/更新/回退等） -->
+    <transition name="lyric-toast">
+      <div v-if="skins.notice" class="lyric-toast skin-toast">
+        <span class="material-symbols-outlined">palette</span>
+        {{ skins.notice }}
+      </div>
+    </transition>
+
+    <!-- 皮肤拖拽导入遮罩 -->
+    <transition name="skin-fade">
+      <div v-if="skinDropOver" class="skin-drop-overlay">
+        <div class="skin-drop-card">
+          <span class="material-symbols-outlined">palette</span>
+          <span>{{ t("settings.skinDrop") }}</span>
+        </div>
+      </div>
+    </transition>
+
+    <!-- 皮肤远程引用导入确认（方案书 §2 D5） -->
+    <transition name="skin-fade">
+      <div
+        v-if="skins.pendingRemote"
+        class="skin-modal-scrim"
+        @click.self="skins.cancelRemoteImport()"
+      >
+        <div class="skin-modal">
+          <h3>{{ t("settings.skinRemoteTitle") }}</h3>
+          <p class="skin-modal-hint">{{ t("settings.skinRemoteHint") }}</p>
+          <ul class="skin-refs">
+            <li v-for="r in skins.pendingRemote.refs" :key="r" :title="r">{{ r }}</li>
+          </ul>
+          <div class="skin-modal-actions">
+            <button class="lm-btn lm-btn--text" @click="skins.cancelRemoteImport()">
+              {{ t("settings.skinCancel") }}
+            </button>
+            <button class="lm-btn lm-btn--filled" @click="skins.confirmRemoteImport()">
+              {{ t("settings.skinStillImport") }}
+            </button>
+          </div>
+        </div>
       </div>
     </transition>
   </div>
@@ -474,5 +550,94 @@ router.afterEach((to) => {
 .lyric-toast-leave-to {
   opacity: 0;
   transform: translate(-50%, 12px);
+}
+
+/* ---- 皮肤系统全局层 ---- */
+
+/* 皮肤通知：与回退提示错开（顶部居中，避开标题栏） */
+.skin-toast {
+  top: calc(var(--lm-titlebar-height) + 8px);
+  bottom: auto;
+}
+
+.skin-fade-enter-active,
+.skin-fade-leave-active {
+  transition: opacity 160ms var(--md-sys-motion-easing-standard);
+}
+.skin-fade-enter-from,
+.skin-fade-leave-to {
+  opacity: 0;
+}
+
+.skin-drop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--md-sys-color-scrim) 60%, transparent);
+  pointer-events: none;
+}
+.skin-drop-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 30px;
+  border-radius: var(--md-sys-shape-corner-extra-large);
+  border: 2px dashed var(--md-sys-color-primary);
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-primary);
+  font-size: var(--md-sys-typescale-title-medium-size);
+  font-weight: 600;
+}
+.skin-drop-card .material-symbols-outlined {
+  font-size: 26px;
+}
+
+.skin-modal-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 310;
+  display: grid;
+  place-items: center;
+  background: var(--md-sys-color-scrim);
+}
+.skin-modal {
+  width: min(480px, 86vw);
+  padding: 22px 24px;
+  border-radius: var(--md-sys-shape-corner-extra-large);
+  background: var(--md-sys-color-surface-container-high);
+  box-shadow: var(--md-elevation-3);
+}
+.skin-modal h3 {
+  margin-bottom: 8px;
+  font-size: var(--md-sys-typescale-title-medium-size);
+}
+.skin-modal-hint {
+  margin-bottom: 10px;
+  font-size: var(--md-sys-typescale-body-small-size);
+  line-height: 1.6;
+  color: var(--md-sys-color-on-surface-variant);
+}
+.skin-refs {
+  max-height: 140px;
+  margin-bottom: 14px;
+  padding: 8px 12px;
+  overflow-y: auto;
+  list-style: none;
+  border-radius: var(--md-sys-shape-corner-small);
+  background: var(--md-sys-color-surface-container);
+  font-size: var(--md-sys-typescale-body-small-size);
+  font-family: monospace;
+  word-break: break-all;
+}
+.skin-refs li {
+  padding: 2px 0;
+  color: var(--md-sys-color-on-surface-variant);
+}
+.skin-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 </style>
