@@ -136,7 +136,7 @@ fn proxy_config() -> &'static Mutex<Option<AnimeProxyConfig>> {
     PROXY_CONFIG.get_or_init(|| Mutex::new(None))
 }
 
-fn http_client() -> reqwest::blocking::Client {
+fn http_client() -> &'static reqwest::blocking::Client {
     static CLIENT: OnceLock<reqwest::blocking::Client> = OnceLock::new();
     CLIENT.get_or_init(|| {
         reqwest::blocking::Client::builder()
@@ -306,7 +306,11 @@ pub fn anime_fetch(rule_name: String, spec: AnimeFetchSpec) -> Result<AnimeFetch
         .referer
         .as_deref()
         .filter(|r| !r.is_empty())
-        .or_else(|| parsed.as_ref().map(|u| format!("{}/", u.origin())));
+        .or_else(|| {
+            parsed
+                .as_ref()
+                .map(|u| format!("{}/", u.origin().ascii_serialization()))
+        });
     if let Some(r) = referer {
         req = add_header(req, "referer", &r);
     }
@@ -735,7 +739,7 @@ fn build_media_headers(
             if !base.is_empty() {
                 format!("{}/", base.trim_end_matches('/'))
             } else {
-                format!("{}/", media.origin())
+                format!("{}/", media.origin().ascii_serialization())
             }
         });
     headers.push(("referer".into(), referer));
@@ -897,7 +901,7 @@ fn handle_anime_proxy(request: tiny_http::Request) -> Result<(), String> {
             let base = anime_proxy_base().ok_or_else(|| "媒体代理未就绪".to_string())?;
             let rewritten = rewrite_m3u8(&text, &remote, &base);
             let len = rewritten.len();
-            let mut headers = vec![
+            let headers = vec![
                 proxy_header("Content-Type", "application/vnd.apple.mpegurl").unwrap(),
                 proxy_header("Access-Control-Allow-Origin", "*").unwrap(),
                 proxy_header("Cache-Control", "no-store").unwrap(),
