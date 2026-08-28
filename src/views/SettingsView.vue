@@ -900,6 +900,16 @@ function resetDesktopLyricsBounds() {
       </div>
     </section>
 
+    <!-- 在线番剧 -->
+    <section class="card">
+      <h3>{{ t("settings.onlineAnime") }}</h3>
+      <p class="hint">{{ t("settings.onlineAnimeHint") }}</p>
+      <label class="row switch-row">
+        <span class="row-label">{{ t("settings.onlineAnimeEnable") }}</span>
+        <input type="checkbox" v-model="settings.onlineAnimeEnabled" />
+      </label>
+    </section>
+
     <!-- WebDAV -->
     <section class="card">
       <h3>{{ t("settings.webdav") }}</h3>

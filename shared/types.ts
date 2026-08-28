@@ -562,8 +562,7 @@ export interface TopTrackStat {
   totalMs: number;
   srcUrl?: string | null;
 }
-/** 皮肤清单元信息（skin_list 返回；字段语义见 doc/皮肤系统开发方案书.md §4） */
-export interface SkinMeta {
+/** 皮肤清单元信息（skin_list 返回；字段语义见 doc/皮肤系统开发方案书.md §4） */export interface SkinMeta {
   name: string;
   version: string;
   author: string;
@@ -601,3 +600,218 @@ export interface StagedSkin {
   json: string;
   files: string[];
 }
+
+// ── 在线番剧（Kazumi 规则采集，桌面端）──────────────────────────
+
+/** 规则模式：xpath 选择器 / api + JSONPath */
+export type AnimeRuleMode = "xpath" | "api";
+
+/** 选集模式（同 Kazumi Plugin.chapterMode） */
+export type AnimeChapterMode = "xpath" | "api";
+
+/** API 模式规则的请求定义（searchApiConfig / chapterApiConfig.request） */
+export interface AnimeApiRequest {
+  method?: string;
+  url: string;
+  headers?: Record<string, string>;
+  query?: Record<string, string>;
+  bodyType?: "none" | "json" | "form";
+  body?: unknown;
+}
+
+/** API 模式搜索配置 */
+export interface AnimeSearchApiConfig {
+  request: AnimeApiRequest;
+  listPath: string;
+  namePath: string;
+  sourcePath: string;
+}
+
+/** API 模式选集配置（嵌套 JSON / 分隔字符串两种） */
+export interface AnimeChapterApiConfig {
+  request: AnimeApiRequest;
+  /** nested=嵌套 JSON，delimited=分隔字符串 */
+  format: "nested" | "delimited";
+  roadsPath: string;
+  roadNamePath: string;
+  episodesPath: string;
+  episodeNamePath: string;
+  episodeUrlPath: string;
+  roadNamesPath: string;
+  roadEpisodesPath: string;
+  roadSeparator: string;
+  episodeSeparator: string;
+  fieldSeparator: string;
+  /** 命名 JSONPath 捕获，供播放页模板变量用 */
+  variables?: Record<string, string>;
+  /** 播放页模板 */
+  episodePage?: { url: string; query?: Record<string, string> };
+}
+
+/** 反爬配置（Phase 1 仅透传保存，不执行） */
+export interface AnimeAntiCrawlerConfig {
+  enabled?: boolean;
+  captchaType?: string;
+  captchaImage?: string;
+  captchaInput?: string;
+  captchaButton?: string;
+  captchaDetectType?: string;
+  captchaDetectValue?: string;
+  captchaScript?: string;
+}
+
+/** 规则（Kazumi Plugin JSON 的宽松兼容模型；normalizeRule 后的字段均为必填） */
+export interface AnimeRule {
+  api?: string;
+  type?: string;
+  name: string;
+  version?: string;
+  muliSources?: boolean;
+  useWebview?: boolean;
+  useNativePlayer?: boolean;
+  userAgent?: string;
+  baseURL: string;
+  referer?: string;
+  usePost?: boolean;
+  useLegacyParser?: boolean;
+  adBlocker?: boolean;
+  searchMode?: AnimeRuleMode;
+  chapterMode?: AnimeChapterMode;
+  searchURL: string;
+  searchList: string;
+  searchName: string;
+  searchResult: string;
+  chapterRoads: string;
+  chapterResult: string;
+  searchApiConfig?: AnimeSearchApiConfig;
+  chapterApiConfig?: AnimeChapterApiConfig;
+  antiCrawlerConfig?: AnimeAntiCrawlerConfig;
+  /** 静态取流：从播放页 HTML 抠直链的正则（Phase 1 快速路径） */
+  streamRegex?: string;
+  /** 静态取流：JSONPath 提取（指向页面内嵌 JSON 的播放地址字段） */
+  streamJsonPath?: string;
+  /** 任意自定义 http 头（抓取与取流时带上） */
+  httpHeaders?: Record<string, string>;
+  /** 自定义 CSS / JS（原项目字段，透传保存） */
+  css?: string;
+  scripts?: string[];
+}
+
+/** 规则库条目（Rust 侧扫描 app data rules/ 目录） */
+export interface AnimeRuleEntry {
+  name: string;
+  version?: string;
+  enabled: boolean;
+  /** 校验后的规则 JSON 原文 */
+  json: string;
+}
+
+/** 搜索结果条目（Kazumi SearchItem：name + src） */
+export interface AnimeSearchItem {
+  name: string;
+  src: string;
+}
+
+/** 番剧列表/目录条目（列表页 XPath 产出） */
+export interface AnimeItem {
+  /** 详情页 URL（相对 baseURL 或绝对） */
+  src: string;
+  title: string;
+  cover?: string;
+  desc?: string;
+}
+
+/** 单集 */
+export interface AnimeEpisode {
+  /** 播放页 URL */
+  url: string;
+  name: string;
+}
+
+/** 播放线路（Kazumi Road） */
+export interface AnimeRoad {
+  name: string;
+  episodes: AnimeEpisode[];
+}
+
+/** 番剧详情（含分集线路） */
+export interface AnimeDetail {
+  title: string;
+  cover?: string;
+  desc?: string;
+  roads: AnimeRoad[];
+}
+
+/** 取流结果 */
+export interface AnimeStream {
+  /** 可直接给 <video> 用的 URL（防盗链时是本地代理 URL） */
+  url: string;
+  /** 远端原始 URL（调试展示用） */
+  remoteUrl: string;
+  /** 是否走本地代理 */
+  proxied: boolean;
+  /** 取流方式：static / webview */
+  method: "static" | "webview";
+}
+
+/** 历史记录（SQLite anime_history 行） */
+export interface AnimeHistoryItem {
+  key: string;
+  plugin: string;
+  animeId: string;
+  title: string;
+  cover?: string | null;
+  lastEpisode?: string | null;
+  episodePageUrl?: string | null;
+  roadIndex: number;
+  episodeIndex: number;
+  progressMs: number;
+  durationMs: number;
+  updatedAt: number;
+}
+
+/** 追番（SQLite anime_favorites 行） */
+export interface AnimeFavoriteItem {
+  plugin: string;
+  animeId: string;
+  title: string;
+  cover?: string | null;
+  addedAt: number;
+}
+
+/** 动漫抓取请求（跨 Tauri 边界；Rust 侧合并 cookie/UA/referer 默认值） */
+export interface AnimeFetchSpec {
+  method: "GET" | "POST";
+  url: string;
+  headers?: Record<string, string>;
+  /** 追加到 URL 的 query 参数（value 已 toString） */
+  query?: Record<string, string>;
+  body?: string;
+  bodyType?: "none" | "json" | "form";
+  /** 是否携带该规则已存的 cookie（XPath 章节请求按 Kazumi 惯例不带） */
+  includeCookies?: boolean;
+  /** 自定义 Referer（Rust 侧默认 baseURL + "/"） */
+  referer?: string;
+  /** 自定义 User-Agent（Rust 侧默认内置 UA） */
+  userAgent?: string;
+}
+
+/** anime_fetch 返回：HTML 原文 + 重定向后最终 URL */
+export interface AnimeFetchResult {
+  html: string;
+  finalUrl?: string;
+}
+
+/** anime_media_url 返回：可交给 <video src> 的本地代理 URL */
+export interface AnimeMediaUrlResult {
+  url: string;
+}
+
+/** 取流结果（webview 兜底路径） */
+export interface AnimeResolveStreamResult {
+  url: string;
+  remoteUrl: string;
+  proxied: boolean;
+  method: "webview";
+}
+

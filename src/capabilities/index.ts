@@ -52,6 +52,13 @@ import type {
   TopTrackStat,
   WebDavEntry,
   WebDavStatus,
+  AnimeFetchResult,
+  AnimeFetchSpec,
+  AnimeHistoryItem,
+  AnimeFavoriteItem,
+  AnimeMediaUrlResult,
+  AnimeResolveStreamResult,
+  AnimeRuleEntry,
 } from "@shared/types";
 import { mockInvoke } from "./mock";
 
@@ -445,6 +452,68 @@ export const capabilities = {
   /** 前端（注入脚本/窗口监听）上报诊断日志到 Rust 侧日志文件 */
   wenku8LoginLog(msg: string): Promise<void> {
     return safeInvoke("wenku8_login_log", { msg });
+  },
+
+  // ---- 在线番剧（Kazumi 规则采集）----
+  animeFetch(ruleName: string, spec: AnimeFetchSpec): Promise<AnimeFetchResult> {
+    return safeInvoke("anime_fetch", { ruleName, spec });
+  },
+  /** 防盗链流：返回本地代理 URL（带规则 Referer/UA/headers/Cookie，透传 Range） */
+  animeMediaUrl(ruleName: string, url: string): Promise<AnimeMediaUrlResult> {
+    return safeInvoke("anime_media_url", { ruleName, url });
+  },
+  /** 取流兜底：隐藏 webview 加载播放页，钩子拦截 m3u8/mp4 后回传 */
+  animeWebviewResolve(
+    ruleName: string,
+    pageUrl: string,
+    baseUrl: string,
+  ): Promise<AnimeResolveStreamResult | null> {
+    return safeInvoke("anime_webview_resolve", { ruleName, pageUrl, baseUrl });
+  },
+  /** 规则库（app data rules/ 目录） */
+  animeRulesList(): Promise<AnimeRuleEntry[]> {
+    return safeInvoke("anime_rules_list");
+  },
+  /** 保存规则（同 name 覆盖）；json 为前端规范化后的文档 */
+  animeRuleSave(name: string, json: string): Promise<void> {
+    return safeInvoke("anime_rules_save", { name, json });
+  },
+  animeRuleDelete(name: string): Promise<void> {
+    return safeInvoke("anime_rules_delete", { name });
+  },
+  /** 从 KazumiRules 社区仓库拉取规则 index（Phase 1 仅展示，不自动安装） */
+  animeRuleIndex(): Promise<string> {
+    return safeInvoke("anime_rules_index");
+  },
+  /** 历史记录 */
+  animeHistoryList(): Promise<AnimeHistoryItem[]> {
+    return safeInvoke("anime_history_list");
+  },
+  animeHistoryUpsert(item: AnimeHistoryItem): Promise<void> {
+    return safeInvoke("anime_history_upsert", { item });
+  },
+  animeHistoryDelete(key: string): Promise<void> {
+    return safeInvoke("anime_history_delete", { key });
+  },
+  /** 追番 */
+  animeFavoritesList(): Promise<AnimeFavoriteItem[]> {
+    return safeInvoke("anime_favorites_list");
+  },
+  animeFavoriteAdd(
+    plugin: string,
+    animeId: string,
+    title: string,
+    cover?: string | null,
+  ): Promise<void> {
+    return safeInvoke("anime_favorites_add", {
+      plugin,
+      animeId,
+      title,
+      cover: cover ?? null,
+    });
+  },
+  animeFavoriteRemove(plugin: string, animeId: string): Promise<void> {
+    return safeInvoke("anime_favorites_remove", { plugin, animeId });
   },
 
   // ---- 系统 ----

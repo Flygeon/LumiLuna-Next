@@ -1,3 +1,4 @@
+pub mod anime;
 pub mod commands;
 pub mod media;
 pub mod netease;
@@ -125,6 +126,8 @@ pub fn run() {
             if let Err(error) = tray::setup(app.handle()) {
                 eprintln!("setup tray failed: {error}");
             }
+            // 在线番剧：内置规则种子 + 隐藏取流 webview
+            anime::setup(app.handle());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -219,6 +222,19 @@ pub fn run() {
             novel_auth::wenku8_login_log,
             novel_auth::wenku8_login_poll,
             novel_auth::app_log,
+            anime::anime_fetch,
+            anime::anime_media_url,
+            anime::anime_webview_resolve,
+            anime::anime_rules_list,
+            anime::anime_rules_save,
+            anime::anime_rules_delete,
+            anime::anime_rules_index,
+            anime::anime_history_list,
+            anime::anime_history_upsert,
+            anime::anime_history_delete,
+            anime::anime_favorites_list,
+            anime::anime_favorites_add,
+            anime::anime_favorites_remove,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

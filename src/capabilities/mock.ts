@@ -2,7 +2,7 @@
  * 纯浏览器预览用的 mock 后端（`npm run dev` 无 Tauri 环境时生效）。
  * 只为让 UI 可见，不追求行为等价。
  */
-import type { FfmpegStatus, ListenSourceStat, ListenStats, LoadedSkin, MediaEntry, NeteaseCloudPage, NeteasePlaylist, NeteaseProfile, NeteaseQrCheck, NeteaseSong, ScanProgress, SkinEntry, TopTrackStat, WebDavEntry, WebDavStatus } from "@shared/types";
+import type { AnimeHistoryItem, AnimeRuleEntry, FfmpegStatus, ListenSourceStat, ListenStats, LoadedSkin, MediaEntry, NeteaseCloudPage, NeteasePlaylist, NeteaseProfile, NeteaseQrCheck, NeteaseSong, ScanProgress, SkinEntry, TopTrackStat, WebDavEntry, WebDavStatus } from "@shared/types";
 
 /** 内联 SVG 占位封面，避免依赖外部图片 */
 function placeholderCover(label: string, hue: number): string {
@@ -406,10 +406,58 @@ export function mockInvoke<T>(
       // 浏览器预览没有系统媒体控件，直接静默成功
       return as(undefined);
 
+    // ---- 在线番剧（演示规则 + 空抓取；浏览器预览不做真实网络）----
+    case "anime_rules_list":
+      return as<AnimeRuleEntry[]>([
+        {
+          name: "演示规则",
+          version: "1.0",
+          enabled: true,
+          json: JSON.stringify({
+            api: "4",
+            type: "anime",
+            name: "演示规则",
+            version: "1.0",
+            muliSources: true,
+            useWebview: true,
+            useNativePlayer: true,
+            baseURL: "https://demo.anime.invalid/",
+            searchURL: "https://demo.anime.invalid/search?wd=@keyword",
+            searchList: "//div[2]/div[2]/div[2]/div[2]/div",
+            searchName: "//div[2]/text()",
+            searchResult: "//a",
+            chapterRoads: "//div[2]/div[2]/div[2]/div/div[2]/div[1]//div",
+            chapterResult: "//a",
+          }),
+        },
+      ]);
+    case "anime_rules_save":
+    case "anime_rules_delete":
+      return as(undefined);
+    case "anime_rules_index":
+      return as("[]");
+    case "anime_fetch":
+      throw new Error("浏览器预览不支持网络抓取，请在 Tauri 环境测试在线番剧");
+    case "anime_media_url": {
+      const url = String(args?.url ?? "");
+      return as({ url: `https://demo.anime.invalid/proxy?u=${encodeURIComponent(url)}` });
+    }
+    case "anime_webview_resolve":
+      return as(null);
+    case "anime_history_list":
+      return as<AnimeHistoryItem[]>([]);
+    case "anime_history_upsert":
+    case "anime_history_delete":
+      return as(undefined);
+    case "anime_favorites_list":
+      return as([]);
+    case "anime_favorites_add":
+    case "anime_favorites_remove":
+      return as(undefined);
+
     // ---- 皮肤系统（内存 Map 模拟皮肤库；浏览器预览不支持 ZIP 导入）----
     case "is_safe_mode":
-      return as(false);
-    case "skin_read_external_file":
+      return as(false);    case "skin_read_external_file":
       throw new Error("浏览器预览不支持读取本地文件，请在 Tauri 环境测试皮肤导入");
     case "skin_stage_zip":
     case "skin_commit":

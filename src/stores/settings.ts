@@ -119,6 +119,8 @@ const DEFAULTS = {
   neteaseEnabled: false,
   /** 实验性：在线小说（Wenku8 抓取） */
   onlineNovelEnabled: false,
+  /** 实验性：在线番剧（Kazumi 规则采集，仅桌面端） */
+  onlineAnimeEnabled: false,
   /** Wenku8 节点：cc 主用 / net 备用 */
   wenku8Node: "cc" as Wenku8Node,
   /** 小说页面字符集：简中 GBK / 繁中 Big5 */
@@ -183,6 +185,7 @@ export const useSettingsStore = defineStore("settings", () => {
   const webdavPass = ref(DEFAULTS.webdavPass);
   const neteaseEnabled = ref(DEFAULTS.neteaseEnabled);
   const onlineNovelEnabled = ref(DEFAULTS.onlineNovelEnabled);
+  const onlineAnimeEnabled = ref(DEFAULTS.onlineAnimeEnabled);
   const wenku8Node = ref<Wenku8Node>(DEFAULTS.wenku8Node);
   const novelCharset = ref<NovelCharset>(DEFAULTS.novelCharset);
   const shareCodePreference = ref<ShareCodePreference>(DEFAULTS.shareCodePreference);
@@ -242,6 +245,7 @@ export const useSettingsStore = defineStore("settings", () => {
     webdavPass,
     neteaseEnabled,
     onlineNovelEnabled,
+    onlineAnimeEnabled,
     wenku8Node,
     novelCharset,
     shareCodePreference,

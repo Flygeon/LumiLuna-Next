@@ -62,7 +62,7 @@ impl ScanJobInfo {
 }
 
 /// 当前 schema 版本。递增后在 `migrate` 中追加对应分支。
-const SCHEMA_VERSION: i64 = 3;
+const SCHEMA_VERSION: i64 = 4;
 
 /// 建表 + 版本化迁移。对已存在的库是幂等的。
 pub fn init_db(conn: &rusqlite::Connection) -> rusqlite::Result<()> {
@@ -257,6 +257,37 @@ fn migrate(conn: &rusqlite::Connection) -> rusqlite::Result<()> {
             "#,
         )?;
         conn.pragma_update(None, "user_version", 3)?;
+    }
+    // v3 -> v4：在线番剧（Kazumi 规则采集）历史 / 追番
+    if current < 4 {
+        conn.execute_batch(
+            r#"
+            CREATE TABLE IF NOT EXISTS anime_history (
+              key              TEXT PRIMARY KEY,
+              plugin           TEXT NOT NULL DEFAULT '',
+              anime_id         TEXT NOT NULL DEFAULT '',
+              title            TEXT NOT NULL DEFAULT '',
+              cover            TEXT,
+              last_episode     TEXT,
+              episode_page_url TEXT,
+              road_index       INTEGER NOT NULL DEFAULT 0,
+              episode_index    INTEGER NOT NULL DEFAULT 0,
+              progress_ms      INTEGER NOT NULL DEFAULT 0,
+              duration_ms      INTEGER NOT NULL DEFAULT 0,
+              updated_at       INTEGER NOT NULL DEFAULT 0
+            );
+            CREATE INDEX IF NOT EXISTS idx_anime_history_updated ON anime_history(updated_at DESC);
+            CREATE TABLE IF NOT EXISTS anime_favorites (
+              plugin   TEXT NOT NULL,
+              anime_id TEXT NOT NULL,
+              title    TEXT NOT NULL DEFAULT '',
+              cover    TEXT,
+              added_at INTEGER NOT NULL,
+              PRIMARY KEY (plugin, anime_id)
+            );
+            "#,
+        )?;
+        conn.pragma_update(None, "user_version", 4)?;
     }
     Ok(())
 }
