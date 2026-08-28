@@ -306,6 +306,7 @@ pub fn anime_fetch(rule_name: String, spec: AnimeFetchSpec) -> Result<AnimeFetch
         .referer
         .as_deref()
         .filter(|r| !r.is_empty())
+        .map(|r| r.to_owned())
         .or_else(|| {
             parsed
                 .as_ref()
