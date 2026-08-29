@@ -364,7 +364,10 @@ pub fn wenku8_userinfo(app: tauri::AppHandle) -> Option<Wenku8UserInfo> {
 /// 排查登录窗口白屏/卡死问题。路径：<系统临时目录>/lumiluna_login_debug.log
 /// （Windows 通常为 C:\Users\<用户>\AppData\Local\Temp\lumiluna_login_debug.log）。
 /// 时间戳使用 Unix 秒（含小数毫秒），便于按时间顺序阅读。
-fn login_debug_log(msg: &str) {
+///
+/// `pub(crate)`：在线番剧（anime.rs）等其它模块也需要往同一个文件落诊断，
+/// 排查时只看一个文件比翻多个日志省事。
+pub(crate) fn login_debug_log(msg: &str) {
     let path = std::env::temp_dir().join("lumiluna_login_debug.log");
     if let Ok(mut f) = std::fs::OpenOptions::new()
         .create(true)

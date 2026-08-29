@@ -1260,6 +1260,76 @@ fn pick_stream(urls: &[String]) -> Option<String> {
         .or_else(|| urls.first().cloned())
 }
 
+/// 取流前注入的诊断快照脚本。
+///
+/// 为什么需要：gugu3 / ezdmw 这类站点把真实地址藏在运行时的 JS 里，静态提取
+/// 无解，只能靠隐藏 webview；而它常常 30s 空手而归，光看「未拿到地址」根本
+/// 分不清是页面没加载、播放器没启动，还是地址走了我们没钩住的路。
+/// 这份快照把判断依据一次性摊开：页面就绪度 / 可见性 / video 元素数 /
+/// 资源请求数与其中媒体请求的条数。
+const DIAG_SCRIPT: &str = r#"(function(){
+  try {
+    var vids = document.querySelectorAll('video,audio');
+    var srcs = [];
+    for (var i = 0; i < vids.length && i < 3; i++) {
+      srcs.push(vids[i].currentSrc || vids[i].getAttribute('src') || '(empty)');
+    }
+    var names = [];
+    try {
+      var e = performance.getEntriesByType('resource');
+      for (var j = 0; j < e.length && j < 500; j++) { names.push(e[j].name); }
+    } catch (err) {}
+    var media = [];
+    for (var k = 0; k < names.length && media.length < 5; k++) {
+      if (/\.(m3u8|mp4|flv)(\?|#|$)/i.test(names[k])) { media.push(names[k]); }
+    }
+    return JSON.stringify({
+      title: (document.title || '').slice(0, 60),
+      href: location.href.slice(0, 160),
+      ready: document.readyState,
+      vis: document.visibilityState,
+      bodyLen: (document.body && document.body.innerHTML.length) || 0,
+      mediaEls: vids.length,
+      mediaSrcs: srcs,
+      resTotal: names.length,
+      resMedia: media,
+      hooks: (window.__animeStreams || []).length
+    });
+  } catch (e) { return JSON.stringify({ error: String(e) }); }
+})()"#;
+
+/// 在 webview 里求值并取回结果（`eval` 是单向的，拿不到返回值）
+async fn eval_json(webview: &tauri::WebviewWindow, script: &str) -> Option<String> {
+    let (tx, rx) = tokio::sync::oneshot::channel::<String>();
+    if webview
+        .eval_with_callback(script, move |res: String| {
+            let _ = tx.send(res);
+        })
+        .is_err()
+    {
+        return None;
+    }
+    match tokio::time::timeout(Duration::from_secs(3), rx).await {
+        Ok(Ok(s)) => Some(s),
+        _ => None,
+    }
+}
+
+/// 把当前页面状态写进调试日志（前缀 [anime-webview]）
+async fn log_webview_diag(
+    webview: &tauri::WebviewWindow,
+    rule_name: &str,
+    waited_ms: u128,
+) {
+    let snap = eval_json(webview, DIAG_SCRIPT)
+        .await
+        .unwrap_or_else(|| "(诊断脚本无返回：页面可能已跳转或未就绪)".to_string());
+    crate::novel_auth::login_debug_log(&format!(
+        "[app] [anime-online] [anime-webview] {} 等待 {}ms 后页面快照 {}",
+        rule_name, waited_ms, snap
+    ));
+}
+
 /// 取流结束后立刻让隐藏 webview 停下并清空页面。
 /// 不这么做的话，站点自带播放器会在后台继续播——用户听到声音、却看不到画面
 /// （画面对着一个不可见的窗口），而前端此时已经在报「取流失败」。
@@ -1294,9 +1364,16 @@ pub async fn anime_webview_resolve(
     }
 
     let collected: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
-    let deadline = std::time::Instant::now() + WEBVIEW_TIMEOUT;
+    let started = std::time::Instant::now();
+    let deadline = started + WEBVIEW_TIMEOUT;
+    let mut midway_diag = false;
     while std::time::Instant::now() < deadline {
         tokio::time::sleep(Duration::from_millis(250)).await;
+        // 中途先拍一张快照：区分「页面在慢慢跑」与「压根没动起来」
+        if !midway_diag && started.elapsed() >= Duration::from_secs(10) {
+            midway_diag = true;
+            log_webview_diag(&webview, &rule_name, started.elapsed().as_millis()).await;
+        }
         // 被更新一次取流抢占时直接放弃（并停掉页面，避免旧页面继续出声）
         if RESOLVE_GEN.load(Ordering::SeqCst) != gen {
             stop_webview(&webview);
@@ -1331,6 +1408,8 @@ pub async fn anime_webview_resolve(
             }));
         }
     }
+    // 空手而归时必须留下判断依据，否则下次还是只能靠猜
+    log_webview_diag(&webview, &rule_name, started.elapsed().as_millis()).await;
     let _ = webview.eval("window.stop()");
     stop_webview(&webview);
     Ok(None)
