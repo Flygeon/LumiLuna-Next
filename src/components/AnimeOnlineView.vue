@@ -21,8 +21,16 @@ const keyword = ref("");
 const searching = ref(false);
 /** 当前列表来自搜索（true）还是浏览（false） */
 const searchMode = ref(false);
+/** 搜索栏是否展开 */
+const showSearch = ref(false);
+const searchInput = ref<HTMLInputElement | null>(null);
 
 const enabledRules = computed(() => anime.rules.filter((r) => r.enabled));
+
+/** 首页默认展示「正在热播」（Kazumi 主页同款）；搜索时显示搜索标题 */
+const listTitle = computed(() =>
+  searchMode.value ? `${t("anime.search")}「${keyword.value.trim() || "…"}」` : t("anime.browse"),
+);
 
 onMounted(async () => {
   await anime.loadRules();
@@ -36,14 +44,27 @@ function onSourceChange(event: Event) {
   const name = (event.target as HTMLSelectElement).value;
   anime.pickRule(name);
   searchMode.value = false;
+  showSearch.value = false;
   keyword.value = "";
   void anime.fetchList();
 }
 
 function browse() {
   searchMode.value = false;
+  showSearch.value = false;
   keyword.value = "";
   void anime.fetchList();
+}
+
+function toggleSearch() {
+  if (searchMode.value) {
+    browse();
+    return;
+  }
+  showSearch.value = !showSearch.value;
+  if (showSearch.value) {
+    window.setTimeout(() => searchInput.value?.focus(), 80);
+  }
 }
 
 async function doSearch() {
@@ -138,27 +159,50 @@ function onDetailBack() {
           </div>
         </section>
 
-        <!-- 搜索 -->
-        <div class="search-bar">
-          <input
-            v-model="keyword"
-            :placeholder="t('anime.searchPlaceholder')"
-            @keyup.enter="doSearch"
-          />
-          <button class="lm-btn lm-btn--tonal" :disabled="searching" @click="doSearch">
-            <span class="material-symbols-outlined">search</span>
-            {{ t("anime.searchBtn") }}
-          </button>
+        <!-- 首页 / 搜索：浏览列表为主，搜索为次要入口 -->
+        <div class="home-head">
+          <h3 class="section-title list-title">
+            <span v-if="searchMode" class="material-symbols-outlined">search</span>
+            {{ listTitle }}
+          </h3>
+          <div class="head-actions">
+            <button v-if="searchMode" class="chip" @click="browse">
+              {{ t("anime.browseBack") }}
+            </button>
+            <button
+              class="chip icon-chip"
+              :class="{ active: showSearch }"
+              :title="t('anime.search')"
+              @click="toggleSearch"
+            >
+              <span class="material-symbols-outlined">search</span>
+            </button>
+          </div>
         </div>
 
-        <!-- 列表 -->
-        <section class="section">
-          <div class="section-head">
-            <h3 class="section-title">{{ searchMode ? t("anime.search") : t("anime.browse") }}</h3>
-            <button v-if="searchMode" class="chip" @click="browse">{{ t("anime.browse") }}</button>
+        <transition name="collapse">
+          <div v-if="showSearch" class="search-bar">
+            <input
+              ref="searchInput"
+              v-model="keyword"
+              :placeholder="t('anime.searchPlaceholder')"
+              @keyup.enter="doSearch"
+            />
+            <button class="lm-btn lm-btn--tonal" :disabled="searching" @click="doSearch">
+              <span v-if="searching" class="material-symbols-outlined spin">progress_activity</span>
+              <span v-else class="material-symbols-outlined">arrow_forward</span>
+              {{ t("anime.searchBtn") }}
+            </button>
           </div>
+        </transition>
+
+        <!-- 浏览 / 搜索结果 -->
+        <section class="section">
           <div v-if="anime.listLoading || searching" class="state">{{ t("anime.loading") }}</div>
-          <div v-else-if="anime.listError && !anime.listItems.length" class="state">
+          <div
+            v-else-if="anime.listError && !anime.listItems.length"
+            class="state list-error"
+          >
             {{ anime.listError }}
           </div>
           <div v-else-if="anime.listItems.length" class="anime-grid">
@@ -243,11 +287,26 @@ function onDetailBack() {
   flex-direction: column;
   gap: 12px;
 }
-.section-head {
+.home-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+}
+.list-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.list-title .material-symbols-outlined {
+  font-size: 18px;
+  color: var(--md-sys-color-primary);
+}
+.head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 .section-title {
   margin: 0;
@@ -255,6 +314,9 @@ function onDetailBack() {
   font-weight: 600;
 }
 .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   height: 28px;
   padding: 0 12px;
   border: 1px solid var(--md-sys-color-outline-variant);
@@ -268,6 +330,19 @@ function onDetailBack() {
 .chip:hover {
   color: var(--md-sys-color-primary);
   border-color: var(--md-sys-color-primary);
+}
+.chip .material-symbols-outlined {
+  font-size: 17px;
+}
+.icon-chip {
+  width: 28px;
+  padding: 0;
+  justify-content: center;
+}
+.icon-chip.active {
+  color: var(--md-sys-color-on-primary-container);
+  background: var(--md-sys-color-primary-container);
+  border-color: transparent;
 }
 .anime-grid {
   display: grid;
@@ -293,10 +368,39 @@ function onDetailBack() {
 .search-bar input:focus {
   border-color: var(--md-sys-color-primary);
 }
+.search-bar .material-symbols-outlined {
+  font-size: 18px;
+}
+.spin {
+  animation: lm-spin 1s linear infinite;
+}
+@keyframes lm-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.collapse-enter-active,
+.collapse-leave-active {
+  transition:
+    opacity 200ms var(--md-sys-motion-easing-standard),
+    transform 200ms var(--md-sys-motion-easing-emphasized-decelerate);
+}
+.collapse-enter-from,
+.collapse-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
+}
 .state {
   padding: 24px 0;
   text-align: center;
   font-size: var(--md-sys-typescale-body-small-size);
   color: var(--md-sys-color-on-surface-variant);
+}
+.list-error {
+  color: var(--md-sys-color-error);
+  white-space: pre-line;
+  line-height: 1.6;
+  max-width: 640px;
+  margin-inline: auto;
 }
 </style>

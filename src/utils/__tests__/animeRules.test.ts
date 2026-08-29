@@ -204,6 +204,46 @@ describe("prepareSearchRequest", () => {
     expect(spec.query).toEqual({ kw: "hello world" });
     expect(spec.includeCookies).toBe(true);
   });
+
+  it("URL 校验：空 searchURL 抛可读错误（而非 builder error）", () => {
+    expect(() => prepareSearchRequest(xpathRule({ searchURL: "" }), "刀")).toThrow(
+      /搜索 URL 为空/,
+    );
+  });
+
+  it("URL 校验：缺协议/相对地址基于 baseURL 补全", () => {
+    const spec = prepareSearchRequest(
+      xpathRule({ searchURL: "/search?wd=@keyword" }),
+      "刀",
+    );
+    expect(spec.url).toBe("https://example.com/search?wd=%E5%88%80");
+  });
+
+  it("URL 校验：非法协议抛错", () => {
+    expect(() =>
+      prepareSearchRequest(xpathRule({ searchURL: "file:///etc/passwd" }), "刀"),
+    ).toThrow(/仅支持 http\/https/);
+  });
+
+  it("URL 校验：既非绝对地址又缺 baseURL 抛错", () => {
+    expect(() =>
+      prepareSearchRequest(xpathRule({ searchURL: "/foo", baseURL: "" }), ""),
+    ).toThrow(/不是绝对地址且缺少 baseURL/);
+  });
+
+  it("URL 校验：绝对地址非法（缺主机）抛错", () => {
+    expect(() => prepareSearchRequest(xpathRule({ searchURL: "https://?q=1" }), "")).toThrow(
+      /URL 无效/,
+    );
+  });
+
+  it("URL 校验：非 ASCII 路径被 percent 编码（url crate 只吃 ASCII）", () => {
+    const spec = prepareSearchRequest(
+      xpathRule({ searchURL: "https://example.com/中文/首页" }),
+      "",
+    );
+    expect(spec.url).toBe("https://example.com/%E4%B8%AD%E6%96%87/%E9%A6%96%E9%A1%B5");
+  });
 });
 
 describe("prepareChapterRequest", () => {

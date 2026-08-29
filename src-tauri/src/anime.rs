@@ -296,7 +296,17 @@ pub fn anime_fetch(rule_name: String, spec: AnimeFetchSpec) -> Result<AnimeFetch
             .collect();
         url = format!("{url}?{}", params.join("&"));
     }
-    let parsed = url::Url::parse(&url).ok();
+    // 先校验 URL：url crate 对空串/相对地址/非 ASCII 会直接拒绝，reqwest 把这类
+    // 解析失败统一 Display 成 "builder error"，对用户毫无信息量。提前解析并把
+    // 可读原因抛给前端（Kazumi 同样在发请求前校验 URL）。
+    let parsed = match url::Url::parse(&url) {
+        Ok(u) => u,
+        Err(e) => {
+            return Err(format!(
+                "请求 URL 无效（规则 {rule_name}）：{url}\n{e}\n请检查规则里 URL 是否为空、缺少协议（http/https）或含非法字符"
+            ))
+        }
+    };
     let mut req = match spec.method.as_str() {
         "POST" => client.post(&url),
         _ => client.get(&url),
@@ -307,11 +317,7 @@ pub fn anime_fetch(rule_name: String, spec: AnimeFetchSpec) -> Result<AnimeFetch
         .as_deref()
         .filter(|r| !r.is_empty())
         .map(|r| r.to_owned())
-        .or_else(|| {
-            parsed
-                .as_ref()
-                .map(|u| format!("{}/", u.origin().ascii_serialization()))
-        });
+        .or_else(|| Some(format!("{}/", parsed.origin().ascii_serialization())));
     if let Some(r) = referer {
         req = add_header(req, "referer", &r);
     }
@@ -322,7 +328,7 @@ pub fn anime_fetch(rule_name: String, spec: AnimeFetchSpec) -> Result<AnimeFetch
         .unwrap_or(UA);
     req = add_header(req, "user-agent", ua);
     if spec.include_cookies {
-        if let Some(host) = parsed.as_ref().and_then(|u| u.host_str()) {
+        if let Some(host) = parsed.host_str() {
             if let Some(c) = cookie_for_rule(&rule_name, host) {
                 req = add_header(req, "cookie", &c);
             }
@@ -344,20 +350,31 @@ pub fn anime_fetch(rule_name: String, spec: AnimeFetchSpec) -> Result<AnimeFetch
         }
     }
 
-    let resp = req
-        .timeout(Duration::from_secs(30))
-        .send()
-        .map_err(|e| format!("网络请求失败：{e}"))?;
+    let resp = req.timeout(Duration::from_secs(30)).send().map_err(|e| {
+        // 把 reqwest 的笼统错误分类成可读中文（builder/连接/超时……）
+        let kind = if e.is_timeout() {
+            "超时"
+        } else if e.is_connect() {
+            "连接失败"
+        } else if e.is_builder() {
+            "URL 无效"
+        } else if e.is_redirect() {
+            "重定向异常"
+        } else if e.is_body() {
+            "请求体错误"
+        } else if e.is_decode() {
+            "响应解码失败"
+        } else {
+            "未知错误"
+        };
+        format!("网络请求失败（{kind}）：{e}\n（规则 {rule_name} · {url}）")
+    })?;
     let status = resp.status().as_u16();
     if !(200..300).contains(&status) {
-        return Err(format!("HTTP {status}"));
+        return Err(format!("HTTP {status}（规则 {rule_name} · {url}）"));
     }
     let final_url = resp.url().as_str().to_string();
-    let request_host = parsed
-        .as_ref()
-        .and_then(|u| u.host_str())
-        .unwrap_or_default()
-        .to_string();
+    let request_host = parsed.host_str().unwrap_or_default().to_string();
     for set_cookie in resp.headers().get_all("set-cookie") {
         if let Ok(s) = set_cookie.to_str() {
             store_cookie(&rule_name, &request_host, s);

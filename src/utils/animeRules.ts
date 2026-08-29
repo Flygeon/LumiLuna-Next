@@ -290,6 +290,38 @@ function ruleTransport(rule: AnimeRule): Pick<AnimeFetchSpec, "referer" | "userA
   };
 }
 
+/**
+ * 校验并规整请求 URL（照 Kazumi `xpath_rule_strategy.dart` 的
+ * `Uri.tryParse` + `hasScheme + host.isEmpty` 检查）：
+ * - 空 URL / 非法 URL / 非 http(s) / 缺主机名 → 抛可读错误（而不是把
+ *   "builder error" 留给 reqwest）
+ * - 相对地址基于 baseURL 补全；WHATWG `new URL().href` 顺带把路径里的
+ *   非 ASCII 字符 percent 编码（url crate 只吃 ASCII URL，这正是
+ *   "网络请求失败：builder error" 的常见诱因）
+ */
+function resolveRuleUrl(baseURL: string, raw: string, what: string): string {
+  const trimmed = String(raw ?? "").trim();
+  if (!trimmed) throw new AnimeRuleError(`${what} URL 为空`);
+  let u: URL;
+  try {
+    u = new URL(trimmed);
+  } catch {
+    if (!baseURL.trim()) {
+      throw new AnimeRuleError(`${what} URL 无效：${trimmed}（不是绝对地址且缺少 baseURL）`);
+    }
+    try {
+      u = new URL(trimmed, baseURL);
+    } catch {
+      throw new AnimeRuleError(`${what} URL 无效：${trimmed}`);
+    }
+  }
+  if (u.protocol !== "http:" && u.protocol !== "https:") {
+    throw new AnimeRuleError(`${what} URL 仅支持 http/https：${trimmed}`);
+  }
+  if (!u.hostname) throw new AnimeRuleError(`${what} URL 缺少主机名：${trimmed}`);
+  return u.href;
+}
+
 /** 构造搜索请求（XPath / API 双模式） */
 export function prepareSearchRequest(
   rule: AnimeRule,
@@ -297,13 +329,14 @@ export function prepareSearchRequest(
 ): AnimeFetchSpec {
   const transport = ruleTransport(rule);
   if (rule.searchMode === "api") {
-    const spec = buildApiRequest(rule.searchApiConfig?.request, { keyword });
+    const spec = buildApiRequest(rule.searchApiConfig?.request, { keyword }, rule.baseURL ?? "");
     return { ...spec, ...transport, includeCookies: true };
   }
-  const url = (rule.searchURL ?? "").replace(
+  const raw = (rule.searchURL ?? "").replace(
     "@keyword",
     encodeURIComponent(keyword),
   );
+  const url = resolveRuleUrl(rule.baseURL ?? "", raw, "搜索");
   if (rule.usePost) {
     const uri = splitQuery(url);
     return {
@@ -325,7 +358,7 @@ export function prepareChapterRequest(
   source: string,
 ): AnimeFetchSpec {
   if (rule.chapterMode === "api") {
-    const spec = buildApiRequest(rule.chapterApiConfig?.request, { source });
+    const spec = buildApiRequest(rule.chapterApiConfig?.request, { source }, rule.baseURL ?? "");
     return { ...spec, ...ruleTransport(rule), includeCookies: true };
   }
   // XPath 章节请求按 Kazumi 惯例不带 cookie
@@ -336,9 +369,11 @@ export function prepareChapterRequest(
 function buildApiRequest(
   request: AnimeSearchApiConfig["request"] | undefined,
   variables: Record<string, unknown>,
+  baseURL = "",
 ): AnimeFetchSpec {
   const method = request?.method === "POST" ? "POST" : "GET";
-  const url = renderTemplate(String(request?.url ?? ""), variables, true);
+  const raw = renderTemplate(String(request?.url ?? ""), variables, true);
+  const url = resolveRuleUrl(baseURL, raw, "请求");
   const query = request?.query
     ? renderMap(request.query as Record<string, unknown>, variables)
     : undefined;

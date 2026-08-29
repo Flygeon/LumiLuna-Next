@@ -5,7 +5,6 @@ import { useAnimeStore } from "@/stores/anime";
 import { translate } from "@shared/i18n";
 import { capabilities } from "@/capabilities";
 import { normalizeRule, validateRule } from "@/utils/animeRules";
-import type { AnimeRule } from "@shared/types";
 
 const emit = defineEmits<{ (e: "back"): void }>();
 
@@ -19,9 +18,19 @@ const savedToast = ref(false);
 const confirmDelete = ref<string | null>(null);
 let deleteTimer: number | undefined;
 
+/** KazumiRules 仓库 index.json 只是目录，真实规则在 <name>.json（照 Kazumi plugin_catalog_api） */
+const REPO_BASE = "https://raw.githubusercontent.com/Predidit/KazumiRules/main/";
+interface RepoEntry {
+  name: string;
+  version: string;
+  author: string;
+  antiCrawlerEnabled: boolean;
+}
 const repoBusy = ref(false);
 const repoError = ref("");
-const repoItems = ref<AnimeRule[]>([]);
+const repoItems = ref<RepoEntry[]>([]);
+const importingName = ref("");
+const repoImported = ref("");
 
 onMounted(() => void anime.loadRules(true));
 
@@ -68,10 +77,12 @@ function onDelete(name: string) {
   }
 }
 
+/** 拉取仓库目录（index.json 只有 name/version 等元数据） */
 async function fetchRepo() {
   repoBusy.value = true;
   repoError.value = "";
   repoItems.value = [];
+  repoImported.value = "";
   try {
     const index = await capabilities.animeRuleIndex();
     const parsed: unknown = JSON.parse(index);
@@ -87,15 +98,20 @@ async function fetchRepo() {
     }
     const seen = new Set<string>();
     for (const item of list) {
-      try {
-        const rule = normalizeRule(item);
-        if (rule.type !== "anime") continue;
-        if (seen.has(rule.name)) continue;
-        seen.add(rule.name);
-        repoItems.value.push(rule);
-      } catch {
-        /* 跳过仓库里的非法条目 */
-      }
+      if (!item || typeof item !== "object") continue;
+      const o = item as Record<string, unknown>;
+      const name = String(o.name ?? "").trim();
+      if (!name || seen.has(name)) continue;
+      seen.add(name);
+      repoItems.value.push({
+        name,
+        version: String(o.version ?? ""),
+        author: String(o.author ?? ""),
+        antiCrawlerEnabled: o.antiCrawlerEnabled === true,
+      });
+    }
+    if (!repoItems.value.length) {
+      repoError.value = t("anime.rule.fromRepoEmpty");
     }
   } catch (e) {
     repoError.value = e instanceof Error ? e.message : String(e);
@@ -104,12 +120,39 @@ async function fetchRepo() {
   }
 }
 
-async function importFromRepo(rule: AnimeRule) {
+/** 导入：拉取该规则真实 JSON → 规范化校验 → 保存启用 */
+async function importFromRepo(entry: RepoEntry) {
+  importingName.value = entry.name;
+  repoError.value = "";
+  repoImported.value = "";
   try {
+    const rawUrl = `${REPO_BASE}${encodeURIComponent(entry.name)}.json`;
+    const res = await capabilities.animeFetch(entry.name, {
+      method: "GET",
+      url: rawUrl,
+      headers: {},
+      includeCookies: false,
+    });
+    const rule = normalizeRule(JSON.parse(res.html));
+    if (rule.type !== "anime") {
+      throw new Error(`${t("anime.rule.invalid")}：规则类型不是 anime`);
+    }
+    const errors = validateRule(rule);
+    if (errors.length) {
+      throw new Error(`${t("anime.rule.invalid")}：${errors.join("；")}`);
+    }
     await capabilities.animeRuleSave(rule.name, JSON.stringify(rule, null, 2));
     await anime.loadRules(true);
-  } catch {
-    /* 忽略 */
+    repoImported.value = rule.name;
+    if (rule.name !== entry.name) {
+      repoItems.value = repoItems.value.map((e) =>
+        e.name === entry.name ? { ...e, name: rule.name } : e,
+      );
+    }
+  } catch (e) {
+    repoError.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    importingName.value = "";
   }
 }
 </script>
@@ -177,17 +220,28 @@ async function importFromRepo(rule: AnimeRule) {
       <p v-if="repoError" class="error">{{ repoError }}</p>
       <div v-if="repoItems.length" class="repo-list">
         <button
-          v-for="rule in repoItems"
-          :key="rule.name"
+          v-for="entry in repoItems"
+          :key="entry.name"
           class="repo-row"
-          @click="importFromRepo(rule)"
+          :disabled="importingName === entry.name"
+          @click="importFromRepo(entry)"
         >
-          <span class="material-symbols-outlined">add</span>
-          <span class="rule-name" :title="rule.name">{{ rule.name }}</span>
-          <span v-if="rule.version" class="rule-ver tabular-nums">v{{ rule.version }}</span>
+          <span
+            v-if="importingName === entry.name"
+            class="material-symbols-outlined spin"
+            >progress_activity</span
+          >
+          <span v-else-if="repoImported === entry.name" class="material-symbols-outlined ok"
+            >check</span
+          >
+          <span v-else class="material-symbols-outlined">add</span>
+          <span class="rule-name" :title="entry.name">{{ entry.name }}</span>
+          <span v-if="entry.version" class="rule-ver tabular-nums">v{{ entry.version }}</span>
+          <span v-if="entry.antiCrawlerEnabled" class="badge">{{ t("anime.rule.antiCrawler") }}</span>
         </button>
       </div>
       <p v-else-if="repoBusy" class="state">{{ t("anime.rule.fromRepoFetching") }}</p>
+      <p v-if="repoImported" class="hint ok-hint">{{ t("anime.rule.imported") }} {{ repoImported }}</p>
     </section>
 
     <transition name="toast">
@@ -340,6 +394,32 @@ textarea:focus {
 }
 .repo-row:hover {
   background: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent);
+}
+.repo-row:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+.repo-row > .material-symbols-outlined.ok {
+  color: var(--md-sys-color-tertiary);
+}
+.repo-row > .material-symbols-outlined.spin {
+  color: var(--md-sys-color-on-surface-variant);
+}
+.badge {
+  flex-shrink: 0;
+  padding: 1px 8px;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: color-mix(in srgb, var(--md-sys-color-error) 12%, transparent);
+  color: var(--md-sys-color-error);
+  font-size: var(--md-sys-typescale-label-small-size);
+}
+.hint {
+  margin: 0;
+  font-size: var(--md-sys-typescale-body-small-size);
+  color: var(--md-sys-color-on-surface-variant);
+}
+.ok-hint {
+  color: var(--md-sys-color-tertiary);
 }
 .toast {
   position: fixed;
