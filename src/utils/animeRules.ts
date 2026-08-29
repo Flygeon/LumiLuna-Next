@@ -491,14 +491,16 @@ export function parseChaptersXPath(
     const episodeNodes = queryNodes(rule.chapterResult, roadNode);
     for (let episodeIndex = 0; episodeIndex < episodeNodes.length; episodeIndex++) {
       const episodeNode = episodeNodes[episodeIndex];
-      const source = queryAttr(rule.chapterResult, episodeNode, "href");
+      // 照 Kazumi xpath_rule_strategy.dart：chapterResult 选中的就是剧集元素，
+      // 直接读它自身的 href 与文本（不要在它上面再求一次 chapterResult）。
+      const source = (episodeNode.getAttribute("href") ?? "").trim();
       if (!source) {
         diagnostics.push(
           `线路 ${roadIndex} 的剧集节点 ${episodeIndex} 缺少 URL，已跳过`,
         );
         continue;
       }
-      const name = queryText(rule.chapterResult, episodeNode).replace(/\s+/g, "");
+      const name = (episodeNode.textContent ?? "").replace(/\s+/g, "");
       const url = normalizeEpisodeUrl(baseUrl, source);
       if (!url) continue;
       episodes.push({

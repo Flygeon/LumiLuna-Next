@@ -1,9 +1,11 @@
 /**
  * 在线番剧（Kazumi 规则采集）全局状态。
  *
- * 数据流（照 Kazumi）：规则 → anime_fetch(列表页) → XPath/JSONPath 出条目
- * → anime_fetch(详情页) → chapterRoads/chapterResult 出线路与剧集
- * → 取流（静态提取快速路径 / 隐藏 webview 兜底）→ 本地媒体代理 → <video>。
+ * 数据流（照 Kazumi 原版复刻）：
+ *   主页（Bangumi 热门番组）→ 点条目 → 详情（Bangumi 简介/评分/放送信息/总话数）
+ *   → 开始观看 → 聚合搜索（并行查全部已启用规则源，按条目名搜）→ 选中一个源
+ *   → 查该源选集（线路 + 剧集）→ 选一集 → 取流 → 本地媒体代理 → <video>。
+ * 规则源不再驱动主页浏览，只作为「播放源」被聚合搜索查询（Kazumi 同款）。
  */
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
@@ -17,24 +19,32 @@ import {
   prepareChapterRequest,
   prepareSearchRequest,
 } from "@/utils/animeRules";
+import {
+  fetchSubjectDetail,
+  fetchTrending,
+  searchSubjects,
+} from "@/utils/bangumiApi";
 import { fetchAnimeHtml } from "@/utils/animeFetcher";
 import { extractStaticStream } from "@/utils/animeStream";
 import type {
-  AnimeDetail,
   AnimeEpisode,
   AnimeFavoriteItem,
   AnimeFetchSpec,
   AnimeHistoryItem,
-  AnimeItem,
+  AnimeRoad,
   AnimeRule,
   AnimeRuleEntry,
+  AnimeSearchItem,
+  AnimeSourceSearchResult,
   AnimeStream,
+  BangumiSubject,
 } from "@shared/types";
 
 export const useAnimeStore = defineStore("anime", () => {
-  // ---- 规则源 ----
+  // ---- 规则源（播放源） ----
   const rules = ref<AnimeRuleEntry[]>([]);
   const rulesLoading = ref(false);
+  /** 当前选中的播放源规则（聚合搜索里点的那个；驱动取流/代理的历史头） */
   const activeRuleName = ref("");
   const activeRule = computed<AnimeRule | null>(() => {
     const entry = rules.value.find((r) => r.name === activeRuleName.value);
@@ -46,16 +56,39 @@ export const useAnimeStore = defineStore("anime", () => {
     }
   });
 
-  // ---- 列表（目录 / 搜索） ----
-  const listItems = ref<AnimeItem[]>([]);
-  const listLoading = ref(false);
-  const listError = ref("");
+  // ---- 主页：Bangumi 热门番组 ----
+  const trending = ref<BangumiSubject[]>([]);
+  const trendingLoading = ref(false);
+  const trendingError = ref("");
 
-  // ---- 详情与选集 ----
-  const detailTitle = ref("");
-  const detail = ref<AnimeDetail | null>(null);
+  // ---- 搜索：Bangumi 番剧搜索（分页） ----
+  const searchItems = ref<BangumiSubject[]>([]);
+  const searchLoading = ref(false);
+  const searchError = ref("");
+  const searchKeyword = ref("");
+  const searchSort = ref<"heat" | "rank" | "score" | "match">("heat");
+  const searchTotal = ref(0);
+  const searchHasMore = ref(false);
+
+  // ---- 详情：Bangumi 条目信息 ----
+  const bangumiDetail = ref<BangumiSubject | null>(null);
+  /** 当前条目的 Bangumi 数字 id（跨详情页/续播保持，历史按它聚合） */
+  const activeBangumiId = ref("");
   const detailLoading = ref(false);
   const detailError = ref("");
+
+  // ---- 聚合搜索（Kazumi SourceSheet：每个源一张卡） ----
+  const sourceSearch = ref<AnimeSourceSearchResult[]>([]);
+  const sourceSearching = ref(false);
+  const sourceSearchKeyword = ref("");
+
+  // ---- 选集：选中源后的线路与剧集 ----
+  const selectedRoads = ref<AnimeRoad[]>([]);
+  /** 该源的番剧详情页 URL（Kazumi lastSrc，写历史、续播重查线路用） */
+  const selectedSrc = ref("");
+  const selectedSourceName = computed(() => activeRuleName.value);
+  const episodesLoading = ref(false);
+  const episodesError = ref("");
 
   // ---- 取流 ----
   const stream = ref<AnimeStream | null>(null);
@@ -68,18 +101,26 @@ export const useAnimeStore = defineStore("anime", () => {
   const history = ref<AnimeHistoryItem[]>([]);
   const favorites = ref<AnimeFavoriteItem[]>([]);
 
+  /** 当前条目展示名（中文名优先，照 Kazumi title 取法） */
+  const displayTitle = computed<string>(() => {
+    const d = bangumiDetail.value;
+    if (d) return d.nameCn || d.name;
+    return activeSourceTitle.value;
+  });
+
+  // 聚合搜索完成命中的条目名（详情未挂载时的标题兜底）
+  const activeSourceTitle = ref("");
+
   async function loadRules(force = false) {
     if (!force && rules.value.length) return;
     rulesLoading.value = true;
     try {
       rules.value = await capabilities.animeRulesList();
-      // 当前数据源被删除/禁用时回退到首个可用规则
       const still = rules.value.some(
         (r) => r.name === activeRuleName.value && r.enabled,
       );
       if (!still) {
-        const first = rules.value.find((r) => r.enabled);
-        activeRuleName.value = first?.name ?? "";
+        activeRuleName.value = "";
       }
     } catch {
       rules.value = [];
@@ -88,71 +129,223 @@ export const useAnimeStore = defineStore("anime", () => {
     }
   }
 
-  /** 切换数据源并清空当前列表 */
+  /** 切换播放源（规则管理里选中高亮用） */
   function pickRule(name: string) {
     activeRuleName.value = name;
-    listItems.value = [];
-    listError.value = "";
-    detail.value = null;
-    stream.value = null;
   }
 
-  /**
-   * 抓取规则搜索页。keyword 为空时请求站点默认列表，作为「正在热播」浏览。
-   */
-  async function fetchList(keyword = "") {
-    const rule = activeRule.value;
-    if (!rule) return;
-    listLoading.value = true;
-    listError.value = "";
+  // ---- 主页 / 搜索 / 详情 ----
+
+  async function fetchTrendingList() {
+    trendingLoading.value = true;
+    trendingError.value = "";
     try {
-      const spec = prepareSearchRequest(rule, keyword);
-      const res = await fetchAnimeHtml(rule.name, spec);
-      const parsed =
-        rule.searchMode === "api"
-          ? parseSearchApi(res.html, rule)
-          : parseSearchXPath(res.html, rule);
-      listItems.value = parsed.items.map((i) => ({
-        src: i.src,
-        title: i.name,
-      }));
-      if (!parsed.items.length && parsed.diagnostics.length) {
-        listError.value = parsed.diagnostics[0];
-      }
+      trending.value = await fetchTrending();
     } catch (e) {
-      listError.value = e instanceof Error ? e.message : String(e);
-      listItems.value = [];
+      trendingError.value = e instanceof Error ? e.message : String(e);
+      trending.value = [];
     } finally {
-      listLoading.value = false;
+      trendingLoading.value = false;
     }
   }
 
-  /** 打开详情：抓详情页 → 解析线路与剧集 */
-  async function loadDetail(src: string, title: string) {
-    const rule = activeRule.value;
-    if (!rule) return;
-    detailTitle.value = title;
+  /** 开始一次 Bangumi 搜索（重置分页） */
+  async function searchBangumi(
+    keyword: string,
+    sort: "heat" | "rank" | "score" | "match" = "heat",
+  ) {
+    searchKeyword.value = keyword;
+    searchSort.value = sort;
+    searchItems.value = [];
+    searchTotal.value = 0;
+    searchHasMore.value = false;
+    searchError.value = "";
+    await loadMoreBangumi();
+  }
+
+  /** 加载下一页搜索（分页追加载） */
+  async function loadMoreBangumi() {
+    const kw = searchKeyword.value.trim();
+    if (!kw || searchLoading.value) return;
+    // 已加载过且没有更多（searchHasMore 已置 false）时不再请求
+    if (searchItems.value.length > 0 && !searchHasMore.value) return;
+    searchLoading.value = true;
+    try {
+      const page = await searchSubjects(
+        kw,
+        searchSort.value,
+        30,
+        searchItems.value.length,
+      );
+      searchItems.value.push(...page.items);
+      searchTotal.value = page.total;
+      searchHasMore.value = searchItems.value.length < page.total;
+    } catch (e) {
+      if (!searchItems.value.length) {
+        searchError.value = e instanceof Error ? e.message : String(e);
+      }
+    } finally {
+      searchLoading.value = false;
+    }
+  }
+
+  /** 打开条目详情：拉 Bangumi 元数据（简介/评分/总话数等） */
+  async function fetchBangumiInfo(subject: BangumiSubject) {
     detailLoading.value = true;
     detailError.value = "";
-    detail.value = null;
-    stream.value = null;
+    bangumiDetail.value = subject;
+    activeBangumiId.value = String(subject.id);
     try {
-      const spec = prepareChapterRequest(rule, src);
-      const res = await fetchAnimeHtml(rule.name, spec);
-      const parsed =
-        rule.chapterMode === "api"
-          ? parseChaptersApi(res.html, rule, src, rule.baseURL)
-          : parseChaptersXPath(res.html, rule, rule.baseURL);
-      detail.value = { title, roads: parsed.roads };
-      if (!parsed.roads.length && parsed.diagnostics.length) {
-        detailError.value = parsed.diagnostics[0];
-      }
+      const full = await fetchSubjectDetail(subject.id);
+      // 详情更完整（简介/总话数/别名），命中则替换
+      bangumiDetail.value = full ?? subject;
     } catch (e) {
       detailError.value = e instanceof Error ? e.message : String(e);
     } finally {
       detailLoading.value = false;
     }
   }
+
+  // ---- 聚合搜索（照 Kazumi PluginSearchService.queryAllSource）----
+
+  function resetSourceSearch() {
+    sourceSearch.value = [];
+    sourceSearching.value = false;
+  }
+
+  async function querySingleSource(
+    pluginName: string,
+    keyword: string,
+    spec: { replace?: boolean } = {},
+  ): Promise<void> {
+    const entry = rules.value.find((r) => r.name === pluginName && r.enabled);
+    if (!entry) return;
+    const done = (patch: Partial<AnimeSourceSearchResult>) => {
+      const idx = sourceSearch.value.findIndex((s) => s.pluginName === pluginName);
+      if (idx < 0) return;
+      const prev = sourceSearch.value[idx];
+      sourceSearch.value[idx] = {
+        ...prev,
+        ...patch,
+        items: spec.replace === false ? prev.items : patch.items ?? prev.items,
+      };
+    };
+    if (spec.replace !== false) done({ status: "pending", message: undefined });
+    try {
+      const rule = normalizeRule(JSON.parse(entry.json));
+      const prepared = prepareSearchRequest(rule, keyword);
+      const res = await fetchAnimeHtml(rule.name, prepared);
+      const parsed =
+        rule.searchMode === "api"
+          ? parseSearchApi(res.html, rule)
+          : parseSearchXPath(res.html, rule);
+      done({
+        status: parsed.items.length ? "success" : "noResult",
+        message: parsed.items.length ? undefined : parsed.diagnostics[0],
+        items: parsed.items,
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      done({ status: "error", message: msg, items: [] });
+    }
+  }
+
+  /** 聚合搜索：并行查全部启用源（Kazumi queryAllSource） */
+  async function searchSources(keyword: string) {
+    const enabled = rules.value.filter((r) => r.enabled);
+    if (!enabled.length) return;
+    sourceSearchKeyword.value = keyword;
+    sourceSearching.value = true;
+    sourceSearch.value = enabled.map((r) => ({
+      pluginName: r.name,
+      pluginVersion: r.version,
+      status: "pending" as const,
+      items: [],
+    }));
+    await Promise.all(
+      enabled.map((r) =>
+        querySingleSource(r.name, keyword, { replace: false }).catch(() => {}),
+      ),
+    );
+    sourceSearching.value = false;
+  }
+
+  /** 换一个关键字再查当前全部源（别名/手动检索后） */
+  async function requeryAllSources(keyword: string) {
+    sourceSearchKeyword.value = keyword;
+    sourceSearching.value = true;
+    await Promise.all(
+      sourceSearch.value.map((s) =>
+        querySingleSource(s.pluginName, keyword).catch(() => {}),
+      ),
+    );
+    sourceSearching.value = false;
+  }
+
+  /** 别名检索：用别名再查指定源（结果追加到该源） */
+  async function requerySingleSource(pluginName: string, keyword: string) {
+    await querySingleSource(pluginName, keyword, { replace: true });
+  }
+
+  // ---- 选集 ----
+
+  /**
+   * 选中聚合搜索里的一个结果：切到该源并查选集（线路 + 剧集）。
+   * 返回是否有有效剧集（false 时调用方应停留在聚合搜索）。
+   */
+  async function pickSource(
+    pluginName: string,
+    item: AnimeSearchItem,
+  ): Promise<boolean> {
+    const entry = rules.value.find((r) => r.name === pluginName && r.enabled);
+    if (!entry) return false;
+    activeSourceTitle.value = item.name;
+    activeRuleName.value = pluginName;
+    episodesLoading.value = true;
+    episodesError.value = "";
+    selectedRoads.value = [];
+    selectedSrc.value = item.src;
+    try {
+      const rule = normalizeRule(JSON.parse(entry.json));
+      const spec = prepareChapterRequest(rule, item.src);
+      const res = await fetchAnimeHtml(rule.name, spec);
+      const parsed =
+        rule.chapterMode === "api"
+          ? parseChaptersApi(res.html, rule, item.src, rule.baseURL)
+          : parseChaptersXPath(res.html, rule, rule.baseURL);
+      if (!parsed.roads.length && parsed.diagnostics.length) {
+        episodesError.value = parsed.diagnostics[0];
+      }
+      selectedRoads.value = parsed.roads;
+      return parsed.roads.length > 0;
+    } catch (e) {
+      episodesError.value = e instanceof Error ? e.message : String(e);
+      return false;
+    } finally {
+      episodesLoading.value = false;
+    }
+  }
+
+  /** 续播：找到源重查线路，回到上次位置 */
+  async function resumeHistory(h: AnimeHistoryItem): Promise<boolean> {
+    activeSourceTitle.value = h.title;
+    activeBangumiId.value = /^\d+$/.test(h.animeId) ? h.animeId : "";
+    if (activeBangumiId.value) {
+      // 数字 id 视为 Bangumi 条目：顺手拉一次详情补封面/标题（失败不阻止续播）
+      void fetchSubjectDetail(Number(activeBangumiId.value))
+        .then((sub) => {
+          if (sub) bangumiDetail.value = sub;
+        })
+        .catch(() => {});
+    } else {
+      bangumiDetail.value = null;
+    }
+    const src = h.detailUrl || h.episodePageUrl || "";
+    if (!src || !h.plugin) return false;
+    return pickSource(h.plugin, { name: h.title, src });
+  }
+
+  // ---- 取流 ----
 
   /** 取流：先静态提取快速路径，未命中走隐藏 webview 兜底 */
   async function resolveStream(episode: AnimeEpisode): Promise<AnimeStream | null> {
@@ -224,6 +417,44 @@ export const useAnimeStore = defineStore("anime", () => {
 
   // ---- 历史 / 追番 ----
 
+  /** 当前 Bangumi 条目的标识（读详情，回退到源命中条目） */
+  function currentBangumiId(): string {
+    if (activeBangumiId.value) return activeBangumiId.value;
+    const d = bangumiDetail.value;
+    if (d) return String(d.id);
+    const t = activeSourceTitle.value;
+    return t ? `s:${t}` : `s:${selectedSrc.value}`;
+  }
+
+  /** 播放中每 5s / 暂停 / 结束时上报进度（Kazumi 按 Bangumi 条目记一条历史） */
+  async function saveHistoryProgress(
+    episode: AnimeEpisode,
+    roadIndex: number,
+    episodeIndex: number,
+    progressMs: number,
+    durationMs: number,
+  ) {
+    const d = bangumiDetail.value;
+    const id = currentBangumiId();
+    const title = displayTitle.value;
+    const item: AnimeHistoryItem = {
+      key: `bangumi:${id}`,
+      plugin: activeRuleName.value,
+      animeId: id,
+      title,
+      cover: d?.images?.large ?? null,
+      lastEpisode: episode.name,
+      episodePageUrl: episode.url,
+      detailUrl: selectedSrc.value,
+      roadIndex,
+      episodeIndex,
+      progressMs,
+      durationMs,
+      updatedAt: Date.now(),
+    };
+    await upsertHistory(item);
+  }
+
   async function loadHistory() {
     try {
       history.value = await capabilities.animeHistoryList();
@@ -260,8 +491,15 @@ export const useAnimeStore = defineStore("anime", () => {
     }
   }
 
-  async function toggleFavorite(plugin: string, animeId: string, title: string, cover?: string | null) {
-    const existing = favorites.value.some((f) => f.plugin === plugin && f.animeId === animeId);
+  async function toggleFavorite(
+    plugin: string,
+    animeId: string,
+    title: string,
+    cover?: string | null,
+  ) {
+    const existing = favorites.value.some(
+      (f) => f.plugin === plugin && f.animeId === animeId,
+    );
     try {
       if (existing) {
         await capabilities.animeFavoriteRemove(plugin, animeId);
@@ -288,13 +526,29 @@ export const useAnimeStore = defineStore("anime", () => {
     rulesLoading,
     activeRuleName,
     activeRule,
-    listItems,
-    listLoading,
-    listError,
-    detailTitle,
-    detail,
+    trending,
+    trendingLoading,
+    trendingError,
+    searchItems,
+    searchLoading,
+    searchError,
+    searchKeyword,
+    searchSort,
+    searchTotal,
+    searchHasMore,
+    bangumiDetail,
+    activeBangumiId,
     detailLoading,
     detailError,
+    displayTitle,
+    sourceSearch,
+    sourceSearching,
+    sourceSearchKeyword,
+    selectedRoads,
+    selectedSrc,
+    selectedSourceName,
+    episodesLoading,
+    episodesError,
     stream,
     resolving,
     streamError,
@@ -302,13 +556,22 @@ export const useAnimeStore = defineStore("anime", () => {
     favorites,
     loadRules,
     pickRule,
-    fetchList,
-    loadDetail,
+    fetchTrendingList,
+    searchBangumi,
+    loadMoreBangumi,
+    fetchBangumiInfo,
+    searchSources,
+    requeryAllSources,
+    requerySingleSource,
+    resetSourceSearch,
+    pickSource,
+    resumeHistory,
     resolveStream,
     clearStream,
     loadHistory,
     loadFavorites,
     upsertHistory,
+    saveHistoryProgress,
     removeHistory,
     toggleFavorite,
   };

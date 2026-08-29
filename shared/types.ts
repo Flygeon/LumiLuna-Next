@@ -742,6 +742,64 @@ export interface AnimeDetail {
   roads: AnimeRoad[];
 }
 
+/** Bangumi 封面图组（api.bgm.tv 与 next.bgm.tv 字段都归一到这里） */
+export interface BangumiImageSet {
+  large?: string;
+  common?: string;
+  medium?: string;
+  small?: string;
+  grid?: string;
+}
+
+/**
+ * Bangumi.tv 条目（Kazumi BangumiItem 的简化落地）。
+ * 归一化自两种响应：api.bgm.tv v0（snake_case：name_cn / meta_tags / rating.score）
+ * 与 next.bgm.tv p1（camelCase：nameCN / metaTags / rating.score）。字段均可在 TS 侧
+ * 归一化为下方可选形式，Rust 不下发 Bangumi 结构。
+ */
+export interface BangumiSubject {
+  id: number;
+  /** 原语名（日文等，next.bgm.tv 的 name；api.bgm.tv 的 name） */
+  name: string;
+  /** 中文名（name_cn / nameCN，可能为空） */
+  nameCn?: string;
+  /** 简介 */
+  summary?: string;
+  /** 放送日期 YYYY-MM-DD */
+  airDate?: string;
+  /** 放送星期（1-7） */
+  airWeekday?: number;
+  /** 排名（0 表示未上榜） */
+  rank?: number;
+  /** 评分（0-10） */
+  rating?: number;
+  /** 评分人数 */
+  votes?: number;
+  /** 总集数 */
+  eps?: number;
+  /** 放送平台：TV / 剧场版 / OVA 等 */
+  platform?: string;
+  images?: BangumiImageSet;
+  /** 标签（metaTags） */
+  tags?: string[];
+  /** 别名（从 infobox 提取） */
+  alias?: string[];
+}
+
+/**
+ * 聚合搜索的单源结果（照 Kazumi SourceSheet：每个插件一张卡片，
+ * 显示状态 + 命中条目）。）
+ */
+export interface AnimeSourceSearchResult {
+  pluginName: string;
+  pluginVersion?: string;
+  status: "pending" | "success" | "noResult" | "error";
+  /** 错误 / 无结果时的可读说明 */
+  message?: string;
+  /** 该源搜到的条目（Kazumi SearchItem：name + src） */
+  items: AnimeSearchItem[];
+}
+
 /** 取流结果 */
 export interface AnimeStream {
   /** 可直接给 <video> 用的 URL（防盗链时是本地代理 URL） */
@@ -763,6 +821,8 @@ export interface AnimeHistoryItem {
   cover?: string | null;
   lastEpisode?: string | null;
   episodePageUrl?: string | null;
+  /** 该源的番剧详情页 URL（Kazumi lastSrc 同款，续播时重查线路用） */
+  detailUrl?: string | null;
   roadIndex: number;
   episodeIndex: number;
   progressMs: number;

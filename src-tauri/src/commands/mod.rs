@@ -62,7 +62,7 @@ impl ScanJobInfo {
 }
 
 /// 当前 schema 版本。递增后在 `migrate` 中追加对应分支。
-const SCHEMA_VERSION: i64 = 4;
+const SCHEMA_VERSION: i64 = 5;
 
 /// 建表 + 版本化迁移。对已存在的库是幂等的。
 pub fn init_db(conn: &rusqlite::Connection) -> rusqlite::Result<()> {
@@ -288,6 +288,29 @@ fn migrate(conn: &rusqlite::Connection) -> rusqlite::Result<()> {
             "#,
         )?;
         conn.pragma_update(None, "user_version", 4)?;
+    }
+    // v4 -> v5：动漫历史补「源详情页 URL」（Kazumi lastSrc，续播重查线路用）
+    if current < 5 {
+        // 老库加列；全新库的 v4 建表不含该列。prepare 不会因缺列报错
+        // （SQLite 在 execute 时才校验），因此用 table_info 探列名。
+        let has_detail_url = conn
+            .prepare("PRAGMA table_info(anime_history)")
+            .and_then(|mut stmt| {
+                let mut rows = stmt.query([])?;
+                let mut found = false;
+                while let Some(row) = rows.next()? {
+                    if row.get::<_, String>(1)? == "detail_url" {
+                        found = true;
+                        break;
+                    }
+                }
+                Ok(found)
+            })
+            .unwrap_or(false);
+        if !has_detail_url {
+            conn.execute("ALTER TABLE anime_history ADD COLUMN detail_url TEXT", [])?;
+        }
+        conn.pragma_update(None, "user_version", 5)?;
     }
     Ok(())
 }

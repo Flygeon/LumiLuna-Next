@@ -68,6 +68,7 @@ pub struct AnimeHistoryItem {
     pub cover: Option<String>,
     pub last_episode: Option<String>,
     pub episode_page_url: Option<String>,
+    pub detail_url: Option<String>,
     pub road_index: i64,
     pub episode_index: i64,
     pub progress_ms: i64,
@@ -540,11 +541,12 @@ fn map_history_row(r: &rusqlite::Row) -> rusqlite::Result<AnimeHistoryItem> {
         cover: r.get(4)?,
         last_episode: r.get(5)?,
         episode_page_url: r.get(6)?,
-        road_index: r.get(7)?,
-        episode_index: r.get(8)?,
-        progress_ms: r.get(9)?,
-        duration_ms: r.get(10)?,
-        updated_at: r.get(11)?,
+        detail_url: r.get(7)?,
+        road_index: r.get(8)?,
+        episode_index: r.get(9)?,
+        progress_ms: r.get(10)?,
+        duration_ms: r.get(11)?,
+        updated_at: r.get(12)?,
     })
 }
 
@@ -556,7 +558,7 @@ pub fn anime_history_list(
     let mut stmt = conn
         .prepare(
             "SELECT key, plugin, anime_id, title, cover, last_episode, episode_page_url, \
-             road_index, episode_index, progress_ms, duration_ms, updated_at \
+             detail_url, road_index, episode_index, progress_ms, duration_ms, updated_at \
              FROM anime_history ORDER BY updated_at DESC",
         )
         .map_err(|e| e.to_string())?;
@@ -576,15 +578,16 @@ pub fn anime_history_upsert(
     let conn = state.0.lock().map_err(|e| e.to_string())?;
     conn.execute(
         "INSERT INTO anime_history \
-         (key, plugin, anime_id, title, cover, last_episode, episode_page_url, \
+         (key, plugin, anime_id, title, cover, last_episode, episode_page_url, detail_url, \
           road_index, episode_index, progress_ms, duration_ms, updated_at) \
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13) \
          ON CONFLICT(key) DO UPDATE SET \
          plugin=excluded.plugin, anime_id=excluded.anime_id, title=excluded.title, \
          cover=excluded.cover, last_episode=excluded.last_episode, \
-         episode_page_url=excluded.episode_page_url, road_index=excluded.road_index, \
-         episode_index=excluded.episode_index, progress_ms=excluded.progress_ms, \
-         duration_ms=excluded.duration_ms, updated_at=excluded.updated_at",
+         episode_page_url=excluded.episode_page_url, detail_url=excluded.detail_url, \
+         road_index=excluded.road_index, episode_index=excluded.episode_index, \
+         progress_ms=excluded.progress_ms, duration_ms=excluded.duration_ms, \
+         updated_at=excluded.updated_at",
         rusqlite::params![
             item.key,
             item.plugin,
@@ -593,6 +596,7 @@ pub fn anime_history_upsert(
             item.cover,
             item.last_episode,
             item.episode_page_url,
+            item.detail_url,
             item.road_index,
             item.episode_index,
             item.progress_ms,

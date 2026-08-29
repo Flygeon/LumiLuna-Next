@@ -13,6 +13,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: "close"): void;
   (e: "switch", roadIndex: number, episodeIndex: number): void;
+  (e: "chooseSource"): void;
 }>();
 
 const settings = useSettingsStore();
@@ -27,12 +28,12 @@ let reportTimer: number | undefined;
 const SPEEDS = [0.75, 1, 1.25, 1.5, 2];
 
 const episode = computed(() => {
-  const road = anime.detail?.roads[props.roadIndex];
+  const road = anime.selectedRoads[props.roadIndex];
   return road?.episodes[props.episodeIndex];
 });
 const isFirst = computed(() => props.roadIndex === 0 && props.episodeIndex === 0);
 const isLast = computed(() => {
-  const roads = anime.detail?.roads ?? [];
+  const roads = anime.selectedRoads;
   return (
     props.roadIndex >= roads.length - 1 &&
     props.episodeIndex >= (roads[roads.length - 1]?.episodes.length ?? 0) - 1
@@ -42,22 +43,13 @@ const isLast = computed(() => {
 function reportHistory() {
   const v = video.value;
   if (!v || !episode.value) return;
-  const rule = anime.activeRule;
-  const animeId = anime.detailTitle || episode.value.url;
-  void anime.upsertHistory({
-    key: `${rule?.name ?? ""}:${animeId}`,
-    plugin: rule?.name ?? "",
-    animeId,
-    title: anime.detailTitle,
-    cover: anime.detail?.cover ?? null,
-    lastEpisode: episode.value.name,
-    episodePageUrl: episode.value.url,
-    roadIndex: props.roadIndex,
-    episodeIndex: props.episodeIndex,
-    progressMs: Math.floor(v.currentTime * 1000),
-    durationMs: Math.floor((v.duration || 0) * 1000),
-    updatedAt: Date.now(),
-  });
+  void anime.saveHistoryProgress(
+    episode.value,
+    props.roadIndex,
+    props.episodeIndex,
+    Math.floor(v.currentTime * 1000),
+    Math.floor((v.duration || 0) * 1000),
+  );
 }
 
 function scheduleReport() {
@@ -101,7 +93,7 @@ function cycleSpeed() {
 
 /** 上一集 / 下一集（同线路内切换，越界则进出相邻线路） */
 function playNext(delta: number) {
-  const roads = anime.detail?.roads ?? [];
+  const roads = anime.selectedRoads;
   let ri = props.roadIndex;
   let ei = props.episodeIndex + delta;
   if (ei < 0) {
@@ -155,9 +147,16 @@ onBeforeUnmount(() => {
         <button class="bar-btn" :title="t('anime.exit')" @click="emit('close')">
           <span class="material-symbols-outlined">close</span>
         </button>
-        <div class="title" :title="anime.detailTitle">
-          {{ anime.detailTitle }}<span v-if="episode" class="ep"> · {{ episode.name }}</span>
+        <div class="title" :title="anime.displayTitle">
+          {{ anime.displayTitle }}<span v-if="episode" class="ep"> · {{ episode.name }}</span>
         </div>
+        <button
+          class="bar-btn"
+          :title="t('anime.changeSource')"
+          @click="emit('chooseSource')"
+        >
+          <span class="material-symbols-outlined">swap_horiz</span>
+        </button>
         <button
           class="bar-btn"
           :class="{ active: drawerOpen }"
@@ -170,7 +169,7 @@ onBeforeUnmount(() => {
 
       <!-- 选集抽屉 -->
       <div v-if="drawerOpen" class="drawer">
-        <template v-for="(road, ri) in anime.detail?.roads ?? []" :key="ri">
+        <template v-for="(road, ri) in anime.selectedRoads" :key="ri">
           <div class="road-name">{{ road.name }}</div>
           <div class="ep-grid">
             <button
