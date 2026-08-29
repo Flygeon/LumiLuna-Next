@@ -1078,30 +1078,33 @@ const INIT_SCRIPT: &str = r#"(function () {
 })();"#;
 
 /// 内置规则（移植 Kazumi assets/plugins；首次启动规则库为空时写入）
-const BUILTIN_RULES: &[(&str, &str)] = &[
-    (
-        "7sefun",
-        r#"{
+const BUILTIN_RULES: &[(&str, &str)] = &[(
+    "7sefun",
+    r#"{
   "api": "4",
   "type": "anime",
   "name": "7sefun",
-  "version": "1.3",
+  "version": "2.0",
   "muliSources": true,
   "useWebview": true,
   "useNativePlayer": true,
   "userAgent": "",
   "baseURL": "https://www.7sefun.top/",
+  "referer": "https://www.7sefun.top/",
   "searchURL": "https://www.7sefun.top/vodsearch/-------------.html?wd=@keyword",
-  "searchList": "//div[2]/div[2]/div[2]/div[2]/div",
-  "searchName": "//div[2]/text()",
-  "searchResult": "//a",
-  "chapterRoads": "//div[2]/div[2]/div[2]/div/div[2]/div[1]//div",
+  "searchList": "//div[@class~='video']",
+  "searchName": "//div[@class='video-by']",
+  "searchResult": "//a[@class='video-wrapper']",
+  "chapterRoads": "//div[@class~='vod-play-list-container']",
   "chapterResult": "//a"
 }"#,
-    ),
-    (
-        "DM84",
-        r#"{
+)];
+
+/// 曾经随版本内置、现已下线的规则（站点关停/长期失修）。setup 时若磁盘上残留
+/// 与旧内置内容完全一致的副本则清理，避免向用户展示一张注定失败的卡片。
+const STALE_BUILTIN_RULES: &[(&str, &str)] = &[(
+    "DM84",
+    r#"{
   "api": "5",
   "type": "anime",
   "name": "DM84",
@@ -1119,22 +1122,33 @@ const BUILTIN_RULES: &[(&str, &str)] = &[
   "chapterRoads": "//div/div[4]/div/ul",
   "chapterResult": "//li/a"
 }"#,
-    ),
-];
+)];
 
 /// 在 setup 阶段预创建隐藏 webview（桌面端 webview 创建需主线程，懒建在部分平台会失败）
 pub fn setup(app: &tauri::AppHandle) {
-    // 首次启动（规则库为空）写入内置规则
+    // 内置规则同步：缺失时写入；站点结构变化致内置版本前进时，用新内置覆盖旧副本
+    // （老用户首次启动即拿到修复后的规则）。仅当磁盘副本与旧内置内容完全一致时
+    // 才清理已下线规则，绝不误删用户自行导入的同名规则。
     if let Ok(dir) = rules_dir(app) {
-        if std::fs::read_dir(&dir)
-            .map(|mut it| it.next().is_none())
-            .unwrap_or(true)
-        {
-            if std::fs::create_dir_all(&dir).is_ok() {
-                for (name, json) in BUILTIN_RULES {
-                    let path = dir.join(format!("{}.json", sanitize_rule_name(name)));
-                    if !path.exists() {
-                        let _ = std::fs::write(&path, json.as_bytes());
+        if std::fs::create_dir_all(&dir).is_ok() {
+            for (name, json) in BUILTIN_RULES {
+                let path = dir.join(format!("{}.json", sanitize_rule_name(name)));
+                let should_write = match std::fs::read_to_string(&path) {
+                    Ok(existing) => {
+                        // 内容不同（版本前进或结构修复）→ 覆盖
+                        existing.trim() != json.trim()
+                    }
+                    Err(_) => true,
+                };
+                if should_write {
+                    let _ = std::fs::write(&path, json.as_bytes());
+                }
+            }
+            for (name, stale_json) in STALE_BUILTIN_RULES {
+                let path = dir.join(format!("{}.json", sanitize_rule_name(name)));
+                if let Ok(existing) = std::fs::read_to_string(&path) {
+                    if existing.trim() == stale_json.trim() {
+                        let _ = std::fs::remove_file(&path);
                     }
                 }
             }
