@@ -332,10 +332,9 @@ export function prepareSearchRequest(
     const spec = buildApiRequest(rule.searchApiConfig?.request, { keyword }, rule.baseURL ?? "");
     return { ...spec, ...transport, includeCookies: true };
   }
-  const raw = (rule.searchURL ?? "").replace(
-    "@keyword",
-    encodeURIComponent(keyword),
-  );
+  // 用 split/join 全量替换（String.replace 只替换首个；部分站点搜索 URL 里
+  // @keyword 会出现多次，漏替换会直接把规则原样发到站点 → 检索 0 条）
+  const raw = (rule.searchURL ?? "").split("@keyword").join(encodeURIComponent(keyword));
   const url = resolveRuleUrl(rule.baseURL ?? "", raw, "搜索");
   if (rule.usePost) {
     const uri = splitQuery(url);

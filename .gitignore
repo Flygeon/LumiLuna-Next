@@ -21,6 +21,17 @@ Thumbs.db
 
 # reference clone (not part of this project)
 小说阅读器参考/
+在线播放参考/
+播放器参考/
+播放器参考项目/
+歌词获取项目参考/
+小说项目参考/
+
+# local agent workspace memory
+.workbuddy/
+
+# one-off scripts (already executed)
+fix-nav2.cjs
 
 # ci artifacts
 

@@ -143,6 +143,7 @@ const aliasList = computed(() => props.subject?.alias?.slice(0, 12) ?? []);
               <span
                 class="src-status"
                 :class="{ error: statusInfo(result).error }"
+                :title="statusInfo(result).text"
               >{{ statusInfo(result).text }}</span>
               <span
                 v-if="result.status === 'pending'"

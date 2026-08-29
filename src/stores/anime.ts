@@ -40,6 +40,22 @@ import type {
   BangumiSubject,
 } from "@shared/types";
 
+/**
+ * 在线番剧链路诊断日志（前缀 [anime-online]，落 %TEMP%/lumiluna_login_debug.log）。
+ * 规则源 = 外部数据 + 外部站点，失败原因（站点改版 / 被墙 / 反爬 / XPath 失配）
+ * 从 UI 看不出来，必须落文件；日志写失败绝不阻塞检索主流程。
+ */
+function animeLog(msg: string): void {
+  try {
+    const p = capabilities.appLog(`[anime-online] ${msg}`);
+    if (p && typeof (p as Promise<void>).catch === "function") {
+      void (p as Promise<void>).catch(() => {});
+    }
+  } catch {
+    /* 忽略 */
+  }
+}
+
 export const useAnimeStore = defineStore("anime", () => {
   // ---- 规则源（播放源） ----
   const rules = ref<AnimeRuleEntry[]>([]);
@@ -122,7 +138,23 @@ export const useAnimeStore = defineStore("anime", () => {
       if (!still) {
         activeRuleName.value = "";
       }
-    } catch {
+      // 规则是否可用（能否被 normalizeRule 接受）直接影响后面能不能检索出结果，
+      // 这里把每条规则的名字/模式/搜索关键字段落盘，便于定位「整库都 0 条」。
+      void animeLog(
+        `规则库加载 ${rules.value.length} 条：` +
+          (rules.value
+            .map((r) => {
+              try {
+                const rule = normalizeRule(JSON.parse(r.json));
+                return `${rule.name}[${rule.searchMode}/${rule.chapterMode}]`;
+              } catch (e) {
+                return `${r.name}[JSON 解析失败: ${(e as Error).message}]`;
+              }
+            })
+            .join(", ") || "无"),
+      );
+    } catch (e) {
+      void animeLog(`规则库加载失败: ${(e as Error).message}`);
       rules.value = [];
     } finally {
       rulesLoading.value = false;
@@ -220,25 +252,42 @@ export const useAnimeStore = defineStore("anime", () => {
   ): Promise<void> {
     const entry = rules.value.find((r) => r.name === pluginName && r.enabled);
     if (!entry) return;
+    // 注意：replace 只控制「请求前是否把卡片重置为 pending」，不参与结果回写。
+    // 结果 items 必须始终以 patch.items 为准（此前写成
+    // `spec.replace === false ? prev.items : ...`，导致 searchSources 走
+    // replace:false 分支时把刚解析出来的 items 整个丢掉，UI 永远 0 条）。
     const done = (patch: Partial<AnimeSourceSearchResult>) => {
       const idx = sourceSearch.value.findIndex((s) => s.pluginName === pluginName);
-      if (idx < 0) return;
+      if (idx < 0) {
+        void animeLog(
+          `[${pluginName}] done() 找不到对应卡片（idx<0），patch=${JSON.stringify(patch).slice(0, 200)}`,
+        );
+        return;
+      }
       const prev = sourceSearch.value[idx];
       sourceSearch.value[idx] = {
         ...prev,
         ...patch,
-        items: spec.replace === false ? prev.items : patch.items ?? prev.items,
+        items: patch.items ?? prev.items,
       };
     };
     if (spec.replace !== false) done({ status: "pending", message: undefined });
     try {
       const rule = normalizeRule(JSON.parse(entry.json));
       const prepared = prepareSearchRequest(rule, keyword);
+      void animeLog(
+        `[${pluginName}] 检索开始 kw="${keyword}" mode=${rule.searchMode} url=${prepared.url}`,
+      );
       const res = await fetchAnimeHtml(rule.name, prepared);
       const parsed =
         rule.searchMode === "api"
           ? parseSearchApi(res.html, rule)
           : parseSearchXPath(res.html, rule);
+      void animeLog(
+        `[${pluginName}] 检索完成 html=${res.html.length}B items=${parsed.items.length}` +
+          ` diag=${parsed.diagnostics.slice(0, 3).join(" | ") || "无"}` +
+          ` first=${parsed.items[0] ? `${parsed.items[0].name} -> ${parsed.items[0].src}` : "无"}`,
+      );
       done({
         status: parsed.items.length ? "success" : "noResult",
         message: parsed.items.length ? undefined : parsed.diagnostics[0],
@@ -246,6 +295,7 @@ export const useAnimeStore = defineStore("anime", () => {
       });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
+      void animeLog(`[${pluginName}] 检索失败: ${msg}`);
       done({ status: "error", message: msg, items: [] });
     }
   }
@@ -253,6 +303,10 @@ export const useAnimeStore = defineStore("anime", () => {
   /** 聚合搜索：并行查全部启用源（Kazumi queryAllSource） */
   async function searchSources(keyword: string) {
     const enabled = rules.value.filter((r) => r.enabled);
+    void animeLog(
+      `聚合搜索开始 kw="${keyword}" 启用源=${enabled.length}` +
+        `（${enabled.map((r) => r.name).join(", ") || "无"}）`,
+    );
     if (!enabled.length) return;
     sourceSearchKeyword.value = keyword;
     sourceSearching.value = true;
@@ -268,6 +322,12 @@ export const useAnimeStore = defineStore("anime", () => {
       ),
     );
     sourceSearching.value = false;
+    void animeLog(
+      `聚合搜索结束 kw="${keyword}" 结果=` +
+        sourceSearch.value
+          .map((s) => `${s.pluginName}:${s.status}(${s.items.length})`)
+          .join(", "),
+    );
   }
 
   /** 换一个关键字再查当前全部源（别名/手动检索后） */
@@ -308,18 +368,28 @@ export const useAnimeStore = defineStore("anime", () => {
     try {
       const rule = normalizeRule(JSON.parse(entry.json));
       const spec = prepareChapterRequest(rule, item.src);
+      void animeLog(
+        `[${pluginName}] 选集请求 mode=${rule.chapterMode} url=${spec.url}`,
+      );
       const res = await fetchAnimeHtml(rule.name, spec);
       const parsed =
         rule.chapterMode === "api"
           ? parseChaptersApi(res.html, rule, item.src, rule.baseURL)
           : parseChaptersXPath(res.html, rule, rule.baseURL);
+      void animeLog(
+        `[${pluginName}] 选集解析 html=${res.html.length}B roads=${parsed.roads.length}` +
+          ` 剧集数=${parsed.roads.map((r) => r.episodes.length).join("/") || "无"}` +
+          ` diag=${parsed.diagnostics.slice(0, 3).join(" | ") || "无"}`,
+      );
       if (!parsed.roads.length && parsed.diagnostics.length) {
         episodesError.value = parsed.diagnostics[0];
       }
       selectedRoads.value = parsed.roads;
       return parsed.roads.length > 0;
     } catch (e) {
-      episodesError.value = e instanceof Error ? e.message : String(e);
+      const msg = e instanceof Error ? e.message : String(e);
+      void animeLog(`[${pluginName}] 选集失败: ${msg}`);
+      episodesError.value = msg;
       return false;
     } finally {
       episodesLoading.value = false;
