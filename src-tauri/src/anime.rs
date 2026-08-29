@@ -140,8 +140,9 @@ fn http_client() -> &'static reqwest::blocking::Client {
     static CLIENT: OnceLock<reqwest::blocking::Client> = OnceLock::new();
     CLIENT.get_or_init(|| {
         reqwest::blocking::Client::builder()
-            // 忽略环境变量代理：与 webdav/novel 一致，避免代理未运行时隧道失败
-            .no_proxy()
+            // 不复用 webdav/novel 的 .no_proxy()：reqwest 0.12 默认 auto_sys_proxy
+            // 会读 HTTPS_PROXY/HTTP_PROXY/ALL_PROXY 环境变量 + Windows 系统代理，
+            // 在 GFW 环境下直连 raw.githubusercontent.com 会失败（拉不到规则）。
             .build()
             .expect("anime http client")
     })
@@ -517,7 +518,11 @@ pub fn anime_rules_index() -> Result<String, String> {
         .get(RULES_INDEX_URL)
         .timeout(Duration::from_secs(15))
         .send()
-        .map_err(|e| format!("拉取规则仓库失败：{e}"))?;
+        .map_err(|e| {
+            format!(
+                "拉取规则仓库失败：{e}\n（raw.githubusercontent.com 部分地区被墙，请确认系统/环境代理可用）"
+            )
+        })?;
     if !resp.status().is_success() {
         return Err(format!("规则仓库返回 HTTP {}", resp.status().as_u16()));
     }
