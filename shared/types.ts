@@ -854,6 +854,11 @@ export interface AnimeFetchSpec {
   referer?: string;
   /** 自定义 User-Agent（Rust 侧默认内置 UA） */
   userAgent?: string;
+  /**
+   * 单次请求超时（毫秒）。聚合搜索会同时查几十个源，卡死的站点必须快速失败，
+   * 否则整轮检索被拖到分钟级。不传用 Rust 侧默认（15s）。
+   */
+  timeoutMs?: number;
 }
 
 /** anime_fetch 返回：HTML 原文 + 重定向后最终 URL */

@@ -24,7 +24,8 @@ import {
   fetchTrending,
   searchSubjects,
 } from "@/utils/bangumiApi";
-import { fetchAnimeHtml } from "@/utils/animeFetcher";
+import { animeFetchCacheStats, fetchAnimeHtml } from "@/utils/animeFetcher";
+import { animeLog } from "@/utils/animeLog";
 import { extractStaticStream } from "@/utils/animeStream";
 import type {
   AnimeEpisode,
@@ -41,20 +42,13 @@ import type {
 } from "@shared/types";
 
 /**
- * 在线番剧链路诊断日志（前缀 [anime-online]，落 %TEMP%/lumiluna_login_debug.log）。
- * 规则源 = 外部数据 + 外部站点，失败原因（站点改版 / 被墙 / 反爬 / XPath 失配）
- * 从 UI 看不出来，必须落文件；日志写失败绝不阻塞检索主流程。
+ * 各类请求的超时（毫秒）。
+ * 聚合搜索同时查几十个源，单个死站拖满 15s 会把整轮检索推到分钟级；
+ * 搜索给 10s，详情/播放页给 15s（页面更大，且一次只有一个请求）。
  */
-function animeLog(msg: string): void {
-  try {
-    const p = capabilities.appLog(`[anime-online] ${msg}`);
-    if (p && typeof (p as Promise<void>).catch === "function") {
-      void (p as Promise<void>).catch(() => {});
-    }
-  } catch {
-    /* 忽略 */
-  }
-}
+const SEARCH_TIMEOUT_MS = 10_000;
+const DETAIL_TIMEOUT_MS = 15_000;
+const PLAY_PAGE_TIMEOUT_MS = 15_000;
 
 export const useAnimeStore = defineStore("anime", () => {
   // ---- 规则源（播放源） ----
@@ -278,11 +272,18 @@ export const useAnimeStore = defineStore("anime", () => {
       void animeLog(
         `[${pluginName}] 检索开始 kw="${keyword}" mode=${rule.searchMode} url=${prepared.url}`,
       );
-      const res = await fetchAnimeHtml(rule.name, prepared);
+      const started = Date.now();
+      const res = await fetchAnimeHtml(rule.name, prepared, {
+        timeoutMs: SEARCH_TIMEOUT_MS,
+      });
       const parsed =
         rule.searchMode === "api"
           ? parseSearchApi(res.html, rule)
           : parseSearchXPath(res.html, rule);
+      void animeLog(
+        `[${pluginName}] 检索耗时 ${Date.now() - started}ms（缓存/并发: ` +
+          `${JSON.stringify(animeFetchCacheStats())}）`,
+      );
       void animeLog(
         `[${pluginName}] 检索完成 html=${res.html.length}B items=${parsed.items.length}` +
           ` diag=${parsed.diagnostics.slice(0, 3).join(" | ") || "无"}` +
@@ -371,7 +372,9 @@ export const useAnimeStore = defineStore("anime", () => {
       void animeLog(
         `[${pluginName}] 选集请求 mode=${rule.chapterMode} url=${spec.url}`,
       );
-      const res = await fetchAnimeHtml(rule.name, spec);
+      const res = await fetchAnimeHtml(rule.name, spec, {
+        timeoutMs: DETAIL_TIMEOUT_MS,
+      });
       const parsed =
         rule.chapterMode === "api"
           ? parseChaptersApi(res.html, rule, item.src, rule.baseURL)
@@ -436,11 +439,19 @@ export const useAnimeStore = defineStore("anime", () => {
       };
       let staticHit: string | null = null;
       try {
-        const res = await fetchAnimeHtml(rule.name, spec);
+        const res = await fetchAnimeHtml(rule.name, spec, {
+          timeoutMs: PLAY_PAGE_TIMEOUT_MS,
+        });
         const hit = extractStaticStream(res.html, rule, rule.baseURL);
         if (hit) staticHit = hit.url;
-      } catch {
-        /* 播放页抓取失败则直接进 webview 兜底 */
+        void animeLog(
+          `[${rule.name}] 播放页静态取流 ${hit ? `命中(${hit.method})` : "未命中"}` +
+            ` html=${res.html.length}B`,
+        );
+      } catch (e) {
+        void animeLog(
+          `[${rule.name}] 播放页抓取失败，转 webview 兜底: ${(e as Error).message}`,
+        );
       }
       if (token !== resolveToken) return null;
 
@@ -454,6 +465,7 @@ export const useAnimeStore = defineStore("anime", () => {
           method: "static",
         };
       } else {
+        const started = Date.now();
         const webview = await capabilities.animeWebviewResolve(
           rule.name,
           episode.url,
@@ -461,9 +473,17 @@ export const useAnimeStore = defineStore("anime", () => {
         );
         if (token !== resolveToken) return null;
         if (!webview) {
+          void animeLog(
+            `[${rule.name}] webview 取流未拿到地址（耗时 ${Date.now() - started}ms）` +
+              ` page=${episode.url}`,
+          );
           streamError.value = "取流失败，请重试或更换线路";
           return null;
         }
+        void animeLog(
+          `[${rule.name}] webview 取流成功（耗时 ${Date.now() - started}ms）` +
+            ` remote=${webview.remoteUrl}`,
+        );
         stream.value = webview;
       }
       return stream.value;

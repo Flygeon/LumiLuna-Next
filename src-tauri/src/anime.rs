@@ -107,7 +107,16 @@ pub struct AnimeFetchSpec {
     pub referer: Option<String>,
     #[serde(default)]
     pub user_agent: Option<String>,
+    /// 单次请求超时（毫秒）；不传用 DEFAULT_FETCH_TIMEOUT_MS。
+    /// 聚合搜索同时查几十个源，卡死的站点必须快速失败，否则整轮被拖到分钟级。
+    #[serde(default)]
+    pub timeout_ms: Option<u64>,
 }
+
+/// 默认抓取超时（原硬编码 30s，死站会把整轮聚合搜索拖到分钟级）
+const DEFAULT_FETCH_TIMEOUT_MS: u64 = 15_000;
+/// 建连超时：DNS 不通/被墙的站点应几秒内判死，不必耗满整体超时
+const CONNECT_TIMEOUT: Duration = Duration::from_secs(8);
 
 // ---- 运行时状态 ----
 
@@ -144,6 +153,9 @@ fn http_client() -> &'static reqwest::blocking::Client {
             // 不复用 webdav/novel 的 .no_proxy()：reqwest 0.12 默认 auto_sys_proxy
             // 会读 HTTPS_PROXY/HTTP_PROXY/ALL_PROXY 环境变量 + Windows 系统代理，
             // 在 GFW 环境下直连 raw.githubusercontent.com 会失败（拉不到规则）。
+            .connect_timeout(CONNECT_TIMEOUT)
+            // 连接复用：同一站点（搜索页 → 详情页 → 播放页）省掉重复的 TLS 握手
+            .pool_max_idle_per_host(8)
             .build()
             .expect("anime http client")
     })
@@ -285,9 +297,27 @@ fn decode_bytes(bytes: &[u8], declared: &str) -> String {
     t.into_owned()
 }
 
-/// 通用抓取：合并 UA/Referer/自定义头/Cookie，解码 HTML，吸收 Set-Cookie
+/// 通用抓取命令。
+///
+/// **必须 async + spawn_blocking**：Tauri v2 的同步 `#[tauri::command]` 跑在主线程，
+/// 而 `reqwest::blocking` 会把整条线程占满到响应结束。聚合搜索同时打几十个源时，
+/// 所有请求在主线程上串行排队，界面整段卡死（表现为「检索特别慢 / 经常无响应」）。
+/// 挪到 tokio 阻塞线程池后请求真正并发，主线程立刻回到事件循环。
 #[tauri::command]
-pub fn anime_fetch(rule_name: String, spec: AnimeFetchSpec) -> Result<AnimeFetchResult, String> {
+pub async fn anime_fetch(
+    rule_name: String,
+    spec: AnimeFetchSpec,
+) -> Result<AnimeFetchResult, String> {
+    tokio::task::spawn_blocking(move || anime_fetch_blocking(rule_name, spec))
+        .await
+        .map_err(|e| format!("抓取任务异常退出：{e}"))?
+}
+
+/// 真正干活的阻塞抓取（只应在 spawn_blocking 里调用）
+fn anime_fetch_blocking(
+    rule_name: String,
+    spec: AnimeFetchSpec,
+) -> Result<AnimeFetchResult, String> {
     let client = http_client();
     let mut url = spec.url.clone();
     if !spec.query.is_empty() {
@@ -352,7 +382,12 @@ pub fn anime_fetch(rule_name: String, spec: AnimeFetchSpec) -> Result<AnimeFetch
         }
     }
 
-    let resp = req.timeout(Duration::from_secs(30)).send().map_err(|e| {
+    let timeout = Duration::from_millis(
+        spec.timeout_ms
+            .unwrap_or(DEFAULT_FETCH_TIMEOUT_MS)
+            .clamp(1_000, 60_000),
+    );
+    let resp = req.timeout(timeout).send().map_err(|e| {
         // 把 reqwest 的笼统错误分类成可读中文（builder/连接/超时……）
         let kind = if e.is_timeout() {
             "超时"
@@ -513,21 +548,26 @@ pub fn anime_rules_delete(app: tauri::AppHandle, name: String) -> Result<(), Str
 }
 
 /// 拉取 KazumiRules 社区仓库 index（Phase 1 仅展示，不自动安装）
+/// 同 anime_fetch：阻塞 I/O 走 spawn_blocking，避免同步命令冻结主线程。
 #[tauri::command]
-pub fn anime_rules_index() -> Result<String, String> {
-    let resp = http_client()
-        .get(RULES_INDEX_URL)
-        .timeout(Duration::from_secs(15))
-        .send()
-        .map_err(|e| {
-            format!(
-                "拉取规则仓库失败：{e}\n（raw.githubusercontent.com 部分地区被墙，请确认系统/环境代理可用）"
-            )
-        })?;
-    if !resp.status().is_success() {
-        return Err(format!("规则仓库返回 HTTP {}", resp.status().as_u16()));
-    }
-    resp.text().map_err(|e| format!("读取规则仓库失败：{e}"))
+pub async fn anime_rules_index() -> Result<String, String> {
+    tokio::task::spawn_blocking(|| {
+        let resp = http_client()
+            .get(RULES_INDEX_URL)
+            .timeout(Duration::from_secs(15))
+            .send()
+            .map_err(|e| {
+                format!(
+                    "拉取规则仓库失败：{e}\n（raw.githubusercontent.com 部分地区被墙，请确认系统/环境代理可用）"
+                )
+            })?;
+        if !resp.status().is_success() {
+            return Err(format!("规则仓库返回 HTTP {}", resp.status().as_u16()));
+        }
+        resp.text().map_err(|e| format!("读取规则仓库失败：{e}"))
+    })
+    .await
+    .map_err(|e| format!("规则仓库任务异常退出：{e}"))?
 }
 
 // ---- 历史 / 追番（SQLite v4）----
@@ -1061,12 +1101,42 @@ const INIT_SCRIPT: &str = r#"(function () {
       };
     }
   } catch (e) {}
+  // 隐藏 webview 里站点自带的播放器会照常出声——这就是「有声音、没画面、
+  // 还报取流失败」的来源：页面在自己播，而钩子没抓到地址。
+  // 只静音、不 pause：暂停可能让站点播放器不再去请求真实地址，反而更抓不到。
+  function mute(el) {
+    try { el.muted = true; if ('volume' in el) { el.volume = 0; } } catch (e) {}
+  }
   function scan() {
     try {
       var els = document.querySelectorAll('video, audio');
-      for (var i = 0; i < els.length; i++) { push(els[i].currentSrc || els[i].getAttribute('src')); }
+      for (var i = 0; i < els.length; i++) {
+        mute(els[i]);
+        push(els[i].currentSrc || els[i].getAttribute('src'));
+      }
     } catch (e) {}
   }
+  // 汇总当前能拿到的媒体地址，供 Rust 侧轮询。
+  window.__animeCollect = function () {
+    var out = [];
+    function add(u) {
+      try { if (isVideo(u) && out.indexOf(u) < 0) { out.push(u); } } catch (e) {}
+    }
+    try { (window.__animeStreams || []).forEach(add); } catch (e) {}
+    // 站点播放器（hls.js/ckplayer 等）常经 XHR/fetch 拉清单，不经过 src setter；
+    // Resource Timing 的 name 对跨域资源同样可见，是补抓的关键来源。
+    try {
+      var rs = performance.getEntriesByType('resource') || [];
+      for (var i = 0; i < rs.length; i++) { add(rs[i].name); }
+    } catch (e) {}
+    try {
+      var els = document.querySelectorAll('video, audio, source');
+      for (var j = 0; j < els.length; j++) {
+        add(els[j].currentSrc || els[j].src || els[j].getAttribute('src'));
+      }
+    } catch (e) {}
+    return out;
+  };
   try { scan(); } catch (e) {}
   try {
     if (window.MutationObserver) {
@@ -1190,6 +1260,17 @@ fn pick_stream(urls: &[String]) -> Option<String> {
         .or_else(|| urls.first().cloned())
 }
 
+/// 取流结束后立刻让隐藏 webview 停下并清空页面。
+/// 不这么做的话，站点自带播放器会在后台继续播——用户听到声音、却看不到画面
+/// （画面对着一个不可见的窗口），而前端此时已经在报「取流失败」。
+fn stop_webview(webview: &tauri::WebviewWindow) {
+    let _ = webview.eval(
+        "try{window.stop();}catch(e){}\
+         try{document.querySelectorAll('video,audio').forEach(function(el){el.pause();el.muted=true;});}catch(e){}",
+    );
+    let _ = webview.navigate(url::Url::parse("about:blank").unwrap());
+}
+
 /// 取流兜底：隐藏 webview 加载播放页，轮询注入钩子收集到的媒体 URL。
 /// 静态直链提取（前端 animeStream.ts）未命中时才走这里。
 #[tauri::command]
@@ -1216,24 +1297,32 @@ pub async fn anime_webview_resolve(
     let deadline = std::time::Instant::now() + WEBVIEW_TIMEOUT;
     while std::time::Instant::now() < deadline {
         tokio::time::sleep(Duration::from_millis(250)).await;
-        // 被更新一次取流抢占时直接放弃
+        // 被更新一次取流抢占时直接放弃（并停掉页面，避免旧页面继续出声）
         if RESOLVE_GEN.load(Ordering::SeqCst) != gen {
+            stop_webview(&webview);
             return Ok(None);
         }
         let collector = collected.clone();
-        let _ = webview.eval_with_callback("window.__animeStreams || []", move |res: String| {
-            if let Ok(urls) = serde_json::from_str::<Vec<String>>(&res) {
-                let mut all = collector.lock().unwrap();
-                for u in urls {
-                    if !all.contains(&u) {
-                        all.push(u);
+        // 用注入脚本导出的 __animeCollect：除 src 钩子外，还会扫
+        // performance resource entries + DOM 上的 video/source，捕获率更高。
+        let _ = webview.eval_with_callback(
+            "(window.__animeCollect && window.__animeCollect()) || window.__animeStreams || []",
+            move |res: String| {
+                if let Ok(urls) = serde_json::from_str::<Vec<String>>(&res) {
+                    let mut all = collector.lock().unwrap();
+                    for u in urls {
+                        if !all.contains(&u) {
+                            all.push(u);
+                        }
                     }
                 }
-            }
-        });
+            },
+        );
         let now = { collected.lock().unwrap().clone() };
         if let Some(remote) = pick_stream(&now) {
             let media = anime_media_url(app.clone(), rule_name.clone(), remote.clone())?;
+            // 拿到地址后立刻停掉隐藏页，否则站点播放器继续在后台发声
+            stop_webview(&webview);
             return Ok(Some(AnimeResolveStream {
                 url: media.url,
                 remote_url: remote,
@@ -1243,5 +1332,6 @@ pub async fn anime_webview_resolve(
         }
     }
     let _ = webview.eval("window.stop()");
+    stop_webview(&webview);
     Ok(None)
 }

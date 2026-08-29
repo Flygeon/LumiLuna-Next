@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import type Hls from "hls.js";
 import { useSettingsStore } from "@/stores/settings";
 import { useAnimeStore } from "@/stores/anime";
+import { animeLog } from "@/utils/animeLog";
 import { translate } from "@shared/i18n";
 
 const props = defineProps<{
@@ -60,9 +62,78 @@ function scheduleReport() {
   }, 5000);
 }
 
-function onError() {
+function onError(detail?: string) {
+  if (detail) void animeLog(`播放失败: ${detail}`);
   if (!anime.streamError) {
     anime.streamError = t("anime.streamFailed");
+  }
+}
+
+// ---- 挂载播放地址 ----
+// Windows 端 WebView2 是 Chromium，**没有原生 HLS**：绝大多数采集站只给 m3u8，
+// 直接塞给 <video> 会静默失败——表现为「地址取到了、却只有声音没有画面」。
+// 因此 m3u8 一律走 hls.js（动态引入，不拖累首屏）。
+let hls: Hls | null = null;
+
+function destroyHls() {
+  if (hls) {
+    hls.destroy();
+    hls = null;
+  }
+}
+
+function isHlsSource(stream: { url: string; remoteUrl: string }): boolean {
+  const u = `${stream.remoteUrl} ${stream.url}`;
+  return /\.m3u8(\?|#|$)/i.test(u);
+}
+
+/** src 是后挂载的，autoplay 属性此时已不再触发，必须显式 play */
+function tryPlay(v: HTMLVideoElement) {
+  void v.play().catch(() => {
+    /* 浏览器可能拦截自动播放，留给用户点控件 */
+  });
+}
+
+async function attachStream() {
+  const v = video.value;
+  const stream = anime.stream;
+  destroyHls();
+  if (!v || !stream) return;
+  v.removeAttribute("src");
+  if (!isHlsSource(stream)) {
+    v.src = stream.url;
+    tryPlay(v);
+    return;
+  }
+  // Safari / WebKit 原生支持 HLS，优先用原生
+  if (v.canPlayType("application/vnd.apple.mpegurl")) {
+    v.src = stream.url;
+    tryPlay(v);
+    return;
+  }
+  try {
+    const mod = await import("hls.js");
+    const HlsCtor = mod.default;
+    if (!HlsCtor.isSupported()) {
+      v.src = stream.url;
+      return;
+    }
+    hls = new HlsCtor({ enableWorker: true, lowLatencyMode: false });
+    hls.on(HlsCtor.Events.ERROR, (_evt, data) => {
+      if (!data.fatal) return;
+      void animeLog(
+        `hls.js 致命错误 type=${data.type} details=${data.details} url=${stream.remoteUrl}`,
+      );
+      onError(`hls ${data.type}/${data.details}`);
+    });
+    hls.on(HlsCtor.Events.MANIFEST_PARSED, () => tryPlay(v));
+    hls.loadSource(stream.url);
+    hls.attachMedia(v);
+  } catch (e) {
+    // hls.js 加载失败（离线/打包缺失）时退回原生，失败会由 video error 事件兜住
+    void animeLog(`hls.js 加载失败，退回原生播放: ${(e as Error).message}`);
+    v.src = stream.url;
+    tryPlay(v);
   }
 }
 
@@ -115,14 +186,18 @@ onMounted(() => {
     v.addEventListener("ended", reportHistory);
     v.addEventListener("loadedmetadata", onLoadedMetadata);
   }
+  watch(() => anime.stream?.url, attachStream);
+  if (anime.stream) void attachStream();
   void ensureStream();
 });
 
 onBeforeUnmount(() => {
   if (reportTimer) window.clearTimeout(reportTimer);
   reportHistory();
+  destroyHls();
   const v = video.value;
   if (v) {
+    v.removeAttribute("src");
     v.removeEventListener("timeupdate", scheduleReport);
     v.removeEventListener("ended", reportHistory);
     v.removeEventListener("loadedmetadata", onLoadedMetadata);
@@ -133,14 +208,8 @@ onBeforeUnmount(() => {
 <template>
   <Teleport to="body">
     <div class="anime-player">
-      <video
-        ref="video"
-        :src="anime.stream?.url"
-        controls
-        autoplay
-        playsinline
-        @error="onError"
-      ></video>
+      <!-- src 由 attachStream 按流类型（HLS 走 hls.js）挂载，不在模板里直接绑 -->
+      <video ref="video" controls autoplay playsinline @error="onError()"></video>
 
       <!-- 顶栏 -->
       <div class="topbar">
