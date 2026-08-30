@@ -6,9 +6,14 @@
  * （LumiLuna/1.0 形如「应用名/版本」），并带 referer bgm.tv
  * - 前端 fetch 无法设置 User-Agent 头，故必须经 Rust 通道
  *
- * 归一化两种响应格式为 BangumiSubject：
- * - api.bgm.tv v0（search）：snake_case：name_cn / meta_tags / rating.score
- * - next.bgm.tv p1（trending / detail）：camelCase：nameCN / metaTags / rating.score
+ * 归一化响应格式为 BangumiSubject：
+ * - api.bgm.tv v0（search / detail / calendar）：snake_case：name_cn / meta_tags / rating.score
+ * - next.bgm.tv p1（历史遗留）：camelCase：nameCN / metaTags / rating.score
+ *
+ * ⚠️ next.bgm.tv 的 /p1/* 接口自 2026-08 起**全线不响应**（trending 与
+ * /p1/subjects/{id} 实测 25s 零字节，超时而非报错）。热播榜与详情已改走
+ * api.bgm.tv（/calendar 与 /v0/subjects/{id}），均验证可用。p1 的解析函数
+ * 仅保留兼容，不要在新链路上依赖它。
  */
 import { capabilities } from "@/capabilities";
 import type { AnimeFetchSpec, BangumiSubject } from "@shared/types";
@@ -16,7 +21,7 @@ import type { AnimeFetchSpec, BangumiSubject } from "@shared/types";
 const BANGUMI_UA =
   "LumiLuna/1.0 (Desktop; https://github.com/Flygeon/LumiLuna-Next)";
 const API = "https://api.bgm.tv";
-const NEXT = "https://next.bgm.tv";
+// next.bgm.tv 的 /p1/* 自 2026-08 起全线不响应，已不再请求。
 
 /** 从 infobox 提取别名（照 Kazumi：key === '别名' 的 values） */
 function aliasFromInfobox(infobox: unknown): string[] {
@@ -139,17 +144,67 @@ async function getJson(
   return JSON.parse(res.html);
 }
 
-/** 热门番组（Kazumi 主页同款：next.bgm.tv trending，type=2 动画） */
+/**
+ * api.bgm.tv/calendar 条目 → BangumiSubject。
+ *
+ * 每日放送的字段比 p1 少（没有 infobox 别名、没有 eps），但多了
+ * collection.doing（在看人数）——这正是「热度」的唯一可靠来源。
+ */
+export function fromCalendar(raw: unknown): BangumiSubject | null {
+  if (!raw || typeof raw !== "object") return null;
+  const d = raw as Record<string, unknown>;
+  const id = Number(d.id ?? 0);
+  if (!id || typeof d.name !== "string") return null;
+  const rating = (d.rating ?? {}) as Record<string, unknown>;
+  const images = (d.images ?? {}) as Record<string, unknown>;
+  const collection = (d.collection ?? {}) as Record<string, unknown>;
+  const summary = typeof d.summary === "string" ? d.summary.trim() : "";
+  return {
+    id,
+    name: d.name,
+    nameCn: typeof d.name_cn === "string" ? d.name_cn : "",
+    summary: summary || undefined,
+    airDate: typeof d.air_date === "string" ? d.air_date : undefined,
+    airWeekday: typeof d.air_weekday === "number" ? d.air_weekday : undefined,
+    rank: typeof d.rank === "number" ? d.rank : undefined,
+    rating: typeof rating.score === "number" ? rating.score : undefined,
+    votes: typeof rating.total === "number" ? rating.total : undefined,
+    platform: typeof d.platform === "string" ? d.platform : undefined,
+    images: Object.keys(images).length
+      ? (images as BangumiSubject["images"])
+      : undefined,
+    doing: typeof collection.doing === "number" ? collection.doing : undefined,
+  };
+}
+
+/**
+ * 热门番组（正在热播）。
+ *
+ * 原为 next.bgm.tv /p1/trending/subjects，该接口已死（见文件头说明），
+ * 改用 api.bgm.tv/calendar（每日放送）：它给出当季**正在播**的全部条目
+ * （实测 7 天合计 113 部），按 collection.doing 降序即等价于热度榜。
+ * 顺带比原接口更贴「正在热播」的语义——原接口混入了已完结的热门老番。
+ */
 export async function fetchTrending(limit = 30): Promise<BangumiSubject[]> {
-  const data = (await getJson(
-    `${NEXT}/p1/trending/subjects?type=2&limit=${limit}`,
-  )) as { data?: { subject?: unknown }[] } | null;
+  const data = (await getJson(`${API}/calendar`)) as
+    | { weekday?: unknown; items?: unknown }[]
+    | null;
   const out: BangumiSubject[] = [];
-  for (const e of data?.data ?? []) {
-    const subj = fromP1(e.subject ?? e);
-    if (subj) out.push(subj);
+  for (const day of data ?? []) {
+    for (const raw of (day?.items as unknown[]) ?? []) {
+      const subj = fromCalendar(raw);
+      if (subj) out.push(subj);
+    }
   }
-  return out;
+  // 同一部番可能出现在多个星期分组里（跨季/重播），按 id 去重保留热度最高的
+  const byId = new Map<number, BangumiSubject>();
+  for (const s of out) {
+    const prev = byId.get(s.id);
+    if (!prev || (s.doing ?? 0) > (prev.doing ?? 0)) byId.set(s.id, s);
+  }
+  return [...byId.values()]
+    .sort((a, b) => (b.doing ?? 0) - (a.doing ?? 0))
+    .slice(0, limit);
 }
 
 export interface BangumiSearchPage {
@@ -181,10 +236,16 @@ export async function searchSubjects(
   return { items, total: data?.total ?? 0 };
 }
 
-/** 详情：覆盖图/简介/标签/评分/放送日期/总集数（概览 tab 同款数据） */
+/**
+ * 详情：覆盖图/简介/标签/别名/评分/放送日期/总集数。
+ *
+ * 原走 next.bgm.tv /p1/subjects/{id}（已死），改走 api.bgm.tv
+ * /v0/subjects/{id}：字段更全（含 infobox 别名、meta_tags、summary），
+ * 且实测 1s 内返回。拿不到时返回 null，调用方保留列表条目的轻量数据。
+ */
 export async function fetchSubjectDetail(
   id: number | string,
 ): Promise<BangumiSubject | null> {
-  const data = await getJson(`${NEXT}/p1/subjects/${id}`);
-  return fromP1(data);
+  const data = await getJson(`${API}/v0/subjects/${id}`);
+  return fromV0(data);
 }

@@ -784,6 +784,11 @@ export interface BangumiSubject {
   tags?: string[];
   /** 别名（从 infobox 提取） */
   alias?: string[];
+  /**
+   * 「在看」人数（api.bgm.tv/calendar 的 collection.doing）。
+   * 热播榜按它降序排，卡片副标题也展示它。
+   */
+  doing?: number;
 }
 
 /**

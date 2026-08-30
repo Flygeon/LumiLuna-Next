@@ -501,6 +501,7 @@ fn extract_meta(raw: &str) -> (String, Option<String>) {
 #[tauri::command]
 pub fn anime_rules_list(app: tauri::AppHandle) -> Result<Vec<AnimeRuleEntry>, String> {
     let dir = rules_dir(&app)?;
+    let disabled = read_disabled(&app);
     let mut out = Vec::new();
     if let Ok(rd) = std::fs::read_dir(&dir) {
         let mut entries: Vec<_> = rd.filter_map(|e| e.ok()).collect();
@@ -511,10 +512,11 @@ pub fn anime_rules_list(app: tauri::AppHandle) -> Result<Vec<AnimeRuleEntry>, St
                 if let Ok(raw) = std::fs::read_to_string(&path) {
                     let (name, version) = extract_meta(&raw);
                     if !name.is_empty() {
+                        let enabled = !disabled.contains(&name);
                         out.push(AnimeRuleEntry {
                             name,
                             version,
-                            enabled: true,
+                            enabled,
                             json: raw,
                         });
                     }
@@ -523,6 +525,65 @@ pub fn anime_rules_list(app: tauri::AppHandle) -> Result<Vec<AnimeRuleEntry>, St
         }
     }
     Ok(out)
+}
+
+/// 被默认禁用的规则（站点长期失修 / 关停，聚合搜索白等数秒）。
+/// 首次启动写入 `disabled.json`，之后完全由该持久化文件接管——
+/// 用户在「规则管理」里可随时重新启用（即便在默认禁用列表里）。
+const DEFAULT_DISABLED_RULES: &[&str] = &["DM84", "baimao"];
+
+fn disabled_state_path(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
+    Ok(rules_dir(app)?.join("disabled.json"))
+}
+
+/// 读取被禁用的规则名集合（文件缺失/损坏时返回空集，等价于「全部启用」）。
+fn read_disabled(app: &tauri::AppHandle) -> std::collections::HashSet<String> {
+    let path = match disabled_state_path(app) {
+        Ok(p) => p,
+        Err(_) => return std::collections::HashSet::new(),
+    };
+    if let Ok(s) = std::fs::read_to_string(&path) {
+        if let Ok(v) = serde_json::from_str::<serde_json::Value>(&s) {
+            if let Some(arr) = v.get("disabled").and_then(|d| d.as_array()) {
+                return arr
+                    .iter()
+                    .filter_map(|x| x.as_str().map(|s| s.to_string()))
+                    .collect();
+            }
+        }
+    }
+    std::collections::HashSet::new()
+}
+
+fn write_disabled(
+    app: &tauri::AppHandle,
+    set: &std::collections::HashSet<String>,
+) -> Result<(), String> {
+    std::fs::create_dir_all(rules_dir(app)?).map_err(|e| e.to_string())?;
+    let path = disabled_state_path(app)?;
+    let arr: Vec<String> = set.iter().cloned().collect();
+    let json = serde_json::to_string_pretty(&serde_json::json!({ "disabled": arr }))
+        .map_err(|e| format!("序列化禁用状态失败：{e}"))?;
+    let tmp = path.with_extension("json.tmp");
+    std::fs::write(&tmp, json.as_bytes()).map_err(|e| format!("写入禁用状态失败：{e}"))?;
+    std::fs::rename(&tmp, &path).map_err(|e| format!("保存禁用状态失败：{e}"))?;
+    Ok(())
+}
+
+/// 切换规则启用状态（规则管理里可重新启用默认禁用的站点）。
+#[tauri::command]
+pub fn anime_rules_set_enabled(
+    app: tauri::AppHandle,
+    name: String,
+    enabled: bool,
+) -> Result<(), String> {
+    let mut set = read_disabled(&app);
+    if enabled {
+        set.remove(&name);
+    } else {
+        set.insert(name);
+    }
+    write_disabled(&app, &set)
 }
 
 /// 保存规则（同 name 覆盖，原子替换）；json 为前端 normalizeRule 后的文档
@@ -1221,6 +1282,16 @@ pub fn setup(app: &tauri::AppHandle) {
                         let _ = std::fs::remove_file(&path);
                     }
                 }
+            }
+            // 首次启动写入默认禁用集合（DM84/baimao 站点失修），之后完全交给
+            // 持久化的 disabled.json 接管；用户在规则管理里可随时重新启用。
+            let disabled_path = dir.join("disabled.json");
+            if !disabled_path.exists() {
+                let seed: std::collections::HashSet<String> = DEFAULT_DISABLED_RULES
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect();
+                let _ = write_disabled(app, &seed);
             }
         }
     }

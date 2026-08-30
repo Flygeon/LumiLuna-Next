@@ -91,6 +91,17 @@ export const useAnimeStore = defineStore("anime", () => {
   const sourceSearch = ref<AnimeSourceSearchResult[]>([]);
   const sourceSearching = ref(false);
   const sourceSearchKeyword = ref("");
+  /** 关键字缺失等导致聚合搜索没发起时，给 SourceSheet 展示的原因 */
+  const sourceSearchError = ref("");
+  /**
+   * 当前正在看的番剧标题（Bangumi 侧，中文名优先）。
+   *
+   * 聚合搜索的关键字**只认它**。此前关键字取自组件的局部 ref，只有从
+   * 主页/搜索页点进详情才被赋值；从「观看历史」续播则为空，兜底又退化成
+   * 「热播榜第一条」——于是点 A 会拿 B 的标题去搜，播出来就是别的番。
+   * 这里统一由 fetchBangumiInfo / resumeHistory 写入，两条入口都覆盖。
+   */
+  const activeBangumiTitle = ref("");
 
   // ---- 选集：选中源后的线路与剧集 ----
   const selectedRoads = ref<AnimeRoad[]>([]);
@@ -115,11 +126,17 @@ export const useAnimeStore = defineStore("anime", () => {
   const displayTitle = computed<string>(() => {
     const d = bangumiDetail.value;
     if (d) return d.nameCn || d.name;
-    return activeSourceTitle.value;
+    return activeBangumiTitle.value || activeSourceTitle.value;
   });
 
   // 聚合搜索完成命中的条目名（详情未挂载时的标题兜底）
   const activeSourceTitle = ref("");
+
+  /** Bangumi 条目的展示名：中文名优先，无中文名退回原语名 */
+  function titleOf(s: BangumiSubject | null | undefined): string {
+    if (!s) return "";
+    return (s.nameCn || s.name || "").trim();
+  }
 
   async function loadRules(force = false) {
     if (!force && rules.value.length) return;
@@ -160,16 +177,38 @@ export const useAnimeStore = defineStore("anime", () => {
     activeRuleName.value = name;
   }
 
+  /** 切换规则启用/禁用：写入持久化状态后重载规则库 */
+  async function setRuleEnabled(name: string, enabled: boolean) {
+    try {
+      await capabilities.animeRuleSetEnabled(name, enabled);
+      await loadRules(true);
+    } catch (e) {
+      void animeLog(
+        `切换规则[${name}]启用=${enabled} 失败：${e instanceof Error ? e.message : String(e)}`,
+      );
+    }
+  }
+
   // ---- 主页 / 搜索 / 详情 ----
 
   async function fetchTrendingList() {
     trendingLoading.value = true;
     trendingError.value = "";
+    const started = Date.now();
     try {
       trending.value = await fetchTrending();
+      // 热播榜是主页唯一的数据源，空了会连带把「换源」的关键字兜底也掏空
+      // （表现为用空关键字打全部源 → 播错番），所以成败都落日志。
+      void animeLog(
+        `热播榜拉取成功 耗时 ${Date.now() - started}ms 条目=${trending.value.length}` +
+          ` first=${trending.value[0]?.nameCn || trending.value[0]?.name || "无"}`,
+      );
     } catch (e) {
       trendingError.value = e instanceof Error ? e.message : String(e);
       trending.value = [];
+      void animeLog(
+        `热播榜拉取失败 耗时 ${Date.now() - started}ms: ${trendingError.value}`,
+      );
     } finally {
       trendingLoading.value = false;
     }
@@ -221,10 +260,14 @@ export const useAnimeStore = defineStore("anime", () => {
     detailError.value = "";
     bangumiDetail.value = subject;
     activeBangumiId.value = String(subject.id);
+    // 聚合搜索的关键字来源：这里必须写，否则从主页/搜索页点进来的番剧
+    // 在「开始观看」时拿不到标题。
+    activeBangumiTitle.value = titleOf(subject);
     try {
       const full = await fetchSubjectDetail(subject.id);
       // 详情更完整（简介/总话数/别名），命中则替换
       bangumiDetail.value = full ?? subject;
+      if (full) activeBangumiTitle.value = titleOf(full);
     } catch (e) {
       detailError.value = e instanceof Error ? e.message : String(e);
     } finally {
@@ -301,15 +344,38 @@ export const useAnimeStore = defineStore("anime", () => {
     }
   }
 
-  /** 聚合搜索：并行查全部启用源（Kazumi queryAllSource） */
+  /**
+   * 聚合搜索：并行查全部启用源（Kazumi queryAllSource）。
+   *
+   * 空关键字**必须挡在这里**：采集站对 `?wd=` 空查询不返回空结果，而是返回
+   * 自家「最新/热门」列表（实测 7sefun 12 条、akianime 10 条、sorani 50 条），
+   * 用户会当成搜索结果点进去 —— 这正是「点《尼古喵喵》播《Re:Zero》」的直接原因。
+   * 宁可什么都不搜，也不要喂一屏无关结果。
+   */
   async function searchSources(keyword: string) {
+    const kw = keyword.trim();
+    sourceSearchError.value = "";
+    if (!kw) {
+      // 关键字缺失 = 调用方没能确定当前在看的番剧，属于逻辑漏洞而非网络问题
+      void animeLog(
+        `聚合搜索被拒绝：关键字为空（未确定当前番剧，activeBangumiTitle="${activeBangumiTitle.value}"）`,
+      );
+      sourceSearch.value = [];
+      sourceSearching.value = false;
+      sourceSearchKeyword.value = "";
+      sourceSearchError.value = "未能确定番剧名称，请在上方输入关键字后重试";
+      return;
+    }
     const enabled = rules.value.filter((r) => r.enabled);
     void animeLog(
-      `聚合搜索开始 kw="${keyword}" 启用源=${enabled.length}` +
+      `聚合搜索开始 kw="${kw}" 启用源=${enabled.length}` +
         `（${enabled.map((r) => r.name).join(", ") || "无"}）`,
     );
-    if (!enabled.length) return;
-    sourceSearchKeyword.value = keyword;
+    if (!enabled.length) {
+      sourceSearchError.value = "没有已启用的播放源，请先在规则管理中启用";
+      return;
+    }
+    sourceSearchKeyword.value = kw;
     sourceSearching.value = true;
     sourceSearch.value = enabled.map((r) => ({
       pluginName: r.name,
@@ -319,12 +385,12 @@ export const useAnimeStore = defineStore("anime", () => {
     }));
     await Promise.all(
       enabled.map((r) =>
-        querySingleSource(r.name, keyword, { replace: false }).catch(() => {}),
+        querySingleSource(r.name, kw, { replace: false }).catch(() => {}),
       ),
     );
     sourceSearching.value = false;
     void animeLog(
-      `聚合搜索结束 kw="${keyword}" 结果=` +
+      `聚合搜索结束 kw="${kw}" 结果=` +
         sourceSearch.value
           .map((s) => `${s.pluginName}:${s.status}(${s.items.length})`)
           .join(", "),
@@ -333,11 +399,14 @@ export const useAnimeStore = defineStore("anime", () => {
 
   /** 换一个关键字再查当前全部源（别名/手动检索后） */
   async function requeryAllSources(keyword: string) {
-    sourceSearchKeyword.value = keyword;
+    const kw = keyword.trim();
+    if (!kw) return;
+    sourceSearchError.value = "";
+    sourceSearchKeyword.value = kw;
     sourceSearching.value = true;
     await Promise.all(
       sourceSearch.value.map((s) =>
-        querySingleSource(s.pluginName, keyword).catch(() => {}),
+        querySingleSource(s.pluginName, kw).catch(() => {}),
       ),
     );
     sourceSearching.value = false;
@@ -345,7 +414,9 @@ export const useAnimeStore = defineStore("anime", () => {
 
   /** 别名检索：用别名再查指定源（结果追加到该源） */
   async function requerySingleSource(pluginName: string, keyword: string) {
-    await querySingleSource(pluginName, keyword, { replace: true });
+    const kw = keyword.trim();
+    if (!kw) return;
+    await querySingleSource(pluginName, kw, { replace: true });
   }
 
   // ---- 选集 ----
@@ -403,11 +474,16 @@ export const useAnimeStore = defineStore("anime", () => {
   async function resumeHistory(h: AnimeHistoryItem): Promise<boolean> {
     activeSourceTitle.value = h.title;
     activeBangumiId.value = /^\d+$/.test(h.animeId) ? h.animeId : "";
+    // 续播同样要确定「当前在看的番剧」：否则播放页点「换源」时关键字为空，
+    // 会拿各站热门列表当搜索结果（播错番）。详情拉取是异步补的，先用历史标题兜住。
+    activeBangumiTitle.value = h.title?.trim() || "";
     if (activeBangumiId.value) {
       // 数字 id 视为 Bangumi 条目：顺手拉一次详情补封面/标题（失败不阻止续播）
       void fetchSubjectDetail(Number(activeBangumiId.value))
         .then((sub) => {
-          if (sub) bangumiDetail.value = sub;
+          if (!sub) return;
+          bangumiDetail.value = sub;
+          if (titleOf(sub)) activeBangumiTitle.value = titleOf(sub);
         })
         .catch(() => {});
     } else {
@@ -631,9 +707,12 @@ export const useAnimeStore = defineStore("anime", () => {
     detailLoading,
     detailError,
     displayTitle,
+    activeSourceTitle,
     sourceSearch,
     sourceSearching,
     sourceSearchKeyword,
+    sourceSearchError,
+    activeBangumiTitle,
     selectedRoads,
     selectedSrc,
     selectedSourceName,
@@ -646,6 +725,7 @@ export const useAnimeStore = defineStore("anime", () => {
     favorites,
     loadRules,
     pickRule,
+    setRuleEnabled,
     fetchTrendingList,
     searchBangumi,
     loadMoreBangumi,

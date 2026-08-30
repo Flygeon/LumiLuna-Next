@@ -57,12 +57,21 @@ function cardTitle(s: BangumiSubject) {
 function cardCover(s: BangumiSubject) {
   return s.images?.large;
 }
+/** 副标题：热播榜给「在看人数」（更能说明热度），其余给放送平台 */
+function cardSubtitle(s: BangumiSubject) {
+  if (typeof s.doing === "number" && s.doing > 0) {
+    return s.doing >= 10000
+      ? `${(s.doing / 10000).toFixed(1)} 万人在看`
+      : `${s.doing} 人在看`;
+  }
+  return s.platform ? `${s.platform}` : undefined;
+}
 function toCard(s: BangumiSubject) {
   return {
     src: String(s.id),
     title: cardTitle(s),
     cover: cardCover(s),
-    desc: s.platform ? `${s.platform}` : undefined,
+    desc: cardSubtitle(s),
   };
 }
 
@@ -92,10 +101,20 @@ function changeSort(v: typeof sort.value) {
 
 // ---- 聚合搜索别名/手动检索（关键字可能更新） ----
 
+/**
+ * 聚合搜索的关键字。
+ *
+ * 三级兜底，全部来自 store（不再用 `anime.trending[0]` 这种「热播榜第一条」
+ * 的假兜底——它会让点 A 的搜索拿 B 的标题去查，直接播错番）：
+ *   1. 当前详情条目（从主页/搜索页点进来的）
+ *   2. 当前在看的番剧标题（历史续播写入的 Bangumi 标题）
+ *   3. 当前播放源里的条目名（详情都没拉到时的最后兜底）
+ * 三级都空就交给 searchSources 拦下来，宁可不搜也不喂一屏无关热门。
+ */
 const sourceKeyword = computed(() => {
-  const s = currentSubject.value;
-  if (!s) return "";
-  return s.nameCn || s.name;
+  const own = currentSubject.value;
+  const ownTitle = own ? (own.nameCn || own.name || "").trim() : "";
+  return ownTitle || anime.activeBangumiTitle || anime.activeSourceTitle || "";
 });
 
 function openSources() {
@@ -104,7 +123,6 @@ function openSources() {
     playing.value = null;
     view.value = "info";
   }
-  currentSubject.value = currentSubject.value ?? anime.trending[0] ?? null;
   sourcesOpen.value = true;
   void anime.searchSources(sourceKeyword.value);
 }
@@ -113,14 +131,25 @@ function closeSources() {
   sourcesOpen.value = false;
 }
 
+/** 连点保护：pickSource 平均 2-3s，期间不给反馈会让用户一直点（日志里同一
+ *  URL 连发 6 次的来源）。先切视图给「加载剧集…」，再挡住后续点击。 */
+let picking = false;
+
 /** 聚合搜索选中一个源 → 加载选集 → 进选集页 */
 async function onPickSource(pluginName: string, item: AnimeSearchItem) {
+  if (picking) return;
+  picking = true;
   sourcesOpen.value = false;
-  const ok = await anime.pickSource(pluginName, item);
+  // 先切视图：选集面板立刻显示「正在加载剧集」，而不是停在 Sheet 上假死
   view.value = "episodes";
-  if (!ok && !anime.selectedRoads.length) {
-    // 选集为空时留在详情页并保留错误，用户可换源
-    view.value = "info";
+  try {
+    const ok = await anime.pickSource(pluginName, item);
+    if (!ok && !anime.selectedRoads.length) {
+      // 选集为空时退回详情页并保留错误，用户可换源
+      view.value = "info";
+    }
+  } finally {
+    picking = false;
   }
 }
 
@@ -144,20 +173,26 @@ function onPlayerSwitch(roadIndex: number, episodeIndex: number) {
 
 /** 历史续播：回查该源线路后跳到上次位置 */
 async function openHistory(h: AnimeHistoryItem) {
-  const ok = await anime.resumeHistory(h);
-  if (!ok) {
-    // 源可能被删/失效，回详情页让用户换源
-    if (anime.bangumiDetail) {
-      view.value = "info";
+  if (picking) return;
+  picking = true;
+  try {
+    const ok = await anime.resumeHistory(h);
+    if (!ok) {
+      // 源可能被删/失效，回详情页让用户换源
+      if (anime.bangumiDetail) {
+        view.value = "info";
+      }
+      return;
     }
-    return;
-  }
-  const road = anime.selectedRoads[h.roadIndex];
-  const target = road?.episodes[h.episodeIndex];
-  if (target) {
-    playEpisode(h.roadIndex, h.episodeIndex, h.progressMs || undefined);
-  } else {
-    playEpisode(0, 0);
+    const road = anime.selectedRoads[h.roadIndex];
+    const target = road?.episodes[h.episodeIndex];
+    if (target) {
+      playEpisode(h.roadIndex, h.episodeIndex, h.progressMs || undefined);
+    } else {
+      playEpisode(0, 0);
+    }
+  } finally {
+    picking = false;
   }
 }
 

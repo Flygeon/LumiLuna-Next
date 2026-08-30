@@ -481,6 +481,10 @@ export const capabilities = {
   animeRuleDelete(name: string): Promise<void> {
     return safeInvoke("anime_rules_delete", { name });
   },
+  /** 切换规则启用/禁用（禁用后不参与聚合搜索；默认禁用的死站可在此重新启用） */
+  animeRuleSetEnabled(name: string, enabled: boolean): Promise<void> {
+    return safeInvoke("anime_rules_set_enabled", { name, enabled });
+  },
   /** 从 KazumiRules 社区仓库拉取规则 index（Phase 1 仅展示，不自动安装） */
   animeRuleIndex(): Promise<string> {
     return safeInvoke("anime_rules_index");

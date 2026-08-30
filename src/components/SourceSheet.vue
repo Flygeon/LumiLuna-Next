@@ -35,6 +35,20 @@ const expanded = ref<Set<string>>(new Set());
 const moreOpen = ref<Set<string>>(new Set());
 /** 「手动检索」输入框的关键字 */
 const manualKeyword = ref<Record<string, string>>({});
+/**
+ * 顶部关键字输入框（改它 → 重查全部源）。
+ *
+ * 存在的理由：关键字可能压根没定下来（例如从观看历史续播时 Bangumi 详情
+ * 还没拉到），此时聚合搜索会被拦下、卡片区一片空白。没有这个输入框用户
+ * 就只能在每张卡里逐个手动检索，等于卡死。
+ */
+const topKeyword = ref(props.keyword);
+
+function doRequeryAll() {
+  const kw = topKeyword.value.trim();
+  if (!kw) return;
+  void anime.requeryAllSources(kw);
+}
 
 function statusInfo(result: (typeof anime.sourceSearch)[number]): {
   text: string;
@@ -127,7 +141,30 @@ const aliasList = computed(() => props.subject?.alias?.slice(0, 12) ?? []);
           </button>
         </div>
 
-        <p v-if="anime.sourceSearching && !anime.sourceSearch.length" class="state">
+        <div class="kw-row">
+          <input
+            v-model="topKeyword"
+            :placeholder="t('anime.manualSearch')"
+            @keyup.enter="doRequeryAll"
+          />
+          <button
+            class="lm-btn lm-btn--tonal"
+            :disabled="anime.sourceSearching"
+            @click="doRequeryAll"
+          >
+            <span
+              v-if="anime.sourceSearching"
+              class="material-symbols-outlined spin"
+            >progress_activity</span>
+            <span v-else class="material-symbols-outlined">search</span>
+          </button>
+        </div>
+
+        <p v-if="anime.sourceSearchError" class="state error">
+          {{ anime.sourceSearchError }}
+        </p>
+
+        <p v-else-if="anime.sourceSearching && !anime.sourceSearch.length" class="state">
           {{ t("anime.choosingSource") }}
         </p>
 
@@ -270,6 +307,28 @@ const aliasList = computed(() => props.subject?.alias?.slice(0, 12) ?? []);
   font-size: var(--md-sys-typescale-body-small-size);
   color: var(--md-sys-color-on-surface-variant);
   white-space: pre-line;
+}
+.state.error {
+  padding: 16px 0;
+  color: var(--md-sys-color-error);
+}
+.kw-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.kw-row input {
+  flex: 1;
+  min-width: 0;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-small);
+  background: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface);
+  font-family: inherit;
+  font-size: var(--md-sys-typescale-body-small-size);
+  outline: none;
 }
 .cards {
   display: flex;

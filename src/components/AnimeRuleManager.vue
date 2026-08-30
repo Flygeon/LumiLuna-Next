@@ -176,12 +176,21 @@ async function importFromRepo(entry: RepoEntry) {
           v-for="r in anime.rules"
           :key="r.name"
           class="rule-row"
-          :class="{ active: anime.activeRuleName === r.name }"
+          :class="{ active: anime.activeRuleName === r.name, disabled: !r.enabled }"
           @click="pickRule(r.name)"
         >
           <span class="material-symbols-outlined">rule</span>
           <span class="rule-name" :title="r.name">{{ r.name }}</span>
           <span v-if="r.version" class="rule-ver tabular-nums">v{{ r.version }}</span>
+          <span v-if="!r.enabled" class="rule-badge">{{ t("anime.rule.disabled") }}</span>
+          <button
+            class="lm-icon-btn small rule-toggle"
+            :class="{ off: !r.enabled }"
+            :title="r.enabled ? t('anime.rule.disable') : t('anime.rule.enable')"
+            @click.stop="anime.setRuleEnabled(r.name, !r.enabled)"
+          >
+            <span class="material-symbols-outlined">{{ r.enabled ? "toggle_on" : "toggle_off" }}</span>
+          </button>
           <button
             class="lm-icon-btn small danger rule-del"
             :class="{ confirming: confirmDelete === r.name }"
@@ -325,6 +334,29 @@ async function importFromRepo(entry: RepoEntry) {
 }
 .rule-row.active {
   box-shadow: inset 0 0 0 2px var(--md-sys-color-primary);
+}
+.rule-row.disabled {
+  opacity: 0.55;
+}
+.rule-row.disabled .rule-name {
+  text-decoration: line-through;
+  text-decoration-color: var(--md-sys-color-outline);
+}
+.rule-badge {
+  flex-shrink: 0;
+  padding: 1px 8px;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: color-mix(in srgb, var(--md-sys-color-outline) 18%, transparent);
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-label-small-size);
+}
+.rule-toggle {
+  width: 30px;
+  height: 30px;
+  color: var(--md-sys-color-primary);
+}
+.rule-toggle.off {
+  color: var(--md-sys-color-outline);
 }
 .rule-row > .material-symbols-outlined,
 .repo-row > .material-symbols-outlined {

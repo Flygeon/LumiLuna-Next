@@ -228,6 +228,7 @@ pub fn run() {
             anime::anime_rules_list,
             anime::anime_rules_save,
             anime::anime_rules_delete,
+            anime::anime_rules_set_enabled,
             anime::anime_rules_index,
             anime::anime_history_list,
             anime::anime_history_upsert,
