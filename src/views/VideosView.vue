@@ -42,6 +42,10 @@ onMounted(async () => {
 
 onActivated(() => {
   if (!items.value.length) void load();
+  // 用户可能刚从「设置」页改完 ffmpeg 路径回来；强制刷新一次避免横幅残留
+  void capabilities.ffmpegStatus().then((s) => {
+    ffmpeg.value = s;
+  });
 });
 
 function openViewer(_item: MediaEntry, index: number) {

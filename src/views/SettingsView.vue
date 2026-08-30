@@ -78,6 +78,12 @@ async function resetFfmpegDir() {
   ffmpeg.value = await capabilities.ffmpegSetPath(null);
 }
 
+/** 弹幕时间轴偏移：UI 单位是秒，内部存毫秒 */
+function onDanmakuOffsetChange(e: Event) {
+  const v = Number((e.target as HTMLInputElement).value);
+  if (Number.isFinite(v)) settings.danmakuTimeOffsetMs = Math.round(v * 1000);
+}
+
 function setTheme(mode: ThemeMode) {
   settings.applyTheme(mode);
 }
@@ -908,6 +914,97 @@ function resetDesktopLyricsBounds() {
         <span class="row-label">{{ t("settings.onlineAnimeEnable") }}</span>
         <input type="checkbox" v-model="settings.onlineAnimeEnabled" />
       </label>
+    </section>
+
+    <!-- DanDanPlay 弹幕 -->
+    <section v-if="settings.onlineAnimeEnabled" class="card">
+      <h3>{{ t("settings.danmaku") }}</h3>
+      <p class="hint">{{ t("settings.danmakuHint") }}</p>
+      <label class="row switch-row">
+        <span class="row-label">{{ t("settings.danmakuEnable") }}</span>
+        <input type="checkbox" v-model="settings.danmakuEnabled" />
+      </label>
+      <template v-if="settings.danmakuEnabled">
+        <div class="dav-form">
+          <div class="field">
+            <label>{{ t("settings.danmakuAppId") }}</label>
+            <input
+              v-model="settings.dandanAppId"
+              type="text"
+              spellcheck="false"
+              autocomplete="off"
+            />
+          </div>
+          <div class="field">
+            <label>{{ t("settings.danmakuAppSecret") }}</label>
+            <input
+              v-model="settings.dandanAppSecret"
+              type="password"
+              spellcheck="false"
+              autocomplete="off"
+            />
+          </div>
+        </div>
+        <div class="dav-grid">
+          <label class="field">
+            <span>{{ t("settings.danmakuOpacity") }} {{ settings.danmakuOpacity }}%</span>
+            <input
+              v-model.number="settings.danmakuOpacity"
+              type="range"
+              min="10"
+              max="100"
+              step="5"
+            />
+          </label>
+          <label class="field">
+            <span>{{ t("settings.danmakuFontSize") }} {{ settings.danmakuFontSize }}px</span>
+            <input
+              v-model.number="settings.danmakuFontSize"
+              type="range"
+              min="12"
+              max="48"
+              step="1"
+            />
+          </label>
+          <label class="field">
+            <span>{{ t("settings.danmakuArea") }} {{ settings.danmakuArea }}%</span>
+            <input
+              v-model.number="settings.danmakuArea"
+              type="range"
+              min="20"
+              max="100"
+              step="5"
+            />
+          </label>
+          <label class="field">
+            <span>{{ t("settings.danmakuSpeed") }} {{ settings.danmakuSpeed }}</span>
+            <input
+              v-model.number="settings.danmakuSpeed"
+              type="range"
+              min="1"
+              max="10"
+              step="1"
+            />
+          </label>
+        </div>
+        <div class="dav-grid">
+          <label class="field">
+            <span>{{ t("settings.danmakuTimeOffset") }}</span>
+            <input
+              :value="(settings.danmakuTimeOffsetMs / 1000).toFixed(1)"
+              type="number"
+              step="0.1"
+              min="-30"
+              max="30"
+              @change="onDanmakuOffsetChange"
+            />
+          </label>
+          <label class="row switch-row">
+            <span class="row-label">{{ t("settings.danmakuAntiOverlap") }}</span>
+            <input type="checkbox" v-model="settings.danmakuAntiOverlap" />
+          </label>
+        </div>
+      </template>
     </section>
 
     <!-- WebDAV -->

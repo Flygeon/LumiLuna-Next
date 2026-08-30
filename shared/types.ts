@@ -885,3 +885,59 @@ export interface AnimeResolveStreamResult {
   method: "webview";
 }
 
+// =====================================================================
+// DanDanPlay 弹幕（参照在线播放参考 lib/modules/danmuku/ + lib/request/）
+// =====================================================================
+
+/**
+ * DanDanPlay 弹幕条目原始 p 字段解析结果。
+ * p 字段原始格式：`"time,type,color,source"`（type 1=滚动 / 4=底部 / 5=顶部；
+ * color 是十进制 RGB；source 为来源标签如 "bilibili"/"gamer"/"dandan"）。
+ */
+export interface DanmakuEntry {
+  /** 弹幕出现时间（秒） */
+  time: number;
+  /** 弹幕模式：1=滚动 / 4=底部 / 5=顶部 */
+  mode: 1 | 4 | 5;
+  /** 颜色（十进制 RGB int，转前端用 `#rrggbb`） */
+  color: number;
+  /** 来源标签（用于来源过滤：bilibili / gamer / dandan） */
+  source: string;
+  /** 弹幕文本 */
+  text: string;
+}
+
+/** DanDanPlay 搜索单集结果（GET /api/v2/search/episodes） */
+export interface DandanSearchEpisode {
+  animeId: number;
+  /** 该集在 dandan 库里的全局集 id（喂给 /api/v2/comment/{id}） */
+  episodeId: number;
+  animeTitle: string;
+  episodeTitle: string;
+  type: string;
+  /** 是否已完结 */
+  isCompleted: boolean;
+}
+
+/** DanDanPlay 单集详情（GET /api/v2/bangumi/{animeId} 的 episodes[]） */
+export interface DandanEpisode {
+  episodeId: number;
+  episodeTitle: string;
+}
+
+/** DanDanPlay 番剧详情（来自 /api/v2/bangumi/{animeId} 或 /api/v2/bangumi/bgmtv/{id}） */
+export interface DandanBangumi {
+  animeId: number;
+  animeTitle: string;
+  /** 该番剧在 dandan 库里的总集数 */
+  episodeCount: number;
+  /** 集列表（bangumi/bgmtv 端点可能不返回 episodes，需要 fallback 到 search） */
+  episodes?: DandanEpisode[];
+}
+
+/** DanDanPlay 评论响应（GET /api/v2/comment/{episodeId}?withRelated=true） */
+export interface DandanCommentResponse {
+  count: number;
+  comments: DanmakuEntry[];
+}
+

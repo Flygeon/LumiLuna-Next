@@ -144,6 +144,24 @@ const DEFAULTS = {
   closeToTray: true,
   /** 本地音乐库展示模式：网格 / 列表 */
   musicViewMode: "grid" as MusicViewMode,
+  /** 实验性：在线番剧启用 DanDanPlay 弹幕（参考项目 Kazumi 的弹幕来源） */
+  danmakuEnabled: false,
+  /** DanDanPlay AppId（无凭证时降级为无签名模式，频率受限） */
+  dandanAppId: "",
+  /** DanDanPlay AppSecret（与 AppId 配套；缺失时视为无凭证） */
+  dandanAppSecret: "",
+  /** 弹幕不透明度 0-100 */
+  danmakuOpacity: 80,
+  /** 弹幕字号（px） */
+  danmakuFontSize: 22,
+  /** 弹幕显示区域 0-100（占屏百分比，参考项目 area） */
+  danmakuArea: 75,
+  /** 弹幕时间轴偏移（毫秒） */
+  danmakuTimeOffsetMs: 0,
+  /** 弹幕滚动速度 1-10 */
+  danmakuSpeed: 5,
+  /** 弹幕防重叠 */
+  danmakuAntiOverlap: true,
 };
 
 export const useSettingsStore = defineStore("settings", () => {
@@ -203,6 +221,15 @@ export const useSettingsStore = defineStore("settings", () => {
   const desktopLyricsBounds = ref<DesktopLyricsBounds>({ ...DEFAULTS.desktopLyricsBounds });
   const closeToTray = ref(DEFAULTS.closeToTray);
   const musicViewMode = ref<MusicViewMode>(DEFAULTS.musicViewMode);
+  const danmakuEnabled = ref(DEFAULTS.danmakuEnabled);
+  const dandanAppId = ref(DEFAULTS.dandanAppId);
+  const dandanAppSecret = ref(DEFAULTS.dandanAppSecret);
+  const danmakuOpacity = ref(DEFAULTS.danmakuOpacity);
+  const danmakuFontSize = ref(DEFAULTS.danmakuFontSize);
+  const danmakuArea = ref(DEFAULTS.danmakuArea);
+  const danmakuTimeOffsetMs = ref(DEFAULTS.danmakuTimeOffsetMs);
+  const danmakuSpeed = ref(DEFAULTS.danmakuSpeed);
+  const danmakuAntiOverlap = ref(DEFAULTS.danmakuAntiOverlap);
   const loaded = ref(false);
 
   // 单一注册表：新增设置项只需在此加一行，load/save 自动覆盖
@@ -263,6 +290,15 @@ export const useSettingsStore = defineStore("settings", () => {
     desktopLyricsBounds,
     closeToTray,
     musicViewMode,
+    danmakuEnabled,
+    dandanAppId,
+    dandanAppSecret,
+    danmakuOpacity,
+    danmakuFontSize,
+    danmakuArea,
+    danmakuTimeOffsetMs,
+    danmakuSpeed,
+    danmakuAntiOverlap,
   } as const;
 
   async function load() {
@@ -366,6 +402,22 @@ export const useSettingsStore = defineStore("settings", () => {
       }
     },
     { deep: false },
+  );
+
+  // FFmpeg 路径推送到 Rust：保证 OVERRIDE_DIR 始终与 settings.ffmpegDir 同步。
+  // 修复「已指定 ffmpeg 包仍报未检测到」bug——
+  // 原先依赖 Settings 页 onMounted 显式调 ffmpegSetPath，首次进入「视频」页时
+  // OVERRIDE_DIR 还是 None；切回视频页时 VideosView 已挂载也不会再刷一次。
+  watch(
+    () => ffmpegDir.value,
+    async (newDir) => {
+      try {
+        await capabilities.ffmpegSetPath(newDir || null);
+      } catch (e) {
+        console.warn("[FFmpeg] 配置推送失败:", e);
+      }
+    },
+    { immediate: true },
   );
 
   return {
