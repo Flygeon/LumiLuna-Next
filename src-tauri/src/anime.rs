@@ -1298,12 +1298,23 @@ const DIAG_SCRIPT: &str = r#"(function(){
   } catch (e) { return JSON.stringify({ error: String(e) }); }
 })()"#;
 
-/// 在 webview 里求值并取回结果（`eval` 是单向的，拿不到返回值）
+/// 在 webview 里求值并取回结果（`eval` 是单向的，拿不到返回值）。
+///
+/// 注意：`eval_with_callback` 的回调是 **`Fn`，不是 `FnOnce`**（Tauri 2.11：
+/// `impl Fn(String) + Send + 'static`）。而 `oneshot::Sender::send` 会消费
+/// self，直接 `move` 进闭包会撞 E0507。因此把 Sender 装进
+/// `Arc<Mutex<Option<_>>>`，回调里 `take()` 出来用（回调可能被调用多次，
+/// 只有第一次拿得到 Sender）。
 async fn eval_json(webview: &tauri::WebviewWindow, script: &str) -> Option<String> {
     let (tx, rx) = tokio::sync::oneshot::channel::<String>();
+    let slot: Arc<Mutex<Option<tokio::sync::oneshot::Sender<String>>>> =
+        Arc::new(Mutex::new(Some(tx)));
     if webview
         .eval_with_callback(script, move |res: String| {
-            let _ = tx.send(res);
+            let taken = slot.lock().ok().and_then(|mut guard| guard.take());
+            if let Some(tx) = taken {
+                let _ = tx.send(res);
+            }
         })
         .is_err()
     {
