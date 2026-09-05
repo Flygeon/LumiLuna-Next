@@ -49,6 +49,8 @@ async function doLogin() {
   loginError.value = "";
   try {
     await pixiv.login();
+    // 登录成功后重拉首页：挂载时未登录的那次请求只会留下错误态，不会自动重试
+    await Promise.all([pixiv.fetchRecommended(), pixiv.fetchRanking(rankMode.value)]);
   } catch (e) {
     loginError.value = e instanceof Error ? e.message : String(e);
   } finally {
@@ -58,6 +60,8 @@ async function doLogin() {
 
 async function doLogout() {
   await pixiv.logout();
+  // 退出后同样刷新一次，把错误态/旧数据清干净
+  await Promise.all([pixiv.fetchRecommended(), pixiv.fetchRanking(rankMode.value)]);
 }
 
 function pickRank(m: RankMode) {

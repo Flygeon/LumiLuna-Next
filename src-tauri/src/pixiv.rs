@@ -55,7 +55,7 @@ pub struct PixivUser {
     pub id: i64,
     pub name: String,
     pub account: String,
-    #[serde(default)]
+    #[serde(rename(deserialize = "profile_image_urls"), default)]
     pub profile_image_urls: Option<PixivImageUrls>,
 }
 
@@ -63,7 +63,7 @@ pub struct PixivUser {
 #[serde(rename_all = "camelCase")]
 pub struct PixivTag {
     pub name: String,
-    #[serde(default)]
+    #[serde(rename(deserialize = "translated_name"), default)]
     pub translated_name: Option<String>,
 }
 
@@ -77,6 +77,8 @@ pub struct PixivMetaSinglePage {
 #[derive(Serialize, Deserialize, Clone, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct PixivMetaPage {
+    // 同 PixivIllust.image_urls：API 是 snake_case，必须带别名
+    #[serde(rename(deserialize = "image_urls"))]
     pub image_urls: PixivImageUrls,
 }
 
@@ -117,6 +119,10 @@ pub struct PixivIllust {
     #[serde(default)]
     pub tags: Vec<PixivTag>,
     pub user: PixivUser,
+    // 注意：Pixiv App API 的 JSON 是 snake_case；rename_all = "camelCase" 会让
+    // 反序列化期望 "imageUrls"。漏掉这个别名曾导致每条作品解析必失败
+    // （配合 parse_illusts 的静默跳过，表现为「登录成功但列表全空」）。
+    #[serde(rename(deserialize = "image_urls"))]
     pub image_urls: PixivImageUrls,
     #[serde(rename(deserialize = "meta_single_page"), default)]
     pub meta_single_page: Option<PixivMetaSinglePage>,
@@ -354,7 +360,13 @@ fn oauth_exchange_blocking(form: &[(&str, &str)]) -> Result<OAuthTokenRaw, Strin
 /// 从 oauth 响应的 `user` 字段提取用户信息（Pixiv 该字段可能为 null / 字段命名不稳）
 fn extract_user(raw: &Option<Value>) -> Option<PixivUser> {
     let v = raw.as_ref()?;
-    let id = v.get("id")?.as_i64()?;
+    // OAuth 响应里 user.id 可能是数字也可能是字符串（实测不稳），两种都接受
+    let id = v
+        .get("id")
+        .and_then(|x| {
+            x.as_i64()
+                .or_else(|| x.as_str().and_then(|s| s.parse::<i64>().ok()))
+        })?;
     let name = v
         .get("name")
         .and_then(|x| x.as_str())
@@ -396,6 +408,11 @@ fn extract_user(raw: &Option<Value>) -> Option<PixivUser> {
 /// 写入 token 到状态与磁盘；user 为 None 时保留既有 user
 fn apply_token(app: &tauri::AppHandle, raw: &OAuthTokenRaw) -> Result<(), String> {
     let user = extract_user(&raw.user);
+    if user.is_none() {
+        crate::novel_auth::login_debug_log(
+            "[pixiv] apply_token: 未从 OAuth 响应提取到 user（id 解析失败或字段缺失）",
+        );
+    }
     {
         let mut s = state().lock().unwrap();
         s.access_token = Some(raw.access_token.clone());
@@ -405,6 +422,7 @@ fn apply_token(app: &tauri::AppHandle, raw: &OAuthTokenRaw) -> Result<(), String
         }
     }
     persist_current(app)?;
+    crate::novel_auth::login_debug_log("[pixiv] apply_token: token 已写入状态并持久化");
     Ok(())
 }
 
@@ -435,6 +453,9 @@ fn call_api_blocking(
     for attempt in 0..2 {
         let token = state().lock().unwrap().access_token.clone();
         let Some(token) = token else {
+            crate::novel_auth::login_debug_log(&format!(
+                "[pixiv] call_api {path}: 未登录，拒绝请求"
+            ));
             return Err("未登录 Pixiv，请先登录".into());
         };
         let url = format!("{}{}", APP_API, path);
@@ -444,13 +465,24 @@ fn call_api_blocking(
         for (k, v) in query {
             req = req.query(&[(k.as_str(), v.as_str())]);
         }
+        let started = std::time::Instant::now();
         let resp = req.send().map_err(|e| format!("Pixiv 请求失败：{e}"))?;
         let status = resp.status().as_u16();
         let text = resp.text().map_err(|e| e.to_string())?;
+        crate::novel_auth::login_debug_log(&format!(
+            "[pixiv] call_api {path} attempt={attempt} status={status} bytes={} cost={}ms",
+            text.len(),
+            started.elapsed().as_millis()
+        ));
         if (status == 400 || status == 401) && attempt == 0 {
             match refresh_tokens_blocking(app) {
                 Ok(()) => continue,
-                Err(_) => return Err("登录已过期，请重新登录".into()),
+                Err(e) => {
+                    crate::novel_auth::login_debug_log(&format!(
+                        "[pixiv] call_api {path}: 刷新 token 失败：{e}"
+                    ));
+                    return Err("登录已过期，请重新登录".into());
+                }
             }
         }
         if !(200..=299).contains(&status) {
@@ -471,13 +503,28 @@ fn parse_illusts(v: &Value) -> Result<Vec<PixivIllust>, String> {
         .and_then(|x| x.as_array())
         .ok_or("响应缺少 illusts 字段")?;
     let mut out = Vec::new();
+    let mut first_err: Option<String> = None;
     for it in arr {
         match serde_json::from_value::<PixivIllust>(it.clone()) {
             Ok(il) => out.push(il),
             Err(e) => {
-                eprintln!("[pixiv] 跳过无法解析的作品：{e}");
+                // 静默跳过坏条目保证可用性，但必须落日志——否则表现为
+                // 「列表全空且无报错」，完全无法排查（本次教训）
+                if first_err.is_none() {
+                    first_err = Some(format!(
+                        "id={} err={e}",
+                        it.get("id").and_then(|x| x.as_i64()).unwrap_or(-1)
+                    ));
+                }
             }
         }
+    }
+    if let Some(e) = &first_err {
+        crate::novel_auth::login_debug_log(&format!(
+            "[pixiv] parse_illusts: {}/{} 条解析失败，首条：{e}",
+            arr.len() - out.len(),
+            arr.len()
+        ));
     }
     Ok(out)
 }
@@ -591,8 +638,12 @@ pub async fn pixiv_login_open(app: tauri::AppHandle) -> Result<PixivLoginStatus,
     }
     // 5. 等待 code（最多 5 分钟）
     let code = match tokio::time::timeout(Duration::from_secs(300), rx).await {
-        Ok(Ok(c)) => c,
+        Ok(Ok(c)) => {
+            crate::novel_auth::login_debug_log("[pixiv] login_open: 已拦截到回调 code");
+            c
+        }
         _ => {
+            crate::novel_auth::login_debug_log("[pixiv] login_open: 等待 code 超时或被取消");
             if let Some(w) = app.get_webview_window(LOGIN_LABEL) {
                 let _ = w.close();
             }
@@ -607,6 +658,14 @@ pub async fn pixiv_login_open(app: tauri::AppHandle) -> Result<PixivLoginStatus,
     let res = tokio::task::spawn_blocking(move || exchange_code_blocking(&app3, &code))
         .await
         .map_err(|e| format!("任务失败：{e}"))?;
+    match &res {
+        Ok(st) => crate::novel_auth::login_debug_log(&format!(
+            "[pixiv] login_open: 登录成功 loggedIn={} user={:?}",
+            st.logged_in,
+            st.user.as_ref().map(|u| (u.id, u.name.clone()))
+        )),
+        Err(e) => crate::novel_auth::login_debug_log(&format!("[pixiv] login_open: 换 token 失败：{e}")),
+    }
     res
 }
 
@@ -804,6 +863,7 @@ pub async fn pixiv_next(
 /// 图片代理：i.pximg.net 需要 Referer，WebView 无法逐图设，故走 Rust 拉字节返回。
 #[tauri::command]
 pub async fn pixiv_image(_app: tauri::AppHandle, url: String) -> Result<Vec<u8>, String> {
+    let url_for_log = url.clone(); // url 会 move 进闭包，日志用克隆
     let res = tokio::task::spawn_blocking(move || -> Result<Vec<u8>, String> {
         let client = http_client();
         let resp = client
@@ -814,6 +874,7 @@ pub async fn pixiv_image(_app: tauri::AppHandle, url: String) -> Result<Vec<u8>,
             .map_err(|e| format!("图片代理请求失败：{e}"))?;
         let status = resp.status().as_u16();
         if !(200..=299).contains(&status) {
+            crate::novel_auth::login_debug_log(&format!("[pixiv] image: HTTP {status} url={url}"));
             return Err(format!("图片代理返回 HTTP {}", status));
         }
         let bytes = resp.bytes().map_err(|e| e.to_string())?;
@@ -821,5 +882,15 @@ pub async fn pixiv_image(_app: tauri::AppHandle, url: String) -> Result<Vec<u8>,
     })
     .await
     .map_err(|e| format!("任务失败：{e}"))?;
+    match &res {
+        Ok(b) if b.len() < 1024 => crate::novel_auth::login_debug_log(&format!(
+            "[pixiv] image: 可疑小图 {}B url={url_for_log}",
+            b.len()
+        )),
+        Err(e) => {
+            crate::novel_auth::login_debug_log(&format!("[pixiv] image: 失败 url={url_for_log}：{e}"))
+        }
+        _ => {}
+    }
     res
 }
