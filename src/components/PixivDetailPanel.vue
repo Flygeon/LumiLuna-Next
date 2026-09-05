@@ -13,7 +13,11 @@ const props = defineProps<{
   loading?: boolean;
   error?: string;
 }>();
-const emit = defineEmits<{ (e: "back"): void; (e: "open-related", id: number): void }>();
+const emit = defineEmits<{
+  (e: "back"): void;
+  (e: "open-related", id: number): void;
+  (e: "open-user", id: number): void;
+}>();
 
 const settings = useSettingsStore();
 const pixiv = usePixivStore();
@@ -39,11 +43,58 @@ onMounted(async () => {
   }
   // 评论（面板以 illust.id 为 key 强制重建，onMounted 拉取即可）
   void pixiv.fetchComments(props.illust.id);
+  // ugoira 动图：拉帧并循环播放
+  if (props.illust.type === "ugoira") void loadUgoira();
 });
 
 function openRelated(ill: PixivIllust) {
   emit("open-related", ill.id);
 }
+
+function openUser() {
+  emit("open-user", props.illust.user.id);
+}
+
+async function toggleBookmark() {
+  await pixiv.toggleBookmark(props.illust.id);
+}
+
+// ---- ugoira 动图 ----
+
+const ugoiraFrames = ref<{ src: string; delay: number }[]>([]);
+const frameIdx = ref(0);
+let ugoiraTimer: number | undefined;
+
+async function loadUgoira() {
+  try {
+    const fr = await pixiv.fetchUgoira(props.illust.id);
+    if (!fr.length) return;
+    ugoiraFrames.value = fr;
+    startUgoira();
+  } catch {
+    /* 拉帧失败回退静态封面 */
+  }
+}
+
+function startUgoira() {
+  stopUgoira();
+  let i = 0;
+  const step = () => {
+    frameIdx.value = i;
+    const d = ugoiraFrames.value[i]?.delay ?? 50;
+    i = (i + 1) % ugoiraFrames.value.length;
+    ugoiraTimer = window.setTimeout(step, d);
+  };
+  step();
+}
+
+function stopUgoira() {
+  if (ugoiraTimer !== undefined) {
+    window.clearTimeout(ugoiraTimer);
+    ugoiraTimer = undefined;
+  }
+}
+onUnmounted(stopUgoira);
 
 function fmtDate(s?: string | null): string {
   return (s || "").replace("T", " ").slice(0, 16);
@@ -125,8 +176,15 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
 
     <div v-else class="detail-body">
       <div class="cover-wrap">
+        <!-- ugoira 动图：帧动画 -->
         <img
-          v-if="src"
+          v-if="ugoiraFrames.length"
+          :src="ugoiraFrames[frameIdx]?.src"
+          :alt="illust.title"
+          class="cover-img"
+        />
+        <img
+          v-else-if="src"
           :src="src"
           :alt="illust.title"
           class="cover-img"
@@ -134,26 +192,35 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
           @click="openPreview(0)"
         />
         <span v-else class="material-symbols-outlined placeholder">image</span>
-        <span v-if="illust.pageCount > 1" class="page-badge">
+        <span v-if="illust.type === 'ugoira'" class="page-badge">GIF</span>
+        <span v-else-if="illust.pageCount > 1" class="page-badge">
           {{ illust.pageCount }} {{ t("pixiv.pages") }}
         </span>
       </div>
 
       <div class="info">
-        <div class="author-row">
+        <button class="author-row author-link" :title="illust.user.name" @click="openUser">
           <span class="material-symbols-outlined">person</span>
           <span>{{ illust.user.name }}</span>
-        </div>
+          <span class="material-symbols-outlined chev">chevron_right</span>
+        </button>
 
         <div class="stats">
           <span class="chip-static">
             <span class="material-symbols-outlined">visibility</span>
             {{ illust.totalView }} {{ t("pixiv.totalViews") }}
           </span>
-          <span class="chip-static">
-            <span class="material-symbols-outlined">bookmark</span>
+          <button
+            class="chip-static chip-action"
+            :class="{ bookmarked: pixiv.bookmarked }"
+            :title="t('pixiv.myBookmarks')"
+            @click="toggleBookmark"
+          >
+            <span class="material-symbols-outlined">
+              {{ pixiv.bookmarked ? "bookmark" : "bookmark_border" }}
+            </span>
             {{ illust.totalBookmarks }} {{ t("pixiv.totalBookmarks") }}
-          </span>
+          </button>
           <span v-if="dateText" class="chip-static">
             <span class="material-symbols-outlined">event</span>{{ dateText }}
           </span>
@@ -349,6 +416,37 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
   gap: 6px;
   font-size: var(--md-sys-typescale-title-medium-size);
   font-weight: 600;
+}
+.author-link {
+  padding: 4px 8px;
+  margin-left: -8px;
+  border: none;
+  border-radius: var(--md-sys-shape-corner-medium);
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  align-self: flex-start;
+  cursor: pointer;
+}
+.author-link:hover {
+  background: var(--md-sys-color-surface-container);
+}
+.author-link .chev {
+  font-size: 16px;
+  color: var(--md-sys-color-on-surface-variant);
+}
+.chip-action {
+  border: 1px solid transparent;
+  font-family: inherit;
+  cursor: pointer;
+}
+.chip-action:hover {
+  border-color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-primary);
+}
+.chip-action.bookmarked {
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
 }
 .author-row .material-symbols-outlined {
   font-size: 20px;

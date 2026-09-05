@@ -11,7 +11,7 @@
 //!   且 WebView/CSP 无法逐图设 Referer，故图片统一走 Rust 代理 `pixiv_image`。
 //! - 登录用 PKCE + 隐藏/显式 WebView：打开登录页 → 拦截回调 `?code=` → 换 token。
 
-use std::io::Write;
+use std::io::{Read, Write};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
@@ -170,6 +170,37 @@ pub struct PixivCommentsPage {
     /// 下一页 offset（从 next_url 里解析出来；None 表示没有更多）
     pub next_offset: Option<i64>,
     pub total: Option<i64>,
+}
+
+#[derive(Serialize, Clone, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct PixivUserDetail {
+    pub user: PixivUser,
+    pub total_illusts: i64,
+    pub following: i64,
+}
+
+#[derive(Serialize, Clone, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct PixivTrendTag {
+    pub name: String,
+    pub translated_name: Option<String>,
+    /// 该标签下第一部作品的缩略图，用作 chip 配图
+    pub cover: Option<String>,
+}
+
+#[derive(Serialize, Clone, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct PixivUgoiraFrame {
+    /// 解压后帧图片的本地路径（前端经 pixiv_frame_bytes 读字节转 Blob）
+    pub path: String,
+    pub delay_ms: u64,
+}
+
+#[derive(Serialize, Clone, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct PixivUgoiraFrames {
+    pub frames: Vec<PixivUgoiraFrame>,
 }
 
 #[derive(Serialize, Clone, Default)]
@@ -519,6 +550,54 @@ fn call_api_blocking(
             ));
         }
         return serde_json::from_str::<Value>(&text).map_err(|e| format!("解析 Pixiv 响应失败：{e}"));
+    }
+    Err("Pixiv 请求重试后仍失败".into())
+}
+
+/// 鉴权 API POST（form 表单，收藏/关注类写操作）。惰性刷新重试同 GET。
+fn call_api_post_blocking(
+    app: &tauri::AppHandle,
+    path: &str,
+    form: &[(&str, &str)],
+) -> Result<Value, String> {
+    for attempt in 0..2 {
+        let token = state().lock().unwrap().access_token.clone();
+        let Some(token) = token else {
+            return Err("未登录 Pixiv，请先登录".into());
+        };
+        let url = format!("{}{}", APP_API, path);
+        let client = http_client();
+        let req = apply_common_headers(client.post(&url))
+            .header("Authorization", format!("Bearer {}", token))
+            .header("Content-Type", "application/x-www-form-urlencoded");
+        let started = std::time::Instant::now();
+        let resp = req
+            .form(form)
+            .send()
+            .map_err(|e| format!("Pixiv 请求失败：{e}"))?;
+        let status = resp.status().as_u16();
+        let text = resp.text().map_err(|e| e.to_string())?;
+        crate::novel_auth::login_debug_log(&format!(
+            "[pixiv] call_api_post {path} attempt={attempt} status={status} bytes={} cost={}ms",
+            text.len(),
+            started.elapsed().as_millis()
+        ));
+        if (status == 400 || status == 401) && attempt == 0 {
+            match refresh_tokens_blocking(app) {
+                Ok(()) => continue,
+                Err(_) => return Err("登录已过期，请重新登录".into()),
+            }
+        }
+        if !(200..=299).contains(&status) {
+            return Err(format!(
+                "Pixiv API 返回 {}：{}",
+                status,
+                &text.chars().take(200).collect::<String>()
+            ));
+        }
+        return serde_json::from_str::<Value>(&text)
+            .or(Ok(Value::Null))
+            .map_err(|e| format!("解析 Pixiv 响应失败：{e}"));
     }
     Err("Pixiv 请求重试后仍失败".into())
 }
@@ -1006,4 +1085,338 @@ pub async fn pixiv_image(_app: tauri::AppHandle, url: String) -> Result<Vec<u8>,
         _ => {}
     }
     res
+}
+
+// =====================================================================
+// 收藏（bookmark）
+// =====================================================================
+
+/// 加收藏（restrict: public / private）
+#[tauri::command]
+pub async fn pixiv_bookmark_add(
+    app: tauri::AppHandle,
+    illust_id: i64,
+    restrict: String,
+) -> Result<(), String> {
+    let app2 = app.clone();
+    tokio::task::spawn_blocking(move || {
+        call_api_post_blocking(
+            &app2,
+            "/v2/illust/bookmark/add",
+            &[("illust_id", &illust_id.to_string()), ("restrict", &restrict)],
+        )
+        .map(|_| ())
+    })
+    .await
+    .map_err(|e| format!("任务失败：{e}"))?
+}
+
+/// 取消收藏
+#[tauri::command]
+pub async fn pixiv_bookmark_delete(
+    app: tauri::AppHandle,
+    illust_id: i64,
+) -> Result<(), String> {
+    let app2 = app.clone();
+    tokio::task::spawn_blocking(move || {
+        call_api_post_blocking(
+            &app2,
+            "/v1/illust/bookmark/delete",
+            &[("illust_id", &illust_id.to_string())],
+        )
+        .map(|_| ())
+    })
+    .await
+    .map_err(|e| format!("任务失败：{e}"))?
+}
+
+/// 查询某作品是否已被收藏（bookmark_detail.id 存在且非 null 即已收藏）
+#[tauri::command]
+pub async fn pixiv_bookmark_detail(
+    app: tauri::AppHandle,
+    illust_id: i64,
+) -> Result<bool, String> {
+    let app2 = app.clone();
+    tokio::task::spawn_blocking(move || {
+        call_api_blocking(
+            &app2,
+            "/v2/illust/bookmark/detail",
+            &[("illust_id".into(), illust_id.to_string())],
+        )
+        .map(|v| {
+            v.pointer("/bookmark_detail/id")
+                .map(|x| !x.is_null())
+                .unwrap_or(false)
+        })
+    })
+    .await
+    .map_err(|e| format!("任务失败：{e}"))?
+}
+
+/// 我的 / 某用户的收藏列表（restrict: public / private）
+#[tauri::command]
+pub async fn pixiv_user_bookmarks(
+    app: tauri::AppHandle,
+    user_id: i64,
+    restrict: String,
+) -> Result<PixivIllustPage, String> {
+    let q = vec![
+        ("user_id".into(), user_id.to_string()),
+        ("restrict".into(), restrict),
+        ("filter".into(), "for_ios".into()),
+    ];
+    let res = tokio::task::spawn_blocking(move || {
+        call_api_blocking(&app, "/v1/user/bookmarks/illust", &q).and_then(|v| parse_illust_page(&v))
+    })
+    .await
+    .map_err(|e| format!("任务失败：{e}"))?;
+    res
+}
+
+// =====================================================================
+// 用户（作者页 / 关注）
+// =====================================================================
+
+/// 用户详情（作品数 / 关注数）
+#[tauri::command]
+pub async fn pixiv_user_detail(
+    app: tauri::AppHandle,
+    user_id: i64,
+) -> Result<PixivUserDetail, String> {
+    let app2 = app.clone();
+    let res = tokio::task::spawn_blocking(move || -> Result<PixivUserDetail, String> {
+        let v = call_api_blocking(
+            &app2,
+            "/v1/user/detail",
+            &[("user_id".into(), user_id.to_string())],
+        )?;
+        let user: PixivUser = serde_json::from_value(v.get("user").cloned().unwrap_or_default())
+            .map_err(|e| format!("解析 user 失败：{e}"))?;
+        let profile = v.get("profile");
+        let num = |key: &str| {
+            profile
+                .and_then(|p| p.get(key))
+                .and_then(|x| x.as_i64())
+                .unwrap_or(0)
+        };
+        Ok(PixivUserDetail {
+            user,
+            total_illusts: num("total_illusts"),
+            following: num("total_follow_users"),
+        })
+    })
+    .await
+    .map_err(|e| format!("任务失败：{e}"))?;
+    res
+}
+
+/// 某用户的作品列表（翻页走 pixiv_next）
+#[tauri::command]
+pub async fn pixiv_user_illusts(
+    app: tauri::AppHandle,
+    user_id: i64,
+) -> Result<PixivIllustPage, String> {
+    let q = vec![("user_id".into(), user_id.to_string())];
+    let res = tokio::task::spawn_blocking(move || {
+        call_api_blocking(&app, "/v1/user/illusts", &q).and_then(|v| parse_illust_page(&v))
+    })
+    .await
+    .map_err(|e| format!("任务失败：{e}"))?;
+    res
+}
+
+/// 关注 / 取关用户
+#[tauri::command]
+pub async fn pixiv_follow_user(
+    app: tauri::AppHandle,
+    user_id: i64,
+    unfollow: bool,
+) -> Result<(), String> {
+    let app2 = app.clone();
+    tokio::task::spawn_blocking(move || {
+        let path = if unfollow {
+            "/v1/user/follow/delete"
+        } else {
+            "/v1/user/follow/add"
+        };
+        let form: Vec<(&str, String)> = if unfollow {
+            vec![("user_id", user_id.to_string())]
+        } else {
+            vec![("user_id", user_id.to_string()), ("restrict", "public".into())]
+        };
+        // call_api_post_blocking 要求 &[(&str, &str)]，这里借用拼好的表单
+        let form_ref: Vec<(&str, &str)> =
+            form.iter().map(|(k, v)| (*k, v.as_str())).collect();
+        call_api_post_blocking(&app2, path, &form_ref).map(|_| ())
+    })
+    .await
+    .map_err(|e| format!("任务失败：{e}"))?
+}
+
+// =====================================================================
+// 搜索增强（热词 / 联想）
+// =====================================================================
+
+/// 热门标签（/v1/trending，附第一部作品缩略图作配图）
+#[tauri::command]
+pub async fn pixiv_trending_tags(app: tauri::AppHandle) -> Result<Vec<PixivTrendTag>, String> {
+    let q = vec![("filter".into(), "for_ios".into())];
+    let res = tokio::task::spawn_blocking(move || {
+        call_api_blocking(&app, "/v1/trending", &q).map(|v| {
+            let mut out = Vec::new();
+            if let Some(arr) = v.get("trending_tags").and_then(|x| x.as_array()) {
+                for it in arr {
+                    let tag = it.get("tag");
+                    let name = tag
+                        .and_then(|tg| tg.get("name"))
+                        .and_then(|x| x.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    if name.is_empty() {
+                        continue;
+                    }
+                    let translated_name = tag
+                        .and_then(|tg| tg.get("translated_name"))
+                        .and_then(|x| x.as_str())
+                        .map(|s| s.to_string());
+                    let cover = it
+                        .pointer("/illusts/0/image_urls/square_medium")
+                        .or_else(|| it.pointer("/illusts/0/image_urls/medium"))
+                        .and_then(|x| x.as_str())
+                        .map(|s| s.to_string());
+                    out.push(PixivTrendTag {
+                        name,
+                        translated_name,
+                        cover,
+                    });
+                }
+            }
+            out
+        })
+    })
+    .await
+    .map_err(|e| format!("任务失败：{e}"))?;
+    res
+}
+
+/// 搜索联想（/v2/search/autocomplete）
+#[tauri::command]
+pub async fn pixiv_search_suggest(
+    app: tauri::AppHandle,
+    term: String,
+) -> Result<Vec<String>, String> {
+    let q = vec![("term".into(), term)];
+    let res = tokio::task::spawn_blocking(move || {
+        call_api_blocking(&app, "/v2/search/autocomplete", &q).map(|v| {
+            v.get("search_auto_complete_keywords")
+                .and_then(|x| x.as_array())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|it| {
+                            it.get("suggested_keyword")
+                                .and_then(|x| x.as_str())
+                                .map(|s| s.to_string())
+                        })
+                        .collect()
+                })
+                .unwrap_or_default()
+        })
+    })
+    .await
+    .map_err(|e| format!("任务失败：{e}"))?;
+    res
+}
+
+// =====================================================================
+// ugoira 动图（zip 帧包 → 本地帧文件）
+// =====================================================================
+
+/// 拉取 ugoira 元数据、下载 zip、解压帧到临时目录，返回帧路径 + 延时表。
+#[tauri::command]
+pub async fn pixiv_ugoira_frames(
+    app: tauri::AppHandle,
+    illust_id: i64,
+) -> Result<PixivUgoiraFrames, String> {
+    let app2 = app.clone();
+    let res = tokio::task::spawn_blocking(move || -> Result<PixivUgoiraFrames, String> {
+        let v = call_api_blocking(
+            &app2,
+            "/v1/ugoira/metadata",
+            &[("illust_id".into(), illust_id.to_string())],
+        )?;
+        let meta = v.get("ugoira_metadata").ok_or("响应缺少 ugoira_metadata")?;
+        let zip_url = meta
+            .pointer("/zip_urls/medium")
+            .or_else(|| meta.pointer("/zip_urls/original"))
+            .and_then(|x| x.as_str())
+            .ok_or("缺少 zip_urls")?;
+        let frames_arr = meta
+            .get("frames")
+            .and_then(|x| x.as_array())
+            .ok_or("缺少 frames 延时表")?;
+
+        let client = http_client();
+        let resp = client
+            .get(zip_url)
+            .header("Referer", "https://app-api.pixiv.net/")
+            .header("User-Agent", UA)
+            .send()
+            .map_err(|e| format!("下载 ugoira zip 失败：{e}"))?;
+        let status = resp.status().as_u16();
+        if !(200..=299).contains(&status) {
+            return Err(format!("下载 ugoira zip 返回 HTTP {status}"));
+        }
+        let zip_bytes = resp.bytes().map_err(|e| e.to_string())?;
+
+        // 解压到临时目录（先清空重建，避免旧帧残留）
+        let dir = std::env::temp_dir().join(format!("lumiluna_ugoira_{illust_id}"));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).map_err(|e| format!("创建帧目录失败：{e}"))?;
+
+        let mut archive = zip::ZipArchive::new(std::io::Cursor::new(&zip_bytes[..]))
+            .map_err(|e| format!("打开 ugoira zip 失败：{e}"))?;
+        let mut out = Vec::new();
+        for f in frames_arr {
+            let name = f
+                .get("file")
+                .and_then(|x| x.as_str())
+                .ok_or("frame 缺少 file 字段")?;
+            let delay = f.get("delay").and_then(|x| x.as_u64()).unwrap_or(50);
+            let mut zf = archive
+                .by_name(name)
+                .map_err(|e| format!("zip 内缺少帧 {name}：{e}"))?;
+            let mut buf = Vec::with_capacity(zf.size() as usize);
+            zf.read_to_end(&mut buf)
+                .map_err(|e| format!("读取帧 {name} 失败：{e}"))?;
+            let path = dir.join(name);
+            std::fs::write(&path, &buf).map_err(|e| format!("写帧 {name} 失败：{e}"))?;
+            out.push(PixivUgoiraFrame {
+                path: path.to_string_lossy().to_string(),
+                delay_ms: delay,
+            });
+        }
+        crate::novel_auth::login_debug_log(&format!(
+            "[pixiv] ugoira: illust={illust_id} 解压 {} 帧 → {}",
+            out.len(),
+            dir.display()
+        ));
+        Ok(PixivUgoiraFrames { frames: out })
+    })
+    .await
+    .map_err(|e| format!("任务失败：{e}"))?;
+    res
+}
+
+/// 读本地 ugoira 帧字节（前端转 Blob 播放）。
+/// 安全校验：只允许 temp 目录下 lumiluna_ugoira_ 前缀的文件。
+#[tauri::command]
+pub async fn pixiv_frame_bytes(_app: tauri::AppHandle, path: String) -> Result<Vec<u8>, String> {
+    let allowed_root = std::env::temp_dir();
+    let p = std::path::PathBuf::from(&path);
+    if !p.starts_with(&allowed_root) || !path.contains("lumiluna_ugoira_") {
+        return Err("路径不合法".into());
+    }
+    tokio::task::spawn_blocking(move || std::fs::read(&path).map_err(|e| e.to_string()))
+        .await
+        .map_err(|e| format!("任务失败：{e}"))?
 }

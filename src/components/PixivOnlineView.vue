@@ -1,10 +1,10 @@
 // 移植自 Pixez（GPL-3.0），本仓库 GPL-3.0-only，兼容。
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useSettingsStore } from "@/stores/settings";
 import { usePixivStore } from "@/stores/pixiv";
 import { translate } from "@shared/i18n";
-import type { PixivIllust } from "@shared/types";
+import type { PixivIllust, PixivTrendTag } from "@shared/types";
 import PixivCard from "@/components/PixivCard.vue";
 import PixivDetailPanel from "@/components/PixivDetailPanel.vue";
 
@@ -42,7 +42,16 @@ onMounted(async () => {
   await pixiv.loadLoginStatus();
   await pixiv.fetchRecommended();
   await pixiv.fetchRanking(rankMode.value);
+  void pixiv.fetchTrending(); // 热词失败不阻塞主页
 });
+
+// ---- 搜索联想（300ms 防抖） ----
+let suggestTimer: number | undefined;
+watch(searchWord, (val) => {
+  window.clearTimeout(suggestTimer);
+  suggestTimer = window.setTimeout(() => void pixiv.fetchSuggest(val), 300);
+});
+onUnmounted(() => window.clearTimeout(suggestTimer));
 
 async function doLogin() {
   loggingIn.value = true;
@@ -82,6 +91,13 @@ function changeSort(s: SearchSort) {
   if (w) void pixiv.search(w, { sort: s });
 }
 
+/** 点热词 / 联想词 → 填入关键字直接搜 */
+function searchTag(tag: PixivTrendTag | string) {
+  searchWord.value = typeof tag === "string" ? tag : tag.name;
+  pixiv.suggestions = [];
+  void doSearch();
+}
+
 function openIllust(ill: PixivIllust) {
   void pixiv.fetchDetail(ill.id);
 }
@@ -90,9 +106,27 @@ function openRelated(id: number) {
   void pixiv.fetchDetail(id);
 }
 
+function openUser(id: number) {
+  void pixiv.openUser(id);
+}
+
 function backFromDetail() {
   pixiv.view = "home";
   void pixiv.fetchRecommended();
+}
+
+function goBookmarks() {
+  pixiv.view = "bookmarks";
+  if (!pixiv.bookmarkItems.length) void pixiv.fetchBookmarks();
+}
+
+function goFollow() {
+  pixiv.view = "follow";
+  if (!pixiv.followItems.length) void pixiv.fetchFollow();
+}
+
+function backToHome() {
+  pixiv.view = "home";
 }
 </script>
 
@@ -128,12 +162,117 @@ function backFromDetail() {
       :error="pixiv.error"
       @back="backFromDetail"
       @open-related="openRelated"
+      @open-user="openUser"
     />
+
+    <!-- 我的收藏 -->
+    <template v-else-if="pixiv.view === 'bookmarks'">
+      <div class="search-head">
+        <button class="back" @click="backToHome">
+          <span class="material-symbols-outlined">arrow_back</span>
+          {{ t("pixiv.back") }}
+        </button>
+        <h2 class="page-title">{{ t("pixiv.myBookmarks") }}</h2>
+      </div>
+      <div v-if="pixiv.loading && !pixiv.bookmarkItems.length" class="state">{{ t("pixiv.loading") }}</div>
+      <div v-else-if="pixiv.error && !pixiv.bookmarkItems.length" class="state list-error">
+        {{ pixiv.error }}
+        <button class="lm-btn lm-btn--text" @click="pixiv.fetchBookmarks()">
+          <span class="material-symbols-outlined">refresh</span>{{ t("pixiv.retry") }}
+        </button>
+      </div>
+      <div v-else-if="pixiv.bookmarkItems.length" class="pixiv-grid">
+        <PixivCard v-for="ill in pixiv.bookmarkItems" :key="ill.id" :illust="ill" @open="openIllust(ill)" />
+      </div>
+      <div v-else class="state">{{ t("pixiv.empty") }}</div>
+      <div v-if="pixiv.bookmarkNext" class="load-more">
+        <button class="lm-btn lm-btn--tonal" :disabled="pixiv.loading" @click="pixiv.fetchBookmarksMore()">
+          <span v-if="pixiv.loading" class="material-symbols-outlined spin">progress_activity</span>
+          <span v-else class="material-symbols-outlined">expand_more</span>
+          {{ t("pixiv.loadMore") }}
+        </button>
+      </div>
+    </template>
+
+    <!-- 关注流 -->
+    <template v-else-if="pixiv.view === 'follow'">
+      <div class="search-head">
+        <button class="back" @click="backToHome">
+          <span class="material-symbols-outlined">arrow_back</span>
+          {{ t("pixiv.back") }}
+        </button>
+        <h2 class="page-title">{{ t("pixiv.followFeed") }}</h2>
+      </div>
+      <div v-if="pixiv.loading && !pixiv.followItems.length" class="state">{{ t("pixiv.loading") }}</div>
+      <div v-else-if="pixiv.error && !pixiv.followItems.length" class="state list-error">
+        {{ pixiv.error }}
+        <button class="lm-btn lm-btn--text" @click="pixiv.fetchFollow()">
+          <span class="material-symbols-outlined">refresh</span>{{ t("pixiv.retry") }}
+        </button>
+      </div>
+      <div v-else-if="pixiv.followItems.length" class="pixiv-grid">
+        <PixivCard v-for="ill in pixiv.followItems" :key="ill.id" :illust="ill" @open="openIllust(ill)" />
+      </div>
+      <div v-else class="state">{{ t("pixiv.empty") }}</div>
+      <div v-if="pixiv.followNext" class="load-more">
+        <button class="lm-btn lm-btn--tonal" :disabled="pixiv.loading" @click="pixiv.fetchFollowMore()">
+          <span v-if="pixiv.loading" class="material-symbols-outlined spin">progress_activity</span>
+          <span v-else class="material-symbols-outlined">expand_more</span>
+          {{ t("pixiv.loadMore") }}
+        </button>
+      </div>
+    </template>
+
+    <!-- 作者页 -->
+    <template v-else-if="pixiv.view === 'user'">
+      <div class="search-head">
+        <button class="back" @click="backToHome">
+          <span class="material-symbols-outlined">arrow_back</span>
+          {{ t("pixiv.back") }}
+        </button>
+        <h2 class="page-title">{{ pixiv.userDetail?.user.name || "" }}</h2>
+      </div>
+
+      <div v-if="pixiv.loading && !pixiv.userDetail" class="state">{{ t("pixiv.loading") }}</div>
+      <div v-else-if="pixiv.error && !pixiv.userDetail" class="state list-error">{{ pixiv.error }}</div>
+
+      <template v-else-if="pixiv.userDetail">
+        <div class="user-card">
+          <div class="user-meta">
+            <span class="user-name">{{ pixiv.userDetail.user.name }}</span>
+            <span class="user-stats">
+              {{ pixiv.userDetail.totalIllusts }} {{ t("pixiv.works") }}
+              · {{ pixiv.userDetail.following }} {{ t("pixiv.followFeed") }}
+            </span>
+          </div>
+          <button
+            class="lm-btn"
+            :class="pixiv.followingAuthor ? 'lm-btn--tonal' : 'lm-btn--filled'"
+            @click="pixiv.toggleFollowAuthor(pixiv.userDetail.user.id)"
+          >
+            <span class="material-symbols-outlined">{{ pixiv.followingAuthor ? "person_remove" : "person_add" }}</span>
+            {{ pixiv.followingAuthor ? t("pixiv.unfollow") : t("pixiv.follow") }}
+          </button>
+        </div>
+
+        <div v-if="pixiv.userIllusts.length" class="pixiv-grid">
+          <PixivCard v-for="ill in pixiv.userIllusts" :key="ill.id" :illust="ill" @open="openIllust(ill)" />
+        </div>
+        <div v-else class="state">{{ t("pixiv.empty") }}</div>
+        <div v-if="pixiv.userNext" class="load-more">
+          <button class="lm-btn lm-btn--tonal" :disabled="pixiv.loading" @click="pixiv.fetchUserIllustsMore()">
+            <span v-if="pixiv.loading" class="material-symbols-outlined spin">progress_activity</span>
+            <span v-else class="material-symbols-outlined">expand_more</span>
+            {{ t("pixiv.loadMore") }}
+          </button>
+        </div>
+      </template>
+    </template>
 
     <!-- 搜索结果 -->
     <template v-else-if="pixiv.view === 'search'">
       <div class="search-head">
-        <button class="back" @click="pixiv.view = 'home'">
+        <button class="back" @click="backToHome">
           <span class="material-symbols-outlined">arrow_back</span>
           {{ t("pixiv.back") }}
         </button>
@@ -151,6 +290,16 @@ function backFromDetail() {
           <span v-else class="material-symbols-outlined">search</span>
           {{ t("pixiv.search") }}
         </button>
+      </div>
+
+      <!-- 联想词 -->
+      <div v-if="searchWord.trim() && pixiv.suggestions.length" class="suggest-row">
+        <button
+          v-for="s in pixiv.suggestions.slice(0, 12)"
+          :key="s"
+          class="chip"
+          @click="searchTag(s)"
+        >{{ s }}</button>
       </div>
 
       <div class="sort-row">
@@ -175,10 +324,29 @@ function backFromDetail() {
         />
       </div>
       <div v-else class="state">{{ t("pixiv.empty") }}</div>
+
+      <div v-if="pixiv.searchNext" class="load-more">
+        <button class="lm-btn lm-btn--tonal" :disabled="pixiv.loading" @click="pixiv.fetchSearchMore()">
+          <span v-if="pixiv.loading" class="material-symbols-outlined spin">progress_activity</span>
+          <span v-else class="material-symbols-outlined">expand_more</span>
+          {{ t("pixiv.loadMore") }}
+        </button>
+      </div>
     </template>
 
     <!-- 主页 -->
     <template v-else>
+      <div v-if="pixiv.loginStatus.loggedIn" class="home-toolbar">
+        <button class="lm-btn lm-btn--tonal" @click="goBookmarks">
+          <span class="material-symbols-outlined">bookmarks</span>
+          {{ t("pixiv.myBookmarks") }}
+        </button>
+        <button class="lm-btn lm-btn--tonal" @click="goFollow">
+          <span class="material-symbols-outlined">favorite</span>
+          {{ t("pixiv.followFeed") }}
+        </button>
+      </div>
+
       <div class="search-bar">
         <input
           v-model="searchWord"
@@ -190,6 +358,20 @@ function backFromDetail() {
           <span v-else class="material-symbols-outlined">search</span>
           {{ t("pixiv.search") }}
         </button>
+      </div>
+
+      <!-- 热门标签 -->
+      <div v-if="pixiv.trendTags.length" class="trend-row">
+        <span class="sort-label">{{ t("pixiv.hotTags") }}</span>
+        <div class="trend-chips">
+          <button
+            v-for="tag in pixiv.trendTags.slice(0, 10)"
+            :key="tag.name"
+            class="chip"
+            :title="tag.translatedName || tag.name"
+            @click="searchTag(tag)"
+          ># {{ tag.translatedName || tag.name }}</button>
+        </div>
       </div>
 
       <!-- 推荐 -->
@@ -214,6 +396,13 @@ function backFromDetail() {
           />
         </div>
         <div v-else class="state">{{ t("pixiv.empty") }}</div>
+        <div v-if="pixiv.recommendedNext" class="load-more">
+          <button class="lm-btn lm-btn--tonal" :disabled="pixiv.loading" @click="pixiv.fetchRecommendedMore()">
+            <span v-if="pixiv.loading" class="material-symbols-outlined spin">progress_activity</span>
+            <span v-else class="material-symbols-outlined">expand_more</span>
+            {{ t("pixiv.loadMore") }}
+          </button>
+        </div>
       </section>
 
       <!-- 排行 -->
@@ -243,6 +432,13 @@ function backFromDetail() {
           />
         </div>
         <div v-else class="state">{{ t("pixiv.empty") }}</div>
+        <div v-if="pixiv.rankingNext" class="load-more">
+          <button class="lm-btn lm-btn--tonal" :disabled="pixiv.loading" @click="pixiv.fetchRankingMore()">
+            <span v-if="pixiv.loading" class="material-symbols-outlined spin">progress_activity</span>
+            <span v-else class="material-symbols-outlined">expand_more</span>
+            {{ t("pixiv.loadMore") }}
+          </button>
+        </div>
       </section>
     </template>
   </div>
@@ -254,6 +450,11 @@ function backFromDetail() {
   flex-direction: column;
   gap: 20px;
   animation: lm-rise 340ms var(--md-sys-motion-easing-emphasized-decelerate) both;
+}
+.home-toolbar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 .search-head {
   display: flex;
@@ -282,6 +483,9 @@ function backFromDetail() {
   font-weight: 600;
   flex: 1;
   min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .search-bar {
   display: flex;
@@ -312,6 +516,25 @@ function backFromDetail() {
 .sort-label {
   font-size: var(--md-sys-typescale-label-small-size);
   color: var(--md-sys-color-on-surface-variant);
+}
+.suggest-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.trend-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.trend-row .sort-label {
+  padding-top: 6px;
+  flex-shrink: 0;
+}
+.trend-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 .chip {
   display: inline-flex;
@@ -368,6 +591,34 @@ function backFromDetail() {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 16px;
+}
+.load-more {
+  display: flex;
+  justify-content: center;
+  padding: 4px 0;
+}
+.user-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--md-sys-shape-corner-extra-large);
+  background: var(--md-sys-color-surface-container);
+}
+.user-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.user-name {
+  font-size: var(--md-sys-typescale-title-medium-size);
+  font-weight: 600;
+}
+.user-stats {
+  font-size: var(--md-sys-typescale-body-small-size);
+  color: var(--md-sys-color-on-surface-variant);
 }
 .login-bar {
   display: flex;

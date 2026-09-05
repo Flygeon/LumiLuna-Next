@@ -255,6 +255,17 @@ pub fn run() {
             pixiv::pixiv_image,
             pixiv::pixiv_follow,
             pixiv::pixiv_next,
+            pixiv::pixiv_bookmark_add,
+            pixiv::pixiv_bookmark_delete,
+            pixiv::pixiv_bookmark_detail,
+            pixiv::pixiv_user_bookmarks,
+            pixiv::pixiv_user_detail,
+            pixiv::pixiv_user_illusts,
+            pixiv::pixiv_follow_user,
+            pixiv::pixiv_trending_tags,
+            pixiv::pixiv_search_suggest,
+            pixiv::pixiv_ugoira_frames,
+            pixiv::pixiv_frame_bytes,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

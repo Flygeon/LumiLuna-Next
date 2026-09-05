@@ -1029,6 +1029,29 @@ export interface PixivCommentsPage {
   total?: number | null;
 }
 
+export interface PixivUserDetail {
+  user: PixivUser;
+  totalIllusts: number;
+  following: number;
+}
+
+export interface PixivTrendTag {
+  name: string;
+  translatedName?: string | null;
+  /** 该标签下第一部作品的缩略图 */
+  cover?: string | null;
+}
+
+export interface PixivUgoiraFrame {
+  /** 解压后帧图片的本地路径（经 pixiv_frame_bytes 读字节转 Blob） */
+  path: string;
+  delayMs: number;
+}
+
+export interface PixivUgoiraFrames {
+  frames: PixivUgoiraFrame[];
+}
+
 export interface PixivSearchOpts {
   sort?: string;
   searchTarget?: string;

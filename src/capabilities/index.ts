@@ -64,6 +64,9 @@ import type {
   PixivCommentsPage,
   PixivLoginStatus,
   PixivSearchOpts,
+  PixivUserDetail,
+  PixivTrendTag,
+  PixivUgoiraFrames,
 } from "@shared/types";
 import { mockInvoke } from "./mock";
 
@@ -572,6 +575,43 @@ export const capabilities = {
   },
   pixivNext(nextUrl: string): Promise<PixivIllustPage> {
     return safeInvoke("pixiv_next", { nextUrl });
+  },
+  pixivBookmarkAdd(illustId: number, restrict: string): Promise<void> {
+    return safeInvoke("pixiv_bookmark_add", { illustId, restrict });
+  },
+  pixivBookmarkDelete(illustId: number): Promise<void> {
+    return safeInvoke("pixiv_bookmark_delete", { illustId });
+  },
+  /** 查询作品是否已收藏 */
+  pixivBookmarkDetail(illustId: number): Promise<boolean> {
+    return safeInvoke("pixiv_bookmark_detail", { illustId });
+  },
+  /** 我的 / 某用户的收藏列表 */
+  pixivUserBookmarks(userId: number, restrict: string): Promise<PixivIllustPage> {
+    return safeInvoke("pixiv_user_bookmarks", { userId, restrict });
+  },
+  pixivUserDetail(userId: number): Promise<PixivUserDetail> {
+    return safeInvoke("pixiv_user_detail", { userId });
+  },
+  pixivUserIllusts(userId: number): Promise<PixivIllustPage> {
+    return safeInvoke("pixiv_user_illusts", { userId });
+  },
+  /** 关注 / 取关用户 */
+  pixivFollowUser(userId: number, unfollow: boolean): Promise<void> {
+    return safeInvoke("pixiv_follow_user", { userId, unfollow });
+  },
+  pixivTrendingTags(): Promise<PixivTrendTag[]> {
+    return safeInvoke("pixiv_trending_tags");
+  },
+  pixivSearchSuggest(term: string): Promise<string[]> {
+    return safeInvoke("pixiv_search_suggest", { term });
+  },
+  pixivUgoiraFrames(illustId: number): Promise<PixivUgoiraFrames> {
+    return safeInvoke("pixiv_ugoira_frames", { illustId });
+  },
+  /** 读本地 ugoira 帧字节（转 Blob 播放） */
+  pixivFrameBytes(path: string): Promise<Uint8Array> {
+    return safeInvoke("pixiv_frame_bytes", { path });
   },
 
   // ---- 系统 ----

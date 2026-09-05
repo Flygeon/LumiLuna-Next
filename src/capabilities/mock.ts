@@ -2,7 +2,7 @@
  * 纯浏览器预览用的 mock 后端（`npm run dev` 无 Tauri 环境时生效）。
  * 只为让 UI 可见，不追求行为等价。
  */
-import type { AnimeHistoryItem, AnimeRuleEntry, FfmpegStatus, ListenSourceStat, ListenStats, LoadedSkin, MediaEntry, NeteaseCloudPage, NeteasePlaylist, NeteaseProfile, NeteaseQrCheck, NeteaseSong, PixivCommentsPage, PixivIllustDetail, PixivIllustPage, PixivLoginStatus, ScanProgress, SkinEntry, TopTrackStat, WebDavEntry, WebDavStatus } from "@shared/types";
+import type { AnimeHistoryItem, AnimeRuleEntry, FfmpegStatus, ListenSourceStat, ListenStats, LoadedSkin, MediaEntry, NeteaseCloudPage, NeteasePlaylist, NeteaseProfile, NeteaseQrCheck, NeteaseSong, PixivCommentsPage, PixivIllustDetail, PixivIllustPage, PixivLoginStatus, PixivTrendTag, PixivUgoiraFrames, PixivUserDetail, ScanProgress, SkinEntry, TopTrackStat, WebDavEntry, WebDavStatus } from "@shared/types";
 
 /** 内联 SVG 占位封面，避免依赖外部图片 */
 function placeholderCover(label: string, hue: number): string {
@@ -467,6 +467,25 @@ export function mockInvoke<T>(
       return as(undefined);
     case "pixiv_illust_comments":
       return as<PixivCommentsPage>({ comments: [], nextOffset: null, total: null });
+    case "pixiv_bookmark_add":
+    case "pixiv_bookmark_delete":
+    case "pixiv_follow_user":
+      return as(undefined);
+    case "pixiv_bookmark_detail":
+      return as(false);
+    case "pixiv_user_detail":
+      return as<PixivUserDetail>({ user: { id: 0, name: "", account: "" }, totalIllusts: 0, following: 0 });
+    case "pixiv_user_illusts":
+    case "pixiv_user_bookmarks":
+      return as<PixivIllustPage>({ illusts: [], nextUrl: null });
+    case "pixiv_trending_tags":
+      return as<PixivTrendTag[]>([]);
+    case "pixiv_search_suggest":
+      return as<string[]>([]);
+    case "pixiv_ugoira_frames":
+      return as<PixivUgoiraFrames>({ frames: [] });
+    case "pixiv_frame_bytes":
+      return as(new Uint8Array(0));
     case "pixiv_recommended":
     case "pixiv_ranking":
     case "pixiv_search":
