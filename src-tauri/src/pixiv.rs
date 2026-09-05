@@ -595,9 +595,9 @@ fn call_api_post_blocking(
                 &text.chars().take(200).collect::<String>()
             ));
         }
-        return serde_json::from_str::<Value>(&text)
-            .or(Ok(Value::Null))
-            .map_err(|e| format!("解析 Pixiv 响应失败：{e}"));
+        // 收藏/关注类 POST 有时返回空体：解析失败按 Null 处理即可，
+        // 调用方只用状态码判断成败
+        return Ok(serde_json::from_str::<Value>(&text).unwrap_or(Value::Null));
     }
     Err("Pixiv 请求重试后仍失败".into())
 }
