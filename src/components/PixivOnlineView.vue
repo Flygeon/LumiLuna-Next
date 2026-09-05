@@ -15,7 +15,8 @@ const t = (key: string) => translate(settings.lang, key);
 type RankMode = "day" | "week" | "month" | "day_male" | "day_female";
 type SearchSort = "date_desc" | "popular_desc";
 
-const rankMode = ref<RankMode>("day");
+// 排行模式存 store：组件重挂载（切标签/详情返回）后 chips 与列表保持一致
+const rankMode = ref<RankMode>((pixiv.rankingMode as RankMode) || "day");
 const searchWord = ref("");
 const searchSort = ref<SearchSort>("date_desc");
 const loggingIn = ref(false);
@@ -40,9 +41,11 @@ const loginUserName = computed(() =>
 
 onMounted(async () => {
   await pixiv.loadLoginStatus();
-  await pixiv.fetchRecommended();
-  await pixiv.fetchRanking(rankMode.value);
-  void pixiv.fetchTrending(); // 热词失败不阻塞主页
+  // 已有数据就不重拉：切「本地/Pixiv」标签会导致组件重挂载，
+  // 无条件刷新会让每次切标签都白打三个接口、冲掉浏览位置
+  if (!pixiv.recommended.length) await pixiv.fetchRecommended();
+  if (!pixiv.ranking.length) await pixiv.fetchRanking(rankMode.value);
+  if (!pixiv.trendTags.length) void pixiv.fetchTrending(); // 热词失败不阻塞主页
 });
 
 // ---- 搜索联想（300ms 防抖） ----
@@ -112,7 +115,8 @@ function openUser(id: number) {
 
 function backFromDetail() {
   pixiv.view = "home";
-  void pixiv.fetchRecommended();
+  // 仅当列表为空才重拉：推荐/排行已有数据时反复刷新既浪费又冲掉浏览位置
+  if (!pixiv.recommended.length) void pixiv.fetchRecommended();
 }
 
 function goBookmarks() {

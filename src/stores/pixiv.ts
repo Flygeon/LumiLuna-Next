@@ -124,9 +124,13 @@ export const usePixivStore = defineStore("pixiv", () => {
     }
   }
 
+  /** 当前排行模式：组件重挂载后恢复 chips 选中态与列表一致 */
+  const rankingMode = ref("day");
+
   async function fetchRanking(mode: string, date?: string) {
     loading.value = true;
     error.value = "";
+    rankingMode.value = mode;
     try {
       const p = await capabilities.pixivRanking(mode, date);
       ranking.value = p.illusts;
@@ -504,6 +508,7 @@ export const usePixivStore = defineStore("pixiv", () => {
     recommendedNext,
     rankingNext,
     searchNext,
+    rankingMode,
     loginLabel,
     loadLoginStatus,
     login,

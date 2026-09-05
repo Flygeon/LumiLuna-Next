@@ -40,8 +40,6 @@ rayon = "1"
 base64 = "0.22"
 getrandom = "0.2"
 chrono = "0.4"
-# Pixiv ugoira 动图：zip 帧包解压（只需 deflate，关掉其它特性减小体积）
-zip = { version = "2", default-features = false, features = ["deflate"] }
 reqwest = { version = "0.12", default-features = false, features = ["blocking", "stream", "native-tls", "charset", "gzip", "json"] }
 # WebDAV 直接用到的传递依赖需显式声明（Rust 不允许隐式使用传递依赖）
 url = "2"
