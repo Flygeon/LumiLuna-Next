@@ -4,6 +4,7 @@ import { ref, computed } from "vue";
 import { capabilities } from "@/capabilities";
 import { useSettingsStore } from "@/stores/settings";
 import type {
+  PixivComment,
   PixivIllust,
   PixivIllustDetail,
   PixivLoginStatus,
@@ -12,6 +13,9 @@ import type {
 
 /** 图片 Blob URL 内存缓存（不要用 base64，大图会爆内存） */
 const imageCache = new Map<string, string>();
+
+/** 每个会话只尝试一次「刷新会话恢复 user」——失败不反复打扰后端 */
+let userFixTried = false;
 
 export const usePixivStore = defineStore("pixiv", () => {
   const settings = useSettingsStore();
@@ -25,6 +29,12 @@ export const usePixivStore = defineStore("pixiv", () => {
   const loading = ref(false);
   const error = ref("");
   const view = ref<"home" | "search" | "detail">("home");
+
+  // 评论（属于当前 detail）
+  const comments = ref<PixivComment[]>([]);
+  const commentsNext = ref<number | null>(null);
+  const commentsLoading = ref(false);
+  const commentsError = ref("");
 
   const loginLabel = computed(() =>
     loginStatus.value.user
@@ -43,6 +53,16 @@ export const usePixivStore = defineStore("pixiv", () => {
           );
         } catch {
           /* 恢复失败忽略，等用户重新登录 */
+        }
+      }
+      // 已登录但 user 丢失（旧版本登录时 OAuth user.id 解析失败存了 None）
+      // → 刷新一次会话把 user 补回来（每会话只试一次，避免反复打后端）
+      if (loginStatus.value.loggedIn && !loginStatus.value.user && !userFixTried) {
+        userFixTried = true;
+        try {
+          loginStatus.value = await capabilities.pixivRefreshSession();
+        } catch {
+          /* 刷新失败保持原状态 */
         }
       }
     } catch {
@@ -98,6 +118,10 @@ export const usePixivStore = defineStore("pixiv", () => {
   async function fetchDetail(id: number) {
     loading.value = true;
     error.value = "";
+    // 换作品先清旧评论，避免新面板短暂显示上一幅的评论
+    comments.value = [];
+    commentsNext.value = null;
+    commentsError.value = "";
     try {
       const d = await capabilities.pixivIllustDetail(id);
       detail.value = d.illust;
@@ -107,6 +131,40 @@ export const usePixivStore = defineStore("pixiv", () => {
       error.value = e instanceof Error ? e.message : String(e);
     } finally {
       loading.value = false;
+    }
+  }
+
+  // ---- 评论 ----
+
+  async function fetchComments(illustId: number) {
+    commentsLoading.value = true;
+    commentsError.value = "";
+    try {
+      const page = await capabilities.pixivIllustComments(illustId, null);
+      comments.value = page.comments;
+      commentsNext.value = page.nextOffset ?? null;
+    } catch (e) {
+      commentsError.value = e instanceof Error ? e.message : String(e);
+    } finally {
+      commentsLoading.value = false;
+    }
+  }
+
+  async function fetchCommentsMore() {
+    if (commentsNext.value == null || commentsLoading.value) return;
+    commentsLoading.value = true;
+    commentsError.value = "";
+    try {
+      const page = await capabilities.pixivIllustComments(
+        detail.value?.id ?? 0,
+        commentsNext.value,
+      );
+      comments.value = [...comments.value, ...page.comments];
+      commentsNext.value = page.nextOffset ?? null;
+    } catch (e) {
+      commentsError.value = e instanceof Error ? e.message : String(e);
+    } finally {
+      commentsLoading.value = false;
     }
   }
 
@@ -146,6 +204,9 @@ export const usePixivStore = defineStore("pixiv", () => {
     searchItems.value = [];
     detail.value = null;
     related.value = [];
+    comments.value = [];
+    commentsNext.value = null;
+    commentsError.value = "";
     error.value = "";
     view.value = "home";
   }
@@ -160,6 +221,10 @@ export const usePixivStore = defineStore("pixiv", () => {
     loading,
     error,
     view,
+    comments,
+    commentsNext,
+    commentsLoading,
+    commentsError,
     loginLabel,
     loadLoginStatus,
     login,
@@ -168,6 +233,8 @@ export const usePixivStore = defineStore("pixiv", () => {
     fetchRanking,
     search,
     fetchDetail,
+    fetchComments,
+    fetchCommentsMore,
     imageUrl,
     coverUrl,
     reset,

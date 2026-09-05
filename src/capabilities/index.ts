@@ -61,6 +61,7 @@ import type {
   AnimeRuleEntry,
   PixivIllustPage,
   PixivIllustDetail,
+  PixivCommentsPage,
   PixivLoginStatus,
   PixivSearchOpts,
 } from "@shared/types";
@@ -537,6 +538,10 @@ export const capabilities = {
   pixivLogout(): Promise<void> {
     return safeInvoke("pixiv_logout");
   },
+  /** 用已存 refresh_token 刷新会话（恢复 user 信息 / 续期） */
+  pixivRefreshSession(): Promise<PixivLoginStatus> {
+    return safeInvoke("pixiv_refresh_session");
+  },
   pixivSetRefreshToken(token: string): Promise<PixivLoginStatus> {
     return safeInvoke("pixiv_set_refresh_token", { token });
   },
@@ -551,6 +556,13 @@ export const capabilities = {
   },
   pixivIllustDetail(id: number): Promise<PixivIllustDetail> {
     return safeInvoke("pixiv_illust_detail", { id });
+  },
+  /** 作品评论（offset 翻页） */
+  pixivIllustComments(
+    illustId: number,
+    offset?: number | null,
+  ): Promise<PixivCommentsPage> {
+    return safeInvoke("pixiv_illust_comments", { illustId, offset: offset ?? null });
   },
   pixivImage(url: string): Promise<Uint8Array> {
     return safeInvoke("pixiv_image", { url });

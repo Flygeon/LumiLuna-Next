@@ -1013,6 +1013,22 @@ export interface PixivLoginStatus {
   user?: PixivUser | null;
 }
 
+export interface PixivComment {
+  id: number;
+  comment: string;
+  date?: string | null;
+  user: PixivUser;
+  /** 楼中楼父评论 */
+  parentComment?: PixivComment | null;
+}
+
+export interface PixivCommentsPage {
+  comments: PixivComment[];
+  /** 下一页 offset；null 表示没有更多 */
+  nextOffset?: number | null;
+  total?: number | null;
+}
+
 export interface PixivSearchOpts {
   sort?: string;
   searchTarget?: string;

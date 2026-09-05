@@ -146,6 +146,32 @@ pub struct PixivIllustDetail {
     pub related: Vec<PixivIllust>,
 }
 
+// ---- 评论 ----
+
+#[derive(Serialize, Deserialize, Clone, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct PixivComment {
+    pub id: i64,
+    #[serde(default)]
+    pub comment: String,
+    #[serde(default)]
+    pub date: Option<String>,
+    #[serde(default)]
+    pub user: PixivUser,
+    // 楼中楼：父评论结构与本结构一致（API 允许 null）
+    #[serde(rename(deserialize = "parent_comment"), default)]
+    pub parent_comment: Option<Box<PixivComment>>,
+}
+
+#[derive(Serialize, Clone, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct PixivCommentsPage {
+    pub comments: Vec<PixivComment>,
+    /// 下一页 offset（从 next_url 里解析出来；None 表示没有更多）
+    pub next_offset: Option<i64>,
+    pub total: Option<i64>,
+}
+
 #[derive(Serialize, Clone, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct PixivLoginStatus {
@@ -538,6 +564,52 @@ fn parse_illust_page(v: &Value) -> Result<PixivIllustPage, String> {
     Ok(PixivIllustPage { illusts, next_url })
 }
 
+/// 解析评论响应：逐条解析（坏条目跳过但落日志），
+/// 并从 next_url 里抠出下一页 offset（评论 API 用 offset 翻页）。
+fn parse_comments(v: &Value) -> Result<PixivCommentsPage, String> {
+    let arr = v
+        .get("comments")
+        .and_then(|x| x.as_array())
+        .ok_or("响应缺少 comments 字段")?;
+    let mut out = Vec::new();
+    let mut first_err: Option<String> = None;
+    for it in arr {
+        match serde_json::from_value::<PixivComment>(it.clone()) {
+            Ok(c) => out.push(c),
+            Err(e) => {
+                if first_err.is_none() {
+                    first_err = Some(format!(
+                        "id={} err={e}",
+                        it.get("id").and_then(|x| x.as_i64()).unwrap_or(-1)
+                    ));
+                }
+            }
+        }
+    }
+    if let Some(e) = &first_err {
+        crate::novel_auth::login_debug_log(&format!(
+            "[pixiv] parse_comments: {}/{} 条解析失败，首条：{e}",
+            arr.len() - out.len(),
+            arr.len()
+        ));
+    }
+    let next_offset = v
+        .get("next_url")
+        .and_then(|x| x.as_str())
+        .and_then(|s| url::Url::parse(s).ok())
+        .and_then(|u| {
+            u.query_pairs()
+                .find(|(k, _)| k == "offset")
+                .and_then(|(_, val)| val.parse::<i64>().ok())
+        });
+    let total = v.get("total").and_then(|x| x.as_i64());
+    Ok(PixivCommentsPage {
+        comments: out,
+        next_offset,
+        total,
+    })
+}
+
 /// 用 authorization_code 换 token（PKCE 流程收尾）
 fn exchange_code_blocking(app: &tauri::AppHandle, code: &str) -> Result<PixivLoginStatus, String> {
     let verifier = state()
@@ -858,6 +930,47 @@ pub async fn pixiv_next(
     .await
     .map_err(|e| format!("任务失败：{e}"))?;
     res
+}
+
+/// 作品评论（offset 翻页：传上一页返回的 nextOffset，首页传 None）
+#[tauri::command]
+pub async fn pixiv_illust_comments(
+    app: tauri::AppHandle,
+    illust_id: i64,
+    offset: Option<i64>,
+) -> Result<PixivCommentsPage, String> {
+    let mut q = vec![("illust_id".into(), illust_id.to_string())];
+    if let Some(o) = offset {
+        q.push(("offset".into(), o.to_string()));
+    }
+    let res = tokio::task::spawn_blocking(move || {
+        call_api_blocking(&app, "/v1/illust/comments", &q).and_then(|v| parse_comments(&v))
+    })
+    .await
+    .map_err(|e| format!("任务失败：{e}"))?;
+    res
+}
+
+/// 用已存的 refresh_token 刷新会话：恢复 user 信息（旧版本登录时 user 没存上）、
+/// 续期 access_token。不改写 refresh_token 本身。
+#[tauri::command]
+pub async fn pixiv_refresh_session(app: tauri::AppHandle) -> Result<PixivLoginStatus, String> {
+    let app2 = app.clone();
+    let r = tokio::task::spawn_blocking(move || refresh_tokens_blocking(&app2))
+        .await
+        .map_err(|e| format!("任务失败：{e}"))?;
+    match &r {
+        Ok(()) => crate::novel_auth::login_debug_log("[pixiv] refresh_session: 会话已刷新"),
+        Err(e) => {
+            crate::novel_auth::login_debug_log(&format!("[pixiv] refresh_session: 刷新失败：{e}"))
+        }
+    }
+    r?;
+    let s = state().lock().unwrap();
+    Ok(PixivLoginStatus {
+        logged_in: s.access_token.is_some(),
+        user: s.user.clone(),
+    })
 }
 
 /// 图片代理：i.pximg.net 需要 Referer，WebView 无法逐图设，故走 Rust 拉字节返回。

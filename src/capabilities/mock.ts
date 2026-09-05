@@ -2,7 +2,7 @@
  * 纯浏览器预览用的 mock 后端（`npm run dev` 无 Tauri 环境时生效）。
  * 只为让 UI 可见，不追求行为等价。
  */
-import type { AnimeHistoryItem, AnimeRuleEntry, FfmpegStatus, ListenSourceStat, ListenStats, LoadedSkin, MediaEntry, NeteaseCloudPage, NeteasePlaylist, NeteaseProfile, NeteaseQrCheck, NeteaseSong, PixivIllustDetail, PixivIllustPage, PixivLoginStatus, ScanProgress, SkinEntry, TopTrackStat, WebDavEntry, WebDavStatus } from "@shared/types";
+import type { AnimeHistoryItem, AnimeRuleEntry, FfmpegStatus, ListenSourceStat, ListenStats, LoadedSkin, MediaEntry, NeteaseCloudPage, NeteasePlaylist, NeteaseProfile, NeteaseQrCheck, NeteaseSong, PixivCommentsPage, PixivIllustDetail, PixivIllustPage, PixivLoginStatus, ScanProgress, SkinEntry, TopTrackStat, WebDavEntry, WebDavStatus } from "@shared/types";
 
 /** 内联 SVG 占位封面，避免依赖外部图片 */
 function placeholderCover(label: string, hue: number): string {
@@ -461,9 +461,12 @@ export function mockInvoke<T>(
     case "pixiv_login_open":
     case "pixiv_login_submit":
     case "pixiv_set_refresh_token":
+    case "pixiv_refresh_session":
       return as<PixivLoginStatus>({ loggedIn: false, user: null });
     case "pixiv_logout":
       return as(undefined);
+    case "pixiv_illust_comments":
+      return as<PixivCommentsPage>({ comments: [], nextOffset: null, total: null });
     case "pixiv_recommended":
     case "pixiv_ranking":
     case "pixiv_search":
