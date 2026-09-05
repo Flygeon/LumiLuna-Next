@@ -121,6 +121,12 @@ const DEFAULTS = {
   onlineNovelEnabled: false,
   /** 实验性：在线番剧（Kazumi 规则采集，仅桌面端） */
   onlineAnimeEnabled: false,
+  /** 实验性：在线图片（Pixiv，移植自 Pixez） */
+  onlinePixivEnabled: false,
+  /** Pixiv refresh token（仅在本地磁盘与设置中保存，用于恢复会话） */
+  pixivRefreshToken: "",
+  /** Pixiv 图片质量：squareMedium / medium / large / original */
+  pixivImageQuality: "large",
   /** Wenku8 节点：cc 主用 / net 备用 */
   wenku8Node: "cc" as Wenku8Node,
   /** 小说页面字符集：简中 GBK / 繁中 Big5 */
@@ -204,6 +210,9 @@ export const useSettingsStore = defineStore("settings", () => {
   const neteaseEnabled = ref(DEFAULTS.neteaseEnabled);
   const onlineNovelEnabled = ref(DEFAULTS.onlineNovelEnabled);
   const onlineAnimeEnabled = ref(DEFAULTS.onlineAnimeEnabled);
+  const onlinePixivEnabled = ref(DEFAULTS.onlinePixivEnabled);
+  const pixivRefreshToken = ref(DEFAULTS.pixivRefreshToken);
+  const pixivImageQuality = ref(DEFAULTS.pixivImageQuality);
   const wenku8Node = ref<Wenku8Node>(DEFAULTS.wenku8Node);
   const novelCharset = ref<NovelCharset>(DEFAULTS.novelCharset);
   const shareCodePreference = ref<ShareCodePreference>(DEFAULTS.shareCodePreference);
@@ -273,6 +282,9 @@ export const useSettingsStore = defineStore("settings", () => {
     neteaseEnabled,
     onlineNovelEnabled,
     onlineAnimeEnabled,
+    onlinePixivEnabled,
+    pixivRefreshToken,
+    pixivImageQuality,
     wenku8Node,
     novelCharset,
     shareCodePreference,

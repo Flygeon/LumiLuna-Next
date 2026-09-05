@@ -941,3 +941,84 @@ export interface DandanCommentResponse {
   comments: DanmakuEntry[];
 }
 
+// =====================================================================
+// 在线图片（Pixiv，移植自 Pixez）
+// =====================================================================
+
+export interface PixivImageUrls {
+  squareMedium?: string | null;
+  medium?: string | null;
+  large?: string | null;
+  original?: string | null;
+}
+
+export interface PixivUser {
+  id: number;
+  name: string;
+  account: string;
+  profileImageUrls?: PixivImageUrls | null;
+}
+
+export interface PixivTag {
+  name: string;
+  translatedName?: string | null;
+}
+
+export interface PixivMetaSinglePage {
+  originalImageUrl?: string | null;
+}
+
+export interface PixivMetaPage {
+  imageUrls: PixivImageUrls;
+}
+
+export interface PixivBookmarkData {
+  id?: number | null;
+}
+
+export interface PixivIllust {
+  id: number;
+  title: string;
+  type: string;
+  caption: string;
+  totalView: number;
+  totalBookmarks: number;
+  createDate?: string | null;
+  pageCount: number;
+  width: number;
+  height: number;
+  sanityLevel: number;
+  restrict: number;
+  xRestrict: number;
+  tags: PixivTag[];
+  user: PixivUser;
+  imageUrls: PixivImageUrls;
+  metaSinglePage?: PixivMetaSinglePage | null;
+  metaPages: PixivMetaPage[];
+  bookmarkData?: PixivBookmarkData | null;
+}
+
+export interface PixivIllustPage {
+  illusts: PixivIllust[];
+  nextUrl?: string | null;
+}
+
+export interface PixivIllustDetail {
+  illust: PixivIllust;
+  related: PixivIllust[];
+}
+
+export interface PixivLoginStatus {
+  loggedIn: boolean;
+  user?: PixivUser | null;
+}
+
+export interface PixivSearchOpts {
+  sort?: string;
+  searchTarget?: string;
+  startDate?: string;
+  endDate?: string;
+  bookmarkNumMin?: number;
+  bookmarkNumMax?: number;
+}
+

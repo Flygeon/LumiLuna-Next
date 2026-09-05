@@ -916,6 +916,42 @@ function resetDesktopLyricsBounds() {
       </label>
     </section>
 
+    <!-- 在线 Pixiv -->
+    <section class="card">
+      <h3>{{ t("settings.onlinePixivEnabled") }}</h3>
+      <p class="hint">{{ t("settings.onlinePixivHint") }}</p>
+      <label class="row switch-row">
+        <span class="row-label">{{ t("settings.onlinePixivEnabled") }}</span>
+        <input type="checkbox" v-model="settings.onlinePixivEnabled" />
+      </label>
+      <template v-if="settings.onlinePixivEnabled">
+        <div class="row">
+          <div class="row-label"><span>{{ t("settings.pixivQuality") }}</span></div>
+          <div class="segmented">
+            <button
+              v-for="q in (['squareMedium', 'medium', 'large', 'original'] as const)"
+              :key="q"
+              class="seg"
+              :class="{ active: settings.pixivImageQuality === q }"
+              @click="settings.pixivImageQuality = q"
+            >{{ t("settings.pixivQuality_" + q) }}</button>
+          </div>
+        </div>
+        <p class="hint">{{ t("settings.pixivRefreshTokenHint") }}</p>
+        <div class="dav-form">
+          <div class="field">
+            <label>{{ t("settings.pixivRefreshTokenLabel") }}</label>
+            <input
+              v-model="settings.pixivRefreshToken"
+              type="password"
+              spellcheck="false"
+              autocomplete="off"
+            />
+          </div>
+        </div>
+      </template>
+    </section>
+
     <!-- DanDanPlay 弹幕 -->
     <section v-if="settings.onlineAnimeEnabled" class="card">
       <h3>{{ t("settings.danmaku") }}</h3>

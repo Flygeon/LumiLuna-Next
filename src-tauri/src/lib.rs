@@ -4,6 +4,7 @@ pub mod media;
 pub mod netease;
 pub mod novel;
 pub mod novel_auth;
+pub mod pixiv;
 pub mod tray;
 pub mod webdav;
 
@@ -128,6 +129,8 @@ pub fn run() {
             }
             // 在线番剧：内置规则种子 + 隐藏取流 webview
             anime::setup(app.handle());
+            // 在线图片（Pixiv）：加载持久化登录态
+            pixiv::setup(app.handle());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -236,6 +239,20 @@ pub fn run() {
             anime::anime_favorites_list,
             anime::anime_favorites_add,
             anime::anime_favorites_remove,
+
+            // ---- 在线图片（Pixiv）----
+            pixiv::pixiv_login_status,
+            pixiv::pixiv_login_open,
+            pixiv::pixiv_login_submit,
+            pixiv::pixiv_logout,
+            pixiv::pixiv_set_refresh_token,
+            pixiv::pixiv_recommended,
+            pixiv::pixiv_ranking,
+            pixiv::pixiv_search,
+            pixiv::pixiv_illust_detail,
+            pixiv::pixiv_image,
+            pixiv::pixiv_follow,
+            pixiv::pixiv_next,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

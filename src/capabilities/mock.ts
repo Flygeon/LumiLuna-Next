@@ -2,7 +2,7 @@
  * 纯浏览器预览用的 mock 后端（`npm run dev` 无 Tauri 环境时生效）。
  * 只为让 UI 可见，不追求行为等价。
  */
-import type { AnimeHistoryItem, AnimeRuleEntry, FfmpegStatus, ListenSourceStat, ListenStats, LoadedSkin, MediaEntry, NeteaseCloudPage, NeteasePlaylist, NeteaseProfile, NeteaseQrCheck, NeteaseSong, ScanProgress, SkinEntry, TopTrackStat, WebDavEntry, WebDavStatus } from "@shared/types";
+import type { AnimeHistoryItem, AnimeRuleEntry, FfmpegStatus, ListenSourceStat, ListenStats, LoadedSkin, MediaEntry, NeteaseCloudPage, NeteasePlaylist, NeteaseProfile, NeteaseQrCheck, NeteaseSong, PixivIllustDetail, PixivIllustPage, PixivLoginStatus, ScanProgress, SkinEntry, TopTrackStat, WebDavEntry, WebDavStatus } from "@shared/types";
 
 /** 内联 SVG 占位封面，避免依赖外部图片 */
 function placeholderCover(label: string, hue: number): string {
@@ -454,6 +454,46 @@ export function mockInvoke<T>(
     case "anime_favorites_add":
     case "anime_favorites_remove":
       return as(undefined);
+
+    // ---- 在线图片（Pixiv，浏览器预览：无登录态，返回空结构）----
+    case "pixiv_login_status":
+      return as<PixivLoginStatus>({ loggedIn: false, user: null });
+    case "pixiv_login_open":
+    case "pixiv_login_submit":
+    case "pixiv_set_refresh_token":
+      return as<PixivLoginStatus>({ loggedIn: false, user: null });
+    case "pixiv_logout":
+      return as(undefined);
+    case "pixiv_recommended":
+    case "pixiv_ranking":
+    case "pixiv_search":
+    case "pixiv_follow":
+    case "pixiv_next":
+      return as<PixivIllustPage>({ illusts: [], nextUrl: null });
+    case "pixiv_illust_detail":
+      return as<PixivIllustDetail>({
+        illust: {
+          id: 0,
+          title: "",
+          type: "",
+          caption: "",
+          totalView: 0,
+          totalBookmarks: 0,
+          pageCount: 0,
+          width: 0,
+          height: 0,
+          sanityLevel: 0,
+          restrict: 0,
+          xRestrict: 0,
+          tags: [],
+          user: { id: 0, name: "", account: "" },
+          imageUrls: {},
+          metaPages: [],
+        },
+        related: [],
+      });
+    case "pixiv_image":
+      return as(new Uint8Array(0));
 
     // ---- 皮肤系统（内存 Map 模拟皮肤库；浏览器预览不支持 ZIP 导入）----
     case "is_safe_mode":

@@ -59,6 +59,10 @@ import type {
   AnimeMediaUrlResult,
   AnimeResolveStreamResult,
   AnimeRuleEntry,
+  PixivIllustPage,
+  PixivIllustDetail,
+  PixivLoginStatus,
+  PixivSearchOpts,
 } from "@shared/types";
 import { mockInvoke } from "./mock";
 
@@ -518,6 +522,44 @@ export const capabilities = {
   },
   animeFavoriteRemove(plugin: string, animeId: string): Promise<void> {
     return safeInvoke("anime_favorites_remove", { plugin, animeId });
+  },
+
+  // ---- 在线图片（Pixiv，移植自 Pixez）----
+  pixivLoginStatus(): Promise<PixivLoginStatus> {
+    return safeInvoke("pixiv_login_status");
+  },
+  pixivLoginOpen(): Promise<PixivLoginStatus> {
+    return safeInvoke("pixiv_login_open");
+  },
+  pixivLoginSubmit(code: string): Promise<PixivLoginStatus> {
+    return safeInvoke("pixiv_login_submit", { code });
+  },
+  pixivLogout(): Promise<void> {
+    return safeInvoke("pixiv_logout");
+  },
+  pixivSetRefreshToken(token: string): Promise<PixivLoginStatus> {
+    return safeInvoke("pixiv_set_refresh_token", { token });
+  },
+  pixivRecommended(): Promise<PixivIllustPage> {
+    return safeInvoke("pixiv_recommended");
+  },
+  pixivRanking(mode: string, date?: string): Promise<PixivIllustPage> {
+    return safeInvoke("pixiv_ranking", { mode, date: date ?? null });
+  },
+  pixivSearch(word: string, opts?: PixivSearchOpts): Promise<PixivIllustPage> {
+    return safeInvoke("pixiv_search", { word, opts: opts ?? null });
+  },
+  pixivIllustDetail(id: number): Promise<PixivIllustDetail> {
+    return safeInvoke("pixiv_illust_detail", { id });
+  },
+  pixivImage(url: string): Promise<Uint8Array> {
+    return safeInvoke("pixiv_image", { url });
+  },
+  pixivFollow(restrict: string): Promise<PixivIllustPage> {
+    return safeInvoke("pixiv_follow", { restrict });
+  },
+  pixivNext(nextUrl: string): Promise<PixivIllustPage> {
+    return safeInvoke("pixiv_next", { nextUrl });
   },
 
   // ---- 系统 ----
