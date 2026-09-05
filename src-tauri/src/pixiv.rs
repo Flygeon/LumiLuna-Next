@@ -16,6 +16,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 
+use base64::Engine;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
