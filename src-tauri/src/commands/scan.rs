@@ -354,7 +354,11 @@ fn fail_job(app: &tauri::AppHandle, job_id: &str, err: &str) {
 }
 
 /// 在锁内修改任务并返回快照；任务已被移除时返回 None。
-fn with_job<T>(app: &tauri::AppHandle, job_id: &str, f: impl FnOnce(&mut ScanJob) -> T) -> Option<T> {
+fn with_job<T>(
+    app: &tauri::AppHandle,
+    job_id: &str,
+    f: impl FnOnce(&mut ScanJob) -> T,
+) -> Option<T> {
     let state = app.state::<JobState>();
     let mut jobs = state.0.lock().ok()?;
     jobs.get_mut(job_id).map(f)
@@ -466,7 +470,11 @@ pub fn list_files(
     };
     sql.push_str(" ORDER BY ");
     sql.push_str(order_col);
-    sql.push_str(if q.desc.unwrap_or(false) { " DESC" } else { " ASC" });
+    sql.push_str(if q.desc.unwrap_or(false) {
+        " DESC"
+    } else {
+        " ASC"
+    });
 
     if let Some(limit) = q.limit {
         sql.push_str(" LIMIT ?");

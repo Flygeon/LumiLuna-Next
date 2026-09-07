@@ -7,13 +7,7 @@
  * 控制栏：点击歌词展开，5 秒无操作自动隐藏；
  * 设置可选择始终显示。
  */
-import {
-  computed,
-  onBeforeUnmount,
-  onMounted,
-  ref,
-  watch,
-} from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { useSettingsStore } from "@/stores/settings";
@@ -56,8 +50,7 @@ const mainText = computed(() => {
 });
 const subText = computed(() => {
   if (!settings.desktopLyricsShowNext) return "";
-  if (next.value?.text && next.value.text !== mainText.value)
-    return `下一句 · ${next.value.text}`;
+  if (next.value?.text && next.value.text !== mainText.value) return `下一句 · ${next.value.text}`;
   return "";
 });
 /** 当前行的中文翻译（仅在开启且有翻译且与原文不同时显示） */
@@ -229,12 +222,7 @@ onBeforeUnmount(() => {
     </div>
 
     <Transition name="dl-bar">
-      <div
-        v-if="toolbarVisible"
-        class="control-bar"
-        @click.stop
-        @mousemove="resetAutoHide"
-      >
+      <div v-if="toolbarVisible" class="control-bar" @click.stop @mousemove="resetAutoHide">
         <span class="meta" :title="state?.title || ''">
           {{ state?.title || "—" }}<template v-if="state?.artist"> · {{ state.artist }}</template>
         </span>
@@ -255,8 +243,7 @@ onBeforeUnmount(() => {
         </button>
       </div>
     </Transition>
-
-    </div>
+  </div>
 </template>
 
 <style>
@@ -285,11 +272,12 @@ html {
   transition: box-shadow 200ms ease;
 }
 .desktop-lyrics.toolbar-visible {
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15),
-              0 0 24px rgba(0, 0, 0, 0.25);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.15),
+    0 0 24px rgba(0, 0, 0, 0.25);
 }
 .desktop-lyrics.toolbar-visible::after {
-  content: '';
+  content: "";
   position: absolute;
   bottom: 0;
   left: 0;
@@ -402,7 +390,7 @@ html {
 }
 .control-bar .ctr .material-symbols-outlined {
   font-size: 17px;
-  font-variation-settings: 'FILL' 1;
+  font-variation-settings: "FILL" 1;
 }
 
 /* 歌词切换动画：淡入 */
@@ -477,5 +465,4 @@ html {
   opacity: 0;
   transform: translateY(-6px);
 }
-
 </style>

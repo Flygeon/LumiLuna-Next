@@ -60,8 +60,7 @@ export class AudioEffectEngine {
     if (this.ctx) return;
     const Ctx: typeof AudioContext =
       window.AudioContext ??
-      (window as unknown as { webkitAudioContext: typeof AudioContext })
-        .webkitAudioContext;
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     const ctx = new Ctx();
     const source = ctx.createMediaElementSource(media);
     const input = ctx.createGain();
@@ -157,11 +156,7 @@ export class AudioEffectEngine {
     });
 
     // 低音增强
-    this.bassFilter?.gain.setTargetAtTime(
-      config.bassBoost,
-      this.ctx.currentTime,
-      0.03,
-    );
+    this.bassFilter?.gain.setTargetAtTime(config.bassBoost, this.ctx.currentTime, 0.03);
 
     // 混响干湿比
     const reverb = Math.max(0, Math.min(100, config.reverb));
@@ -197,11 +192,7 @@ export class AudioEffectEngine {
     }
   }
 
-  private makeImpulse(
-    ctx: AudioContext,
-    seconds: number,
-    decay: number,
-  ): AudioBuffer {
+  private makeImpulse(ctx: AudioContext, seconds: number, decay: number): AudioBuffer {
     const length = Math.max(1, Math.floor(ctx.sampleRate * seconds));
     const buffer = ctx.createBuffer(2, length, ctx.sampleRate);
     for (let ch = 0; ch < 2; ch++) {

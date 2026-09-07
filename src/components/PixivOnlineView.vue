@@ -35,9 +35,7 @@ const SEARCH_SORTS: { value: SearchSort; label: () => string }[] = [
   { value: "popular_desc", label: () => t("pixiv.sortPopularDesc") },
 ];
 
-const loginUserName = computed(() =>
-  pixiv.loginStatus.user ? pixiv.loginStatus.user.name : "",
-);
+const loginUserName = computed(() => (pixiv.loginStatus.user ? pixiv.loginStatus.user.name : ""));
 
 onMounted(async () => {
   await pixiv.loadLoginStatus();
@@ -178,7 +176,9 @@ function backToHome() {
         </button>
         <h2 class="page-title">{{ t("pixiv.myBookmarks") }}</h2>
       </div>
-      <div v-if="pixiv.loading && !pixiv.bookmarkItems.length" class="state">{{ t("pixiv.loading") }}</div>
+      <div v-if="pixiv.loading && !pixiv.bookmarkItems.length" class="state">
+        {{ t("pixiv.loading") }}
+      </div>
       <div v-else-if="pixiv.error && !pixiv.bookmarkItems.length" class="state list-error">
         {{ pixiv.error }}
         <button class="lm-btn lm-btn--text" @click="pixiv.fetchBookmarks()">
@@ -186,11 +186,20 @@ function backToHome() {
         </button>
       </div>
       <div v-else-if="pixiv.bookmarkItems.length" class="pixiv-grid">
-        <PixivCard v-for="ill in pixiv.bookmarkItems" :key="ill.id" :illust="ill" @open="openIllust(ill)" />
+        <PixivCard
+          v-for="ill in pixiv.bookmarkItems"
+          :key="ill.id"
+          :illust="ill"
+          @open="openIllust(ill)"
+        />
       </div>
       <div v-else class="state">{{ t("pixiv.empty") }}</div>
       <div v-if="pixiv.bookmarkNext" class="load-more">
-        <button class="lm-btn lm-btn--tonal" :disabled="pixiv.loading" @click="pixiv.fetchBookmarksMore()">
+        <button
+          class="lm-btn lm-btn--tonal"
+          :disabled="pixiv.loading"
+          @click="pixiv.fetchBookmarksMore()"
+        >
           <span v-if="pixiv.loading" class="material-symbols-outlined spin">progress_activity</span>
           <span v-else class="material-symbols-outlined">expand_more</span>
           {{ t("pixiv.loadMore") }}
@@ -207,7 +216,9 @@ function backToHome() {
         </button>
         <h2 class="page-title">{{ t("pixiv.followFeed") }}</h2>
       </div>
-      <div v-if="pixiv.loading && !pixiv.followItems.length" class="state">{{ t("pixiv.loading") }}</div>
+      <div v-if="pixiv.loading && !pixiv.followItems.length" class="state">
+        {{ t("pixiv.loading") }}
+      </div>
       <div v-else-if="pixiv.error && !pixiv.followItems.length" class="state list-error">
         {{ pixiv.error }}
         <button class="lm-btn lm-btn--text" @click="pixiv.fetchFollow()">
@@ -215,11 +226,20 @@ function backToHome() {
         </button>
       </div>
       <div v-else-if="pixiv.followItems.length" class="pixiv-grid">
-        <PixivCard v-for="ill in pixiv.followItems" :key="ill.id" :illust="ill" @open="openIllust(ill)" />
+        <PixivCard
+          v-for="ill in pixiv.followItems"
+          :key="ill.id"
+          :illust="ill"
+          @open="openIllust(ill)"
+        />
       </div>
       <div v-else class="state">{{ t("pixiv.empty") }}</div>
       <div v-if="pixiv.followNext" class="load-more">
-        <button class="lm-btn lm-btn--tonal" :disabled="pixiv.loading" @click="pixiv.fetchFollowMore()">
+        <button
+          class="lm-btn lm-btn--tonal"
+          :disabled="pixiv.loading"
+          @click="pixiv.fetchFollowMore()"
+        >
           <span v-if="pixiv.loading" class="material-symbols-outlined spin">progress_activity</span>
           <span v-else class="material-symbols-outlined">expand_more</span>
           {{ t("pixiv.loadMore") }}
@@ -238,15 +258,17 @@ function backToHome() {
       </div>
 
       <div v-if="pixiv.loading && !pixiv.userDetail" class="state">{{ t("pixiv.loading") }}</div>
-      <div v-else-if="pixiv.error && !pixiv.userDetail" class="state list-error">{{ pixiv.error }}</div>
+      <div v-else-if="pixiv.error && !pixiv.userDetail" class="state list-error">
+        {{ pixiv.error }}
+      </div>
 
       <template v-else-if="pixiv.userDetail">
         <div class="user-card">
           <div class="user-meta">
             <span class="user-name">{{ pixiv.userDetail.user.name }}</span>
             <span class="user-stats">
-              {{ pixiv.userDetail.totalIllusts }} {{ t("pixiv.works") }}
-              · {{ pixiv.userDetail.following }} {{ t("pixiv.followFeed") }}
+              {{ pixiv.userDetail.totalIllusts }} {{ t("pixiv.works") }} ·
+              {{ pixiv.userDetail.following }} {{ t("pixiv.followFeed") }}
             </span>
           </div>
           <button
@@ -254,18 +276,31 @@ function backToHome() {
             :class="pixiv.followingAuthor ? 'lm-btn--tonal' : 'lm-btn--filled'"
             @click="pixiv.toggleFollowAuthor(pixiv.userDetail.user.id)"
           >
-            <span class="material-symbols-outlined">{{ pixiv.followingAuthor ? "person_remove" : "person_add" }}</span>
+            <span class="material-symbols-outlined">{{
+              pixiv.followingAuthor ? "person_remove" : "person_add"
+            }}</span>
             {{ pixiv.followingAuthor ? t("pixiv.unfollow") : t("pixiv.follow") }}
           </button>
         </div>
 
         <div v-if="pixiv.userIllusts.length" class="pixiv-grid">
-          <PixivCard v-for="ill in pixiv.userIllusts" :key="ill.id" :illust="ill" @open="openIllust(ill)" />
+          <PixivCard
+            v-for="ill in pixiv.userIllusts"
+            :key="ill.id"
+            :illust="ill"
+            @open="openIllust(ill)"
+          />
         </div>
         <div v-else class="state">{{ t("pixiv.empty") }}</div>
         <div v-if="pixiv.userNext" class="load-more">
-          <button class="lm-btn lm-btn--tonal" :disabled="pixiv.loading" @click="pixiv.fetchUserIllustsMore()">
-            <span v-if="pixiv.loading" class="material-symbols-outlined spin">progress_activity</span>
+          <button
+            class="lm-btn lm-btn--tonal"
+            :disabled="pixiv.loading"
+            @click="pixiv.fetchUserIllustsMore()"
+          >
+            <span v-if="pixiv.loading" class="material-symbols-outlined spin"
+              >progress_activity</span
+            >
             <span v-else class="material-symbols-outlined">expand_more</span>
             {{ t("pixiv.loadMore") }}
           </button>
@@ -303,7 +338,9 @@ function backToHome() {
           :key="s"
           class="chip"
           @click="searchTag(s)"
-        >{{ s }}</button>
+        >
+          {{ s }}
+        </button>
       </div>
 
       <div class="sort-row">
@@ -314,11 +351,17 @@ function backToHome() {
           class="chip"
           :class="{ active: searchSort === s.value }"
           @click="changeSort(s.value)"
-        >{{ s.label() }}</button>
+        >
+          {{ s.label() }}
+        </button>
       </div>
 
-      <div v-if="pixiv.loading && !pixiv.searchItems.length" class="state">{{ t("pixiv.loading") }}</div>
-      <div v-else-if="pixiv.error && !pixiv.searchItems.length" class="state list-error">{{ pixiv.error }}</div>
+      <div v-if="pixiv.loading && !pixiv.searchItems.length" class="state">
+        {{ t("pixiv.loading") }}
+      </div>
+      <div v-else-if="pixiv.error && !pixiv.searchItems.length" class="state list-error">
+        {{ pixiv.error }}
+      </div>
       <div v-else-if="pixiv.searchItems.length" class="pixiv-grid">
         <PixivCard
           v-for="ill in pixiv.searchItems"
@@ -330,7 +373,11 @@ function backToHome() {
       <div v-else class="state">{{ t("pixiv.empty") }}</div>
 
       <div v-if="pixiv.searchNext" class="load-more">
-        <button class="lm-btn lm-btn--tonal" :disabled="pixiv.loading" @click="pixiv.fetchSearchMore()">
+        <button
+          class="lm-btn lm-btn--tonal"
+          :disabled="pixiv.loading"
+          @click="pixiv.fetchSearchMore()"
+        >
           <span v-if="pixiv.loading" class="material-symbols-outlined spin">progress_activity</span>
           <span v-else class="material-symbols-outlined">expand_more</span>
           {{ t("pixiv.loadMore") }}
@@ -374,7 +421,9 @@ function backToHome() {
             class="chip"
             :title="tag.translatedName || tag.name"
             @click="searchTag(tag)"
-          ># {{ tag.translatedName || tag.name }}</button>
+          >
+            # {{ tag.translatedName || tag.name }}
+          </button>
         </div>
       </div>
 
@@ -384,7 +433,9 @@ function backToHome() {
           <span class="material-symbols-outlined">auto_awesome</span>
           {{ t("pixiv.recommend") }}
         </h3>
-        <div v-if="pixiv.loading && !pixiv.recommended.length" class="state">{{ t("pixiv.loading") }}</div>
+        <div v-if="pixiv.loading && !pixiv.recommended.length" class="state">
+          {{ t("pixiv.loading") }}
+        </div>
         <div v-else-if="pixiv.error && !pixiv.recommended.length" class="state list-error">
           {{ pixiv.error }}
           <button class="lm-btn lm-btn--text" @click="pixiv.fetchRecommended()">
@@ -401,8 +452,14 @@ function backToHome() {
         </div>
         <div v-else class="state">{{ t("pixiv.empty") }}</div>
         <div v-if="pixiv.recommendedNext" class="load-more">
-          <button class="lm-btn lm-btn--tonal" :disabled="pixiv.loading" @click="pixiv.fetchRecommendedMore()">
-            <span v-if="pixiv.loading" class="material-symbols-outlined spin">progress_activity</span>
+          <button
+            class="lm-btn lm-btn--tonal"
+            :disabled="pixiv.loading"
+            @click="pixiv.fetchRecommendedMore()"
+          >
+            <span v-if="pixiv.loading" class="material-symbols-outlined spin"
+              >progress_activity</span
+            >
             <span v-else class="material-symbols-outlined">expand_more</span>
             {{ t("pixiv.loadMore") }}
           </button>
@@ -423,10 +480,14 @@ function backToHome() {
               class="chip"
               :class="{ active: rankMode === m.value }"
               @click="pickRank(m.value)"
-            >{{ m.label() }}</button>
+            >
+              {{ m.label() }}
+            </button>
           </div>
         </div>
-        <div v-if="pixiv.loading && !pixiv.ranking.length" class="state">{{ t("pixiv.loading") }}</div>
+        <div v-if="pixiv.loading && !pixiv.ranking.length" class="state">
+          {{ t("pixiv.loading") }}
+        </div>
         <div v-else-if="pixiv.ranking.length" class="pixiv-grid">
           <PixivCard
             v-for="ill in pixiv.ranking"
@@ -437,8 +498,14 @@ function backToHome() {
         </div>
         <div v-else class="state">{{ t("pixiv.empty") }}</div>
         <div v-if="pixiv.rankingNext" class="load-more">
-          <button class="lm-btn lm-btn--tonal" :disabled="pixiv.loading" @click="pixiv.fetchRankingMore()">
-            <span v-if="pixiv.loading" class="material-symbols-outlined spin">progress_activity</span>
+          <button
+            class="lm-btn lm-btn--tonal"
+            :disabled="pixiv.loading"
+            @click="pixiv.fetchRankingMore()"
+          >
+            <span v-if="pixiv.loading" class="material-symbols-outlined spin"
+              >progress_activity</span
+            >
             <span v-else class="material-symbols-outlined">expand_more</span>
             {{ t("pixiv.loadMore") }}
           </button>

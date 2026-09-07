@@ -28,7 +28,9 @@ const currentSubject = ref<BangumiSubject | null>(null);
 /** 聚合搜索 Sheet 是否打开（在详情页之上） */
 const sourcesOpen = ref(false);
 /** 播放参数 */
-const playing = ref<{ roadIndex: number; episodeIndex: number; initialSeekMs?: number } | null>(null);
+const playing = ref<{ roadIndex: number; episodeIndex: number; initialSeekMs?: number } | null>(
+  null,
+);
 
 const keyword = ref("");
 const sort = ref<"heat" | "rank" | "score" | "match">("heat");
@@ -60,9 +62,7 @@ function cardCover(s: BangumiSubject) {
 /** 副标题：热播榜给「在看人数」（更能说明热度），其余给放送平台 */
 function cardSubtitle(s: BangumiSubject) {
   if (typeof s.doing === "number" && s.doing > 0) {
-    return s.doing >= 10000
-      ? `${(s.doing / 10000).toFixed(1)} 万人在看`
-      : `${s.doing} 人在看`;
+    return s.doing >= 10000 ? `${(s.doing / 10000).toFixed(1)} 万人在看` : `${s.doing} 人在看`;
   }
   return s.platform ? `${s.platform}` : undefined;
 }
@@ -284,8 +284,14 @@ function backFromEpisodes() {
           :placeholder="t('anime.searchPlaceholder')"
           @keyup.enter="doSearch"
         />
-        <button class="lm-btn lm-btn--filled" :disabled="searchLoading || anime.searchLoading" @click="doSearch">
-          <span v-if="searchLoading || anime.searchLoading" class="material-symbols-outlined spin">progress_activity</span>
+        <button
+          class="lm-btn lm-btn--filled"
+          :disabled="searchLoading || anime.searchLoading"
+          @click="doSearch"
+        >
+          <span v-if="searchLoading || anime.searchLoading" class="material-symbols-outlined spin"
+            >progress_activity</span
+          >
           <span v-else class="material-symbols-outlined">search</span>
           {{ t("anime.searchBtn") }}
         </button>
@@ -300,10 +306,14 @@ function backFromEpisodes() {
             class="chip"
             :class="{ active: sort === s.value }"
             @click="changeSort(s.value)"
-          >{{ s.label }}</button>
+          >
+            {{ s.label }}
+          </button>
         </div>
 
-        <div v-if="anime.searchLoading && !anime.searchItems.length" class="state">{{ t("anime.loading") }}</div>
+        <div v-if="anime.searchLoading && !anime.searchItems.length" class="state">
+          {{ t("anime.loading") }}
+        </div>
         <div v-else-if="anime.searchError && !anime.searchItems.length" class="state list-error">
           {{ anime.searchError }}
         </div>
@@ -319,8 +329,14 @@ function backFromEpisodes() {
         <div v-else class="state">{{ t("anime.searchNoResult") }}</div>
 
         <div v-if="anime.searchHasMore" class="load-more">
-          <button class="lm-btn lm-btn--tonal" :disabled="anime.searchLoading" @click="anime.loadMoreBangumi()">
-            <span v-if="anime.searchLoading" class="material-symbols-outlined spin">progress_activity</span>
+          <button
+            class="lm-btn lm-btn--tonal"
+            :disabled="anime.searchLoading"
+            @click="anime.loadMoreBangumi()"
+          >
+            <span v-if="anime.searchLoading" class="material-symbols-outlined spin"
+              >progress_activity</span
+            >
             <span v-else class="material-symbols-outlined">expand_more</span>
             {{ t("anime.searchMore") }}
           </button>

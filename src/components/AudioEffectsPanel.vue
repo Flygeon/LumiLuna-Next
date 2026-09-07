@@ -180,8 +180,7 @@ function importPreset() {
   if (shareStatus.value === "imported") importCode.value = "";
 }
 
-const frequencyLabel = (hz: number) =>
-  hz >= 1000 ? `${(hz / 1000).toFixed(0)}k` : String(hz);
+const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k` : String(hz));
 </script>
 
 <template>
@@ -266,11 +265,7 @@ const frequencyLabel = (hz: number) =>
       <section class="ef-section">
         <h4 class="ef-title">{{ t("player.effectsEq") }}</h4>
         <div class="eq-grid">
-          <label
-            v-for="(band, i) in effects.config.eqBands"
-            :key="band.frequency"
-            class="eq-band"
-          >
+          <label v-for="(band, i) in effects.config.eqBands" :key="band.frequency" class="eq-band">
             <span class="eq-freq">{{ frequencyLabel(band.frequency) }}</span>
             <input
               type="range"
@@ -280,7 +275,9 @@ const frequencyLabel = (hz: number) =>
               :value="band.gain"
               @input="effects.setEqBand(i, Number(($event.target as HTMLInputElement).value))"
             />
-            <span class="eq-value tabular-nums">{{ band.gain > 0 ? `+${band.gain}` : band.gain }}</span>
+            <span class="eq-value tabular-nums">{{
+              band.gain > 0 ? `+${band.gain}` : band.gain
+            }}</span>
           </label>
         </div>
       </section>
@@ -343,11 +340,7 @@ const frequencyLabel = (hz: number) =>
 
     <!-- 分享选择弹窗 -->
     <Teleport to="body">
-      <div
-        v-if="sharePopupPresetId"
-        class="popup-overlay"
-        @click.self="closeSharePopup"
-      >
+      <div v-if="sharePopupPresetId" class="popup-overlay" @click.self="closeSharePopup">
         <div class="popup-card">
           <h4 class="popup-title">{{ t("player.effectsShare") }}</h4>
           <div class="popup-actions">
@@ -369,11 +362,7 @@ const frequencyLabel = (hz: number) =>
 
     <!-- 上传至预设市场弹窗 -->
     <Teleport to="body">
-      <div
-        v-if="uploadPopupPresetId"
-        class="popup-overlay"
-        @click.self="closeSharePopup"
-      >
+      <div v-if="uploadPopupPresetId" class="popup-overlay" @click.self="closeSharePopup">
         <div class="popup-card upload-card">
           <h4 class="popup-title">{{ t("player.effectsShareUpload") }}</h4>
           <p class="upload-hint">{{ t("player.effectsUploadHint") }}</p>
@@ -384,7 +373,11 @@ const frequencyLabel = (hz: number) =>
           </label>
           <label class="upload-field">
             <span>{{ t("player.effectsUploadDesc") }}</span>
-            <textarea v-model="uploadDesc" :placeholder="t('player.effectsUploadDescPlaceholder')" rows="3" />
+            <textarea
+              v-model="uploadDesc"
+              :placeholder="t('player.effectsUploadDescPlaceholder')"
+              rows="3"
+            />
           </label>
           <label class="upload-field">
             <span>{{ t("player.effectsUploadShareCode") }}</span>
@@ -403,12 +396,18 @@ const frequencyLabel = (hz: number) =>
               :disabled="uploadStatus === 'saving' || uploadStatus === 'saved'"
               @click="saveUploadJson"
             >
-              <span v-if="uploadStatus === 'saving'" class="material-symbols-outlined spinning">sync</span>
+              <span v-if="uploadStatus === 'saving'" class="material-symbols-outlined spinning"
+                >sync</span
+              >
               <span v-else class="material-symbols-outlined">save</span>
-              {{ uploadStatus === 'saved' ? t('player.effectsUploadSaved') : t('player.effectsUploadSave') }}
+              {{
+                uploadStatus === "saved"
+                  ? t("player.effectsUploadSaved")
+                  : t("player.effectsUploadSave")
+              }}
             </button>
             <button class="lm-btn lm-btn--text" @click="closeSharePopup">
-              {{ t('actions.cancel') }}
+              {{ t("actions.cancel") }}
             </button>
           </div>
 
@@ -528,7 +527,9 @@ const frequencyLabel = (hz: number) =>
   color: var(--md-sys-color-on-surface-variant);
   cursor: pointer;
   opacity: 0.65;
-  transition: background var(--md-sys-motion-duration-short), color var(--md-sys-motion-duration-short);
+  transition:
+    background var(--md-sys-motion-duration-short),
+    color var(--md-sys-motion-duration-short);
 }
 .preset-action:hover {
   background: var(--md-sys-color-secondary-container);
@@ -683,8 +684,12 @@ const frequencyLabel = (hz: number) =>
   animation: popup-fade 180ms var(--md-sys-motion-easing-standard);
 }
 @keyframes popup-fade {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 .popup-card {
   position: relative;
@@ -702,8 +707,14 @@ const frequencyLabel = (hz: number) =>
   animation: popup-scale 200ms var(--md-sys-motion-easing-emphasized-decelerate);
 }
 @keyframes popup-scale {
-  from { transform: scale(0.92); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+  from {
+    transform: scale(0.92);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 .popup-title {
   margin: 0;
@@ -825,7 +836,11 @@ const frequencyLabel = (hz: number) =>
   animation: spin 1s linear infinite;
 }
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

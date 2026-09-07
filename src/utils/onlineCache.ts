@@ -89,10 +89,7 @@ export async function resolveCover(url: string): Promise<string> {
     await kvSet(COVER_PREFIX + url, dataUrl);
     return dataUrl;
   } catch (e) {
-    console.warn(
-      "[封面缓存] 获取失败，回退原 URL:",
-      e instanceof Error ? e.message : e,
-    );
+    console.warn("[封面缓存] 获取失败，回退原 URL:", e instanceof Error ? e.message : e);
     return url;
   }
 }

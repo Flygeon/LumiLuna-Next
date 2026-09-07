@@ -56,13 +56,10 @@ function resolveAssetRef(ref: string, assetBase: string | null): string {
 /** 重写 css 中的相对 url() 引用（嵌套引号、空白变体均处理） */
 function rewriteCssUrls(css: string, assetBase: string | null): string {
   if (!assetBase) return css;
-  return css.replace(
-    /url\(\s*(['"]?)([^'")]+)\1\s*\)/g,
-    (full, quote: string, ref: string) => {
-      const resolved = resolveAssetRef(ref.trim(), assetBase);
-      return resolved === ref.trim() ? full : `url(${quote}${resolved}${quote})`;
-    },
-  );
+  return css.replace(/url\(\s*(['"]?)([^'")]+)\1\s*\)/g, (full, quote: string, ref: string) => {
+    const resolved = resolveAssetRef(ref.trim(), assetBase);
+    return resolved === ref.trim() ? full : `url(${quote}${resolved}${quote})`;
+  });
 }
 
 export interface PrepareContext {
@@ -161,7 +158,8 @@ function startIconRuntime(pack: Map<string, string>): void {
     ".material-symbols-outlined[data-lm-skin-icon] { color: transparent; " +
     "-webkit-mask: center / contain no-repeat; mask: center / contain no-repeat; }";
   for (const [name, url] of pack) {
-    css += `\n.material-symbols-outlined[data-lm-skin-icon="${name}"] ` +
+    css +=
+      `\n.material-symbols-outlined[data-lm-skin-icon="${name}"] ` +
       `{ -webkit-mask-image: url("${url}"); mask-image: url("${url}"); }`;
   }
   let styleEl = document.getElementById(ICON_STYLE_ID) as HTMLStyleElement | null;
@@ -179,11 +177,7 @@ function startIconRuntime(pack: Map<string, string>): void {
 
 let activeIconSvgs: Map<string, string> | null = null;
 
-export function applySkin(
-  skin: SkinDocument | null,
-  dark: boolean,
-  prepared?: PreparedSkin,
-): void {
+export function applySkin(skin: SkinDocument | null, dark: boolean, prepared?: PreparedSkin): void {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
 

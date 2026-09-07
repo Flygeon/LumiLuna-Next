@@ -92,16 +92,22 @@ function beginSession() {
 }
 
 async function loadChapter(index: number) {
-  void capabilities.appLog(`[reader] loadChapter 开始 index=${index} chapters=${chapters.value.length}`).catch(() => {});
+  void capabilities
+    .appLog(`[reader] loadChapter 开始 index=${index} chapters=${chapters.value.length}`)
+    .catch(() => {});
   if (index < 0 || index >= chapters.value.length) {
-    void capabilities.appLog(`[reader] loadChapter 越界 index=${index} total=${chapters.value.length}`).catch(() => {});
+    void capabilities
+      .appLog(`[reader] loadChapter 越界 index=${index} total=${chapters.value.length}`)
+      .catch(() => {});
     return;
   }
   currentIndex.value = index;
   const ch = chapters.value[index];
   currentCid.value = ch.cid;
   currentTitle.value = ch.title;
-  void capabilities.appLog(`[reader] loadChapter 选中 cid=${ch.cid} title=${ch.title}`).catch(() => {});
+  void capabilities
+    .appLog(`[reader] loadChapter 选中 cid=${ch.cid} title=${ch.title}`)
+    .catch(() => {});
   loading.value = true;
   error.value = "";
   try {
@@ -112,11 +118,17 @@ async function loadChapter(index: number) {
       ch.cid,
       ch.title,
     );
-    void capabilities.appLog(`[reader] loadChapter content 返回 textLen=${content.value?.text?.length ?? -1} imageCount=${content.value?.images?.length ?? -1}`).catch(() => {});
+    void capabilities
+      .appLog(
+        `[reader] loadChapter content 返回 textLen=${content.value?.text?.length ?? -1} imageCount=${content.value?.images?.length ?? -1}`,
+      )
+      .catch(() => {});
     beginSession();
     void capabilities.novelProgressSet(props.aid, ch.cid, ch.title, 0);
   } catch (e) {
-    void capabilities.appLog(`[reader] loadChapter 异常: ${e instanceof Error ? e.message : String(e)}`).catch(() => {});
+    void capabilities
+      .appLog(`[reader] loadChapter 异常: ${e instanceof Error ? e.message : String(e)}`)
+      .catch(() => {});
     if (isLoginRequiredError(e)) {
       requestRelogin();
       error.value = "登录态已失效，请重新登录。";
@@ -125,7 +137,9 @@ async function loadChapter(index: number) {
     }
   } finally {
     loading.value = false;
-    void capabilities.appLog(`[reader] loadChapter 结束 loading=false error=${error.value || "无"}`).catch(() => {});
+    void capabilities
+      .appLog(`[reader] loadChapter 结束 loading=false error=${error.value || "无"}`)
+      .catch(() => {});
   }
 }
 
@@ -138,15 +152,27 @@ function next() {
 }
 
 async function init() {
-  void capabilities.appLog(`[reader] init() 入口 aid=${props.aid} initialCid=${props.initialCid ?? "null"} initialTitle=${props.initialChapterTitle ?? "null"}`).catch(() => {});
+  void capabilities
+    .appLog(
+      `[reader] init() 入口 aid=${props.aid} initialCid=${props.initialCid ?? "null"} initialTitle=${props.initialChapterTitle ?? "null"}`,
+    )
+    .catch(() => {});
   loading.value = true;
   error.value = "";
   try {
     void capabilities.appLog(`[reader] init() 开始拉目录 aid=${props.aid}`).catch(() => {});
-    volumes.value = await capabilities.novelCatalogue(settings.wenku8Node, settings.novelCharset, props.aid);
-    void capabilities.appLog(`[reader] init() 目录返回 volumes=${volumes.value.length}`).catch(() => {});
+    volumes.value = await capabilities.novelCatalogue(
+      settings.wenku8Node,
+      settings.novelCharset,
+      props.aid,
+    );
+    void capabilities
+      .appLog(`[reader] init() 目录返回 volumes=${volumes.value.length}`)
+      .catch(() => {});
     flattenChapters();
-    void capabilities.appLog(`[reader] init() 扁平后 chapters=${chapters.value.length}`).catch(() => {});
+    void capabilities
+      .appLog(`[reader] init() 扁平后 chapters=${chapters.value.length}`)
+      .catch(() => {});
     let start = 0;
     let usedSource = "first";
     const progress = await capabilities.novelProgressGet(props.aid);
@@ -173,7 +199,9 @@ async function init() {
     if (!chapters.value[start]) {
       error.value = `章节索引越界 (start=${start}, total=${chapters.value.length})`;
       loading.value = false;
-      void capabilities.appLog(`[reader] init() 越界 start=${start} total=${chapters.value.length}`).catch(() => {});
+      void capabilities
+        .appLog(`[reader] init() 越界 start=${start} total=${chapters.value.length}`)
+        .catch(() => {});
       return;
     }
     void capabilities.appLog(`[reader] init() 准备 loadChapter(${start})`).catch(() => {});
@@ -192,88 +220,126 @@ function close() {
 }
 
 watch(loading, (v) => void capabilities.appLog(`[reader] watch loading=${v}`).catch(() => {}));
-watch(error, (v) => { if (v) void capabilities.appLog(`[reader] watch error=${v}`).catch(() => {}); });
-watch(content, (v) => void capabilities.appLog(`[reader] watch content=${v ? "有内容 textLen=" + (v.text?.length ?? 0) : "null"}`).catch(() => {}));
+watch(error, (v) => {
+  if (v) void capabilities.appLog(`[reader] watch error=${v}`).catch(() => {});
+});
+watch(
+  content,
+  (v) =>
+    void capabilities
+      .appLog(`[reader] watch content=${v ? "有内容 textLen=" + (v.text?.length ?? 0) : "null"}`)
+      .catch(() => {}),
+);
 
 function renderLog(): string {
-  void capabilities.appLog(`[reader] 模板根渲染 aid=${props.aid} loading=${loading.value} error=${error.value ? "有" : "无"} content=${content.value ? "有" : "无"}`).catch(() => {});
+  void capabilities
+    .appLog(
+      `[reader] 模板根渲染 aid=${props.aid} loading=${loading.value} error=${error.value ? "有" : "无"} content=${content.value ? "有" : "无"}`,
+    )
+    .catch(() => {});
   return "";
 }
 
 onMounted(() => {
-  void capabilities.appLog(`[reader] onMounted 组件已挂载 aid=${props.aid}（已 Teleport 到 body，fixed 应相对视口）`).catch(() => {});
+  void capabilities
+    .appLog(
+      `[reader] onMounted 组件已挂载 aid=${props.aid}（已 Teleport 到 body，fixed 应相对视口）`,
+    )
+    .catch(() => {});
   void init();
 });
 onBeforeUnmount(() => {
-  void capabilities.appLog(`[reader] onBeforeUnmount 组件即将卸载 aid=${props.aid}`).catch(() => {});
+  void capabilities
+    .appLog(`[reader] onBeforeUnmount 组件即将卸载 aid=${props.aid}`)
+    .catch(() => {});
   flushSession();
 });
 </script>
 
 <template>
   <Teleport to="body">
-    <div class="novel-reader" :style="{ background: theme.bg, color: theme.fg }" :data-dbg="renderLog()">
-    <div class="reader-topbar">
-      <button class="tool-btn" @click="close">
-        <span class="material-symbols-outlined">arrow_back</span>
-      </button>
-      <div class="reader-title" :title="currentTitle">{{ currentTitle || props.title }}</div>
-      <div class="spacer"></div>
-      <button class="tool-btn" :disabled="currentIndex <= 0" @click="prev">
-        <span class="material-symbols-outlined">chevron_left</span>
-      </button>
-      <button class="tool-btn" @click="showToc = true">
-        <span class="material-symbols-outlined">list</span>
-      </button>
-      <button class="tool-btn" :disabled="currentIndex >= chapters.length - 1" @click="next">
-        <span class="material-symbols-outlined">chevron_right</span>
-      </button>
-    </div>
+    <div
+      class="novel-reader"
+      :style="{ background: theme.bg, color: theme.fg }"
+      :data-dbg="renderLog()"
+    >
+      <div class="reader-topbar">
+        <button class="tool-btn" @click="close">
+          <span class="material-symbols-outlined">arrow_back</span>
+        </button>
+        <div class="reader-title" :title="currentTitle">{{ currentTitle || props.title }}</div>
+        <div class="spacer"></div>
+        <button class="tool-btn" :disabled="currentIndex <= 0" @click="prev">
+          <span class="material-symbols-outlined">chevron_left</span>
+        </button>
+        <button class="tool-btn" @click="showToc = true">
+          <span class="material-symbols-outlined">list</span>
+        </button>
+        <button class="tool-btn" :disabled="currentIndex >= chapters.length - 1" @click="next">
+          <span class="material-symbols-outlined">chevron_right</span>
+        </button>
+      </div>
 
-    <!-- 目录抽屉 -->
-    <Transition name="toc-fade">
-      <div v-if="showToc" class="toc-mask" @click="showToc = false">
-        <div class="toc-panel" @click.stop>
-          <div class="toc-head">
-            <h3>{{ t("novel.catalogue") }}</h3>
-            <button class="tool-btn" @click="showToc = false">
-              <span class="material-symbols-outlined">close</span>
-            </button>
-          </div>
-          <div class="toc-body">
-            <button
-              v-for="(ch, i) in chapters"
-              :key="ch.cid"
-              class="toc-row"
-              :class="{ active: i === currentIndex }"
-              @click="showToc = false; loadChapter(i)"
-            >
-              <span class="toc-title">{{ ch.title }}</span>
-            </button>
+      <!-- 目录抽屉 -->
+      <Transition name="toc-fade">
+        <div v-if="showToc" class="toc-mask" @click="showToc = false">
+          <div class="toc-panel" @click.stop>
+            <div class="toc-head">
+              <h3>{{ t("novel.catalogue") }}</h3>
+              <button class="tool-btn" @click="showToc = false">
+                <span class="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div class="toc-body">
+              <button
+                v-for="(ch, i) in chapters"
+                :key="ch.cid"
+                class="toc-row"
+                :class="{ active: i === currentIndex }"
+                @click="
+                  showToc = false;
+                  loadChapter(i);
+                "
+              >
+                <span class="toc-title">{{ ch.title }}</span>
+              </button>
+            </div>
           </div>
         </div>
+      </Transition>
+
+      <div
+        class="reader-content"
+        :style="{
+          fontFamily,
+          fontSize: settings.readerFontPct + '%',
+          lineHeight: settings.readerLineHeight,
+        }"
+      >
+        <p v-if="loading" class="state">{{ t("novel.loading") }}</p>
+        <p v-else-if="error" class="state error">{{ error }}</p>
+        <template v-else-if="content">
+          <h2 class="chapter-title">{{ currentTitle }}</h2>
+          <p v-if="!content.text" class="state">
+            本章暂无内容（可能章节缓存异常，建议清除 novel_chapter_cache 后重试）
+          </p>
+          <p
+            v-for="(para, i) in content.text.split('\n\n').filter((p) => p.trim())"
+            :key="i"
+            class="para"
+            :style="{ marginBottom: settings.readerParaSpacing + 'em' }"
+          >
+            {{ para }}
+          </p>
+        </template>
       </div>
-    </Transition>
 
-    <div class="reader-content" :style="{ fontFamily, fontSize: settings.readerFontPct + '%', lineHeight: settings.readerLineHeight }">
-      <p v-if="loading" class="state">{{ t("novel.loading") }}</p>
-      <p v-else-if="error" class="state error">{{ error }}</p>
-      <template v-else-if="content">
-        <h2 class="chapter-title">{{ currentTitle }}</h2>
-        <p v-if="!content.text" class="state">本章暂无内容（可能章节缓存异常，建议清除 novel_chapter_cache 后重试）</p>
-        <p
-          v-for="(para, i) in content.text.split('\n\n').filter((p) => p.trim())"
-          :key="i"
-          class="para"
-          :style="{ marginBottom: settings.readerParaSpacing + 'em' }"
-        >{{ para }}</p>
-      </template>
-    </div>
-
-    <div class="reader-footer">
-      <button class="nav-btn" :disabled="currentIndex <= 0" @click="prev">上一章</button>
-      <button class="nav-btn" :disabled="currentIndex >= chapters.length - 1" @click="next">下一章</button>
-    </div>
+      <div class="reader-footer">
+        <button class="nav-btn" :disabled="currentIndex <= 0" @click="prev">上一章</button>
+        <button class="nav-btn" :disabled="currentIndex >= chapters.length - 1" @click="next">
+          下一章
+        </button>
+      </div>
     </div>
   </Teleport>
 </template>

@@ -2731,6 +2731,7 @@ version = "1.1.0"
 dependencies = [
  "aes",
  "aes-gcm",
+ "anyhow",
  "base64 0.22.1",
  "cbc",
  "chrono",
@@ -2765,6 +2766,7 @@ dependencies = [
  "tauri-plugin-http",
  "tauri-plugin-opener",
  "tauri-plugin-store",
+ "thiserror 1.0.69",
  "tiny_http",
  "tokio",
  "url",

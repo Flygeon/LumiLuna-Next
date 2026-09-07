@@ -24,7 +24,9 @@ const cover = computed(() => {
     <div class="meta">
       <div class="title" :title="item.title">{{ item.title }}</div>
       <div v-if="subtitle" class="sub" :title="subtitle">{{ subtitle }}</div>
-      <div v-else-if="'author' in item && item.author" class="sub" :title="item.author">{{ item.author }}</div>
+      <div v-else-if="'author' in item && item.author" class="sub" :title="item.author">
+        {{ item.author }}
+      </div>
     </div>
   </button>
 </template>
@@ -65,7 +67,9 @@ const cover = computed(() => {
 }
 .novel-card:hover .cover {
   transform: translateY(-4px) scale(1.015);
-  box-shadow: var(--md-elevation-3), inset 0 0 0 1px var(--lm-hairline);
+  box-shadow:
+    var(--md-elevation-3),
+    inset 0 0 0 1px var(--lm-hairline);
 }
 .novel-card:active .cover {
   transform: translateY(-1px) scale(0.995);

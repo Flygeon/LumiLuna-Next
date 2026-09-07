@@ -4,6 +4,7 @@
 //! （https://github.com/neteasecloudmusicapienhanced/api-enhanced，MIT）：
 //! - weapi：双层 AES-128-CBC（presetKey + 随机 secretKey）+ RSA-1024 PKCS1v15
 //! - eapi：MD5 拼接 + AES-128-ECB（hex 大写输出）
+//!
 //! 请求与 cookie 全部在 Rust 侧：MUSIC_U 等凭据不进入 WebView；
 //! cookie 持久化在 app data 目录，重启后自动恢复登录态。
 
@@ -64,7 +65,8 @@ const XEAPI_STATIC_KEY: [u8; 32] = [
     0x6d, 0x5c, 0xe5, 0x91, 0x24, 0x8a, 0xc1, 0x28, 0x71, 0x48, 0x06, 0xd7, 0xf8, 0xfb, 0x1b, 0x84,
 ];
 /// xeapi 签名密钥（base64，HMAC-SHA256 用）
-const XEAPI_SIGN_KEY_B64: &str = "mUHCwVNWJbunMqAHf5MImuirT6plvs6VSFW62MGHstFQxhBGdEoIhLItH3djc4+FB/OKty3+lL2rGeoFBpVe5g==";
+const XEAPI_SIGN_KEY_B64: &str =
+    "mUHCwVNWJbunMqAHf5MImuirT6plvs6VSFW62MGHstFQxhBGdEoIhLItH3djc4+FB/OKty3+lL2rGeoFBpVe5g==";
 /// xeapi UA（android 客户端）
 const UA_XEAPI: &str = "NeteaseMusic/9.5.61.260802021928(9005061);Dalvik/2.1.0 (Linux; U; Android 12; HBN-AL00 Build/cd737a2.0)";
 /// 云盘加密 id 的 XOR 密钥（register_anonimous 用）
@@ -103,7 +105,11 @@ static LOG_PATH: OnceLock<std::path::PathBuf> = OnceLock::new();
 fn netease_log(msg: &str) {
     if let Some(p) = LOG_PATH.get() {
         use std::io::Write;
-        if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(p) {
+        if let Ok(mut f) = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(p)
+        {
             let _ = writeln!(f, "[{}] {}", now_millis(), msg);
         }
     }
@@ -292,7 +298,9 @@ fn aes_ecb_decrypt(key: &[u8], data: &[u8]) -> Result<Vec<u8>, String> {
     // PKCS7 去填充
     if let Some(&last) = out.last() {
         let pad = last as usize;
-        if pad > 0 && pad <= 16 && out.len() >= pad
+        if pad > 0
+            && pad <= 16
+            && out.len() >= pad
             && out[out.len() - pad..].iter().all(|&b| b == last)
         {
             out.truncate(out.len() - pad);
@@ -364,8 +372,8 @@ fn xeapi_encrypt_s(
     os: &str,
     sk: &str,
 ) -> Result<Vec<u8>, String> {
-    let mut rng = rsa::rand_core::OsRng;
-    let secret = StaticSecret::random_from_rng(&mut rng);
+    let rng = rsa::rand_core::OsRng;
+    let secret = StaticSecret::random_from_rng(rng);
     let eph_pub = X25519PublicKey::from(&secret);
     let peer = X25519PublicKey::from(*peer_raw);
     let shared = secret.diffie_hellman(&peer);
@@ -525,8 +533,14 @@ fn get_xeapi_key(_app: &tauri::AppHandle) -> Result<XeapiKey, String> {
     let resp = client()
         .post("https://interface.music.163.com/api/gorilla/anti/crawler/security/key/get")
         .header("User-Agent", UA_XEAPI)
-        .header("Cookie", format!("deviceId={}", encode_uri_component(&device_id)))
-        .header("Content-Type", "application/x-www-form-urlencoded;charset=utf-8")
+        .header(
+            "Cookie",
+            format!("deviceId={}", encode_uri_component(&device_id)),
+        )
+        .header(
+            "Content-Type",
+            "application/x-www-form-urlencoded;charset=utf-8",
+        )
         .body(body)
         .timeout(Duration::from_secs(30))
         .send()
@@ -570,7 +584,10 @@ fn get_xeapi_key(_app: &tauri::AppHandle) -> Result<XeapiKey, String> {
     let key_json: Value =
         serde_json::from_slice(&dec).map_err(|e| format!("密钥解密结果解析失败：{e}"))?;
     Ok(XeapiKey {
-        public_key: key_json["publicKey"].as_str().unwrap_or_default().to_string(),
+        public_key: key_json["publicKey"]
+            .as_str()
+            .unwrap_or_default()
+            .to_string(),
         version: key_json["version"].as_str().unwrap_or_default().to_string(),
         sk: key_json["sk"].as_str().unwrap_or_default().to_string(),
     })
@@ -583,14 +600,8 @@ fn register_anonymous(app: &tauri::AppHandle) -> Result<(), String> {
         let persist = state().lock().unwrap();
         persist.device_id.clone()
     };
-    let encoded_id = base64::engine::general_purpose::STANDARD.encode(
-        format!(
-            "{} {}",
-            device_id,
-            cloudmusic_dll_encode_id(&device_id)
-        )
-        .as_bytes(),
-    );
+    let encoded_id = base64::engine::general_purpose::STANDARD
+        .encode(format!("{} {}", device_id, cloudmusic_dll_encode_id(&device_id)).as_bytes());
     let result = xeapi_call(
         "/api/register/anonimous",
         &mut serde_json::json!({ "username": encoded_id }),
@@ -609,11 +620,7 @@ fn register_anonymous(app: &tauri::AppHandle) -> Result<(), String> {
 }
 
 /// xeapi 请求：三层加密 → 专用头 → 合并 cookie → 解密响应
-fn xeapi_call(
-    uri: &str,
-    data: &mut Value,
-    public_key_state: &XeapiKey,
-) -> Result<Value, String> {
+fn xeapi_call(uri: &str, data: &mut Value, public_key_state: &XeapiKey) -> Result<Value, String> {
     let (music_u, device_id, cn_ip, cookie_map) = {
         let mut persist = state().lock().unwrap();
         let cookie_map = cookie_to_map(&persist.cookie);
@@ -638,7 +645,10 @@ fn xeapi_call(
     let mut headers: Vec<(String, String)> = vec![
         ("X-Client-Enc-State".into(), "ENCRYPTED".into()),
         ("x-aeapi".into(), "true".into()),
-        ("Content-Type".into(), "application/x-www-form-urlencoded;charset=utf-8".into()),
+        (
+            "Content-Type".into(),
+            "application/x-www-form-urlencoded;charset=utf-8".into(),
+        ),
         ("x-deviceid".into(), device_id.clone()),
         ("x-os".into(), os.into()),
         ("x-osver".into(), osver.into()),
@@ -738,7 +748,10 @@ fn weapi(data: &Value) -> Result<(String, String), String> {
                     *di == inner,
                     dt.chars().take(100).collect::<String>()
                 ),
-                Err(e) => format!("自检内层可解但外层失败：{e} 内层前40={}", di.chars().take(40).collect::<String>()),
+                Err(e) => format!(
+                    "自检内层可解但外层失败：{e} 内层前40={}",
+                    di.chars().take(40).collect::<String>()
+                ),
             }
         }
         Err(e) => format!("自检失败：{e}"),
@@ -753,10 +766,7 @@ fn weapi(data: &Value) -> Result<(String, String), String> {
                     let fx_dec = aes_cbc_b64_decrypt(fixed_secret.as_bytes(), IV, &fx_params);
                     netease_log(&format!(
                         "FIXED-TEST text={} inner={} params={} dec={:?}",
-                        text,
-                        fx_inner,
-                        fx_params,
-                        fx_dec
+                        text, fx_inner, fx_params, fx_dec
                     ));
                 }
                 Err(e) => netease_log(&format!("FIXED-TEST 外层加密失败：{e}")),
@@ -834,11 +844,7 @@ fn map_to_cookie(m: &HashMap<String, String>) -> String {
 }
 
 /// weapi 请求的 Cookie 头（processCookieObject + cookieObjToString 的等价实现）
-fn build_weapi_cookie(
-    map: &HashMap<String, String>,
-    device_id: &str,
-    uri: &str,
-) -> String {
+fn build_weapi_cookie(map: &HashMap<String, String>, device_id: &str, uri: &str) -> String {
     let mut m = map.clone();
     m.insert("__remember_me".into(), "true".into());
     m.insert("ntes_kaola_ad".into(), "1".into());
@@ -851,17 +857,14 @@ fn build_weapi_cookie(
         .or_insert_with(|| format!("{nuid},{}", now_millis()));
     m.entry("WNMCID".into())
         .or_insert_with(|| format!("{}.{}.01.0", random_alpha(6), now_millis()));
-    m.entry("WEVNSM".into())
-        .or_insert_with(|| "1.0.0".into());
-    m.entry("osver".into())
-        .or_insert_with(|| OS_OSVER.into());
+    m.entry("WEVNSM".into()).or_insert_with(|| "1.0.0".into());
+    m.entry("osver".into()).or_insert_with(|| OS_OSVER.into());
     m.entry("deviceId".into())
         .or_insert_with(|| device_id.into());
     m.entry("os".into()).or_insert_with(|| OS_NAME.into());
     m.entry("channel".into())
         .or_insert_with(|| OS_CHANNEL.into());
-    m.entry("appver".into())
-        .or_insert_with(|| OS_APPVER.into());
+    m.entry("appver".into()).or_insert_with(|| OS_APPVER.into());
     if !uri.contains("login") {
         m.entry("NMTID".into()).or_insert_with(|| random_hex(32));
     }
@@ -968,7 +971,10 @@ fn api_call(crypto: &str, path: &str, data: &mut Value) -> Result<(i64, Value), 
                     ("User-Agent".to_string(), UA_WEAPI.to_string()),
                     ("Referer".to_string(), DOMAIN.to_string()),
                     ("Cookie".to_string(), cookie),
-                    ("Content-Type".to_string(), "application/x-www-form-urlencoded;charset=utf-8".to_string()),
+                    (
+                        "Content-Type".to_string(),
+                        "application/x-www-form-urlencoded;charset=utf-8".to_string(),
+                    ),
                     ("X-Real-IP".to_string(), cn_ip.clone()),
                     ("X-Forwarded-For".to_string(), cn_ip.clone()),
                 ],
@@ -1011,7 +1017,10 @@ fn api_call(crypto: &str, path: &str, data: &mut Value) -> Result<(i64, Value), 
                 vec![
                     ("User-Agent".to_string(), UA_EAPI.to_string()),
                     ("Cookie".to_string(), cookie),
-                    ("Content-Type".to_string(), "application/x-www-form-urlencoded;charset=utf-8".to_string()),
+                    (
+                        "Content-Type".to_string(),
+                        "application/x-www-form-urlencoded;charset=utf-8".to_string(),
+                    ),
                     ("X-Real-IP".to_string(), cn_ip.clone()),
                     ("X-Forwarded-For".to_string(), cn_ip.clone()),
                 ],
@@ -1067,7 +1076,9 @@ fn api_call(crypto: &str, path: &str, data: &mut Value) -> Result<(i64, Value), 
     }
 
     let status = resp.status().as_u16();
-    let text = resp.text().map_err(|e| format!("读取网易云响应失败：{e}"))?;
+    let text = resp
+        .text()
+        .map_err(|e| format!("读取网易云响应失败：{e}"))?;
     if !text.trim().is_empty() && serde_json::from_str::<Value>(&text).is_err() {
         let t_preview: String = text.chars().take(300).collect();
         netease_log(&format!(
@@ -1076,7 +1087,10 @@ fn api_call(crypto: &str, path: &str, data: &mut Value) -> Result<(i64, Value), 
             text.len()
         ));
     } else if text.trim().is_empty() {
-        netease_log(&format!("RESP {} HTTP {status} 空响应体！", path.trim_start_matches("/api")));
+        netease_log(&format!(
+            "RESP {} HTTP {status} 空响应体！",
+            path.trim_start_matches("/api")
+        ));
     }
     let body: Value = serde_json::from_str(&text).map_err(|_| {
         let preview: String = text
@@ -1529,7 +1543,10 @@ fn netease_playlist_detail_sync(id: i64) -> Result<Vec<NeteaseSong>, String> {
     if code != 200 {
         return Err(err_for_code(code));
     }
-    let tracks = body["playlist"]["tracks"].as_array().cloned().unwrap_or_default();
+    let tracks = body["playlist"]["tracks"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
     Ok(songs_from_tracks(&tracks))
 }
 
@@ -1585,9 +1602,7 @@ fn netease_cloud_sync(offset: i64, limit: i64) -> Result<NeteaseCloudPage, Strin
         .iter()
         .filter_map(|s| {
             let song = &s["song"];
-            let id = s["songId"]
-                .as_i64()
-                .or_else(|| song["id"].as_i64())?;
+            let id = s["songId"].as_i64().or_else(|| song["id"].as_i64())?;
             let artist = song["ar"]
                 .as_array()
                 .map(|ars| {
@@ -1680,7 +1695,10 @@ fn netease_sms_captcha_sent_sync(
         }),
     )?;
     if code != 200 {
-        return Err(body["message"].as_str().unwrap_or("验证码发送失败").to_string());
+        return Err(body["message"]
+            .as_str()
+            .unwrap_or("验证码发送失败")
+            .to_string());
     }
     Ok(())
 }
@@ -1696,8 +1714,8 @@ pub async fn netease_login_cellphone(
     tauri::async_runtime::spawn_blocking(move || {
         netease_login_cellphone_sync(app, phone, captcha, ctcode)
     })
-        .await
-        .map_err(|e| format!("网易云请求异常：{e}"))?
+    .await
+    .map_err(|e| format!("网易云请求异常：{e}"))?
 }
 
 fn netease_login_cellphone_sync(
@@ -1735,7 +1753,8 @@ fn netease_login_cellphone_sync(
     )?;
     if code != 200 {
         // 从 body 提取错误信息
-        let msg = _body["message"].as_str()
+        let msg = _body["message"]
+            .as_str()
             .or_else(|| _body["msg"].as_str())
             .unwrap_or("登录失败");
         return Err(msg.to_string());
@@ -1815,11 +1834,7 @@ pub async fn netease_set_song_liked(
         .map_err(|e| format!("网易云请求异常：{e}"))?
 }
 
-fn netease_set_song_liked_sync(
-    app: tauri::AppHandle,
-    id: i64,
-    like: bool,
-) -> Result<(), String> {
+fn netease_set_song_liked_sync(app: tauri::AppHandle, id: i64, like: bool) -> Result<(), String> {
     ensure_loaded(&app);
     let (code, _body) = api_call(
         "weapi",
@@ -1936,10 +1951,7 @@ fn netease_daily_recommend_songs_sync(app: tauri::AppHandle) -> Result<Vec<Netea
         .or_else(|| body["recommend"].as_array())
         .cloned()
         .unwrap_or_default();
-    Ok(songs
-        .iter()
-        .filter_map(map_song_item)
-        .collect())
+    Ok(songs.iter().filter_map(map_song_item).collect())
 }
 
 /// 私人 FM
@@ -1952,11 +1964,7 @@ pub async fn netease_personal_fm(app: tauri::AppHandle) -> Result<Vec<NeteaseSon
 
 fn netease_personal_fm_sync(app: tauri::AppHandle) -> Result<Vec<NeteaseSong>, String> {
     ensure_loaded(&app);
-    let (code, body) = api_call(
-        "weapi",
-        "/api/v1/radio/get",
-        &mut serde_json::json!({}),
-    )?;
+    let (code, body) = api_call("weapi", "/api/v1/radio/get", &mut serde_json::json!({}))?;
     if code != 200 {
         return Err(err_for_code(code));
     }

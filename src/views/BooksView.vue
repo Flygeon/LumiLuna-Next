@@ -60,16 +60,12 @@ function clearSearch() {
 
     <!-- 本地 / 在线 分段 -->
     <div v-if="settings.onlineNovelEnabled" class="book-tabs">
-      <button
-        class="seg"
-        :class="{ active: bookTab === 'local' }"
-        @click="bookTab = 'local'"
-      >{{ t("books.local") }}</button>
-      <button
-        class="seg"
-        :class="{ active: bookTab === 'online' }"
-        @click="bookTab = 'online'"
-      >{{ t("books.online") }}</button>
+      <button class="seg" :class="{ active: bookTab === 'local' }" @click="bookTab = 'local'">
+        {{ t("books.local") }}
+      </button>
+      <button class="seg" :class="{ active: bookTab === 'online' }" @click="bookTab = 'online'">
+        {{ t("books.online") }}
+      </button>
     </div>
 
     <!-- 本地书籍 -->
@@ -115,11 +111,7 @@ function clearSearch() {
     <!-- 在线小说 -->
     <NovelOnlineView v-else-if="settings.onlineNovelEnabled && bookTab === 'online'" />
 
-    <BookReader
-      v-if="reading"
-      :item="reading"
-      @close="reading = null"
-    />
+    <BookReader v-if="reading" :item="reading" @close="reading = null" />
   </div>
 </template>
 

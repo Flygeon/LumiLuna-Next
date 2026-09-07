@@ -20,23 +20,17 @@ describe("normalizeEpisodeUrl：基础", () => {
   });
 
   it("绝对 URL 原样保留", () => {
-    expect(normalizeEpisodeUrl(BASE, "https://cdn.example/a/1")).toBe(
-      "https://cdn.example/a/1",
-    );
+    expect(normalizeEpisodeUrl(BASE, "https://cdn.example/a/1")).toBe("https://cdn.example/a/1");
   });
 });
 
 describe("normalizeEpisodeUrl：同站协议统一", () => {
   it("http → base 声明的 https", () => {
-    expect(normalizeEpisodeUrl(BASE, "http://example.com/a")).toBe(
-      "https://example.com/a",
-    );
+    expect(normalizeEpisodeUrl(BASE, "http://example.com/a")).toBe("https://example.com/a");
   });
 
   it("跨站（不同 host）保持原协议", () => {
-    expect(normalizeEpisodeUrl(BASE, "http://other.example/a")).toBe(
-      "http://other.example/a",
-    );
+    expect(normalizeEpisodeUrl(BASE, "http://other.example/a")).toBe("http://other.example/a");
   });
 
   it("同站但端口不同不改协议", () => {
@@ -46,29 +40,23 @@ describe("normalizeEpisodeUrl：同站协议统一", () => {
   });
 
   it("同站且显式端口一致则统一协议", () => {
-    expect(
-      normalizeEpisodeUrl("https://example.com:8443/", "http://example.com:8443/a"),
-    ).toBe("https://example.com:8443/a");
+    expect(normalizeEpisodeUrl("https://example.com:8443/", "http://example.com:8443/a")).toBe(
+      "https://example.com:8443/a",
+    );
   });
 });
 
 describe("normalizeEpisodeUrl：URL 清理", () => {
   it("去除 path 尾斜杠（根路径保留）", () => {
-    expect(normalizeEpisodeUrl(BASE, "https://example.com/dir/")).toBe(
-      "https://example.com/dir",
-    );
-    expect(normalizeEpisodeUrl(BASE, "https://example.com/")).toBe(
-      "https://example.com/",
-    );
+    expect(normalizeEpisodeUrl(BASE, "https://example.com/dir/")).toBe("https://example.com/dir");
+    expect(normalizeEpisodeUrl(BASE, "https://example.com/")).toBe("https://example.com/");
   });
 
   it("去除 fragment，保留非空 query", () => {
     expect(normalizeEpisodeUrl(BASE, "https://example.com/a?x=1#frag")).toBe(
       "https://example.com/a?x=1",
     );
-    expect(normalizeEpisodeUrl(BASE, "https://example.com/a#frag")).toBe(
-      "https://example.com/a",
-    );
+    expect(normalizeEpisodeUrl(BASE, "https://example.com/a#frag")).toBe("https://example.com/a");
   });
 });
 

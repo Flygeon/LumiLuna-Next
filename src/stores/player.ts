@@ -17,10 +17,7 @@ import {
   type QqFallbackReason,
 } from "@/utils/preciseLyrics";
 import { translate } from "@shared/i18n";
-import {
-  applyPreciseWordTimes,
-  getPreciseWordTimes,
-} from "@/utils/wordAnalysis";
+import { applyPreciseWordTimes, getPreciseWordTimes } from "@/utils/wordAnalysis";
 import type {
   LyricLine,
   MediaEntry,
@@ -85,7 +82,10 @@ export function getDominantColors(
     { x1: hw, y1: hh, x2: width, y2: height },
   ];
   regions.forEach((r) => {
-    let tr = 0, tg = 0, tb = 0, count = 0;
+    let tr = 0,
+      tg = 0,
+      tb = 0,
+      count = 0;
     for (let y = r.y1; y < r.y2; y += step) {
       for (let x = r.x1; x < r.x2; x += step) {
         const i = (y * width + x) * 4;
@@ -96,11 +96,7 @@ export function getDominantColors(
       }
     }
     if (count > 0) {
-      regionColors.push([
-        Math.round(tr / count),
-        Math.round(tg / count),
-        Math.round(tb / count),
-      ]);
+      regionColors.push([Math.round(tr / count), Math.round(tg / count), Math.round(tb / count)]);
     }
   });
   regionColors.forEach(([r, g, b]) => {
@@ -111,9 +107,7 @@ export function getDominantColors(
     if (unique) dominant.push([r, g, b]);
   });
   while (dominant.length < colorCount) {
-    dominant.push(
-      dominant[dominant.length % dominant.length] || [128, 128, 128],
-    );
+    dominant.push(dominant[dominant.length % dominant.length] || [128, 128, 128]);
   }
   return dominant.map(([r, g, b]) => `rgba(${r},${g},${b},0.8)`);
 }
@@ -154,7 +148,11 @@ export const usePlayerStore = defineStore("player", () => {
     const payload: PlaySessionEnd = {
       id: sessionId,
       trackId: song.value?.id ?? sessionTrack.id,
-      source: (sessionTrack.kind === "local" ? "local" : sessionTrack.kind === "online" ? "online" : "webdav") as "local" | "online" | "webdav",
+      source: (sessionTrack.kind === "local"
+        ? "local"
+        : sessionTrack.kind === "online"
+          ? "online"
+          : "webdav") as "local" | "online" | "webdav",
       startedAt: sessionStartedAt,
       endedAt,
       listenedMs,
@@ -185,9 +183,10 @@ export const usePlayerStore = defineStore("player", () => {
       const isCompleted = dur > 0 && (pos / dur >= 0.8 || sessionListenedMs >= dur * 0.8);
       flushSession(isCompleted);
     }
-    const id = typeof crypto !== "undefined" && crypto.randomUUID
-      ? crypto.randomUUID()
-      : `ps-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const id =
+      typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `ps-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     sessionId = id;
     sessionTrack = track;
     sessionStartedAt = Date.now();
@@ -196,7 +195,8 @@ export const usePlayerStore = defineStore("player", () => {
     const payload: PlaySessionStart = {
       id,
       trackId: track.id,
-      source: (track.kind === "local" ? "local" : track.kind === "online" ? "online" : "webdav") as "local" | "online" | "webdav",
+      source: (track.kind === "local" ? "local" : track.kind === "online" ? "online" : "webdav") as
+        "local" | "online" | "webdav",
       startedAt: sessionStartedAt,
       title: track.title || null,
       artist: track.artist || null,
@@ -316,7 +316,7 @@ export const usePlayerStore = defineStore("player", () => {
       })
       .catch(() => {});
   }
-/** 推送歌词状态给桌面歌词窗口；默认节流 200ms，切歌等关键节点用 force 立即同步 */
+  /** 推送歌词状态给桌面歌词窗口；默认节流 200ms，切歌等关键节点用 force 立即同步 */
   let lastDesktopLyricsSync = 0;
   function syncDesktopLyrics(force = false) {
     if (!isTauri) return;
@@ -460,14 +460,10 @@ export const usePlayerStore = defineStore("player", () => {
     lyricsSource.value = "local";
     lyricFallbackReason.value = reason;
     lyricFallbackDetail.value = detail ?? null;
-    console.warn(
-      `[逐字歌词] 回退本地歌词：${reason}${detail ? `（${detail}）` : ""}`,
-    );
+    console.warn(`[逐字歌词] 回退本地歌词：${reason}${detail ? `（${detail}）` : ""}`);
     const lang = useSettingsStore().lang;
     const reasonLabel = translate(lang, `player.lyricReason_${reason}`);
-    showLyricNotice(
-      `${translate(lang, "player.lyricFallbackToast")}（${reasonLabel}）`,
-    );
+    showLyricNotice(`${translate(lang, "player.lyricFallbackToast")}（${reasonLabel}）`);
   }
 
   /** 当前歌曲的歌词获取上下文（手动切换来源时复用） */
@@ -509,8 +505,7 @@ export const usePlayerStore = defineStore("player", () => {
     lyricsSource.value = result.source;
     lyricFallbackReason.value = null;
     lyricFallbackDetail.value = null;
-    const srcLabel =
-      result.source === "qq" ? "QQ" : result.source === "kg" ? "酷狗" : "Meting";
+    const srcLabel = result.source === "qq" ? "QQ" : result.source === "kg" ? "酷狗" : "Meting";
     console.info(
       `[逐字歌词] 命中${srcLabel}：${result.songTitle}（${srcLabel} id=${result.songId}，${applied.length} 行，${result.wordLevel ? "含逐字时间轴" : "仅逐行"}，${result.fromCache ? "来自缓存" : "在线获取"}）`,
     );
@@ -634,9 +629,7 @@ export const usePlayerStore = defineStore("player", () => {
     };
 
     if (next === "local") {
-      showLyricNotice(
-        `${translate(lang, "player.lyricSourceSwitched")}${labels[next]}`,
-      );
+      showLyricNotice(`${translate(lang, "player.lyricSourceSwitched")}${labels[next]}`);
       // 切回本地歌词（含 FFT 精排）
       lyrics.value = localLyrics.value;
       song.value.lyrics = localLyrics.value;
@@ -660,9 +653,7 @@ export const usePlayerStore = defineStore("player", () => {
     const key = `${meta.kind}:${meta.id}`;
     if (qqLyricsInflight.has(key)) return; // 已有获取进行中，等待其结果
     qqLyricsInflight.add(key);
-    showLyricNotice(
-      `${translate(lang, "player.lyricSourceSwitched")}${labels[next]}`,
-    );
+    showLyricNotice(`${translate(lang, "player.lyricSourceSwitched")}${labels[next]}`);
     lyricsSource.value = null; // 获取中隐藏徽标
     try {
       const result = await fetchCloudLyrics({
@@ -691,9 +682,7 @@ export const usePlayerStore = defineStore("player", () => {
     const title = s.meta.title ?? s.file.name.replace(/\.[^.]+$/, "");
     const artist = s.meta.artist ?? "";
     const album = s.meta.album ?? "";
-    const parsed = s.lyrics
-      ? parseLrc(s.lyrics, useSettingsStore().detectInstrumental)
-      : [];
+    const parsed = s.lyrics ? parseLrc(s.lyrics, useSettingsStore().detectInstrumental) : [];
     song.value = {
       id: s.file.id,
       title,
@@ -1034,9 +1023,10 @@ export const usePlayerStore = defineStore("player", () => {
     let prevIndex: number;
     if (shuffleMode.value) {
       const currentShufflePos = shuffledIndices.value.indexOf(currentIndex.value);
-      prevIndex = currentShufflePos > 0
-        ? shuffledIndices.value[currentShufflePos - 1]
-        : shuffledIndices.value[shuffledIndices.value.length - 1];
+      prevIndex =
+        currentShufflePos > 0
+          ? shuffledIndices.value[currentShufflePos - 1]
+          : shuffledIndices.value[shuffledIndices.value.length - 1];
     } else {
       prevIndex = currentIndex.value > 0 ? currentIndex.value - 1 : queue.value.length - 1;
     }
@@ -1085,11 +1075,7 @@ export const usePlayerStore = defineStore("player", () => {
       return;
     }
     const insertAt = currentIndex.value + 1;
-    queue.value = [
-      ...queue.value.slice(0, insertAt),
-      item,
-      ...queue.value.slice(insertAt),
-    ];
+    queue.value = [...queue.value.slice(0, insertAt), item, ...queue.value.slice(insertAt)];
     if (shuffleMode.value) generateShuffleOrder();
   }
 

@@ -27,9 +27,7 @@ const t = (key: string) => translate(settings.lang, key);
 
 const detailUrl = computed(
   () =>
-    props.illust.imageUrls.large ??
-    props.illust.imageUrls.original ??
-    pixiv.coverUrl(props.illust),
+    props.illust.imageUrls.large ?? props.illust.imageUrls.original ?? pixiv.coverUrl(props.illust),
 );
 
 const tagList = computed(() => props.illust.tags.map((tg) => tg.translatedName || tg.name));
@@ -273,7 +271,9 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
             :disabled="pixiv.commentsLoading"
             @click="pixiv.fetchCommentsMore()"
           >
-            <span v-if="pixiv.commentsLoading" class="material-symbols-outlined spin">progress_activity</span>
+            <span v-if="pixiv.commentsLoading" class="material-symbols-outlined spin"
+              >progress_activity</span
+            >
             <span v-else class="material-symbols-outlined">expand_more</span>
             {{ t("pixiv.loadMore") }}
           </button>
@@ -289,12 +289,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
         {{ t("pixiv.related") }}
       </h3>
       <div class="pixiv-grid">
-        <PixivCard
-          v-for="ill in related"
-          :key="ill.id"
-          :illust="ill"
-          @open="openRelated(ill)"
-        />
+        <PixivCard v-for="ill in related" :key="ill.id" :illust="ill" @open="openRelated(ill)" />
       </div>
     </section>
 
@@ -310,7 +305,9 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
           </button>
         </div>
         <img v-if="previewSrc" :src="previewSrc" class="lightbox-img" @click.self="closePreview" />
-        <span v-else class="material-symbols-outlined lightbox-loading spin">progress_activity</span>
+        <span v-else class="material-symbols-outlined lightbox-loading spin"
+          >progress_activity</span
+        >
         <template v-if="pages.length > 1">
           <button class="lightbox-btn lightbox-nav lightbox-nav--prev" @click="stepPreview(-1)">
             <span class="material-symbols-outlined">chevron_left</span>

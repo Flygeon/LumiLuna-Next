@@ -6,6 +6,7 @@
 //! - 媒体访问：`webdav_media_url` 返回 `http://127.0.0.1:<port>/webdav?u=<base64url>`
 //!   的本地代理 URL。代理带凭据并透传 `Range` 转发远端，媒体元素因此支持
 //!   拖动进度（206 / Content-Range），逐字歌词 FFT 的 fetch 靠 ACAO: * 跨域。
+//!
 //! 代理只接受配置的 base_url 前缀之下的路径，不能当作任意 URL 跳板。
 
 use std::sync::{Mutex, OnceLock};
@@ -171,7 +172,9 @@ fn propfind(cfg: &WebDavConfig, remote_url: &str) -> Result<(u16, String), Strin
         .send()
         .map_err(|e| format!("无法连接服务器：{e}"))?;
     let status = resp.status().as_u16();
-    let body = resp.text().map_err(|e| format!("读取服务器响应失败：{e}"))?;
+    let body = resp
+        .text()
+        .map_err(|e| format!("读取服务器响应失败：{e}"))?;
     Ok((status, body))
 }
 
@@ -263,8 +266,7 @@ fn current_config() -> Result<WebDavConfig, String> {
 /// 推送 WebDAV 配置（设置页字段变化时由前端调用）
 #[tauri::command]
 pub fn webdav_configure(url: String, username: String, password: String) -> Result<(), String> {
-    let base_url =
-        normalize_base_url(&url).ok_or_else(|| "WebDAV 服务器地址无效".to_string())?;
+    let base_url = normalize_base_url(&url).ok_or_else(|| "WebDAV 服务器地址无效".to_string())?;
     *config().lock().map_err(|e| e.to_string())? = Some(WebDavConfig {
         base_url,
         username,
@@ -376,7 +378,11 @@ fn respond_text(
 /// 单次代理请求：校验 → 带凭据 + Range 转发远端 → 流式回传
 fn handle_proxy_request(request: tiny_http::Request) -> Result<(), String> {
     if !matches!(request.method(), tiny_http::Method::Get) {
-        return respond_text(request, tiny_http::StatusCode(405), "method not allowed".into());
+        return respond_text(
+            request,
+            tiny_http::StatusCode(405),
+            "method not allowed".into(),
+        );
     }
     let (path, query) = match request.url().split_once('?') {
         Some((p, q)) => (p, q),
@@ -388,7 +394,11 @@ fn handle_proxy_request(request: tiny_http::Request) -> Result<(), String> {
     let Some(remote) = query
         .split('&')
         .find_map(|kv| kv.strip_prefix("u="))
-        .and_then(|u| base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(u).ok())
+        .and_then(|u| {
+            base64::engine::general_purpose::URL_SAFE_NO_PAD
+                .decode(u)
+                .ok()
+        })
         .and_then(|bytes| String::from_utf8(bytes).ok())
     else {
         return respond_text(request, tiny_http::StatusCode(400), "bad request".into());
@@ -400,7 +410,9 @@ fn handle_proxy_request(request: tiny_http::Request) -> Result<(), String> {
         return respond_text(request, tiny_http::StatusCode(403), "forbidden".into());
     }
 
-    let mut builder = client().get(&remote).header("Authorization", auth_header(&cfg));
+    let mut builder = client()
+        .get(&remote)
+        .header("Authorization", auth_header(&cfg));
     if let Some(range) = request
         .headers()
         .iter()
@@ -410,7 +422,9 @@ fn handle_proxy_request(request: tiny_http::Request) -> Result<(), String> {
     {
         builder = builder.header("Range", range);
     }
-    let resp = builder.send().map_err(|e| format!("代理请求远端失败: {e}"))?;
+    let resp = builder
+        .send()
+        .map_err(|e| format!("代理请求远端失败: {e}"))?;
 
     // 远端失败（404 等）时把状态码透传，媒体元素与 fetch 均能识别错误
     if !resp.status().is_success() && resp.status().as_u16() != 206 {

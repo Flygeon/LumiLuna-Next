@@ -63,9 +63,7 @@ function readVisibleRange(): VisibleRange {
 
   const listRect = list.getBoundingClientRect();
   const viewportTop =
-    scrollParent === window
-      ? 0
-      : (scrollParent as HTMLElement).getBoundingClientRect().top;
+    scrollParent === window ? 0 : (scrollParent as HTMLElement).getBoundingClientRect().top;
   const viewportBottom =
     scrollParent === window
       ? window.innerHeight
@@ -161,18 +159,12 @@ onMounted(() => {
 onBeforeUnmount(detach);
 
 const visibleItems = computed(() =>
-  virtualized.value
-    ? props.items.slice(range.value.start, range.value.end)
-    : props.items,
+  virtualized.value ? props.items.slice(range.value.start, range.value.end) : props.items,
 );
-const startIndex = computed(() =>
-  virtualized.value ? range.value.start : 0,
-);
+const startIndex = computed(() => (virtualized.value ? range.value.start : 0));
 const topSpacer = computed(() => startIndex.value * props.itemHeight);
 const bottomSpacer = computed(() =>
-  virtualized.value
-    ? Math.max(0, (props.items.length - range.value.end) * props.itemHeight)
-    : 0,
+  virtualized.value ? Math.max(0, (props.items.length - range.value.end) * props.itemHeight) : 0,
 );
 
 function keyOf(item: T, index: number): string | number {

@@ -10,8 +10,7 @@ import type { LyricLine, WordUnit } from "@shared/types";
 
 /** KRC 异或密钥：b"@Gaw^2tGQ61-\xce\xd2ni" */
 const KRC_KEY = new Uint8Array([
-  0x40, 0x47, 0x61, 0x77, 0x5e, 0x32, 0x74, 0x47, 0x51, 0x36, 0x31, 0x2d,
-  0xce, 0xd2, 0x6e, 0x69,
+  0x40, 0x47, 0x61, 0x77, 0x5e, 0x32, 0x74, 0x47, 0x51, 0x36, 0x31, 0x2d, 0xce, 0xd2, 0x6e, 0x69,
 ]);
 
 function base64ToBytes(b64: string): Uint8Array {
@@ -53,9 +52,7 @@ export interface KrcLine {
  * 将 KRC 明文解析为 KrcLine[] + 逐行翻译（索引与原文行一一对应，含空行）。
  * 返回 null 表示不是 KRC 格式。
  */
-export function krcToRawLines(
-  krc: string,
-): {
+export function krcToRawLines(krc: string): {
   lines: KrcLine[];
   translations: (string | null)[];
   romaji: (string | null)[];
@@ -140,13 +137,11 @@ export function krcToRawLines(
 }
 
 /** KRC 行 → 项目 LyricLine（秒时间轴），空文本行跳过，翻译按索引合并 */
-export function krcLinesToLyricLines(
-  parsed: {
-    lines: KrcLine[];
-    translations: (string | null)[];
-    romaji: (string | null)[];
-  },
-): LyricLine[] {
+export function krcLinesToLyricLines(parsed: {
+  lines: KrcLine[];
+  translations: (string | null)[];
+  romaji: (string | null)[];
+}): LyricLine[] {
   const out: LyricLine[] = [];
   parsed.lines.forEach((l, i) => {
     const text = l.words.map((w) => w.text).join("");

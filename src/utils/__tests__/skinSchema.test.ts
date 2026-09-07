@@ -209,7 +209,7 @@ describe("validateSkin：远程引用警告（不拦截）", () => {
     doc.css =
       '.a { background: url("https://evil.example/bg.png"); } ' +
       ".b { background: url('https://evil.example/bg.png'); } " +
-      '@import url(https://cdn.example/lib.css); ' +
+      "@import url(https://cdn.example/lib.css); " +
       ".c { background: url(data:image/png;base64,AAAA); }";
     const v = validateSkin(doc);
     expect(v.ok).toBe(true);
@@ -222,7 +222,7 @@ describe("validateSkin：远程引用警告（不拦截）", () => {
 
   it("本地 data URI 不产生警告", () => {
     const doc = base();
-    doc.css = '.a { background: url(data:image/svg+xml;base64,AAAA); }';
+    doc.css = ".a { background: url(data:image/svg+xml;base64,AAAA); }";
     const v = validateSkin(doc);
     expect(v.ok).toBe(true);
     expect(v.warnings).toHaveLength(0);
@@ -275,10 +275,9 @@ describe("validateSkin v2：background", () => {
     expect(v.skin?.background?.light?.size).toBe("cover");
   });
   it("引用包内不存在的文件拒收", () => {
-    const v = validateSkin(
-      validV2Skin({ background: { light: { image: "assets/none.png" } } }),
-      { files: ["assets/bg.png"] },
-    );
+    const v = validateSkin(validV2Skin({ background: { light: { image: "assets/none.png" } } }), {
+      files: ["assets/bg.png"],
+    });
     expect(v.ok).toBe(false);
     expect(v.errors.join("\n")).toContain("不在皮肤包内");
   });
@@ -308,25 +307,22 @@ describe("validateSkin v2：background", () => {
 
 describe("validateSkin v2：icons", () => {
   it("svg 模式：清单内合法图标通过", () => {
-    const v = validateSkin(
-      validV2Skin({ icons: { mode: "svg", svg: { dir: "assets/icons" } } }),
-      { files: SAKURA_FILES },
-    );
+    const v = validateSkin(validV2Skin({ icons: { mode: "svg", svg: { dir: "assets/icons" } } }), {
+      files: SAKURA_FILES,
+    });
     expect(v.ok).toBe(true);
   });
   it("svg 模式：目录无 svg 拒收", () => {
-    const v = validateSkin(
-      validV2Skin({ icons: { mode: "svg", svg: { dir: "assets/icons" } } }),
-      { files: ["assets/bg.png"] },
-    );
+    const v = validateSkin(validV2Skin({ icons: { mode: "svg", svg: { dir: "assets/icons" } } }), {
+      files: ["assets/bg.png"],
+    });
     expect(v.ok).toBe(false);
     expect(v.errors.join("\n")).toContain("没有 .svg");
   });
   it("svg 模式：非法图标文件名拒收", () => {
-    const v = validateSkin(
-      validV2Skin({ icons: { mode: "svg", svg: { dir: "assets/icons" } } }),
-      { files: ["assets/icons/Home Icon.svg"] },
-    );
+    const v = validateSkin(validV2Skin({ icons: { mode: "svg", svg: { dir: "assets/icons" } } }), {
+      files: ["assets/icons/Home Icon.svg"],
+    });
     expect(v.ok).toBe(false);
     expect(v.errors.join("\n")).toContain("文件名");
   });
@@ -351,7 +347,12 @@ describe("validateSkin v2：icons", () => {
 
 describe("example 皮肤源文件", () => {
   it("v1 四款保持通过（回归）", () => {
-    for (const id of ["lumiluna.mono-ink", "lumiluna.roundify", "lumiluna.midnight", "lumiluna.md1"]) {
+    for (const id of [
+      "lumiluna.mono-ink",
+      "lumiluna.roundify",
+      "lumiluna.midnight",
+      "lumiluna.md1",
+    ]) {
       const raw = readFileSync(resolve(EXAMPLE_DIR, `${id}.json`), "utf-8");
       const v = validateSkin(raw);
       expect(v.errors).toEqual([]);
@@ -371,7 +372,12 @@ describe("example 皮肤源文件", () => {
 
 describe("example 皮肤源文件", () => {
   it("v1 四款保持通过（回归）", () => {
-    for (const id of ["lumiluna.mono-ink", "lumiluna.roundify", "lumiluna.midnight", "lumiluna.md1"]) {
+    for (const id of [
+      "lumiluna.mono-ink",
+      "lumiluna.roundify",
+      "lumiluna.midnight",
+      "lumiluna.md1",
+    ]) {
       const raw = readFileSync(resolve(EXAMPLE_DIR, `${id}.json`), "utf-8");
       const v = validateSkin(raw);
       expect(v.errors).toEqual([]);

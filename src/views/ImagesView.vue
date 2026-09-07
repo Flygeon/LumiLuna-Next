@@ -52,16 +52,12 @@ function clearSearch() {
 
     <!-- 本地 / Pixiv 分段 -->
     <div v-if="settings.onlinePixivEnabled" class="image-tabs">
-      <button
-        class="seg"
-        :class="{ active: imagesTab === 'local' }"
-        @click="imagesTab = 'local'"
-      >{{ t("pixiv.local") }}</button>
-      <button
-        class="seg"
-        :class="{ active: imagesTab === 'pixiv' }"
-        @click="imagesTab = 'pixiv'"
-      >{{ t("pixiv.online") }}</button>
+      <button class="seg" :class="{ active: imagesTab === 'local' }" @click="imagesTab = 'local'">
+        {{ t("pixiv.local") }}
+      </button>
+      <button class="seg" :class="{ active: imagesTab === 'pixiv' }" @click="imagesTab = 'pixiv'">
+        {{ t("pixiv.online") }}
+      </button>
     </div>
 
     <!-- 本地图片 -->

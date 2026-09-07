@@ -36,10 +36,7 @@ export function formatDate(unixSeconds?: number | null): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-export function formatResolution(
-  w?: number | null,
-  h?: number | null,
-): string {
+export function formatResolution(w?: number | null, h?: number | null): string {
   return w && h ? `${w}×${h}` : "";
 }
 

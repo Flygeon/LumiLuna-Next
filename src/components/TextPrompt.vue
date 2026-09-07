@@ -1,7 +1,5 @@
-/**
- * M3 文本输入对话框：标题 + 单行输入 + 取消/确认。
- * 打开时自动聚焦并全选，Enter 确认，Esc / 点击遮罩取消。
- */
+/** * M3 文本输入对话框：标题 + 单行输入 + 取消/确认。 * 打开时自动聚焦并全选，Enter 确认，Esc /
+点击遮罩取消。 */
 <script setup lang="ts">
 import { nextTick, onMounted, ref, watch } from "vue";
 import { useSettingsStore } from "@/stores/settings";
@@ -65,11 +63,7 @@ onMounted(() => {
           <button class="lm-btn lm-btn--text" @click="cancel">
             {{ t("actions.cancel") }}
           </button>
-          <button
-            class="lm-btn lm-btn--tonal"
-            :disabled="!value.trim()"
-            @click="confirm"
-          >
+          <button class="lm-btn lm-btn--tonal" :disabled="!value.trim()" @click="confirm">
             {{ t("actions.confirm") }}
           </button>
         </div>

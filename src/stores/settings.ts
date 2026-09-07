@@ -4,12 +4,7 @@ import { LazyStore } from "@tauri-apps/plugin-store";
 import { capabilities } from "@/capabilities";
 import { applySeedColor, clearSeedTokens } from "@/utils/dynamicTheme";
 import { applySkin } from "@/utils/skinLoader";
-import {
-  activePrepared,
-  activeSkinDoc,
-  skinModeLock,
-  skinSafeMode,
-} from "@/utils/skinRuntime";
+import { activePrepared, activeSkinDoc, skinModeLock, skinSafeMode } from "@/utils/skinRuntime";
 import type { MusicServer, OnlinePlaylistEntry } from "@shared/types";
 import type { LyricSourcePref } from "@/utils/preciseLyrics";
 
@@ -332,9 +327,7 @@ export const useSettingsStore = defineStore("settings", () => {
       musicServer.value = "netease";
     }
     if (onlinePlaylists.value.some((p) => p.server !== "netease")) {
-      onlinePlaylists.value = onlinePlaylists.value.filter(
-        (p) => p.server === "netease",
-      );
+      onlinePlaylists.value = onlinePlaylists.value.filter((p) => p.server === "netease");
     }
     loaded.value = true;
   }
@@ -360,8 +353,7 @@ export const useSettingsStore = defineStore("settings", () => {
     const dark = lock
       ? lock === "dark"
       : theme.value === "dark" ||
-        (theme.value === "system" &&
-          window.matchMedia("(prefers-color-scheme: dark)").matches);
+        (theme.value === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
     document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
     // 令牌写入顺序（§3 层次）：清种子残留 → 皮肤令牌/CSS → 种子色（最后写入，
     // 同为内联样式时后者覆盖前者；clearSeedTokens 必须先于 applySkin，否则会抹掉皮肤颜色）
@@ -404,11 +396,7 @@ export const useSettingsStore = defineStore("settings", () => {
     async () => {
       if (!loaded.value) return;
       try {
-        await capabilities.webdavConfigure(
-          webdavUrl.value,
-          webdavUser.value,
-          webdavPass.value,
-        );
+        await capabilities.webdavConfigure(webdavUrl.value, webdavUser.value, webdavPass.value);
       } catch (e) {
         console.warn("[WebDAV] 配置推送失败:", e);
       }

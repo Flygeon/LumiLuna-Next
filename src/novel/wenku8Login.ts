@@ -72,7 +72,9 @@ export async function openWenku8Login(): Promise<Wenku8LoginStatus> {
         capabilities
           .wenku8LoginLog("[fe] 登录窗口已关闭（用户点 X 或登录成功自动关闭）")
           .catch(() => {});
-      } catch (e) {}
+      } catch {
+        // 忽略日志上报失败
+      }
     };
     win.onCloseRequested(onClose).catch(() => {});
     win.once("destroyed", onClose);

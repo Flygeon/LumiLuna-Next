@@ -122,23 +122,25 @@ function nicknameOf(c: NeteaseComment): string {
                 <span class="material-symbols-outlined">close</span>
               </button>
             </div>
-            <p v-if="title" class="comment-track">{{ title }}<span v-if="artist"> · {{ artist }}</span></p>
+            <p v-if="title" class="comment-track">
+              {{ title }}<span v-if="artist"> · {{ artist }}</span>
+            </p>
             <div v-if="status === 'ready'" class="comment-stats">
               <span v-if="total > 0">{{ t("netease.commentCount") }} {{ formatCount(total) }}</span>
             </div>
           </div>
 
           <div class="comment-body">
-            <p v-if="status === 'loading'" class="comment-state">{{ t("netease.commentsLoading") }}</p>
-            <p v-else-if="status === 'error'" class="comment-state error">{{ t("netease.commentsError") }}</p>
+            <p v-if="status === 'loading'" class="comment-state">
+              {{ t("netease.commentsLoading") }}
+            </p>
+            <p v-else-if="status === 'error'" class="comment-state error">
+              {{ t("netease.commentsError") }}
+            </p>
             <template v-else-if="hotComments.length || comments.length">
               <section v-if="hotComments.length" class="comment-section">
                 <h4 class="comment-section-title">{{ t("netease.hotComments") }}</h4>
-                <article
-                  v-for="c in hotComments"
-                  :key="c.commentId"
-                  class="comment-item"
-                >
+                <article v-for="c in hotComments" :key="c.commentId" class="comment-item">
                   <img
                     v-if="c.user?.avatarUrl"
                     :src="c.user.avatarUrl"
@@ -169,12 +171,10 @@ function nicknameOf(c: NeteaseComment): string {
               </section>
 
               <section v-if="comments.length" class="comment-section">
-                <h4 v-if="hotComments.length" class="comment-section-title">{{ t("netease.latestComments") }}</h4>
-                <article
-                  v-for="c in comments"
-                  :key="c.commentId"
-                  class="comment-item"
-                >
+                <h4 v-if="hotComments.length" class="comment-section-title">
+                  {{ t("netease.latestComments") }}
+                </h4>
+                <article v-for="c in comments" :key="c.commentId" class="comment-item">
                   <img
                     v-if="c.user?.avatarUrl"
                     :src="c.user.avatarUrl"
@@ -207,12 +207,7 @@ function nicknameOf(c: NeteaseComment): string {
             <p v-else class="comment-state">{{ t("netease.commentsEmpty") }}</p>
           </div>
 
-          <button
-            v-if="hasMore"
-            class="comment-more"
-            :disabled="loadingMore"
-            @click="loadMore"
-          >
+          <button v-if="hasMore" class="comment-more" :disabled="loadingMore" @click="loadMore">
             {{ loadingMore ? t("netease.commentsLoadingMore") : t("netease.commentsLoadMore") }}
           </button>
         </div>

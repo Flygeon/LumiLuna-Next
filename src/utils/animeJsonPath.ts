@@ -81,9 +81,7 @@ function findBracketEnd(expression: string, start: number): number {
 }
 
 type Token =
-  | { kind: "key"; value: string }
-  | { kind: "index"; value: number }
-  | { kind: "wildcard" };
+  { kind: "key"; value: string } | { kind: "index"; value: number } | { kind: "wildcard" };
 
 function tokenize(expression: string): Token[] {
   validateJsonPath(expression);

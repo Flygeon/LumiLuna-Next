@@ -7,9 +7,7 @@ import { capabilities } from "@/capabilities";
 import { translate } from "@shared/i18n";
 
 const settings = useSettingsStore();
-const { items, loading, open, toggleFavorite } = useEntryList(() =>
-  capabilities.listFavorites(),
-);
+const { items, loading, open, toggleFavorite } = useEntryList(() => capabilities.listFavorites());
 
 function t(key: string) {
   return translate(settings.lang, key);

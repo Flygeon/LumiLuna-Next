@@ -151,9 +151,7 @@ export function useWindowDrag() {
     if (drag.pending) {
       const { x, y } = drag.pending;
       drag.pending = null;
-      void appWindow
-        .setPosition(new PhysicalPosition(x, y))
-        .catch(() => {});
+      void appWindow.setPosition(new PhysicalPosition(x, y)).catch(() => {});
     }
     drag = null;
   }
@@ -162,9 +160,7 @@ export function useWindowDrag() {
     if (!appWindow || !drag?.pending) return;
     const { x, y } = drag.pending;
     drag.pending = null;
-    void appWindow
-      .setPosition(new PhysicalPosition(x, y))
-      .catch(() => {});
+    void appWindow.setPosition(new PhysicalPosition(x, y)).catch(() => {});
   }
 
   return { isMaximized, minimize, toggleMaximize, close, startDrag };

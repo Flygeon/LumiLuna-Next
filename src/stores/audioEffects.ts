@@ -9,16 +9,8 @@
 import { defineStore } from "pinia";
 import { ref, watch } from "vue";
 import { LazyStore } from "@tauri-apps/plugin-store";
-import {
-  audioEffectEngine,
-  DEFAULT_EQ_BANDS,
-} from "@/utils/audioEffects";
-import {
-  decodeEqCode,
-  decodeGain,
-  encodeEqCode,
-  encodeGain,
-} from "@/utils/shareCode";
+import { audioEffectEngine, DEFAULT_EQ_BANDS } from "@/utils/audioEffects";
+import { decodeEqCode, decodeGain, encodeEqCode, encodeGain } from "@/utils/shareCode";
 import type { AudioEffectConfig, AudioEffectPreset } from "@shared/types";
 
 const store = new LazyStore("audio-effects.json");
@@ -175,9 +167,7 @@ function decodeV3SharePayload(code: string): SharedPresetPayload | null {
 
     const useDefaultFrequencies = reader.read(1) === 0;
     const eqBands: AudioEffectConfig["eqBands"] = DEFAULT_EQ_BANDS.map((defaultBand) => ({
-      frequency: useDefaultFrequencies
-        ? defaultBand.frequency
-        : reader.read(16),
+      frequency: useDefaultFrequencies ? defaultBand.frequency : reader.read(16),
       gain: 0,
     }));
 
@@ -212,7 +202,10 @@ function decodeV3SharePayload(code: string): SharedPresetPayload | null {
 
 function decodeLegacyV1SharePayload(code: string): SharedPresetPayload | null {
   try {
-    const encoded = code.slice(LEGACY_PRESET_SHARE_PREFIX.length).replace(/-/g, "+").replace(/_/g, "/");
+    const encoded = code
+      .slice(LEGACY_PRESET_SHARE_PREFIX.length)
+      .replace(/-/g, "+")
+      .replace(/_/g, "/");
     const padded = encoded.padEnd(Math.ceil(encoded.length / 4) * 4, "=");
     const binary = atob(padded);
     const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
@@ -221,7 +214,8 @@ function decodeLegacyV1SharePayload(code: string): SharedPresetPayload | null {
 
     const name = payload.name.trim().slice(0, NAME_MAX_CHARS);
     const config = payload.config;
-    if (!name || !config || typeof config !== "object" || !Array.isArray(config.eqBands)) return null;
+    if (!name || !config || typeof config !== "object" || !Array.isArray(config.eqBands))
+      return null;
     if (config.eqBands.length !== DEFAULT_EQ_BANDS.length) return null;
 
     const eqBands = config.eqBands.map((band, index) => {
@@ -232,7 +226,13 @@ function decodeLegacyV1SharePayload(code: string): SharedPresetPayload | null {
     const bassBoost = clamp(config.bassBoost, -12, 12);
     const reverb = clamp(config.reverb, 0, 100);
     const stereoWidth = clamp(config.stereoWidth, 0, 100);
-    if (eqBands.some((band) => band === null) || bassBoost === null || reverb === null || stereoWidth === null) return null;
+    if (
+      eqBands.some((band) => band === null) ||
+      bassBoost === null ||
+      reverb === null ||
+      stereoWidth === null
+    )
+      return null;
 
     return {
       version: 1,
@@ -506,9 +506,7 @@ export const useAudioEffectsStore = defineStore("audio-effects", () => {
   async function init() {
     try {
       const savedConfig = await store.get<AudioEffectConfig | null>("config");
-      const savedUserPresets = await store.get<AudioEffectPreset[] | null>(
-        "userPresets",
-      );
+      const savedUserPresets = await store.get<AudioEffectPreset[] | null>("userPresets");
       if (savedConfig) {
         const merged = flatConfig(savedConfig.presetId || "flat");
         config.value = {
@@ -582,8 +580,7 @@ export const useAudioEffectsStore = defineStore("audio-effects", () => {
 
   function applyPreset(id: string) {
     const found =
-      BUILTIN_PRESETS.find((p) => p.id === id) ??
-      userPresets.value.find((p) => p.id === id);
+      BUILTIN_PRESETS.find((p) => p.id === id) ?? userPresets.value.find((p) => p.id === id);
     if (!found) return;
     const next = clone(found.config);
     next.enabled = true;
@@ -628,10 +625,7 @@ export const useAudioEffectsStore = defineStore("audio-effects", () => {
     const name = found.name.trim().slice(0, NAME_MAX_CHARS);
     if (!name) return null;
     const payload: SharedPresetPayload = { version: 1, name, config };
-    return [
-      `${name}@${encodeEqCode(configToEqArray(config))}`,
-      encodeSharePayload(payload),
-    ];
+    return [`${name}@${encodeEqCode(configToEqArray(config))}`, encodeSharePayload(payload)];
   }
 
   function importUserPreset(code: string): string | null {

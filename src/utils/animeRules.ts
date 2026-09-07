@@ -53,10 +53,7 @@ export function renderTemplate(
   });
 }
 
-function renderValue(
-  value: unknown,
-  variables: Record<string, unknown>,
-): unknown {
+function renderValue(value: unknown, variables: Record<string, unknown>): unknown {
   if (typeof value === "string") {
     const exact = /^@([A-Za-z_][A-Za-z0-9_]*)$/.exec(value);
     if (exact) {
@@ -97,24 +94,19 @@ function stringValue(v: unknown): string {
   return typeof v === "string" ? v.trim() : String(v);
 }
 
-function normalizeRequest(
-  raw: Record<string, unknown> | undefined,
-): AnimeApiRequest {
+function normalizeRequest(raw: Record<string, unknown> | undefined): AnimeApiRequest {
   const method = String(raw?.method ?? "GET").toUpperCase();
   return {
     method: method === "POST" ? "POST" : "GET",
     url: String(raw?.url ?? ""),
     headers: stringRecord(raw?.headers),
     query: stringRecord(raw?.query),
-    bodyType:
-      raw?.bodyType === "json" || raw?.bodyType === "form" ? raw.bodyType : "none",
+    bodyType: raw?.bodyType === "json" || raw?.bodyType === "form" ? raw.bodyType : "none",
     body: raw?.body,
   };
 }
 
-function normalizeSearchApiConfig(
-  raw: Record<string, unknown> | undefined,
-): AnimeSearchApiConfig {
+function normalizeSearchApiConfig(raw: Record<string, unknown> | undefined): AnimeSearchApiConfig {
   const request = normalizeRequest(
     (raw?.request as Record<string, unknown> | undefined) ?? undefined,
   );
@@ -224,8 +216,7 @@ export function normalizeRule(raw: unknown): AnimeRule {
       json.chapterApiConfig as Record<string, unknown> | undefined,
     ),
     antiCrawlerConfig:
-      json.antiCrawlerConfig !== null &&
-      typeof json.antiCrawlerConfig === "object"
+      json.antiCrawlerConfig !== null && typeof json.antiCrawlerConfig === "object"
         ? (json.antiCrawlerConfig as Record<string, unknown>)
         : undefined,
     streamRegex: json.streamRegex !== undefined ? String(json.streamRegex) : undefined,
@@ -323,10 +314,7 @@ function resolveRuleUrl(baseURL: string, raw: string, what: string): string {
 }
 
 /** 构造搜索请求（XPath / API 双模式） */
-export function prepareSearchRequest(
-  rule: AnimeRule,
-  keyword: string,
-): AnimeFetchSpec {
+export function prepareSearchRequest(rule: AnimeRule, keyword: string): AnimeFetchSpec {
   const transport = ruleTransport(rule);
   if (rule.searchMode === "api") {
     const spec = buildApiRequest(rule.searchApiConfig?.request, { keyword }, rule.baseURL ?? "");
@@ -352,10 +340,7 @@ export function prepareSearchRequest(
 }
 
 /** 构造选集请求（XPath / API 双模式）；source 为条目/详情页 URL */
-export function prepareChapterRequest(
-  rule: AnimeRule,
-  source: string,
-): AnimeFetchSpec {
+export function prepareChapterRequest(rule: AnimeRule, source: string): AnimeFetchSpec {
   if (rule.chapterMode === "api") {
     const spec = buildApiRequest(rule.chapterApiConfig?.request, { source }, rule.baseURL ?? "");
     return { ...spec, ...ruleTransport(rule), includeCookies: true };
@@ -409,10 +394,7 @@ export interface AnimeSearchParse {
   diagnostics: string[];
 }
 
-export function parseSearchXPath(
-  html: string,
-  rule: AnimeRule,
-): AnimeSearchParse {
+export function parseSearchXPath(html: string, rule: AnimeRule): AnimeSearchParse {
   const root = parseHtml(html);
   if (!root) return { items: [], diagnostics: ["无法解析 HTML 文档"] };
   const items: AnimeSearchItem[] = [];
@@ -494,9 +476,7 @@ export function parseChaptersXPath(
       // 直接读它自身的 href 与文本（不要在它上面再求一次 chapterResult）。
       const source = (episodeNode.getAttribute("href") ?? "").trim();
       if (!source) {
-        diagnostics.push(
-          `线路 ${roadIndex} 的剧集节点 ${episodeIndex} 缺少 URL，已跳过`,
-        );
+        diagnostics.push(`线路 ${roadIndex} 的剧集节点 ${episodeIndex} 缺少 URL，已跳过`);
         continue;
       }
       const name = (episodeNode.textContent ?? "").replace(/\s+/g, "");
@@ -583,9 +563,7 @@ function parseNested(
     for (let episodeIndex = 0; episodeIndex < episodeNodes.length; episodeIndex++) {
       const episodeNode = episodeNodes[episodeIndex];
       try {
-        const episodeName = stringValue(
-          readFirstJsonPath(episodeNode, config.episodeNamePath),
-        );
+        const episodeName = stringValue(readFirstJsonPath(episodeNode, config.episodeNamePath));
         const rawUrl =
           (config.episodeUrlPath ?? "").trim().length === 0
             ? ""
@@ -599,9 +577,7 @@ function parseNested(
           baseUrl,
         );
         if (!pageUrl) {
-          diagnostics.push(
-            `线路 ${roadIndex} 的剧集节点 ${episodeIndex} 缺少 URL，已跳过`,
-          );
+          diagnostics.push(`线路 ${roadIndex} 的剧集节点 ${episodeIndex} 缺少 URL，已跳过`);
           continue;
         }
         episodes.push({
@@ -635,12 +611,8 @@ function parseDelimited(
   const roads: AnimeRoad[] = [];
   const diagnostics: string[] = [];
   try {
-    const namesValue = stringValue(
-      readFirstJsonPath(document, config.roadNamesPath),
-    );
-    const episodesValue = stringValue(
-      readFirstJsonPath(document, config.roadEpisodesPath),
-    );
+    const namesValue = stringValue(readFirstJsonPath(document, config.roadNamesPath));
+    const episodesValue = stringValue(readFirstJsonPath(document, config.roadEpisodesPath));
     if (!episodesValue) return { roads, diagnostics };
     const roadNames = namesValue.split(config.roadSeparator);
     const roadGroups = episodesValue.split(config.roadSeparator);
@@ -652,9 +624,7 @@ function parseDelimited(
         if (!entry) continue;
         const separatorIndex = entry.indexOf(config.fieldSeparator);
         if (separatorIndex < 0) {
-          diagnostics.push(
-            `线路 ${roadIndex} 的剧集条目 ${episodeIndex} 缺少字段分隔符，已跳过`,
-          );
+          diagnostics.push(`线路 ${roadIndex} 的剧集条目 ${episodeIndex} 缺少字段分隔符，已跳过`);
           continue;
         }
         const name = entry.slice(0, separatorIndex).trim();
@@ -669,9 +639,7 @@ function parseDelimited(
             baseUrl,
           );
           if (!pageUrl) {
-            diagnostics.push(
-              `线路 ${roadIndex} 的剧集条目 ${episodeIndex} 缺少 URL，已跳过`,
-            );
+            diagnostics.push(`线路 ${roadIndex} 的剧集条目 ${episodeIndex} 缺少 URL，已跳过`);
             continue;
           }
           episodes.push({
@@ -688,8 +656,7 @@ function parseDelimited(
         diagnostics.push(`线路 ${roadIndex} 没有有效剧集，已跳过`);
         continue;
       }
-      const configuredName =
-        roadIndex < roadNames.length ? roadNames[roadIndex].trim() : "";
+      const configuredName = roadIndex < roadNames.length ? roadNames[roadIndex].trim() : "";
       roads.push({
         name: configuredName.length > 0 ? configuredName : `播放线路${roads.length + 1}`,
         episodes,

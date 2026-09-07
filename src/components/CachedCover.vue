@@ -6,10 +6,7 @@
 import { ref, watch } from "vue";
 import { resolveCover } from "@/utils/onlineCache";
 
-const props = withDefaults(
-  defineProps<{ url?: string; alt?: string }>(),
-  { url: "", alt: "" },
-);
+const props = withDefaults(defineProps<{ url?: string; alt?: string }>(), { url: "", alt: "" });
 
 const src = ref("");
 let token = 0;

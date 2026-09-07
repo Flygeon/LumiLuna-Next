@@ -195,16 +195,15 @@ function buildStepExpr(
 
   const posPreds = predicates.filter(isPositionPredicate);
   const otherPreds = predicates.filter((p) => !isPositionPredicate(p));
-  const base = `${nodeTest}${otherPreds
-    .map((p) => `[${translatePredicateOps(p)}]`)
-    .join("")}`;
+  const base = `${nodeTest}${otherPreds.map((p) => `[${translatePredicateOps(p)}]`).join("")}`;
 
   if (descendant && posPreds.length > 0) {
     // 位置谓词移出括号：作用于扁平化后代列表
     const pos = posPreds.map((p) => `[${translatePredicateOps(p)}]`).join("");
     return { expr: `(${prefix}${base})${pos}`, extract: "none", attrName: null };
   }
-  const extra = posPreds.length > 0 ? `${posPreds.map((p) => `[${translatePredicateOps(p)}]`).join("")}` : "";
+  const extra =
+    posPreds.length > 0 ? `${posPreds.map((p) => `[${translatePredicateOps(p)}]`).join("")}` : "";
   return { expr: `${prefix}${base}${extra}`, extract: "none", attrName: null };
 }
 

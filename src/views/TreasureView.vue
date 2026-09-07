@@ -104,7 +104,9 @@ function t(key: string) {
 }
 .t-card:hover {
   transform: translateY(-2px);
-  box-shadow: var(--md-elevation-2), inset 0 0 0 1px var(--lm-hairline);
+  box-shadow:
+    var(--md-elevation-2),
+    inset 0 0 0 1px var(--lm-hairline);
 }
 .t-card:active {
   transform: scale(0.98);

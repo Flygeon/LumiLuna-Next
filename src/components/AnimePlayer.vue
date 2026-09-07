@@ -62,15 +62,12 @@ const episode = computed(() => {
   const road = anime.selectedRoads[props.roadIndex];
   return road?.episodes[props.episodeIndex];
 });
-const isFirst = computed(
-  () => props.roadIndex === 0 && props.episodeIndex === 0,
-);
+const isFirst = computed(() => props.roadIndex === 0 && props.episodeIndex === 0);
 const isLast = computed(() => {
   const roads = anime.selectedRoads;
   return (
     props.roadIndex >= roads.length - 1 &&
-    props.episodeIndex >=
-      (roads[roads.length - 1]?.episodes.length ?? 0) - 1
+    props.episodeIndex >= (roads[roads.length - 1]?.episodes.length ?? 0) - 1
   );
 });
 
@@ -114,9 +111,7 @@ async function loadDanmakuForEpisode(): Promise<Danmu[]> {
       if (bangumi?.episodes) {
         // 按剧集号匹配（episode.name 多为「第 N 集」/「N」「OP…」等）
         const idx = props.episodeIndex;
-        const e = bangumi.episodes[idx] ?? bangumi.episodes.find(
-          (x) => x.episodeTitle === ep.name,
-        );
+        const e = bangumi.episodes[idx] ?? bangumi.episodes.find((x) => x.episodeTitle === ep.name);
         if (e) matchedEpisodeId = e.episodeId;
       }
     }
@@ -131,7 +126,9 @@ async function loadDanmakuForEpisode(): Promise<Danmu[]> {
   }
 
   if (!matchedEpisodeId) {
-    void danmakuLog(`无可用 dandan episodeId（bgmId=${bgmId || "无"} title="${anime.displayTitle}" ep="${ep.name}"）`);
+    void danmakuLog(
+      `无可用 dandan episodeId（bgmId=${bgmId || "无"} title="${anime.displayTitle}" ep="${ep.name}"）`,
+    );
     return [];
   }
 
@@ -158,7 +155,10 @@ function readThemeColor(): string {
   if (!m) return "#1A5C9E";
   const parts = m[1].split(",").map((x) => Number(x.trim()));
   if (parts.length < 3) return "#1A5C9E";
-  return `#${parts.slice(0, 3).map((n) => Math.round(n).toString(16).padStart(2, "0")).join("")}`;
+  return `#${parts
+    .slice(0, 3)
+    .map((n) => Math.round(n).toString(16).padStart(2, "0"))
+    .join("")}`;
 }
 
 function destroyHls() {
@@ -190,8 +190,7 @@ const SPEEDS = [0.75, 1, 1.25, 1.5, 2];
 let currentSpeed = 1;
 
 function makeControls(): Artplayer["option"]["controls"] {
-  const icon = (name: string) =>
-    `<span class="material-symbols-outlined art-icon">${name}</span>`;
+  const icon = (name: string) => `<span class="material-symbols-outlined art-icon">${name}</span>`;
   return [
     {
       name: "luna-close",
@@ -247,9 +246,7 @@ function makeControls(): Artplayer["option"]["controls"] {
         const next = list[(i + 1) % list.length];
         currentSpeed = next;
         this.playbackRate = next;
-        const span = container.value?.querySelector(
-          ".luna-speed .art-speed",
-        ) as HTMLElement | null;
+        const span = container.value?.querySelector(".luna-speed .art-speed") as HTMLElement | null;
         if (span) span.textContent = `${next}x`;
       },
     },
@@ -260,8 +257,7 @@ function makeControls(): Artplayer["option"]["controls"] {
       tooltip: "弹幕",
       click: function (this: Artplayer) {
         const d = this.plugins?.artplayerPluginDanmuku as
-          | { show: () => unknown; hide: () => unknown; isHide: boolean }
-          | undefined;
+          { show: () => unknown; hide: () => unknown; isHide: boolean } | undefined;
         if (!d) return;
         if (d.isHide) {
           d.show();
@@ -387,17 +383,12 @@ function createPlayer() {
           });
           hlsInstance.on(HlsCtor.Events.ERROR, (_evt, data) => {
             if (!data.fatal) return;
-            void animeLog(
-              `hls.js 致命错误 type=${data.type} details=${data.details}`,
-            );
+            void animeLog(`hls.js 致命错误 type=${data.type} details=${data.details}`);
             onError(`hls ${data.type}/${data.details}`);
           });
           hlsInstance.on(HlsCtor.Events.MANIFEST_PARSED, () => {
             if (props.initialSeekMs && Number.isFinite(video.duration)) {
-              video.currentTime = Math.min(
-                props.initialSeekMs / 1000,
-                video.duration,
-              );
+              video.currentTime = Math.min(props.initialSeekMs / 1000, video.duration);
             }
             void video.play().catch(() => {});
           });
@@ -444,15 +435,13 @@ onMounted(() => {
       const titleEl = container.value?.querySelector(".luna-title .art-title");
       if (titleEl) {
         titleEl.textContent =
-          anime.displayTitle +
-          (episode.value ? ` · ${episode.value.name}` : "");
+          anime.displayTitle + (episode.value ? ` · ${episode.value.name}` : "");
       }
       // 触发流加载
       void ensureStream();
       // 弹幕：plugin load（再触发一次）
       const d = art.plugins?.artplayerPluginDanmuku as
-        | { load: (d: Danmu[]) => Promise<unknown> }
-        | undefined;
+        { load: (d: Danmu[]) => Promise<unknown> } | undefined;
       if (d && settings.danmakuEnabled) {
         void loadDanmakuForEpisode().then((items) => {
           void d.load(items);
@@ -494,7 +483,9 @@ onBeforeUnmount(() => {
               class="ep"
               :class="{ active: ri === props.roadIndex && ei === props.episodeIndex }"
               @click="emit('switch', ri, ei)"
-            >{{ ep.name }}</button>
+            >
+              {{ ep.name }}
+            </button>
           </div>
         </template>
       </div>
@@ -648,11 +639,17 @@ onBeforeUnmount(() => {
   animation: lm-spin 1s linear infinite;
 }
 @keyframes lm-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 @keyframes lm-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* 弹幕提示（左下角悬浮） */

@@ -12,11 +12,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue";
 import { readFile } from "@tauri-apps/plugin-fs";
 import { capabilities, isTauri } from "@/capabilities";
-import {
-  useSettingsStore,
-  type ReaderFontKey,
-  type ReaderThemeKey,
-} from "@/stores/settings";
+import { useSettingsStore, type ReaderFontKey, type ReaderThemeKey } from "@/stores/settings";
 import { loadPdfjs, toArrayBuffer } from "@/utils/pdf";
 import { isLoginRequiredError } from "@/novel/wenku8Login";
 import { requestRelogin } from "@/novel/wenku8Auth";
@@ -44,8 +40,7 @@ const READER_FONTS: Record<ReaderFontKey, { label: string; value: string }> = {
   serif: { label: "宋体", value: 'Georgia,"Songti SC","SimSun",serif' },
   sans: {
     label: "黑体",
-    value:
-      '"Helvetica Neue","Microsoft YaHei","Hiragino Sans GB",sans-serif',
+    value: '"Helvetica Neue","Microsoft YaHei","Hiragino Sans GB",sans-serif',
   },
   kai: { label: "楷体", value: '"KaiTi","STKaiti","Kai",cursive' },
   yuan: {
@@ -136,13 +131,9 @@ function beginReadSession(key: string, title: string) {
 }
 
 /** 当前背景主题（chrome 与 EPUB 正文共用） */
-const theme = computed(
-  () => READER_THEMES[settings.readerTheme] ?? READER_THEMES.dark,
-);
+const theme = computed(() => READER_THEMES[settings.readerTheme] ?? READER_THEMES.dark);
 /** 当前正文字体 */
-const readerFont = computed(
-  () => READER_FONTS[settings.readerFont] ?? READER_FONTS.system,
-);
+const readerFont = computed(() => READER_FONTS[settings.readerFont] ?? READER_FONTS.system);
 /** EPUB/在线文本是否可翻页（PDF 滚动模式下不显示点击翻页） */
 const canNav = computed(
   () => !loading.value && !error.value && (kind.value !== "pdf" || mode.value !== "scroll"),
@@ -316,10 +307,7 @@ async function openEpub() {
 }
 
 /** 展平 EPUB 目录（含嵌套子章节，带层级） */
-function flattenToc(
-  items: any[],
-  depth = 0,
-): { label: string; href: string; depth: number }[] {
+function flattenToc(items: any[], depth = 0): { label: string; href: string; depth: number }[] {
   const out: { label: string; href: string; depth: number }[] = [];
   for (const it of items ?? []) {
     out.push({ label: it.label, href: it.href ?? "", depth });
@@ -560,10 +548,7 @@ async function splitTextIntoPages() {
   document.body.removeChild(probe);
 
   textPages.value = pages.length ? pages : [[]];
-  const restorePage = Math.min(
-    Math.max(0, restoreTarget),
-    textPages.value.length - 1,
-  );
+  const restorePage = Math.min(Math.max(0, restoreTarget), textPages.value.length - 1);
   textCurrentPage.value = restorePage;
   await nextTick();
   // .text-content(textScrollEl, overflow:hidden) 才是真正的横向滚动容器
@@ -576,14 +561,19 @@ function textPrev() {
   if (textCurrentIndex.value > 0) void loadTextChapter(textCurrentIndex.value - 1);
 }
 function textNext() {
-  if (textCurrentIndex.value < textChapters.value.length - 1) void loadTextChapter(textCurrentIndex.value + 1);
+  if (textCurrentIndex.value < textChapters.value.length - 1)
+    void loadTextChapter(textCurrentIndex.value + 1);
 }
 
 async function initText() {
   loading.value = true;
   error.value = "";
   try {
-    textVolumes.value = await capabilities.novelCatalogue(settings.wenku8Node, settings.novelCharset, props.novelSource!.aid);
+    textVolumes.value = await capabilities.novelCatalogue(
+      settings.wenku8Node,
+      settings.novelCharset,
+      props.novelSource!.aid,
+    );
     textChapters.value = flattenTextChapters(textVolumes.value);
     let start = 0;
     const progress = await capabilities.novelProgressGet(props.novelSource!.aid);
@@ -660,10 +650,7 @@ async function setZoom(delta: number) {
     zoom.value = Math.min(4, Math.max(0.5, zoom.value + delta));
     await renderPdf();
   } else {
-    settings.readerFontPct = Math.min(
-      220,
-      Math.max(60, settings.readerFontPct + delta * 20),
-    );
+    settings.readerFontPct = Math.min(220, Math.max(60, settings.readerFontPct + delta * 20));
     if (kind.value === "epub") applyEpubTheme();
   }
 }
@@ -699,7 +686,10 @@ onMounted(async () => {
   if (kind.value === "text") {
     await initText();
   } else {
-    beginReadSession(kind.value === "pdf" ? "p1" : "start", props.item?.title || props.item?.name || "");
+    beginReadSession(
+      kind.value === "pdf" ? "p1" : "start",
+      props.item?.title || props.item?.name || "",
+    );
     try {
       if (kind.value === "pdf") await openPdf();
       else await openEpub();
@@ -775,8 +765,10 @@ const PDF_MODES = [
       <button class="rbtn" title="关闭 (Esc)" @click="emit('close')">
         <span class="material-symbols-outlined">close</span>
       </button>
-      <div class="title" :title="item?.path">{{ novelSource?.title || item?.title || item?.name }}</div>
-      <div class="pager" v-if="totalPages || textChapters.length">
+      <div class="title" :title="item?.path">
+        {{ novelSource?.title || item?.title || item?.name }}
+      </div>
+      <div v-if="totalPages || textChapters.length" class="pager">
         <span class="tabular-nums">
           {{
             kind === "pdf"
@@ -858,13 +850,7 @@ const PDF_MODES = [
       <div v-if="menuOpen" class="reader-settings" @click.stop>
         <div class="set-row">
           <span class="set-label">字号</span>
-          <input
-            type="range"
-            min="60"
-            max="220"
-            step="5"
-            v-model.number="settings.readerFontPct"
-          />
+          <input v-model.number="settings.readerFontPct" type="range" min="60" max="220" step="5" />
           <span class="set-value tabular-nums">{{ settings.readerFontPct }}%</span>
         </div>
         <div class="set-row">
@@ -884,29 +870,25 @@ const PDF_MODES = [
         <div class="set-row">
           <span class="set-label">行距</span>
           <input
+            v-model.number="settings.readerLineHeight"
             type="range"
             min="1"
             max="2.6"
             step="0.1"
-            v-model.number="settings.readerLineHeight"
           />
-          <span class="set-value tabular-nums">{{
-            settings.readerLineHeight.toFixed(1)
-          }}</span>
+          <span class="set-value tabular-nums">{{ settings.readerLineHeight.toFixed(1) }}</span>
         </div>
         <div class="set-row">
           <span class="set-label">段间距</span>
           <input
+            v-model.number="settings.readerParaSpacing"
             type="range"
             min="0"
             max="24"
             step="2"
-            v-model.number="settings.readerParaSpacing"
           />
           <span class="set-value tabular-nums">{{
-            settings.readerParaSpacing === 0
-              ? "原书"
-              : settings.readerParaSpacing + "px"
+            settings.readerParaSpacing === 0 ? "原书" : settings.readerParaSpacing + "px"
           }}</span>
         </div>
       </div>
@@ -941,7 +923,9 @@ const PDF_MODES = [
               :class="{ active: isTocActive(item), sub: item.depth > 0 }"
               :style="{ paddingLeft: 14 + item.depth * 18 + 'px' }"
               @click="goToChapter(item)"
-            >{{ item.label }}</button>
+            >
+              {{ item.label }}
+            </button>
           </template>
           <!-- 在线文本目录 -->
           <template v-if="kind === 'text'">
@@ -950,8 +934,13 @@ const PDF_MODES = [
               :key="ch.cid"
               class="toc-item"
               :class="{ active: i === textCurrentIndex }"
-              @click="sidebarOpen = false; loadTextChapter(i)"
-            >{{ ch.title }}</button>
+              @click="
+                sidebarOpen = false;
+                loadTextChapter(i);
+              "
+            >
+              {{ ch.title }}
+            </button>
           </template>
           <p v-if="kind === 'epub' && !toc.length" class="toc-empty">本书无目录</p>
           <p v-if="kind === 'text' && !textChapters.length" class="toc-empty">暂无目录</p>
@@ -1008,49 +997,29 @@ const PDF_MODES = [
           visibility: loading || error ? 'hidden' : 'visible',
         }"
       >
-        <div v-if="textContent" class="text-track" ref="textTrackEl">
-          <div
-            v-for="(page, pi) in textPages"
-            :key="pi"
-            class="text-page"
-          >
+        <div v-if="textContent" ref="textTrackEl" class="text-track">
+          <div v-for="(page, pi) in textPages" :key="pi" class="text-page">
             <h2 v-if="pi === 0" class="text-chapter-title">{{ textCurrentTitle }}</h2>
             <p
               v-for="(para, i) in page"
               :key="i"
               class="text-para"
               :style="{ marginBottom: settings.readerParaSpacing + 'em' }"
-            >{{ para }}</p>
+            >
+              {{ para }}
+            </p>
           </div>
         </div>
       </div>
 
       <!-- 左/右点击翻页热区；中间留空保持内容可交互 -->
-      <button
-        v-if="canNav"
-        class="tapzone left"
-        @click="onTapZone('prev')"
-      ></button>
-      <button
-        v-if="canNav"
-        class="tapzone right"
-        @click="onTapZone('next')"
-      ></button>
+      <button v-if="canNav" class="tapzone left" @click="onTapZone('prev')"></button>
+      <button v-if="canNav" class="tapzone right" @click="onTapZone('next')"></button>
 
-      <button
-        v-if="canNav"
-        class="nav prev"
-        title="上一页 (←)"
-        @click="prevPage"
-      >
+      <button v-if="canNav" class="nav prev" title="上一页 (←)" @click="prevPage">
         <span class="material-symbols-outlined">chevron_left</span>
       </button>
-      <button
-        v-if="canNav"
-        class="nav next"
-        title="下一页 (→)"
-        @click="nextPage"
-      >
+      <button v-if="canNav" class="nav next" title="下一页 (→)" @click="nextPage">
         <span class="material-symbols-outlined">chevron_right</span>
       </button>
     </div>
@@ -1069,8 +1038,12 @@ const PDF_MODES = [
   animation: fade 180ms ease;
 }
 @keyframes fade {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .bar {
@@ -1479,7 +1452,9 @@ const PDF_MODES = [
   animation: spin 700ms linear infinite;
 }
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* 左/右点击翻页热区：覆盖两侧，中间留空不挡内容 */
@@ -1495,8 +1470,12 @@ const PDF_MODES = [
   background: transparent;
   cursor: pointer;
 }
-.tapzone.left { left: 0; }
-.tapzone.right { right: 0; }
+.tapzone.left {
+  left: 0;
+}
+.tapzone.right {
+  right: 0;
+}
 
 .nav {
   position: absolute;
@@ -1518,8 +1497,12 @@ const PDF_MODES = [
 .nav:hover {
   background: color-mix(in srgb, var(--reader-fg) 24%, transparent);
 }
-.prev { left: 8px; }
-.next { right: 8px; }
+.prev {
+  left: 8px;
+}
+.next {
+  right: 8px;
+}
 .nav .material-symbols-outlined {
   font-size: 26px;
 }

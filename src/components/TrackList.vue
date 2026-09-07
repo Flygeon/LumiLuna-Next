@@ -54,9 +54,7 @@ function onRangeChange(next: { start: number; end: number }) {
   if (thumbTimer !== null) clearTimeout(thumbTimer);
   thumbTimer = window.setTimeout(() => {
     thumbTimer = null;
-    const ids = props.items
-      .slice(next.start, next.end)
-      .map((item) => item.id);
+    const ids = props.items.slice(next.start, next.end).map((item) => item.id);
     if (ids.length) void library.loadThumbnails(ids);
   }, 120);
 }
@@ -126,7 +124,13 @@ function onRowContext(e: MouseEvent, item: MediaEntry, index: number) {
         @keydown.space.prevent="emit('open', item, index)"
       >
         <div class="r-cover">
-          <img v-if="thumbOf(item)" :src="thumbOf(item)" :alt="titleOf(item)" loading="lazy" decoding="async" />
+          <img
+            v-if="thumbOf(item)"
+            :src="thumbOf(item)"
+            :alt="titleOf(item)"
+            loading="lazy"
+            decoding="async"
+          />
           <span v-else class="material-symbols-outlined">music_note</span>
         </div>
 
@@ -142,19 +146,27 @@ function onRowContext(e: MouseEvent, item: MediaEntry, index: number) {
             :title="item.favorite ? t('context.unfavorite') : t('context.favorite')"
             @click.stop="emit('favorite', item)"
           >
-            <span class="material-symbols-outlined" :class="{ filled: item.favorite }">favorite</span>
+            <span class="material-symbols-outlined" :class="{ filled: item.favorite }"
+              >favorite</span
+            >
           </button>
           <button
             class="lm-icon-btn r-action"
             :title="t('context.playNext')"
-            @click.stop="player.playNext(item); emit('notify', t('actions.playNextQueued'))"
+            @click.stop="
+              player.playNext(item);
+              emit('notify', t('actions.playNextQueued'));
+            "
           >
             <span class="material-symbols-outlined">skip_next</span>
           </button>
           <button
             class="lm-icon-btn r-action"
             :title="t('context.addToQueue')"
-            @click.stop="void player.addToQueue(item); emit('notify', t('actions.addedToQueue'))"
+            @click.stop="
+              void player.addToQueue(item);
+              emit('notify', t('actions.addedToQueue'));
+            "
           >
             <span class="material-symbols-outlined">queue_music</span>
           </button>

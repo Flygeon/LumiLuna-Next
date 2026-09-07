@@ -70,25 +70,22 @@ onMounted(async () => {
     try {
       dlUnlisteners.push(
         await listen<null>(DL_READY_EVENT, () => pushDesktopLyricsState()),
-        await listen<{ action: "toggle" | "next" | "prev" | "close" }>(
-          DL_CONTROL_EVENT,
-          (e) => {
-            switch (e.payload.action) {
-              case "toggle":
-                player.togglePlay();
-                break;
-              case "next":
-                void player.next();
-                break;
-              case "prev":
-                void player.previous();
-                break;
-              case "close":
-                settings.desktopLyricsEnabled = false;
-                break;
-            }
-          },
-        ),
+        await listen<{ action: "toggle" | "next" | "prev" | "close" }>(DL_CONTROL_EVENT, (e) => {
+          switch (e.payload.action) {
+            case "toggle":
+              player.togglePlay();
+              break;
+            case "next":
+              void player.next();
+              break;
+            case "prev":
+              void player.previous();
+              break;
+            case "close":
+              settings.desktopLyricsEnabled = false;
+              break;
+          }
+        }),
         await listen<DesktopLyricsBounds>(DL_BOUNDS_EVENT, (e) => {
           settings.desktopLyricsBounds = e.payload;
         }),
@@ -241,14 +238,12 @@ router.afterEach((to) => {
             @click="router.push(item.path)"
           >
             <span class="indicator">
-              <span
-                class="material-symbols-outlined"
-                :class="{ filled: isActive(item.path) }"
-              >{{ item.icon }}</span>
-              <span
-                v-if="countOf(item.type)"
-                class="badge tabular-nums"
-              >{{ countOf(item.type) > 999 ? "999+" : countOf(item.type) }}</span>
+              <span class="material-symbols-outlined" :class="{ filled: isActive(item.path) }">{{
+                item.icon
+              }}</span>
+              <span v-if="countOf(item.type)" class="badge tabular-nums">{{
+                countOf(item.type) > 999 ? "999+" : countOf(item.type)
+              }}</span>
             </span>
             <span class="label">{{ t("nav." + item.key) }}</span>
           </button>
@@ -263,10 +258,9 @@ router.afterEach((to) => {
             @click="router.push(item.path)"
           >
             <span class="indicator">
-              <span
-                class="material-symbols-outlined"
-                :class="{ filled: isActive(item.path) }"
-              >{{ item.icon }}</span>
+              <span class="material-symbols-outlined" :class="{ filled: isActive(item.path) }">{{
+                item.icon
+              }}</span>
             </span>
             <span class="label">{{ t("nav." + item.key) }}</span>
           </button>
@@ -415,7 +409,9 @@ router.afterEach((to) => {
 }
 .brand-mark {
   font-size: 26px;
-  font-variation-settings: 'FILL' 1, 'wght' 500;
+  font-variation-settings:
+    "FILL" 1,
+    "wght" 500;
 }
 .brand-name {
   font-size: 11px;

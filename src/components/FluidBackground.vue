@@ -37,9 +37,7 @@ let visibilityHandler: (() => void) | null = null;
 
 const mode = computed(() => settings.playerBg);
 /** 静态模式下用作 CSS 背景的封面 */
-const coverBg = computed(
-  () => `url("${player.song?.cover || "/default.svg"}")`,
-);
+const coverBg = computed(() => `url("${player.song?.cover || "/default.svg"}")`);
 
 function stopLoop() {
   if (animationId !== null) {
@@ -80,9 +78,7 @@ function buildTiles() {
   tileSize = Math.max(w, h) * 0.6;
   const sw = img.width / 2;
   const sh = img.height / 2;
-  tiles = [0, 1, 2, 3].map((i) =>
-    makeTile((i % 2) * sw, Math.floor(i / 2) * sh, sw, sh),
-  );
+  tiles = [0, 1, 2, 3].map((i) => makeTile((i % 2) * sw, Math.floor(i / 2) * sh, sw, sh));
 }
 
 function startLoop() {
@@ -180,11 +176,7 @@ onBeforeUnmount(teardown);
 
 <template>
   <div class="fluid-wrapper">
-    <canvas
-      v-if="mode === 'animated'"
-      ref="canvasRef"
-      class="fluid-canvas"
-    ></canvas>
+    <canvas v-if="mode === 'animated'" ref="canvasRef" class="fluid-canvas"></canvas>
     <div
       v-else-if="mode === 'image'"
       class="fluid-static"
@@ -200,7 +192,7 @@ onBeforeUnmount(teardown);
   inset: 0;
   z-index: -1;
   overflow: hidden;
-  background-color: #0F0F11;
+  background-color: #0f0f11;
 }
 .fluid-canvas {
   position: absolute;

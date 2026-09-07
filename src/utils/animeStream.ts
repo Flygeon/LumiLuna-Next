@@ -19,11 +19,7 @@ import type { AnimeRule } from "@shared/types";
 import { readFirstJsonPath, validateJsonPath } from "./animeJsonPath";
 
 export type StaticStreamMethod =
-  | "regex"
-  | "jsonpath"
-  | "player-config"
-  | "generic-m3u8"
-  | "generic-mp4";
+  "regex" | "jsonpath" | "player-config" | "generic-m3u8" | "generic-mp4";
 
 export interface StaticStreamHit {
   url: string;

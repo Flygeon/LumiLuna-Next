@@ -4,9 +4,11 @@
 //! - 节点：www.wenku8.net / www.wenku8.cc
 //! - 编码：GBK / Big5（encoding_rs）
 //! - 解析：scraper（Rust HTML DOM）
+//!
 //! 书架 / 进度 / 章节缓存 / 阅读统计均落在本地 SQLite。
 
-use regex::Regex;use reqwest::blocking::Client;
+use regex::Regex;
+use reqwest::blocking::Client;
 use scraper::{Html, Selector};
 use serde::{Deserialize, Serialize};
 use tauri::State;
@@ -185,7 +187,11 @@ pub(crate) fn fetch_html(
     } else {
         url.push('&');
     }
-    url.push_str(if charset == "big5" { "charset=big5" } else { "charset=gbk" });
+    url.push_str(if charset == "big5" {
+        "charset=big5"
+    } else {
+        "charset=gbk"
+    });
 
     let cookie = crate::novel_auth::current_cookie(app);
     let mut req = client().get(&url);
@@ -193,9 +199,7 @@ pub(crate) fn fetch_html(
         req = req.header(reqwest::header::COOKIE, c);
     }
 
-    let resp = req
-        .send()
-        .map_err(|e| format!("网络请求失败：{e}"))?;
+    let resp = req.send().map_err(|e| format!("网络请求失败：{e}"))?;
     let status = resp.status();
     if !status.is_success() {
         return Err(format!(
@@ -203,9 +207,7 @@ pub(crate) fn fetch_html(
             status.as_u16()
         ));
     }
-    let bytes = resp
-        .bytes()
-        .map_err(|e| format!("读取响应失败：{e}"))?;
+    let bytes = resp.bytes().map_err(|e| format!("读取响应失败：{e}"))?;
 
     let (text, _, has_errors) = if charset == "big5" {
         encoding_rs::BIG5.decode(&bytes)
@@ -270,7 +272,9 @@ fn parse_list(html: &str, base: &str) -> Vec<NovelCover> {
 
     // 首选：参考项目的固定布局
     if let Some(content) = content.as_ref() {
-        if let Ok(item_sel) = Selector::parse(r#"div[style="width:373px;height:136px;float:left;margin:5px 0px 5px 5px;"]"#) {
+        if let Ok(item_sel) = Selector::parse(
+            r#"div[style="width:373px;height:136px;float:left;margin:5px 0px 5px 5px;"]"#,
+        ) {
             let img_sel = Selector::parse("img").ok();
             let a_sel = Selector::parse("a").ok();
             for item in content.select(&item_sel) {
@@ -329,7 +333,11 @@ fn parse_list(html: &str, base: &str) -> Vec<NovelCover> {
                     .filter(|s| !s.is_empty())
                     .or_else(|| {
                         let text = a.text().collect::<Vec<_>>().join("").trim().to_string();
-                        if text.is_empty() { None } else { Some(text) }
+                        if text.is_empty() {
+                            None
+                        } else {
+                            Some(text)
+                        }
                     })
                     .unwrap_or_default();
                 if title.is_empty() || !seen.insert(aid.clone()) {
@@ -373,16 +381,37 @@ fn parse_detail(html: &str, aid: &str, base: &str) -> Result<NovelDetail, String
         if trs.len() >= 3 {
             let tds: Vec<_> = trs[2].select(td_sel).collect();
             if tds.len() >= 4 {
-                author = tds[1].text().collect::<Vec<_>>().join("").trim().to_string();
-                status = tds[2].text().collect::<Vec<_>>().join("").trim().to_string();
-                fin_update = tds[3].text().collect::<Vec<_>>().join("").trim().to_string();
+                author = tds[1]
+                    .text()
+                    .collect::<Vec<_>>()
+                    .join("")
+                    .trim()
+                    .to_string();
+                status = tds[2]
+                    .text()
+                    .collect::<Vec<_>>()
+                    .join("")
+                    .trim()
+                    .to_string();
+                fin_update = tds[3]
+                    .text()
+                    .collect::<Vec<_>>()
+                    .join("")
+                    .trim()
+                    .to_string();
                 // 关键修复：去掉“作者：”等前缀（去前 5 个字符）。
                 // 原实现用字节索引切片 author[5..]——中文 UTF-8 每字 3 字节，
                 // len()>5 时 [5..] 常落在字符中间，panic "not a char boundary"，
                 // 同步 command 主线程 panic 直接闪退（见 lumiluna_login_debug.log [PANIC]）。
-                if author.chars().count() > 5 { author = author.chars().skip(5).collect(); }
-                if status.chars().count() > 5 { status = status.chars().skip(5).collect(); }
-                if fin_update.chars().count() > 5 { fin_update = fin_update.chars().skip(5).collect(); }
+                if author.chars().count() > 5 {
+                    author = author.chars().skip(5).collect();
+                }
+                if status.chars().count() > 5 {
+                    status = status.chars().skip(5).collect();
+                }
+                if fin_update.chars().count() > 5 {
+                    fin_update = fin_update.chars().skip(5).collect();
+                }
             }
         }
     }
@@ -406,7 +435,12 @@ fn parse_detail(html: &str, aid: &str, base: &str) -> Result<NovelDetail, String
             if tds.len() >= 2 {
                 let spans: Vec<_> = tds[1].select(span_sel).collect();
                 if spans.len() >= 6 {
-                    introduce = spans[5].text().collect::<Vec<_>>().join("\n").trim().to_string();
+                    introduce = spans[5]
+                        .text()
+                        .collect::<Vec<_>>()
+                        .join("\n")
+                        .trim()
+                        .to_string();
                 }
                 if let Some(first) = spans.first() {
                     let raw = first.text().collect::<Vec<_>>().join("").trim().to_string();
@@ -439,8 +473,12 @@ fn parse_detail(html: &str, aid: &str, base: &str) -> Result<NovelDetail, String
 fn parse_catalogue(html: &str) -> Vec<NovelVolume> {
     let doc = Html::parse_document(html);
     let table_sel = Selector::parse("table.css").ok();
-    let Some(table_sel) = table_sel else { return Vec::new() };
-    let Some(table) = doc.select(&table_sel).next() else { return Vec::new() };
+    let Some(table_sel) = table_sel else {
+        return Vec::new();
+    };
+    let Some(table) = doc.select(&table_sel).next() else {
+        return Vec::new();
+    };
 
     let tr_sel = Selector::parse("tr").ok();
     let vcss_sel = Selector::parse("td.vcss").ok();
@@ -456,7 +494,10 @@ fn parse_catalogue(html: &str) -> Vec<NovelVolume> {
     for row in table.select(&tr_sel) {
         if let Some(v) = row.select(&vcss_sel).next() {
             if let Some(title) = current_title.take() {
-                volumes.push(NovelVolume { title, chapters: std::mem::take(&mut chapters) });
+                volumes.push(NovelVolume {
+                    title,
+                    chapters: std::mem::take(&mut chapters),
+                });
             }
             current_title = Some(v.text().collect::<Vec<_>>().join("").trim().to_string());
             continue;
@@ -535,7 +576,10 @@ fn parse_recommend(html: &str, base: &str) -> Vec<NovelRecommendBlock> {
     let doc = Html::parse_document(html);
     let block_sel = Selector::parse(".block").ok();
     let title_sel = Selector::parse(".blocktitle").ok();
-    let item_sel = Selector::parse(r#"div[style="float: left;text-align:center;width: 95px; height:155px;overflow:hidden;"]"#).ok();
+    let item_sel = Selector::parse(
+        r#"div[style="float: left;text-align:center;width: 95px; height:155px;overflow:hidden;"]"#,
+    )
+    .ok();
     let a_sel = Selector::parse("a").ok();
     let img_sel = Selector::parse("img").ok();
     let (Some(block_sel), Some(title_sel), Some(item_sel), Some(a_sel), Some(img_sel)) =
@@ -566,7 +610,12 @@ fn parse_recommend(html: &str, base: &str) -> Vec<NovelRecommendBlock> {
             if links.len() < 2 {
                 continue;
             }
-            let title = links[1].text().collect::<Vec<_>>().join("").trim().to_string();
+            let title = links[1]
+                .text()
+                .collect::<Vec<_>>()
+                .join("")
+                .trim()
+                .to_string();
             let href = links[0].value().attr("href").unwrap_or("").to_string();
             let aid = extract_aid(&href);
             if title.is_empty() || aid.is_empty() {
@@ -597,7 +646,7 @@ fn epoch_ms_to_day(ms: i64) -> String {
     let days = secs / 86_400;
     let naive = chrono::NaiveDate::from_ymd_opt(1970, 1, 1)
         .unwrap()
-        .checked_add_signed(chrono::Duration::days(days as i64))
+        .checked_add_signed(chrono::Duration::days(days))
         .unwrap_or_default();
     naive.format("%Y-%m-%d").to_string()
 }
@@ -611,7 +660,9 @@ pub fn novel_shelf_list(
 ) -> Result<Vec<NovelShelfItem>, String> {
     let conn = state.0.lock().map_err(|_| "db lock".to_string())?;
     let mut stmt = conn
-        .prepare("SELECT aid, title, author, cover, added_at FROM novel_shelf ORDER BY added_at DESC")
+        .prepare(
+            "SELECT aid, title, author, cover, added_at FROM novel_shelf ORDER BY added_at DESC",
+        )
         .map_err(|e| e.to_string())?;
     let rows = stmt
         .query_map([], |row| {
@@ -660,7 +711,13 @@ pub fn novel_shelf_add(
     conn.execute(
         "INSERT OR REPLACE INTO novel_shelf (aid, title, author, cover, added_at)
          VALUES (?1, ?2, ?3, ?4, ?5)",
-        rusqlite::params![aid, title, author.unwrap_or_default(), cover.unwrap_or_default(), now_ms()],
+        rusqlite::params![
+            aid,
+            title,
+            author.unwrap_or_default(),
+            cover.unwrap_or_default(),
+            now_ms()
+        ],
     )
     .map_err(|e| e.to_string())?;
     Ok(())
@@ -669,8 +726,11 @@ pub fn novel_shelf_add(
 #[tauri::command]
 pub fn novel_shelf_remove(state: State<'_, DbState>, aid: String) -> Result<(), String> {
     let conn = state.0.lock().map_err(|_| "db lock".to_string())?;
-    conn.execute("DELETE FROM novel_shelf WHERE aid = ?1", rusqlite::params![aid])
-        .map_err(|e| e.to_string())?;
+    conn.execute(
+        "DELETE FROM novel_shelf WHERE aid = ?1",
+        rusqlite::params![aid],
+    )
+    .map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -824,7 +884,11 @@ pub fn novel_category(
 }
 
 #[tauri::command]
-pub fn novel_recommend(app: tauri::AppHandle, node: String, charset: String) -> Result<Vec<NovelRecommendBlock>, String> {
+pub fn novel_recommend(
+    app: tauri::AppHandle,
+    node: String,
+    charset: String,
+) -> Result<Vec<NovelRecommendBlock>, String> {
     let html = fetch_html(&app, &node, &charset, "/index.php")?;
     Ok(parse_recommend(&html, node_url(&node)))
 }
@@ -997,8 +1061,16 @@ pub fn novel_read_session_end(
     // 有效阅读：≥30s 或 completed
     if input.completed || input.duration_ms >= 30_000 {
         let day = epoch_ms_to_day(input.ended_at);
-        let local_ms = if input.source == "local" { input.duration_ms } else { 0 };
-        let online_ms = if input.source == "online" { input.duration_ms } else { 0 };
+        let local_ms = if input.source == "local" {
+            input.duration_ms
+        } else {
+            0
+        };
+        let online_ms = if input.source == "online" {
+            input.duration_ms
+        } else {
+            0
+        };
         conn.execute(
             "INSERT INTO novel_read_daily (day, read_count, total_ms, unique_books, local_ms, online_ms)
              VALUES (?1, 1, ?2, 0, ?3, ?4)

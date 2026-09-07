@@ -1,5 +1,6 @@
 pub mod anime;
 pub mod commands;
+pub mod error;
 pub mod media;
 pub mod netease;
 pub mod novel;
@@ -7,6 +8,8 @@ pub mod novel_auth;
 pub mod pixiv;
 pub mod tray;
 pub mod webdav;
+
+pub use error::{LumiLunaError, Result as LumiLunaResult};
 
 use serde::{Deserialize, Serialize};
 use tauri::Manager;
@@ -239,7 +242,6 @@ pub fn run() {
             anime::anime_favorites_list,
             anime::anime_favorites_add,
             anime::anime_favorites_remove,
-
             // ---- 在线图片（Pixiv）----
             pixiv::pixiv_login_status,
             pixiv::pixiv_login_open,
@@ -272,14 +274,22 @@ pub fn run() {
 }
 
 /// 打开磁盘数据库；目录不可用时退回内存库，保证应用仍能启动。
-fn open_db(app: &tauri::AppHandle) -> Result<rusqlite::Connection, Box<dyn std::error::Error>> {
+///
+/// 内部用 `anyhow` 链式传播并附加上下文，对外暴露统一的 `LumiLunaError`。
+fn open_db(app: &tauri::AppHandle) -> LumiLunaResult<rusqlite::Connection> {
+    open_db_inner(app).map_err(|e| LumiLunaError::Other(e.to_string()))
+}
+
+fn open_db_inner(app: &tauri::AppHandle) -> anyhow::Result<rusqlite::Connection> {
+    use anyhow::Context;
     let conn = match app.path().app_data_dir() {
         Ok(dir) => {
-            std::fs::create_dir_all(&dir)?;
-            rusqlite::Connection::open(dir.join("library.db"))?
+            std::fs::create_dir_all(&dir)
+                .with_context(|| format!("create app data dir {:?}", dir))?;
+            rusqlite::Connection::open(dir.join("library.db")).context("open library.db")?
         }
-        Err(_) => rusqlite::Connection::open_in_memory()?,
+        Err(_) => rusqlite::Connection::open_in_memory().context("open in-memory db")?,
     };
-    commands::init_db(&conn)?;
+    commands::init_db(&conn).context("init db schema")?;
     Ok(conn)
 }

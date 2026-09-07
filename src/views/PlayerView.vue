@@ -36,19 +36,14 @@ const neteaseSongId = computed(() => {
 const canShowComments = computed(() => netease.loggedIn && neteaseSongId.value != null);
 
 /** 当前歌曲是否有翻译/罗马音副行（无则切换按钮置灰） */
-const hasSubLine = computed(() =>
-  player.lyrics.some((l) => l.translation || l.romaji),
-);
+const hasSubLine = computed(() => player.lyrics.some((l) => l.translation || l.romaji));
 
 /** 副行显示模式按钮：翻译 ⇄ 罗马音 */
 const subModeLabel = computed(() =>
-  settings.lyricSubMode === "translation"
-    ? t("player.translation")
-    : t("player.romaji"),
+  settings.lyricSubMode === "translation" ? t("player.translation") : t("player.romaji"),
 );
 function cycleSubMode() {
-  settings.lyricSubMode =
-    settings.lyricSubMode === "translation" ? "romaji" : "translation";
+  settings.lyricSubMode = settings.lyricSubMode === "translation" ? "romaji" : "translation";
 }
 
 function t(key: string) {
@@ -99,7 +94,7 @@ function formatTime(s: number) {
 }
 
 function onProgressClick(e: MouseEvent) {
-  const bar = (e.currentTarget as HTMLElement);
+  const bar = e.currentTarget as HTMLElement;
   const rect = bar.getBoundingClientRect();
   const pct = (e.clientX - rect.left) / rect.width;
   player.seek(pct * player.duration);
@@ -119,11 +114,7 @@ function toggleComments() {
 
 /** 功能面板：点击外部或按 Esc 关闭 */
 function onDocPointerDown(e: PointerEvent) {
-  if (
-    panelOpen.value &&
-    panelAnchor.value &&
-    !panelAnchor.value.contains(e.target as Node)
-  ) {
+  if (panelOpen.value && panelAnchor.value && !panelAnchor.value.contains(e.target as Node)) {
     panelOpen.value = false;
   }
 }
@@ -161,15 +152,13 @@ onBeforeUnmount(() => {
     <div class="player-body">
       <!-- 左栏：封面 + 信息 + 进度 + 控制 -->
       <div class="left-col">
-        <div
-          class="cover-wrap"
-          :class="{ clickable: canShowComments }"
-          @click="toggleComments"
-        >
-          <div class="cover" v-if="player.song?.cover">
+        <div class="cover-wrap" :class="{ clickable: canShowComments }" @click="toggleComments">
+          <div v-if="player.song?.cover" class="cover">
             <img :src="player.song.cover" alt="" />
           </div>
-          <div class="cover default" v-else><span class="material-symbols-outlined">music_note</span></div>
+          <div v-else class="cover default">
+            <span class="material-symbols-outlined">music_note</span>
+          </div>
           <div v-if="canShowComments" class="cover-hint">
             <span class="material-symbols-outlined">chat_bubble</span>
             {{ t("netease.comments") }}
@@ -179,7 +168,8 @@ onBeforeUnmount(() => {
         <div class="song-info">
           <div class="title">{{ player.song?.title || "—" }}</div>
           <div class="artist">
-            {{ player.song?.artist || "" }}<span v-if="player.song?.album"> · </span>{{ player.song?.album || "" }}
+            {{ player.song?.artist || "" }}<span v-if="player.song?.album"> · </span
+            >{{ player.song?.album || "" }}
           </div>
         </div>
 
@@ -195,11 +185,15 @@ onBeforeUnmount(() => {
           >
             <div
               class="progress-fill"
-              :style="{ width: (player.duration ? (player.currentTime / player.duration) * 100 : 0) + '%' }"
+              :style="{
+                width: (player.duration ? (player.currentTime / player.duration) * 100 : 0) + '%',
+              }"
             ></div>
             <div
               class="progress-thumb"
-              :style="{ left: (player.duration ? (player.currentTime / player.duration) * 100 : 0) + '%' }"
+              :style="{
+                left: (player.duration ? (player.currentTime / player.duration) * 100 : 0) + '%',
+              }"
             ></div>
           </div>
           <div class="time-row">
@@ -210,18 +204,38 @@ onBeforeUnmount(() => {
 
         <div class="controls">
           <div class="ctrl-group left">
-            <button class="side-btn" :class="{ active: player.repeatMode !== 'off' }" :title="t('player.repeat')" @click="player.cycleRepeat()">
-              <span class="material-symbols-outlined" :class="{ filled: player.repeatMode !== 'off' }">{{ player.repeatMode === 'one' ? 'repeat_one' : 'repeat' }}</span>
+            <button
+              class="side-btn"
+              :class="{ active: player.repeatMode !== 'off' }"
+              :title="t('player.repeat')"
+              @click="player.cycleRepeat()"
+            >
+              <span
+                class="material-symbols-outlined"
+                :class="{ filled: player.repeatMode !== 'off' }"
+                >{{ player.repeatMode === "one" ? "repeat_one" : "repeat" }}</span
+              >
             </button>
-            <button class="side-btn" :class="{ active: player.shuffleMode }" :title="t('player.shuffle')" @click="player.toggleShuffle()">
-              <span class="material-symbols-outlined" :class="{ filled: player.shuffleMode }">shuffle</span>
+            <button
+              class="side-btn"
+              :class="{ active: player.shuffleMode }"
+              :title="t('player.shuffle')"
+              @click="player.toggleShuffle()"
+            >
+              <span class="material-symbols-outlined" :class="{ filled: player.shuffleMode }"
+                >shuffle</span
+              >
             </button>
           </div>
           <div class="ctrl-group center">
             <button class="side-btn" :title="t('player.prev')" @click="player.previous()">
               <span class="material-symbols-outlined filled">skip_previous</span>
             </button>
-            <button class="main-btn" :title="player.playing ? t('player.pause') : t('player.play')" @click="player.togglePlay()">
+            <button
+              class="main-btn"
+              :title="player.playing ? t('player.pause') : t('player.play')"
+              @click="player.togglePlay()"
+            >
               <PlayerControlIcon :name="player.playing ? 'pause' : 'play'" />
             </button>
             <button class="side-btn" :title="t('player.next')" @click="player.next()">
@@ -248,17 +262,23 @@ onBeforeUnmount(() => {
                       class="seg-btn"
                       :class="{ active: rightTab === 'lyrics' }"
                       @click="rightTab = 'lyrics'"
-                    >{{ t("actions.lyrics") }}</button>
+                    >
+                      {{ t("actions.lyrics") }}
+                    </button>
                     <button
                       class="seg-btn"
                       :class="{ active: rightTab === 'queue' }"
                       @click="rightTab = 'queue'"
-                    >{{ t("actions.queue") }}</button>
+                    >
+                      {{ t("actions.queue") }}
+                    </button>
                     <button
                       class="seg-btn"
                       :class="{ active: rightTab === 'effects' }"
                       @click="rightTab = 'effects'"
-                    >{{ t("player.effects") }}</button>
+                    >
+                      {{ t("player.effects") }}
+                    </button>
                   </div>
 
                   <div v-if="sourceBadge || hasSubLine" class="tools-extra">
@@ -361,7 +381,7 @@ onBeforeUnmount(() => {
   justify-content: center;
   padding: 16px 24px;
   z-index: 10;
-  background: linear-gradient(to bottom, rgba(0,0,0,0.5), transparent);
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.5), transparent);
 }
 .back {
   position: absolute;
@@ -470,7 +490,8 @@ onBeforeUnmount(() => {
   box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.35),
     0 4px 16px rgba(0, 0, 0, 0.25);
-  transition: transform 250ms cubic-bezier(0.25, 0.8, 0.25, 1),
+  transition:
+    transform 250ms cubic-bezier(0.25, 0.8, 0.25, 1),
     filter 250ms cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 .cover-wrap:hover {
@@ -630,7 +651,11 @@ onBeforeUnmount(() => {
 }
 .side-btn .material-symbols-outlined {
   font-size: 21px;
-  font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+  font-variation-settings:
+    "FILL" 1,
+    "wght" 500,
+    "GRAD" 0,
+    "opsz" 24;
 }
 .side-btn.active {
   opacity: 1;
@@ -663,7 +688,7 @@ onBeforeUnmount(() => {
   white-space: nowrap;
   font-family: inherit;
   cursor: pointer;
-  background: rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.1);
   color: rgba(255, 255, 255, 0.65);
   transition: background 180ms ease;
 }
@@ -686,11 +711,11 @@ onBeforeUnmount(() => {
   color: #ff94a3;
 }
 .source-badge.local {
-  background: rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.1);
   color: rgba(255, 255, 255, 0.65);
 }
 .source-badge.sub {
-  background: rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.1);
   color: rgba(255, 255, 255, 0.75);
 }
 .source-badge.sub.disabled {

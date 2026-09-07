@@ -14,13 +14,7 @@ import type { NeteasePlaylist, NeteaseProfile, NeteaseSong } from "@shared/types
 const POLL_INTERVAL = 2000;
 const POLL_CONFIRMED_INTERVAL = 1000;
 
-export type QrState =
-  | "wait"
-  | "scanned"
-  | "confirmed"
-  | "success"
-  | "timeout"
-  | "error";
+export type QrState = "wait" | "scanned" | "confirmed" | "success" | "timeout" | "error";
 
 export const useNeteaseStore = defineStore("netease", () => {
   const loggedIn = ref(false);
@@ -81,10 +75,11 @@ export const useNeteaseStore = defineStore("netease", () => {
     try {
       const key = await capabilities.neteaseLoginQrKey();
       qrKey.value = key;
-      qrCode.value = await QRCode.toDataURL(
-        `https://music.163.com/login?codekey=${key}`,
-        { width: 224, margin: 1, errorCorrectionLevel: "M" },
-      );
+      qrCode.value = await QRCode.toDataURL(`https://music.163.com/login?codekey=${key}`, {
+        width: 224,
+        margin: 1,
+        errorCorrectionLevel: "M",
+      });
       poll();
     } catch (e) {
       qrState.value = "error";
@@ -94,46 +89,49 @@ export const useNeteaseStore = defineStore("netease", () => {
 
   function poll() {
     stopPolling();
-    pollTimer = window.setTimeout(async () => {
-      if (Date.now() > qrDeadline) {
-        qrState.value = "timeout";
-        return;
-      }
-      try {
-        const res = await capabilities.neteaseLoginQrCheck(qrKey.value);
-        if (res.code === 803) {
-          qrState.value = "success";
-          loggedIn.value = true;
-          profile.value = {
-            userId: 0,
-            nickname: res.nickname ?? "",
-            avatarUrl: res.avatarUrl ?? "",
-          };
-          // 拉完整账号信息（头像等），失败不阻塞
-          try {
-            profile.value = await capabilities.neteaseAccount();
-          } catch {
-            /* 保留扫码返回的昵称 */
-          }
-          closeQr();
-          void refreshPlaylists();
-          void refreshCloudCount();
-          void refreshLikedSongs();
-          return;
-        }
-        // 实测语义：801=等待扫码 802=已扫码待确认 800=二维码过期（停止轮询）
-        if (res.code === 802) qrState.value = "confirmed";
-        else if (res.code === 801) qrState.value = "wait";
-        else if (res.code === 800) {
+    pollTimer = window.setTimeout(
+      async () => {
+        if (Date.now() > qrDeadline) {
           qrState.value = "timeout";
           return;
-        } else qrState.value = "wait";
-        poll();
-      } catch (e) {
-        qrState.value = "error";
-        qrError.value = String(e);
-      }
-    }, qrState.value === "confirmed" ? POLL_CONFIRMED_INTERVAL : POLL_INTERVAL);
+        }
+        try {
+          const res = await capabilities.neteaseLoginQrCheck(qrKey.value);
+          if (res.code === 803) {
+            qrState.value = "success";
+            loggedIn.value = true;
+            profile.value = {
+              userId: 0,
+              nickname: res.nickname ?? "",
+              avatarUrl: res.avatarUrl ?? "",
+            };
+            // 拉完整账号信息（头像等），失败不阻塞
+            try {
+              profile.value = await capabilities.neteaseAccount();
+            } catch {
+              /* 保留扫码返回的昵称 */
+            }
+            closeQr();
+            void refreshPlaylists();
+            void refreshCloudCount();
+            void refreshLikedSongs();
+            return;
+          }
+          // 实测语义：801=等待扫码 802=已扫码待确认 800=二维码过期（停止轮询）
+          if (res.code === 802) qrState.value = "confirmed";
+          else if (res.code === 801) qrState.value = "wait";
+          else if (res.code === 800) {
+            qrState.value = "timeout";
+            return;
+          } else qrState.value = "wait";
+          poll();
+        } catch (e) {
+          qrState.value = "error";
+          qrError.value = String(e);
+        }
+      },
+      qrState.value === "confirmed" ? POLL_CONFIRMED_INTERVAL : POLL_INTERVAL,
+    );
   }
 
   function closeQr() {
@@ -195,7 +193,10 @@ export const useNeteaseStore = defineStore("netease", () => {
     phoneError.value = "";
     phoneLogging.value = true;
     try {
-      const account = await capabilities.neteaseLoginCellphone(phone.value.trim(), smsCode.value.trim());
+      const account = await capabilities.neteaseLoginCellphone(
+        phone.value.trim(),
+        smsCode.value.trim(),
+      );
       loggedIn.value = true;
       profile.value = account;
       closeQr();

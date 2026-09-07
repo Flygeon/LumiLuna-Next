@@ -129,9 +129,7 @@ export const useLibraryStore = defineStore("library", () => {
         }
       }
     };
-    await Promise.all(
-      Array.from({ length: Math.min(concurrency, pending.length) }, worker),
-    );
+    await Promise.all(Array.from({ length: Math.min(concurrency, pending.length) }, worker));
   }
 
   /** 用 pdf.js 渲染 PDF 首页作为封面，并回存到后端磁盘缓存 */

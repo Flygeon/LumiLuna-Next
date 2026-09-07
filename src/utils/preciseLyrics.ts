@@ -32,11 +32,7 @@ const FAIL_TTL = 10 * 60 * 1000;
 const resultCache = new Map<string, { t: number; result: PreciseLyricsResult }>();
 
 /** 回退原因（用于日志与界面提示） */
-export type QqFallbackReason =
-  | "missing-info"
-  | "search-failed"
-  | "no-match"
-  | "no-lyrics";
+export type QqFallbackReason = "missing-info" | "search-failed" | "no-match" | "no-lyrics";
 
 export type PreciseLyricsResult =
   | {
@@ -74,9 +70,7 @@ export function normalizeTitle(t: string): string {
   return stripBrackets(t)
     .toLowerCase()
     .replace(/\u3000/g, " ")
-    .replace(/[\uFF01-\uFF5E]/g, (ch) =>
-      String.fromCharCode(ch.charCodeAt(0) - 0xfee0),
-    )
+    .replace(/[\uFF01-\uFF5E]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xfee0))
     .replace(/\s+/g, " ");
 }
 
@@ -91,9 +85,7 @@ interface TryContext {
  * Meting 搜索结果不含时长字段，因此采用「归一化标题完全一致」优先，
  * 其次选择首个搜索结果；拉取 lrc 后解析为标准 LRC（含粗排逐字时间轴）。
  */
-async function tryMetingSource(
-  opts: TryContext,
-): Promise<PreciseLyricsResult> {
+async function tryMetingSource(opts: TryContext): Promise<PreciseLyricsResult> {
   const keyword = stripBrackets(opts.title);
   let songs: OnlineSong[];
   try {
@@ -115,13 +107,14 @@ async function tryMetingSource(
   }
 
   const titleNorm = normalizeTitle(opts.title);
-  const titleMatched = songs.filter(
-    (s) => normalizeTitle(s.name) === titleNorm,
-  );
+  const titleMatched = songs.filter((s) => normalizeTitle(s.name) === titleNorm);
   const artistNorm = opts.artist ? normalizeTitle(opts.artist) : "";
   const pick =
     titleMatched.find(
-      (s) => artistNorm && (normalizeTitle(s.artist).includes(artistNorm) || artistNorm.includes(normalizeTitle(s.artist))),
+      (s) =>
+        artistNorm &&
+        (normalizeTitle(s.artist).includes(artistNorm) ||
+          artistNorm.includes(normalizeTitle(s.artist))),
     ) ||
     titleMatched[0] ||
     songs[0];
@@ -189,16 +182,12 @@ async function tryMetingSource(
 }
 
 /** 尝试单个来源：搜索 → 同名+时长匹配 → 逐字优先取词 */
-async function trySource(
-  source: LyricSource,
-  opts: TryContext,
-): Promise<PreciseLyricsResult> {
+async function trySource(source: LyricSource, opts: TryContext): Promise<PreciseLyricsResult> {
   if (source === "meting") return tryMetingSource(opts);
   const keyword = stripBrackets(opts.title); // 搜索词同样忽略括号内信息
   let candidates: (QqSongInfo | KgSongInfo)[];
   try {
-    candidates =
-      source === "qq" ? await qqSearchSongs(keyword) : await kgSearchSongs(keyword);
+    candidates = source === "qq" ? await qqSearchSongs(keyword) : await kgSearchSongs(keyword);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return {
@@ -218,10 +207,7 @@ async function trySource(
   const titleNorm = normalizeTitle(opts.title);
   const sameName = candidates.filter((c) => normalizeTitle(c.title) === titleNorm);
   const matched = sameName
-    .filter(
-      (c) =>
-        Math.abs((c.durationMs || 0) - opts.durationMs) <= DURATION_TOLERANCE_MS,
-    )
+    .filter((c) => Math.abs((c.durationMs || 0) - opts.durationMs) <= DURATION_TOLERANCE_MS)
     .sort(
       (a, b) =>
         Math.abs((a.durationMs || 0) - opts.durationMs) -
@@ -232,8 +218,7 @@ async function trySource(
     return {
       ok: false,
       reason: "no-match",
-      detail:
-        `${SOURCE_LABEL[source]}：搜索 ${candidates.length} 条，同名 ${sameName.length} 条，时长差 ≤1s 0 条`,
+      detail: `${SOURCE_LABEL[source]}：搜索 ${candidates.length} 条，同名 ${sameName.length} 条，时长差 ≤1s 0 条`,
     };
   }
 
@@ -300,9 +285,7 @@ export interface PreciseLyricsOptions {
  * 按回退链从云端取逐字歌词（偏好来源 → 另一来源；登录网易云后追加 Meting）。
  * 成功返回歌词（含来源信息），失败返回原因；调用方据此回退本地歌词并提示。
  */
-export async function fetchCloudLyrics(
-  opts: PreciseLyricsOptions,
-): Promise<PreciseLyricsResult> {
+export async function fetchCloudLyrics(opts: PreciseLyricsOptions): Promise<PreciseLyricsResult> {
   const title = (opts.title ?? "").trim();
   if (!title || !opts.durationMs || !Number.isFinite(opts.durationMs)) {
     return { ok: false, reason: "missing-info" };
@@ -315,9 +298,7 @@ export async function fetchCloudLyrics(
       if (!cached.result.ok) {
         console.info("[逐字歌词] 命中失败缓存（10 分钟内），跳过重试:", title);
       }
-      return cached.result.ok
-        ? { ...cached.result, fromCache: true }
-        : cached.result;
+      return cached.result.ok ? { ...cached.result, fromCache: true } : cached.result;
     }
     resultCache.delete(key);
   }

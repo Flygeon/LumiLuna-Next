@@ -92,7 +92,7 @@ fn epoch_ms_to_day(ms: i64) -> String {
     // 从 Unix 纪元秒转本地日期
     let naive = NaiveDate::from_ymd_opt(1970, 1, 1)
         .unwrap()
-        .checked_add_signed(chrono::Duration::days(days as i64))
+        .checked_add_signed(chrono::Duration::days(days))
         .unwrap_or_default();
     naive.format("%Y-%m-%d").to_string()
 }
@@ -140,10 +140,7 @@ pub fn start_play_session(
 }
 
 #[tauri::command]
-pub fn end_play_session(
-    state: State<'_, DbState>,
-    input: PlaySessionEnd,
-) -> Result<(), String> {
+pub fn end_play_session(state: State<'_, DbState>, input: PlaySessionEnd) -> Result<(), String> {
     let conn = state.0.lock().map_err(|_| "db lock".to_string())?;
     let completed = if input.completed { 1 } else { 0 };
 
@@ -265,7 +262,9 @@ pub fn list_listen_stats(
         Some(f) if !f.is_empty() => f,
         _ => {
             let days = days.unwrap_or(7).clamp(1, 90);
-            let naive = Local::now().naive_local().date()
+            let naive = Local::now()
+                .naive_local()
+                .date()
                 .checked_sub_signed(chrono::Duration::days(days - 1))
                 .unwrap_or_default();
             naive.format("%Y-%m-%d").to_string()

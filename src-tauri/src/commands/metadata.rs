@@ -71,8 +71,7 @@ fn extract_audio(path: &str, meta: &mut MediaMetadata) {
         meta.year = tag.year().map(|y| y as i64);
         meta.track_no = tag.track().map(|t| t as i64);
         meta.disc_no = tag.disk().map(|d| d as i64);
-        meta.album_artist =
-            non_empty(tag.get_string(&ItemKey::AlbumArtist).map(|s| s.to_string()));
+        meta.album_artist = non_empty(tag.get_string(&ItemKey::AlbumArtist).map(|s| s.to_string()));
         meta.has_cover = !tag.pictures().is_empty();
         meta.has_lyrics = tag.get_string(&ItemKey::Lyrics).is_some();
     }
@@ -109,7 +108,9 @@ fn extract_image(path: &str, meta: &mut MediaMetadata) {
         }
     }
 
-    let Ok(file) = std::fs::File::open(path) else { return };
+    let Ok(file) = std::fs::File::open(path) else {
+        return;
+    };
     let mut reader = std::io::BufReader::new(file);
     let Ok(exif) = exif::Reader::new().read_from_container(&mut reader) else {
         return;
@@ -199,7 +200,13 @@ fn gps_coord(exif: &exif::Exif, coord: exif::Tag, refer: exif::Tag) -> Option<f6
     let sign = exif
         .get_field(refer, In::PRIMARY)
         .map(|f| f.display_value().to_string().trim().to_uppercase())
-        .map(|s| if s.starts_with('S') || s.starts_with('W') { -1.0 } else { 1.0 })
+        .map(|s| {
+            if s.starts_with('S') || s.starts_with('W') {
+                -1.0
+            } else {
+                1.0
+            }
+        })
         .unwrap_or(1.0);
 
     Some(deg * sign)
@@ -259,7 +266,9 @@ fn extract_book(path: &str, meta: &mut MediaMetadata) {
 fn extract_epub(path: &str, meta: &mut MediaMetadata) {
     use std::io::Read;
 
-    let Ok(file) = std::fs::File::open(path) else { return };
+    let Ok(file) = std::fs::File::open(path) else {
+        return;
+    };
     let Ok(mut zip) = zip::ZipArchive::new(std::io::BufReader::new(file)) else {
         return;
     };
@@ -323,12 +332,40 @@ pub fn save(conn: &rusqlite::Connection, m: &MediaMetadata) -> rusqlite::Result<
          VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,
                  ?21,?22,?23,?24,?25,?26,?27,?28,?29,?30,?31,?32,?33,?34)",
         rusqlite::params![
-            m.file_id, m.title, m.artist, m.album_artist, m.album, m.genre, m.year,
-            m.track_no, m.disc_no, m.duration_ms, m.bitrate, m.sample_rate, m.channels,
-            m.width, m.height, m.orientation, m.codec, m.fps, m.taken_at, m.camera, m.lens,
-            m.iso, m.exposure, m.f_number, m.focal_length, m.gps_lat, m.gps_lng,
-            m.author, m.publisher, m.language, m.page_count, m.chapter_count,
-            m.has_cover as i64, m.has_lyrics as i64
+            m.file_id,
+            m.title,
+            m.artist,
+            m.album_artist,
+            m.album,
+            m.genre,
+            m.year,
+            m.track_no,
+            m.disc_no,
+            m.duration_ms,
+            m.bitrate,
+            m.sample_rate,
+            m.channels,
+            m.width,
+            m.height,
+            m.orientation,
+            m.codec,
+            m.fps,
+            m.taken_at,
+            m.camera,
+            m.lens,
+            m.iso,
+            m.exposure,
+            m.f_number,
+            m.focal_length,
+            m.gps_lat,
+            m.gps_lng,
+            m.author,
+            m.publisher,
+            m.language,
+            m.page_count,
+            m.chapter_count,
+            m.has_cover as i64,
+            m.has_lyrics as i64
         ],
     )?;
     Ok(())

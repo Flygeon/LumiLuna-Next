@@ -32,11 +32,7 @@ export interface DesktopLyricsState {
   artist: string;
 }
 
-export type DesktopLyricsControlAction =
-  | "toggle"
-  | "next"
-  | "prev"
-  | "close";
+export type DesktopLyricsControlAction = "toggle" | "next" | "prev" | "close";
 
 export interface DesktopLyricsControl {
   action: DesktopLyricsControlAction;
@@ -54,9 +50,7 @@ export async function isDesktopLyricsWindow(): Promise<boolean> {
 }
 
 /** 主窗口：创建桌面歌词窗口（存在则先复用） */
-export async function openDesktopLyricsWindow(
-  bounds: DesktopLyricsBounds,
-): Promise<void> {
+export async function openDesktopLyricsWindow(bounds: DesktopLyricsBounds): Promise<void> {
   if (!isTauri) return;
   const existing = await WebviewWindow.getByLabel(DESKTOP_LYRICS_LABEL);
   if (existing) {
@@ -96,9 +90,7 @@ export async function closeDesktopLyricsWindow(): Promise<void> {
 }
 
 /** 主窗口：向桌面歌词窗口推送歌词状态 */
-export async function emitDesktopLyricsState(
-  state: DesktopLyricsState,
-): Promise<void> {
+export async function emitDesktopLyricsState(state: DesktopLyricsState): Promise<void> {
   if (!isTauri) return;
   try {
     await emitTo(DESKTOP_LYRICS_LABEL, DL_STATE_EVENT, state);
@@ -118,9 +110,7 @@ export async function emitDesktopLyricsReady(): Promise<void> {
 }
 
 /** 桌面歌词窗口：向主窗口发送控制命令 */
-export async function emitDesktopLyricsControl(
-  action: DesktopLyricsControlAction,
-): Promise<void> {
+export async function emitDesktopLyricsControl(action: DesktopLyricsControlAction): Promise<void> {
   if (!isTauri) return;
   try {
     await emitTo("main", DL_CONTROL_EVENT, { action } satisfies DesktopLyricsControl);
@@ -130,9 +120,7 @@ export async function emitDesktopLyricsControl(
 }
 
 /** 桌面歌词窗口：上报窗口位置/尺寸，主窗口负责持久化 */
-export async function emitDesktopLyricsBounds(
-  bounds: DesktopLyricsBounds,
-): Promise<void> {
+export async function emitDesktopLyricsBounds(bounds: DesktopLyricsBounds): Promise<void> {
   if (!isTauri) return;
   try {
     await emitTo("main", DL_BOUNDS_EVENT, bounds);
@@ -150,9 +138,12 @@ export function toLogicalBounds(
 }
 
 /** 在逻辑坐标与物理坐标间按 scale 换算（Tauri 事件给的是物理坐标） */
-export function physicalToLogical(
-  physical: { x: number; y: number; width: number; height: number },
-): DesktopLyricsBounds {
+export function physicalToLogical(physical: {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}): DesktopLyricsBounds {
   return { x: physical.x, y: physical.y, width: physical.width, height: physical.height };
 }
 

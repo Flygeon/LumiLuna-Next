@@ -55,7 +55,13 @@ fn apply_orientation(img: image::DynamicImage, orientation: Option<i64>) -> imag
 
 /// 同目录下常见的封面文件名
 const COVER_NAMES: &[&str] = &[
-    "cover.jpg", "cover.jpeg", "cover.png", "folder.jpg", "folder.png", "front.jpg", "album.jpg",
+    "cover.jpg",
+    "cover.jpeg",
+    "cover.png",
+    "folder.jpg",
+    "folder.png",
+    "front.jpg",
+    "album.jpg",
 ];
 
 /// 同目录封面（SMTC 也用它给系统浮层配图）
@@ -178,10 +184,7 @@ pub fn get_thumbnail(
     let Some(dir) = cache_dir(&app) else {
         return Ok(None);
     };
-    let cache_file = dir.join(format!(
-        "{}.jpg",
-        cache_key(&file_id, mtime, fsize, target)
-    ));
+    let cache_file = dir.join(format!("{}.jpg", cache_key(&file_id, mtime, fsize, target)));
 
     // ---- 磁盘缓存命中 ----
     if cache_file.is_file() {
@@ -193,8 +196,7 @@ pub fn get_thumbnail(
         "image" => {
             let ext = ext_of(std::path::Path::new(&path));
             if DECODABLE_IMAGE_EXTS.contains(&ext.as_str()) {
-                decode_scaled(&path, target)
-                    .and_then(|img| to_jpeg(img, target, orientation))
+                decode_scaled(&path, target).and_then(|img| to_jpeg(img, target, orientation))
             } else {
                 None
             }

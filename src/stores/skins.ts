@@ -61,9 +61,10 @@ export const useSkinsStore = defineStore("skins", () => {
       skinsRoot.value = await capabilities.skinDir().catch(() => null);
     }
     const loadedSkin = await capabilities.skinLoad(id);
-    const v = loadedSkin.json === null || loadedSkin.json === undefined
-      ? null
-      : validateSkin(loadedSkin.json, { files: loadedSkin.files });
+    const v =
+      loadedSkin.json === null || loadedSkin.json === undefined
+        ? null
+        : validateSkin(loadedSkin.json, { files: loadedSkin.files });
     if (v?.ok && v.skin) {
       activeSkinDoc.value = v.skin;
       activePrepared.value = prepareSkin(v.skin, {

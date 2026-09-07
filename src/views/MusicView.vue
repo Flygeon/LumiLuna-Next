@@ -17,17 +17,8 @@ import { openContextMenu } from "@/composables/useContextMenu";
 import { promptText } from "@/composables/useTextPrompt";
 import { toOnlineSongs } from "@/utils/netease";
 import { translate } from "@shared/i18n";
-import {
-  CURATED_PLAYLISTS,
-  metingPlaylist,
-  metingSearch,
-} from "@/utils/meting";
-import type {
-  MediaEntry,
-  MusicServer,
-  OnlinePlaylistEntry,
-  OnlineSong,
-} from "@shared/types";
+import { CURATED_PLAYLISTS, metingPlaylist, metingSearch } from "@/utils/meting";
+import type { MediaEntry, MusicServer, OnlinePlaylistEntry, OnlineSong } from "@shared/types";
 import type { NeteasePlaylist } from "@shared/types";
 
 const library = useLibraryStore();
@@ -453,9 +444,7 @@ function clearSearch() {
   void load();
 }
 
-const showLocal = computed(
-  () => !onlineMode.value || detail.value?.type === "local",
-);
+const showLocal = computed(() => !onlineMode.value || detail.value?.type === "local");
 const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
 </script>
 
@@ -464,29 +453,20 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
     <PageHeader :title="t('nav.music')" :description="t('navDesc.music')" />
     <!-- 在线音乐：推荐 / 歌单 / 搜索 切换 -->
     <div v-if="showOnlineRoot" class="online-tabs">
-      <button
-        class="seg"
-        :class="{ active: tab === 'feed' }"
-        @click="tab = 'feed'"
-      >{{ t("homeFeed.forYou") }}</button>
-      <button
-        class="seg"
-        :class="{ active: tab === 'playlists' }"
-        @click="tab = 'playlists'"
-      >{{ t("online.playlists") }}</button>
-      <button
-        class="seg"
-        :class="{ active: tab === 'search' }"
-        @click="tab = 'search'"
-      >{{ t("online.search") }}</button>
+      <button class="seg" :class="{ active: tab === 'feed' }" @click="tab = 'feed'">
+        {{ t("homeFeed.forYou") }}
+      </button>
+      <button class="seg" :class="{ active: tab === 'playlists' }" @click="tab = 'playlists'">
+        {{ t("online.playlists") }}
+      </button>
+      <button class="seg" :class="{ active: tab === 'search' }" @click="tab = 'search'">
+        {{ t("online.search") }}
+      </button>
     </div>
 
     <!-- 现在就听信息流 -->
     <template v-if="showOnlineRoot && tab === 'feed'">
-      <NowPlayingFeed
-        @play-songs="handleFeedPlaySongs"
-        @open-playlist="openNeteasePlaylist"
-      />
+      <NowPlayingFeed @play-songs="handleFeedPlaySongs" @open-playlist="openNeteasePlaylist" />
     </template>
 
     <!-- 歌单根列表 -->
@@ -542,7 +522,9 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
           <div class="thumb">
             <CachedCover v-if="coverOf(c)" :url="coverOf(c)" :alt="c.name" />
             <span v-else class="placeholder material-symbols-outlined">
-              {{ c.key === "local" ? "library_music" : c.key === "cloud" ? "cloud" : "queue_music" }}
+              {{
+                c.key === "local" ? "library_music" : c.key === "cloud" ? "cloud" : "queue_music"
+              }}
             </span>
           </div>
           <div class="s-meta">
@@ -601,10 +583,7 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
         <span v-if="detail.type !== 'local'" class="count tabular-nums">
           {{ detail.songs.length }} {{ t("online.tracks") }}
         </span>
-        <div
-          v-if="detail.type !== 'local'"
-          class="segmented view-toggle"
-        >
+        <div v-if="detail.type !== 'local'" class="segmented view-toggle">
           <button
             class="seg"
             :class="{ active: settings.musicViewMode === 'grid' }"
@@ -625,7 +604,9 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
       </div>
 
       <div
-        v-if="(detail.type === 'online' || detail.type === 'cloud') && settings.musicViewMode === 'grid'"
+        v-if="
+          (detail.type === 'online' || detail.type === 'cloud') && settings.musicViewMode === 'grid'
+        "
         class="online-grid"
       >
         <button
@@ -647,7 +628,9 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
       </div>
 
       <div
-        v-else-if="(detail.type === 'online' || detail.type === 'cloud') && settings.musicViewMode === 'list'"
+        v-else-if="
+          (detail.type === 'online' || detail.type === 'cloud') && settings.musicViewMode === 'list'
+        "
         class="online-list"
       >
         <button
@@ -773,14 +756,20 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
           <div class="phone-tabs">
             <button
               :class="['phone-tab', { active: netease.authTab === 'qr' }]"
-              @click="netease.authTab = 'qr'; netease.phoneError = ''"
+              @click="
+                netease.authTab = 'qr';
+                netease.phoneError = '';
+              "
             >
               <span class="material-symbols-outlined">qr_code</span>
               {{ t("netease.qrTab") }}
             </button>
             <button
               :class="['phone-tab', { active: netease.authTab === 'phone' }]"
-              @click="netease.authTab = 'phone'; netease.phoneError = ''"
+              @click="
+                netease.authTab = 'phone';
+                netease.phoneError = '';
+              "
             >
               <span class="material-symbols-outlined">smartphone</span>
               {{ t("netease.phoneTab") }}
@@ -795,10 +784,18 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
             </div>
             <p class="qr-status" :class="{ error: netease.qrState === 'error' }">
               <template v-if="netease.qrState === 'wait'">{{ t("netease.scanWaiting") }}</template>
-              <template v-else-if="netease.qrState === 'scanned'">{{ t("netease.scanScanned") }}</template>
-              <template v-else-if="netease.qrState === 'confirmed'">{{ t("netease.scanConfirmed") }}</template>
-              <template v-else-if="netease.qrState === 'success'">{{ t("netease.scanSuccess") }}</template>
-              <template v-else-if="netease.qrState === 'timeout'">{{ t("netease.scanTimeout") }}</template>
+              <template v-else-if="netease.qrState === 'scanned'">{{
+                t("netease.scanScanned")
+              }}</template>
+              <template v-else-if="netease.qrState === 'confirmed'">{{
+                t("netease.scanConfirmed")
+              }}</template>
+              <template v-else-if="netease.qrState === 'success'">{{
+                t("netease.scanSuccess")
+              }}</template>
+              <template v-else-if="netease.qrState === 'timeout'">{{
+                t("netease.scanTimeout")
+              }}</template>
               <template v-else-if="netease.qrState === 'error'">{{ netease.qrError }}</template>
             </p>
             <div class="qr-actions">
@@ -843,15 +840,9 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
                   :disabled="netease.smsSending || netease.smsCooldown > 0"
                   @click="netease.sendSmsCaptcha()"
                 >
-                  <template v-if="netease.smsCooldown > 0">
-                    {{ netease.smsCooldown }}s
-                  </template>
-                  <template v-else-if="netease.smsSending">
-                    发送中…
-                  </template>
-                  <template v-else>
-                    获取验证码
-                  </template>
+                  <template v-if="netease.smsCooldown > 0"> {{ netease.smsCooldown }}s </template>
+                  <template v-else-if="netease.smsSending"> 发送中… </template>
+                  <template v-else> 获取验证码 </template>
                 </button>
               </div>
               <p v-if="netease.phoneError" class="phone-error">{{ netease.phoneError }}</p>
@@ -955,7 +946,9 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
   color: #fff;
   cursor: pointer;
   opacity: 0;
-  transition: opacity var(--md-sys-motion-duration-short), background 160ms;
+  transition:
+    opacity var(--md-sys-motion-duration-short),
+    background 160ms;
 }
 .song-card:hover .p-remove {
   opacity: 1;
@@ -1044,7 +1037,9 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
 }
 .song-card:hover .thumb {
   transform: translateY(-4px) scale(1.015);
-  box-shadow: var(--md-elevation-3), inset 0 0 0 1px var(--lm-hairline);
+  box-shadow:
+    var(--md-elevation-3),
+    inset 0 0 0 1px var(--lm-hairline);
 }
 .song-card:active .thumb {
   transform: translateY(-1px) scale(0.995);
@@ -1471,5 +1466,4 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
   background: var(--md-sys-color-surface-container-high);
   color: var(--md-sys-color-on-surface);
 }
-
 </style>

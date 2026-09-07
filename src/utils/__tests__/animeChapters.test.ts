@@ -77,9 +77,7 @@ describe("parseChaptersXPath", () => {
     });
     const res = parseChaptersXPath("<html/>", rule(), "https://example.com/");
     expect(res.roads).toHaveLength(1);
-    expect(res.roads[0].episodes).toEqual([
-      { url: "https://example.com/play/2", name: "第2集" },
-    ]);
+    expect(res.roads[0].episodes).toEqual([{ url: "https://example.com/play/2", name: "第2集" }]);
     expect(res.diagnostics[0]).toContain("缺少 URL");
   });
 

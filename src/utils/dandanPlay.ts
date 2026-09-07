@@ -17,11 +17,7 @@
  */
 import { useSettingsStore } from "@/stores/settings";
 import { danmakuLog } from "@/utils/danmakuLog";
-import type {
-  DandanBangumi,
-  DandanCommentResponse,
-  DandanSearchEpisode,
-} from "@shared/types";
+import type { DandanBangumi, DandanCommentResponse, DandanSearchEpisode } from "@shared/types";
 
 const BASE = "https://api.dandanplay.net";
 
@@ -40,10 +36,7 @@ function readCredentials(): Credentials | null {
 
 /** SHA1 hex（Web Crypto） */
 async function sha1Hex(text: string): Promise<string> {
-  const buf = await crypto.subtle.digest(
-    "SHA-1",
-    new TextEncoder().encode(text),
-  );
+  const buf = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(text));
   return Array.from(new Uint8Array(buf))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
@@ -79,9 +72,7 @@ async function getJson<T>(path: string): Promise<T> {
   try {
     resp = await fetch(url, { method: "GET", headers });
   } catch (e) {
-    throw new Error(
-      `DanDanPlay 网络错误 ${path}: ${e instanceof Error ? e.message : String(e)}`,
-    );
+    throw new Error(`DanDanPlay 网络错误 ${path}: ${e instanceof Error ? e.message : String(e)}`);
   }
   if (!resp.ok) {
     throw new Error(
@@ -109,7 +100,9 @@ interface RawBangumiResponse {
 }
 
 /** 用 bgm.tv ID 反查 DanDanPlay 的 animeId */
-export async function getDandanAnimeIdByBgmId(bgmId: number | string): Promise<DandanBangumi | null> {
+export async function getDandanAnimeIdByBgmId(
+  bgmId: number | string,
+): Promise<DandanBangumi | null> {
   const path = `/api/v2/bangumi/bgmtv/${encodeURIComponent(String(bgmId))}`;
   void danmakuLog(`bangumi/bgmtv/${bgmId} 请求`);
   try {
@@ -162,8 +155,7 @@ export async function searchDandanEpisodes(
   void danmakuLog(`search/episodes kw="${animeTitle}" ep="${episodeTitle ?? ""}"`);
   try {
     const raw = (await getJson<unknown>(path)) as
-      | DandanSearchEpisode[]
-      | { episodes?: DandanSearchEpisode[] };
+      DandanSearchEpisode[] | { episodes?: DandanSearchEpisode[] };
     if (Array.isArray(raw)) return raw;
     if (raw && Array.isArray(raw.episodes)) return raw.episodes;
     return [];

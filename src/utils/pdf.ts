@@ -8,8 +8,7 @@ export function loadPdfjs(): Promise<any> {
   if (!pdfjsPromise) {
     pdfjsPromise = (async () => {
       const pdfjs: any = await import("pdfjs-dist");
-      const workerUrl = (await import("pdfjs-dist/build/pdf.worker.mjs?url"))
-        .default;
+      const workerUrl = (await import("pdfjs-dist/build/pdf.worker.mjs?url")).default;
       pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
       return pdfjs;
     })();
@@ -19,20 +18,14 @@ export function loadPdfjs(): Promise<any> {
 
 /** 把 Uint8Array 拷贝成独立 ArrayBuffer（pdf.js 会接管并 detach 传入缓冲区） */
 export function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
-  return bytes.buffer.slice(
-    bytes.byteOffset,
-    bytes.byteOffset + bytes.byteLength,
-  ) as ArrayBuffer;
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
 }
 
 /**
  * 渲染 PDF 首页为 JPEG 字节，用作书籍封面。
  * 后端没有轻量的纯 Rust PDF 栅格化方案，复用前端已打包的 pdf.js。
  */
-export async function renderPdfCover(
-  data: ArrayBuffer,
-  target = 320,
-): Promise<Uint8Array | null> {
+export async function renderPdfCover(data: ArrayBuffer, target = 320): Promise<Uint8Array | null> {
   const pdfjs = await loadPdfjs();
   // destroy() 在 loadingTask 上，PDFDocumentProxy 本身没有该方法
   const loadingTask = pdfjs.getDocument({ data });

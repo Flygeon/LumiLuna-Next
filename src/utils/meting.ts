@@ -60,11 +60,7 @@ function normalizeSong(raw: RawSong): OnlineSong {
   };
 }
 
-async function request(
-  server: MusicServer,
-  type: string,
-  id: string,
-): Promise<OnlineSong[]> {
+async function request(server: MusicServer, type: string, id: string): Promise<OnlineSong[]> {
   const url = `${API_BASE}?server=${server}&type=${type}&id=${encodeURIComponent(id)}`;
   const res = await fetch(url);
   if (!res.ok) {

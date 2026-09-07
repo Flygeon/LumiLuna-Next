@@ -46,36 +46,21 @@ const VARIANT_ICONS: Record<string, string> = {
 };
 
 const resolvedIcon = computed(() => props.icon || VARIANT_ICONS[props.variant]);
-const isAlert = computed(
-  () => props.variant === "error" || props.variant === "offline",
-);
+const isAlert = computed(() => props.variant === "error" || props.variant === "offline");
 </script>
 
 <template>
-  <div
-    class="empty-state"
-    :class="variant"
-    :role="isAlert ? 'alert' : 'status'"
-  >
-    <span
-      class="icon material-symbols-outlined"
-      :class="{ 'icon-alert': isAlert }"
-    >{{ resolvedIcon }}</span>
+  <div class="empty-state" :class="variant" :role="isAlert ? 'alert' : 'status'">
+    <span class="icon material-symbols-outlined" :class="{ 'icon-alert': isAlert }">{{
+      resolvedIcon
+    }}</span>
     <h3 class="title">{{ title }}</h3>
     <p v-if="description" class="description">{{ description }}</p>
     <div v-if="actionLabel || secondaryLabel" class="actions">
-      <button
-        v-if="actionLabel"
-        class="lm-btn lm-btn--filled"
-        @click="emit('action')"
-      >
+      <button v-if="actionLabel" class="lm-btn lm-btn--filled" @click="emit('action')">
         {{ actionLabel }}
       </button>
-      <button
-        v-if="secondaryLabel"
-        class="lm-btn lm-btn--text"
-        @click="emit('secondary')"
-      >
+      <button v-if="secondaryLabel" class="lm-btn lm-btn--text" @click="emit('secondary')">
         {{ secondaryLabel }}
       </button>
     </div>

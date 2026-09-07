@@ -18,6 +18,9 @@ use base64::Engine;
 use serde::{Deserialize, Serialize};
 use tauri::Manager;
 
+/// 单条规则的 cookie 表：host → [(name, value)]
+type CookieJar = HashMap<String, Vec<(String, String)>>;
+
 use crate::commands::DbState;
 
 const UA: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36 Edg/135.0.0.0";
@@ -122,8 +125,7 @@ const CONNECT_TIMEOUT: Duration = Duration::from_secs(8);
 
 /// 规则 cookie 表：rule → host → [(name, value)]。Rust 进程内持有，
 /// 仅在 include_cookies 请求 / 媒体代理时注入，前端不可见。
-static COOKIE_JARS: OnceLock<Mutex<HashMap<String, HashMap<String, Vec<(String, String)>>>>> =
-    OnceLock::new();
+static COOKIE_JARS: OnceLock<Mutex<HashMap<String, CookieJar>>> = OnceLock::new();
 
 /// 媒体代理配置（每次 anime_media_url 调用时按当前规则重建）
 #[derive(Clone, Debug)]
@@ -138,7 +140,7 @@ static RESOLVE_GEN: AtomicU64 = AtomicU64::new(0);
 const WEBVIEW_LABEL: &str = "anime-webview";
 const WEBVIEW_TIMEOUT: Duration = Duration::from_secs(30);
 
-fn cookie_jars() -> &'static Mutex<HashMap<String, HashMap<String, Vec<(String, String)>>>> {
+fn cookie_jars() -> &'static Mutex<HashMap<String, CookieJar>> {
     COOKIE_JARS.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
@@ -1398,11 +1400,7 @@ async fn eval_json(webview: &tauri::WebviewWindow, script: &str) -> Option<Strin
 }
 
 /// 把当前页面状态写进调试日志（前缀 [anime-webview]）
-async fn log_webview_diag(
-    webview: &tauri::WebviewWindow,
-    rule_name: &str,
-    waited_ms: u128,
-) {
+async fn log_webview_diag(webview: &tauri::WebviewWindow, rule_name: &str, waited_ms: u128) {
     let snap = eval_json(webview, DIAG_SCRIPT)
         .await
         .unwrap_or_else(|| "(诊断脚本无返回：页面可能已跳转或未就绪)".to_string());

@@ -116,9 +116,7 @@ export function useDesktopChrome() {
     }
 
     try {
-      const unlistenCommands = await capabilities.onAppPlayerCommand(
-        handlePlayerCommand,
-      );
+      const unlistenCommands = await capabilities.onAppPlayerCommand(handlePlayerCommand);
       unlisteners.push(unlistenCommands);
     } catch {
       /* 静默 */

@@ -6,11 +6,7 @@ import { useSettingsStore } from "@/stores/settings";
 import { capabilities, isTauri } from "@/capabilities";
 import { formatListenDuration, formatDuration } from "@/utils/format";
 import { translate } from "@shared/i18n";
-import type {
-  ListenSourceStat,
-  ListenStats,
-  TopTrackStat,
-} from "@shared/types";
+import type { ListenSourceStat, ListenStats, TopTrackStat } from "@shared/types";
 
 const settings = useSettingsStore();
 const player = usePlayerStore();
@@ -98,10 +94,10 @@ function fillRecentDays(rows: ListenStats[], days: number): ListenStats[] {
 }
 
 function sumRows(rows: ListenStats[]): { plays: number; ms: number } {
-  return rows.reduce(
-    (acc, r) => ({ plays: acc.plays + r.playCount, ms: acc.ms + r.totalMs }),
-    { plays: 0, ms: 0 },
-  );
+  return rows.reduce((acc, r) => ({ plays: acc.plays + r.playCount, ms: acc.ms + r.totalMs }), {
+    plays: 0,
+    ms: 0,
+  });
 }
 
 function matchesQuery(track: TopTrackStat, q: string): boolean {
@@ -118,10 +114,18 @@ function sortClusters(rows: TopTrackStat[], sort: TrackSortKey): TopTrackStat[] 
   const next = [...rows];
   next.sort((a, b) => {
     if (sort === "plays") {
-      return b.playCount - a.playCount || b.totalMs - a.totalMs || a.title.localeCompare(b.title, "zh-CN");
+      return (
+        b.playCount - a.playCount ||
+        b.totalMs - a.totalMs ||
+        a.title.localeCompare(b.title, "zh-CN")
+      );
     }
     if (sort === "duration") {
-      return b.totalMs - a.totalMs || b.playCount - a.playCount || a.title.localeCompare(b.title, "zh-CN");
+      return (
+        b.totalMs - a.totalMs ||
+        b.playCount - a.playCount ||
+        a.title.localeCompare(b.title, "zh-CN")
+      );
     }
     if (sort === "artist") {
       return (a.artist || "").localeCompare(b.artist || "", "zh-CN") || b.playCount - a.playCount;
@@ -136,9 +140,12 @@ function clusterTopTracks(rows: TopTrackStat[]): TopTrackStat[] {
   if (rows.length === 0) return [];
   const groups = new Map<string, TopTrackStat[]>();
   for (const row of rows) {
-    const key = row.source === "local"
-      ? (row.fileName ? row.fileName.replace(/\.[^.]+$/, "").toLowerCase() : row.trackId)
-      : row.trackId;
+    const key =
+      row.source === "local"
+        ? row.fileName
+          ? row.fileName.replace(/\.[^.]+$/, "").toLowerCase()
+          : row.trackId
+        : row.trackId;
     const list = groups.get(key) ?? [];
     list.push(row);
     groups.set(key, list);
@@ -248,11 +255,7 @@ onMounted(() => {
   void loadData();
 });
 
-watch(
-  [period, chartDays, topDays, from, to],
-  () => void loadData(),
-  { deep: false },
-);
+watch([period, chartDays, topDays, from, to], () => void loadData(), { deep: false });
 
 // ── 播放 ──────────────────────────────────────────────────────
 function playTrack(track: TopTrackStat) {
@@ -325,13 +328,7 @@ const donutSegments = computed(() => {
   });
 });
 
-function piePath(
-  cx: number,
-  cy: number,
-  r: number,
-  startAngle: number,
-  endAngle: number,
-): string {
+function piePath(cx: number, cy: number, r: number, startAngle: number, endAngle: number): string {
   const start = ((startAngle - 90) * Math.PI) / 180;
   const end = ((endAngle - 90) * Math.PI) / 180;
   const x1 = cx + r * Math.cos(start);
@@ -347,7 +344,7 @@ function piePath(
   <div class="view">
     <header class="page-head">
       <h2>{{ t("nav.stats") }}</h2>
-      <div class="period-tabs" v-if="isTauri">
+      <div v-if="isTauri" class="period-tabs">
         <button
           v-for="p in PERIODS"
           :key="p.id"
@@ -365,15 +362,25 @@ function piePath(
       <input
         type="date"
         :value="fromDate"
-        @change="(e) => { fromDate = (e.target as HTMLInputElement).value; void loadData(); }"
         class="date-input"
+        @change="
+          (e) => {
+            fromDate = (e.target as HTMLInputElement).value;
+            void loadData();
+          }
+        "
       />
       <span class="date-sep">~</span>
       <input
         type="date"
         :value="toDate"
-        @change="(e) => { toDate = (e.target as HTMLInputElement).value; void loadData(); }"
         class="date-input"
+        @change="
+          (e) => {
+            toDate = (e.target as HTMLInputElement).value;
+            void loadData();
+          }
+        "
       />
     </div>
 
@@ -455,7 +462,11 @@ function piePath(
                   :x="i * (360 / Math.max(trendData.length, 1)) + 4"
                   :y="0"
                   :width="Math.max(4, 360 / Math.max(trendData.length, 1) - 8)"
-                  :height="d.plays > 0 ? Math.max(3, (d.plays / Math.max(...trendData.map((x) => x.plays), 1)) * 130) : 0"
+                  :height="
+                    d.plays > 0
+                      ? Math.max(3, (d.plays / Math.max(...trendData.map((x) => x.plays), 1)) * 130)
+                      : 0
+                  "
                   fill="var(--md-sys-color-primary)"
                   rx="3"
                 />
@@ -472,31 +483,43 @@ function piePath(
               <defs>
                 <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stop-color="var(--md-sys-color-primary)" stop-opacity="0.32" />
-                  <stop offset="100%" stop-color="var(--md-sys-color-primary)" stop-opacity="0.02" />
+                  <stop
+                    offset="100%"
+                    stop-color="var(--md-sys-color-primary)"
+                    stop-opacity="0.02"
+                  />
                 </linearGradient>
               </defs>
               <g transform="translate(0, 160) scale(1, -1)">
                 <polygon
                   :points="
                     '0,0 ' +
-                    trendData.map((d, i) => {
-                      const x = i * (360 / Math.max(trendData.length, 1)) + 360 / Math.max(trendData.length, 1) / 2;
-                      const maxMs = Math.max(...trendData.map((x) => x.totalMs), 1);
-                      const y = d.totalMs > 0 ? (d.totalMs / maxMs) * 130 : 0;
-                      return `${x},${y}`;
-                    }).join(' ') +
+                    trendData
+                      .map((d, i) => {
+                        const x =
+                          i * (360 / Math.max(trendData.length, 1)) +
+                          360 / Math.max(trendData.length, 1) / 2;
+                        const maxMs = Math.max(...trendData.map((x) => x.totalMs), 1);
+                        const y = d.totalMs > 0 ? (d.totalMs / maxMs) * 130 : 0;
+                        return `${x},${y}`;
+                      })
+                      .join(' ') +
                     ' 360,0'
                   "
                   fill="url(#areaGrad)"
                 />
                 <polyline
                   :points="
-                    trendData.map((d, i) => {
-                      const x = i * (360 / Math.max(trendData.length, 1)) + 360 / Math.max(trendData.length, 1) / 2;
-                      const maxMs = Math.max(...trendData.map((x) => x.totalMs), 1);
-                      const y = d.totalMs > 0 ? (d.totalMs / maxMs) * 130 : 0;
-                      return `${x},${y}`;
-                    }).join(' ')
+                    trendData
+                      .map((d, i) => {
+                        const x =
+                          i * (360 / Math.max(trendData.length, 1)) +
+                          360 / Math.max(trendData.length, 1) / 2;
+                        const maxMs = Math.max(...trendData.map((x) => x.totalMs), 1);
+                        const y = d.totalMs > 0 ? (d.totalMs / maxMs) * 130 : 0;
+                        return `${x},${y}`;
+                      })
+                      .join(' ')
                   "
                   fill="none"
                   stroke="var(--md-sys-color-primary)"
@@ -519,7 +542,14 @@ function piePath(
           <template v-else>
             <div class="source-donut-area">
               <svg class="donut-svg" viewBox="0 0 100 100">
-                <circle cx="50" cy="50" r="40" fill="none" stroke="var(--md-sys-color-surface-container-high)" stroke-width="16" />
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="40"
+                  fill="none"
+                  stroke="var(--md-sys-color-surface-container-high)"
+                  stroke-width="16"
+                />
                 <path
                   v-for="seg in donutSegments"
                   :key="seg.source"
@@ -545,7 +575,11 @@ function piePath(
                 </div>
               </div>
               <div class="legend-total">
-                <span>{{ t("stats.duration") }}：{{ formatListenDuration(sources.reduce((s, r) => s + r.totalMs, 0)) }}</span>
+                <span
+                  >{{ t("stats.duration") }}：{{
+                    formatListenDuration(sources.reduce((s, r) => s + r.totalMs, 0))
+                  }}</span
+                >
               </div>
             </div>
           </template>
@@ -556,7 +590,9 @@ function piePath(
       <section class="top-section">
         <div class="top-header">
           <h3 class="section-label large">{{ t("stats.topTracks") }}</h3>
-          <span v-if="filteredTracks.length > 0" class="top-count">{{ filteredTracks.length }} 首</span>
+          <span v-if="filteredTracks.length > 0" class="top-count"
+            >{{ filteredTracks.length }} 首</span
+          >
         </div>
 
         <!-- 控制栏 -->
@@ -571,13 +607,19 @@ function piePath(
           </div>
           <div class="sort-group">
             <select v-model="sourceFilter" class="sort-select" :title="t('stats.sourceAll')">
-              <option v-for="opt in SOURCE_OPTIONS" :key="opt.value" :value="opt.value">{{ t(opt.label) }}</option>
+              <option v-for="opt in SOURCE_OPTIONS" :key="opt.value" :value="opt.value">
+                {{ t(opt.label) }}
+              </option>
             </select>
             <select v-model="trackSort" class="sort-select" :title="t('stats.sortPlays')">
-              <option v-for="opt in SORT_OPTIONS" :key="opt.value" :value="opt.value">{{ t(opt.label) }}</option>
+              <option v-for="opt in SORT_OPTIONS" :key="opt.value" :value="opt.value">
+                {{ t(opt.label) }}
+              </option>
             </select>
             <select v-model="limitKey" class="sort-select" :title="t('stats.limit20')">
-              <option v-for="opt in LIMIT_OPTIONS" :key="opt.value" :value="opt.value">{{ t(opt.label) }}</option>
+              <option v-for="opt in LIMIT_OPTIONS" :key="opt.value" :value="opt.value">
+                {{ t(opt.label) }}
+              </option>
             </select>
           </div>
         </div>
@@ -600,9 +642,17 @@ function piePath(
               <p class="track-artist">{{ track.artist || "未知艺人" }}</p>
             </div>
             <span class="track-source-badge" :class="'source-' + track.source">
-              {{ track.source === "local" ? t("stats.sourceLocal") : track.source === "online" ? t("stats.sourceOnline") : t("stats.sourceWebdav") }}
+              {{
+                track.source === "local"
+                  ? t("stats.sourceLocal")
+                  : track.source === "online"
+                    ? t("stats.sourceOnline")
+                    : t("stats.sourceWebdav")
+              }}
             </span>
-            <span class="track-plays">{{ track.playCount }}<span class="plays-unit"> {{ t("stats.times") }}</span></span>
+            <span class="track-plays"
+              >{{ track.playCount }}<span class="plays-unit"> {{ t("stats.times") }}</span></span
+            >
           </div>
         </div>
       </section>
@@ -648,12 +698,14 @@ function piePath(
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 .period-tab.active {
   background: var(--md-sys-color-surface-container);
   color: var(--md-sys-color-on-surface);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 .period-tab:hover {
   color: var(--md-sys-color-on-surface);

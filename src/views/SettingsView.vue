@@ -2,7 +2,17 @@
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import PageHeader from "@/components/PageHeader.vue";
-import { useSettingsStore, type PdfReadMode, type ThemeMode, type PlayerBgMode, type LyricFontKey, type ShareCodePreference, type DesktopLyricsAnimation, type DesktopLyricsToolbar, type DesktopLyricsDoubleClick } from "@/stores/settings";
+import {
+  useSettingsStore,
+  type PdfReadMode,
+  type ThemeMode,
+  type PlayerBgMode,
+  type LyricFontKey,
+  type ShareCodePreference,
+  type DesktopLyricsAnimation,
+  type DesktopLyricsToolbar,
+  type DesktopLyricsDoubleClick,
+} from "@/stores/settings";
 import { useSkinsStore } from "@/stores/skins";
 import { useLibraryStore } from "@/stores/library";
 import AudioEffectsPanel from "@/components/AudioEffectsPanel.vue";
@@ -187,11 +197,7 @@ async function testWebDav() {
     const res = await capabilities.webdavTest();
     if (res.ok) {
       davResult.value = { ok: true };
-      notify(
-        res.rootName
-          ? `${t("settings.webdavOk")} · ${res.rootName}`
-          : t("settings.webdavOk"),
-      );
+      notify(res.rootName ? `${t("settings.webdavOk")} · ${res.rootName}` : t("settings.webdavOk"));
     } else {
       davResult.value = { ok: false, error: t("settings.webdavFail") };
     }
@@ -281,7 +287,7 @@ function resetDesktopLyricsBounds() {
         </div>
         <div class="segmented">
           <button
-            v-for="mode in (['system', 'light', 'dark'] as ThemeMode[])"
+            v-for="mode in ['system', 'light', 'dark'] as ThemeMode[]"
             :key="mode"
             class="seg"
             :class="{ active: settings.theme === mode }"
@@ -329,32 +335,39 @@ function resetDesktopLyricsBounds() {
                 class="fmt"
                 :class="`v${s.meta.formatVersion}`"
                 :title="t('settings.skinFmtTitle').replace('{v}', String(s.meta.formatVersion))"
-              >v{{ s.meta.formatVersion }}</span>
+                >v{{ s.meta.formatVersion }}</span
+              >
               <span
                 v-if="s.meta.hasBackground"
                 class="material-symbols-outlined mode"
                 :title="t('settings.skinHasBackground')"
-              >wallpaper</span>
+                >wallpaper</span
+              >
               <span
                 v-if="s.meta.hasIcons"
                 class="material-symbols-outlined mode"
                 :title="t('settings.skinHasIcons')"
-              >interests</span>
-              <span
-                class="material-symbols-outlined mode"
-                :title="s.meta.modes.join(' / ')"
-              >{{ modeIcon(s.meta.modes) }}</span>
+                >interests</span
+              >
+              <span class="material-symbols-outlined mode" :title="s.meta.modes.join(' / ')">{{
+                modeIcon(s.meta.modes)
+              }}</span>
               <span
                 v-if="s.meta.seedColor"
                 class="material-symbols-outlined seed"
                 :title="t('settings.skinSeedAdapted')"
-              >colorize</span>
+                >colorize</span
+              >
               <span class="ver tabular-nums">{{ s.meta.version }}</span>
             </span>
             <button
               class="lm-icon-btn small danger skin-del"
               :class="{ confirming: confirmDeleteSkin === s.id }"
-              :title="confirmDeleteSkin === s.id ? t('settings.skinDeleteConfirm') : t('settings.skinDelete')"
+              :title="
+                confirmDeleteSkin === s.id
+                  ? t('settings.skinDeleteConfirm')
+                  : t('settings.skinDelete')
+              "
               @click.stop="onDeleteSkin(s.id)"
             >
               <span class="material-symbols-outlined">
@@ -385,12 +398,16 @@ function resetDesktopLyricsBounds() {
             class="seg"
             :class="{ active: settings.lang === 'zh' }"
             @click="settings.lang = 'zh'"
-          >简体中文</button>
+          >
+            简体中文
+          </button>
           <button
             class="seg"
             :class="{ active: settings.lang === 'en' }"
             @click="settings.lang = 'en'"
-          >English</button>
+          >
+            English
+          </button>
         </div>
       </div>
 
@@ -419,7 +436,12 @@ function resetDesktopLyricsBounds() {
             :title="t('settings.colorCustom')"
           >
             <span class="material-symbols-outlined">{{ isCustomSeed ? "check" : "colorize" }}</span>
-            <input type="color" :value="settings.seedColor" :disabled="seedLocked" @input="onCustomSeed" />
+            <input
+              type="color"
+              :value="settings.seedColor"
+              :disabled="seedLocked"
+              @input="onCustomSeed"
+            />
           </label>
         </div>
       </div>
@@ -436,12 +458,16 @@ function resetDesktopLyricsBounds() {
             class="seg"
             :class="{ active: settings.closeToTray }"
             @click="settings.closeToTray = true"
-          >{{ t("settings.closeAction_tray") }}</button>
+          >
+            {{ t("settings.closeAction_tray") }}
+          </button>
           <button
             class="seg"
             :class="{ active: !settings.closeToTray }"
             @click="settings.closeToTray = false"
-          >{{ t("settings.closeAction_quit") }}</button>
+          >
+            {{ t("settings.closeAction_quit") }}
+          </button>
         </div>
       </div>
       <p class="hint">{{ t("settings.closeToTrayHint") }}</p>
@@ -468,11 +494,7 @@ function resetDesktopLyricsBounds() {
           <span class="material-symbols-outlined">create_new_folder</span>
           {{ t("settings.addScanDir") }}
         </button>
-        <button
-          v-if="settings.scanDirs.length"
-          class="lm-btn lm-btn--text"
-          @click="clearScanDirs"
-        >
+        <button v-if="settings.scanDirs.length" class="lm-btn lm-btn--text" @click="clearScanDirs">
           {{ t("settings.clearScanDirs") }}
         </button>
       </div>
@@ -518,7 +540,7 @@ function resetDesktopLyricsBounds() {
         </div>
         <div class="segmented">
           <button
-            v-for="m in (['single', 'dual', 'scroll'] as PdfReadMode[])"
+            v-for="m in ['single', 'dual', 'scroll'] as PdfReadMode[]"
             :key="m"
             class="seg"
             :class="{ active: settings.pdfReadMode === m }"
@@ -565,19 +587,11 @@ function resetDesktopLyricsBounds() {
           <span class="material-symbols-outlined">folder_open</span>
           {{ t("settings.ffmpegChoose") }}
         </button>
-        <button
-          class="lm-btn lm-btn--outlined"
-          :disabled="checking"
-          @click="recheckFfmpeg"
-        >
+        <button class="lm-btn lm-btn--outlined" :disabled="checking" @click="recheckFfmpeg">
           <span class="material-symbols-outlined">refresh</span>
           {{ t("settings.ffmpegRecheck") }}
         </button>
-        <button
-          v-if="settings.ffmpegDir"
-          class="lm-btn lm-btn--text"
-          @click="resetFfmpegDir"
-        >
+        <button v-if="settings.ffmpegDir" class="lm-btn lm-btn--text" @click="resetFfmpegDir">
           {{ t("settings.ffmpegReset") }}
         </button>
         <button
@@ -596,21 +610,23 @@ function resetDesktopLyricsBounds() {
       <h3>{{ t("settings.lyrics") }}</h3>
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.wordLyrics") }}</span>
-        <input type="checkbox" v-model="settings.wordLyrics" />
+        <input v-model="settings.wordLyrics" type="checkbox" />
       </label>
       <p class="hint">{{ t("settings.wordLyricsHint") }}</p>
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.preciseLyrics") }}</span>
-        <input type="checkbox" v-model="settings.preciseLyrics" />
+        <input v-model="settings.preciseLyrics" type="checkbox" />
       </label>
       <p class="hint">{{ t("settings.preciseLyricsHint") }}</p>
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.detectInstrumental") }}</span>
-        <input type="checkbox" v-model="settings.detectInstrumental" />
+        <input v-model="settings.detectInstrumental" type="checkbox" />
       </label>
       <p class="hint">{{ t("settings.detectInstrumentalHint") }}</p>
       <div class="row">
-        <div class="row-label"><span>{{ t("settings.lyricFont") }}</span></div>
+        <div class="row-label">
+          <span>{{ t("settings.lyricFont") }}</span>
+        </div>
         <div class="presets inline">
           <button
             v-for="k in LYRIC_FONT_KEYS"
@@ -624,80 +640,86 @@ function resetDesktopLyricsBounds() {
         </div>
       </div>
       <div class="row">
-        <div class="row-label"><span>{{ t("settings.lyricFontSize") }}</span></div>
-        <input type="range" min="16" max="48" v-model.number="settings.lyricFontSize" />
+        <div class="row-label">
+          <span>{{ t("settings.lyricFontSize") }}</span>
+        </div>
+        <input v-model.number="settings.lyricFontSize" type="range" min="16" max="48" />
         <span class="value tabular-nums">{{ settings.lyricFontSize }}px</span>
       </div>
       <div class="row">
-        <div class="row-label"><span>{{ t("settings.lyricLineHeight") }}</span></div>
+        <div class="row-label">
+          <span>{{ t("settings.lyricLineHeight") }}</span>
+        </div>
         <input
+          v-model.number="settings.lyricLineHeight"
           type="range"
           min="1.6"
           max="3.2"
           step="0.1"
-          v-model.number="settings.lyricLineHeight"
         />
         <span class="value tabular-nums">{{ settings.lyricLineHeight.toFixed(1) }}</span>
       </div>
       <div class="row">
-        <div class="row-label"><span>{{ t("settings.lyricLineGap") }}</span></div>
-        <input
-          type="range"
-          min="0"
-          max="64"
-          step="1"
-          v-model.number="settings.lyricLineGap"
-        />
+        <div class="row-label">
+          <span>{{ t("settings.lyricLineGap") }}</span>
+        </div>
+        <input v-model.number="settings.lyricLineGap" type="range" min="0" max="64" step="1" />
         <span class="value tabular-nums">{{ settings.lyricLineGap }}px</span>
       </div>
       <div class="row">
-        <div class="row-label"><span>{{ t("settings.lyricTranslationSize") }}</span></div>
+        <div class="row-label">
+          <span>{{ t("settings.lyricTranslationSize") }}</span>
+        </div>
         <input
+          v-model.number="settings.lyricTranslationSize"
           type="range"
           min="40"
           max="120"
           step="5"
-          v-model.number="settings.lyricTranslationSize"
         />
         <span class="value tabular-nums">{{ settings.lyricTranslationSize }}%</span>
       </div>
       <div class="row">
-        <div class="row-label"><span>{{ t("settings.lyricTranslationGap") }}</span></div>
+        <div class="row-label">
+          <span>{{ t("settings.lyricTranslationGap") }}</span>
+        </div>
         <input
+          v-model.number="settings.lyricTranslationGap"
           type="range"
           min="0"
           max="24"
           step="1"
-          v-model.number="settings.lyricTranslationGap"
         />
         <span class="value tabular-nums">{{ settings.lyricTranslationGap }}px</span>
       </div>
     </section>
-<!-- 桌面歌词 -->
+    <!-- 桌面歌词 -->
     <section class="card">
       <h3>{{ t("settings.desktopLyrics") }}</h3>
       <p class="hint">{{ t("settings.desktopLyricsHint") }}</p>
 
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.desktopLyricsEnable") }}</span>
-        <input type="checkbox" v-model="settings.desktopLyricsEnabled" />
+        <input v-model="settings.desktopLyricsEnabled" type="checkbox" />
       </label>
 
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.desktopLyricsShowNext") }}</span>
-        <input type="checkbox" v-model="settings.desktopLyricsShowNext" />
+        <input v-model="settings.desktopLyricsShowNext" type="checkbox" />
       </label>
 
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.desktopLyricsShowTranslation") }}</span>
-        <input type="checkbox" v-model="settings.desktopLyricsShowTranslation" />
+        <input v-model="settings.desktopLyricsShowTranslation" type="checkbox" />
       </label>
 
       <div class="row">
-        <div class="row-label"><span>{{ t("settings.desktopLyricsToolbar") }}</span></div>
+        <div class="row-label">
+          <span>{{ t("settings.desktopLyricsToolbar") }}</span>
+        </div>
         <div class="segmented">
           <button
-            v-for="m in (['click', 'always'] as DesktopLyricsToolbar[])"
+            v-for="m in ['click', 'always'] as DesktopLyricsToolbar[]"
             :key="m"
             class="seg"
             :class="{ active: settings.desktopLyricsToolbar === m }"
@@ -707,11 +729,13 @@ function resetDesktopLyricsBounds() {
           </button>
         </div>
       </div>
-<div class="row">
-        <div class="row-label"><span>{{ t("settings.desktopLyricsDoubleClick") }}</span></div>
+      <div class="row">
+        <div class="row-label">
+          <span>{{ t("settings.desktopLyricsDoubleClick") }}</span>
+        </div>
         <div class="segmented">
           <button
-            v-for="m in (['none', 'toggle'] as DesktopLyricsDoubleClick[])"
+            v-for="m in ['none', 'toggle'] as DesktopLyricsDoubleClick[]"
             :key="m"
             class="seg"
             :class="{ active: settings.desktopLyricsDoubleClick === m }"
@@ -723,31 +747,37 @@ function resetDesktopLyricsBounds() {
       </div>
 
       <div class="row">
-        <div class="row-label"><span>{{ t("settings.desktopLyricsFontSize") }}</span></div>
+        <div class="row-label">
+          <span>{{ t("settings.desktopLyricsFontSize") }}</span>
+        </div>
         <input
+          v-model.number="settings.desktopLyricsFontSize"
           type="range"
           min="16"
           max="64"
           step="1"
-          v-model.number="settings.desktopLyricsFontSize"
         />
         <span class="value tabular-nums">{{ settings.desktopLyricsFontSize }}px</span>
       </div>
 
       <div class="row">
-        <div class="row-label"><span>{{ t("settings.desktopLyricsOpacity") }}</span></div>
+        <div class="row-label">
+          <span>{{ t("settings.desktopLyricsOpacity") }}</span>
+        </div>
         <input
+          v-model.number="settings.desktopLyricsOpacity"
           type="range"
           min="30"
           max="100"
           step="5"
-          v-model.number="settings.desktopLyricsOpacity"
         />
         <span class="value tabular-nums">{{ settings.desktopLyricsOpacity }}%</span>
       </div>
 
       <div class="row">
-        <div class="row-label"><span>{{ t("settings.desktopLyricsAnimation") }}</span></div>
+        <div class="row-label">
+          <span>{{ t("settings.desktopLyricsAnimation") }}</span>
+        </div>
         <div class="presets inline">
           <button
             v-for="k in LYRICS_ANIMATIONS"
@@ -763,18 +793,18 @@ function resetDesktopLyricsBounds() {
 
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.desktopLyricsLocked") }}</span>
-        <input type="checkbox" v-model="settings.desktopLyricsLocked" />
+        <input v-model="settings.desktopLyricsLocked" type="checkbox" />
       </label>
 
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.desktopLyricsClickThrough") }}</span>
-        <input type="checkbox" v-model="settings.desktopLyricsClickThrough" />
+        <input v-model="settings.desktopLyricsClickThrough" type="checkbox" />
       </label>
       <p class="hint">{{ t("settings.desktopLyricsClickThroughHint") }}</p>
 
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.desktopLyricsAlwaysOnTop") }}</span>
-        <input type="checkbox" v-model="settings.desktopLyricsAlwaysOnTop" />
+        <input v-model="settings.desktopLyricsAlwaysOnTop" type="checkbox" />
       </label>
 
       <div class="actions">
@@ -789,10 +819,12 @@ function resetDesktopLyricsBounds() {
       <h3>{{ t("settings.playback") }}</h3>
       <p class="hint">{{ t("settings.playerBgHint") }}</p>
       <div class="row">
-        <div class="row-label"><span>{{ t("settings.playerBg") }}</span></div>
+        <div class="row-label">
+          <span>{{ t("settings.playerBg") }}</span>
+        </div>
         <div class="segmented">
           <button
-            v-for="m in (['animated', 'image', 'off'] as PlayerBgMode[])"
+            v-for="m in ['animated', 'image', 'off'] as PlayerBgMode[]"
             :key="m"
             class="seg"
             :class="{ active: settings.playerBg === m }"
@@ -803,10 +835,12 @@ function resetDesktopLyricsBounds() {
         </div>
       </div>
       <div class="row">
-        <div class="row-label"><span>{{ t("settings.musicViewMode") }}</span></div>
+        <div class="row-label">
+          <span>{{ t("settings.musicViewMode") }}</span>
+        </div>
         <div class="segmented">
           <button
-            v-for="m in (['grid', 'list'] as const)"
+            v-for="m in ['grid', 'list'] as const"
             :key="m"
             class="seg"
             :class="{ active: settings.musicViewMode === m }"
@@ -819,7 +853,7 @@ function resetDesktopLyricsBounds() {
       <p class="hint">{{ t("player.hotkeysHint") }}</p>
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.lyricBlur") }}</span>
-        <input type="checkbox" v-model="settings.lyricBlur" />
+        <input v-model="settings.lyricBlur" type="checkbox" />
       </label>
     </section>
 
@@ -828,10 +862,12 @@ function resetDesktopLyricsBounds() {
       <h3>{{ t("settings.audioEffects") }}</h3>
       <p class="hint">{{ t("settings.audioEffectsHint") }}</p>
       <div class="row">
-        <div class="row-label"><span>{{ t("settings.shareCodePreference") }}</span></div>
+        <div class="row-label">
+          <span>{{ t("settings.shareCodePreference") }}</span>
+        </div>
         <div class="segmented">
           <button
-            v-for="mode in (['chinese', 'original', 'both'] as ShareCodePreference[])"
+            v-for="mode in ['chinese', 'original', 'both'] as ShareCodePreference[]"
             :key="mode"
             class="seg"
             :class="{ active: settings.shareCodePreference === mode }"
@@ -851,23 +887,27 @@ function resetDesktopLyricsBounds() {
       <p class="hint">{{ t("settings.onlineHint") }}</p>
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.onlineEnable") }}</span>
-        <input type="checkbox" v-model="settings.enableOnlineMusic" />
+        <input v-model="settings.enableOnlineMusic" type="checkbox" />
       </label>
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.neteaseEnable") }}</span>
-        <input type="checkbox" v-model="settings.neteaseEnabled" />
+        <input v-model="settings.neteaseEnabled" type="checkbox" />
       </label>
       <p class="hint">{{ t("settings.neteaseHint") }}</p>
       <div v-if="settings.enableOnlineMusic" class="row">
-        <div class="row-label"><span>{{ t("settings.onlineServer") }}</span></div>
+        <div class="row-label">
+          <span>{{ t("settings.onlineServer") }}</span>
+        </div>
         <div class="segmented">
           <button
-            v-for="s in (['netease'] as const)"
+            v-for="s in ['netease'] as const"
             :key="s"
             class="seg"
             :class="{ active: settings.musicServer === s }"
             @click="settings.musicServer = s"
-          >{{ t("settings.onlineServer_" + s) }}</button>
+          >
+            {{ t("settings.onlineServer_" + s) }}
+          </button>
         </div>
       </div>
     </section>
@@ -878,30 +918,38 @@ function resetDesktopLyricsBounds() {
       <p class="hint">{{ t("settings.onlineNovelHint") }}</p>
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.onlineNovelEnable") }}</span>
-        <input type="checkbox" v-model="settings.onlineNovelEnabled" />
+        <input v-model="settings.onlineNovelEnabled" type="checkbox" />
       </label>
       <div v-if="settings.onlineNovelEnabled" class="row">
-        <div class="row-label"><span>{{ t("settings.wenku8Node") }}</span></div>
+        <div class="row-label">
+          <span>{{ t("settings.wenku8Node") }}</span>
+        </div>
         <div class="segmented">
           <button
-            v-for="n in (['cc', 'net'] as const)"
+            v-for="n in ['cc', 'net'] as const"
             :key="n"
             class="seg"
             :class="{ active: settings.wenku8Node === n }"
             @click="settings.wenku8Node = n"
-          >{{ t("settings.wenku8Node_" + n) }}</button>
+          >
+            {{ t("settings.wenku8Node_" + n) }}
+          </button>
         </div>
       </div>
       <div v-if="settings.onlineNovelEnabled" class="row">
-        <div class="row-label"><span>{{ t("settings.novelCharset") }}</span></div>
+        <div class="row-label">
+          <span>{{ t("settings.novelCharset") }}</span>
+        </div>
         <div class="segmented">
           <button
-            v-for="c in (['gbk', 'big5'] as const)"
+            v-for="c in ['gbk', 'big5'] as const"
             :key="c"
             class="seg"
             :class="{ active: settings.novelCharset === c }"
             @click="settings.novelCharset = c"
-          >{{ t("settings.novelCharset_" + c) }}</button>
+          >
+            {{ t("settings.novelCharset_" + c) }}
+          </button>
         </div>
       </div>
     </section>
@@ -912,7 +960,7 @@ function resetDesktopLyricsBounds() {
       <p class="hint">{{ t("settings.onlineAnimeHint") }}</p>
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.onlineAnimeEnable") }}</span>
-        <input type="checkbox" v-model="settings.onlineAnimeEnabled" />
+        <input v-model="settings.onlineAnimeEnabled" type="checkbox" />
       </label>
     </section>
 
@@ -922,19 +970,23 @@ function resetDesktopLyricsBounds() {
       <p class="hint">{{ t("settings.onlinePixivHint") }}</p>
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.onlinePixivEnabled") }}</span>
-        <input type="checkbox" v-model="settings.onlinePixivEnabled" />
+        <input v-model="settings.onlinePixivEnabled" type="checkbox" />
       </label>
       <template v-if="settings.onlinePixivEnabled">
         <div class="row">
-          <div class="row-label"><span>{{ t("settings.pixivQuality") }}</span></div>
+          <div class="row-label">
+            <span>{{ t("settings.pixivQuality") }}</span>
+          </div>
           <div class="segmented">
             <button
-              v-for="q in (['squareMedium', 'medium', 'large', 'original'] as const)"
+              v-for="q in ['squareMedium', 'medium', 'large', 'original'] as const"
               :key="q"
               class="seg"
               :class="{ active: settings.pixivImageQuality === q }"
               @click="settings.pixivImageQuality = q"
-            >{{ t("settings.pixivQuality_" + q) }}</button>
+            >
+              {{ t("settings.pixivQuality_" + q) }}
+            </button>
           </div>
         </div>
         <p class="hint">{{ t("settings.pixivRefreshTokenHint") }}</p>
@@ -958,7 +1010,7 @@ function resetDesktopLyricsBounds() {
       <p class="hint">{{ t("settings.danmakuHint") }}</p>
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.danmakuEnable") }}</span>
-        <input type="checkbox" v-model="settings.danmakuEnabled" />
+        <input v-model="settings.danmakuEnabled" type="checkbox" />
       </label>
       <template v-if="settings.danmakuEnabled">
         <div class="dav-form">
@@ -1004,23 +1056,11 @@ function resetDesktopLyricsBounds() {
           </label>
           <label class="field">
             <span>{{ t("settings.danmakuArea") }} {{ settings.danmakuArea }}%</span>
-            <input
-              v-model.number="settings.danmakuArea"
-              type="range"
-              min="20"
-              max="100"
-              step="5"
-            />
+            <input v-model.number="settings.danmakuArea" type="range" min="20" max="100" step="5" />
           </label>
           <label class="field">
             <span>{{ t("settings.danmakuSpeed") }} {{ settings.danmakuSpeed }}</span>
-            <input
-              v-model.number="settings.danmakuSpeed"
-              type="range"
-              min="1"
-              max="10"
-              step="1"
-            />
+            <input v-model.number="settings.danmakuSpeed" type="range" min="1" max="10" step="1" />
           </label>
         </div>
         <div class="dav-grid">
@@ -1037,7 +1077,7 @@ function resetDesktopLyricsBounds() {
           </label>
           <label class="row switch-row">
             <span class="row-label">{{ t("settings.danmakuAntiOverlap") }}</span>
-            <input type="checkbox" v-model="settings.danmakuAntiOverlap" />
+            <input v-model="settings.danmakuAntiOverlap" type="checkbox" />
           </label>
         </div>
       </template>
@@ -1050,7 +1090,7 @@ function resetDesktopLyricsBounds() {
 
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.webdavEnable") }}</span>
-        <input type="checkbox" v-model="settings.webdavEnabled" />
+        <input v-model="settings.webdavEnabled" type="checkbox" />
       </label>
 
       <div v-if="settings.webdavEnabled" class="dav-form">
@@ -1096,11 +1136,7 @@ function resetDesktopLyricsBounds() {
           </div>
         </div>
 
-        <div
-          v-if="davResult"
-          class="status"
-          :class="davResult.ok ? 'ok' : 'warn'"
-        >
+        <div v-if="davResult" class="status" :class="davResult.ok ? 'ok' : 'warn'">
           <span class="material-symbols-outlined">
             {{ davResult.ok ? "check_circle" : "error" }}
           </span>
@@ -1134,11 +1170,7 @@ function resetDesktopLyricsBounds() {
       </div>
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.devtools") }}</span>
-        <input
-          type="checkbox"
-          :checked="devtoolsEnabled"
-          @change="toggleDevtools"
-        />
+        <input type="checkbox" :checked="devtoolsEnabled" @change="toggleDevtools" />
       </label>
       <p class="hint">{{ t("settings.devtoolsHint") }}</p>
       <div class="actions">

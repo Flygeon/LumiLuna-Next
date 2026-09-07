@@ -13,12 +13,7 @@ import { useLibraryStore } from "@/stores/library";
 import { useSettingsStore } from "@/stores/settings";
 import { capabilities } from "@/capabilities";
 import { openContextMenu } from "@/composables/useContextMenu";
-import {
-  TYPE_ICONS,
-  formatDuration,
-  formatResolution,
-  formatSize,
-} from "@/utils/format";
+import { TYPE_ICONS, formatDuration, formatResolution, formatSize } from "@/utils/format";
 import { translate } from "@shared/i18n";
 import type { MediaEntry } from "@shared/types";
 
@@ -82,26 +77,19 @@ const viewportH = ref(800);
 const columns = computed(() =>
   Math.max(1, Math.floor((width.value + GAP_X) / (props.minWidth + GAP_X))),
 );
-const cellW = computed(
-  () => (width.value - GAP_X * (columns.value - 1)) / columns.value,
-);
+const cellW = computed(() => (width.value - GAP_X * (columns.value - 1)) / columns.value);
 /** 由 aspect（"16/9" 或 "1"）推算缩略图高度 */
 const ratio = computed(() => {
   const [w, h] = props.aspect.split("/").map(Number);
-  return h ? w / h : (w || 1);
+  return h ? w / h : w || 1;
 });
 const rowH = computed(() => cellW.value / ratio.value + META_H + GAP_Y);
 const rowCount = computed(() => Math.ceil(props.items.length / columns.value));
 const totalH = computed(() => rowCount.value * rowH.value);
 
-const firstRow = computed(() =>
-  Math.max(0, Math.floor(scrollTop.value / rowH.value) - OVERSCAN),
-);
+const firstRow = computed(() => Math.max(0, Math.floor(scrollTop.value / rowH.value) - OVERSCAN));
 const lastRow = computed(() =>
-  Math.min(
-    rowCount.value,
-    Math.ceil((scrollTop.value + viewportH.value) / rowH.value) + OVERSCAN,
-  ),
+  Math.min(rowCount.value, Math.ceil((scrollTop.value + viewportH.value) / rowH.value) + OVERSCAN),
 );
 
 /** 当前需要渲染的条目及其全局索引 */
@@ -268,10 +256,9 @@ function subtitleOf(item: MediaEntry): string {
               :title="v.item.favorite ? '取消收藏' : '收藏'"
               @click.stop="emit('favorite', v.item)"
             >
-              <span
-                class="material-symbols-outlined"
-                :class="{ filled: v.item.favorite }"
-              >favorite</span>
+              <span class="material-symbols-outlined" :class="{ filled: v.item.favorite }"
+                >favorite</span
+              >
             </button>
           </div>
         </div>
@@ -333,7 +320,9 @@ function subtitleOf(item: MediaEntry): string {
 }
 .cell:hover .thumb {
   transform: translateY(-4px) scale(1.015);
-  box-shadow: var(--md-elevation-3), inset 0 0 0 1px var(--lm-hairline);
+  box-shadow:
+    var(--md-elevation-3),
+    inset 0 0 0 1px var(--lm-hairline);
 }
 .cell:active .thumb {
   transform: translateY(-1px) scale(0.995);
@@ -350,7 +339,9 @@ function subtitleOf(item: MediaEntry): string {
   font-size: 44px;
   color: var(--md-sys-color-outline);
   opacity: 0.7;
-  font-variation-settings: 'FILL' 0, 'wght' 300;
+  font-variation-settings:
+    "FILL" 0,
+    "wght" 300;
 }
 
 .badge {
@@ -397,7 +388,9 @@ function subtitleOf(item: MediaEntry): string {
   background: rgba(0, 0, 0, 0.4);
   color: #fff;
   cursor: pointer;
-  transition: transform 140ms var(--md-sys-motion-spring), background 160ms;
+  transition:
+    transform 140ms var(--md-sys-motion-spring),
+    background 160ms;
 }
 .fav:hover {
   background: rgba(0, 0, 0, 0.6);

@@ -82,18 +82,10 @@ const metaParts = computed(() => {
           <h2 class="title">{{ title }}</h2>
           <p v-if="subName" class="sub-name">{{ subName }}</p>
           <div class="meta">
-            <span
-              v-for="(part, i) in metaParts"
-              :key="i"
-              class="meta-chip"
-            >{{ part }}</span>
+            <span v-for="(part, i) in metaParts" :key="i" class="meta-chip">{{ part }}</span>
           </div>
           <div v-if="subject.tags?.length" class="tags">
-            <span
-              v-for="(tag, i) in subject.tags.slice(0, 8)"
-              :key="i"
-              class="tag"
-            >{{ tag }}</span>
+            <span v-for="(tag, i) in subject.tags.slice(0, 8)" :key="i" class="tag">{{ tag }}</span>
           </div>
         </div>
       </div>
@@ -175,7 +167,9 @@ const metaParts = computed(() => {
   overflow: hidden;
   background: var(--md-sys-color-surface-container);
   color: var(--md-sys-color-outline);
-  box-shadow: inset 0 0 0 1px var(--lm-hairline), var(--md-elevation-1);
+  box-shadow:
+    inset 0 0 0 1px var(--lm-hairline),
+    var(--md-elevation-1);
 }
 .cover img {
   width: 100%;

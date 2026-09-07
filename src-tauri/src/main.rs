@@ -7,7 +7,11 @@ use std::io::Write;
 /// 直接闪退，前端 JS 错误处理器无法捕获——必须在原生层留痕。
 fn write_panic_log(info: &dyn std::fmt::Display) {
     let path = std::env::temp_dir().join("lumiluna_login_debug.log");
-    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&path) {
+    if let Ok(mut f) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+    {
         let t = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_secs_f64())

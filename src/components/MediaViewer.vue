@@ -7,12 +7,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { capabilities, isTauri } from "@/capabilities";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import {
-  formatDate,
-  formatDuration,
-  formatResolution,
-  formatSize,
-} from "@/utils/format";
+import { formatDate, formatDuration, formatResolution, formatSize } from "@/utils/format";
 import type { MediaEntry, MediaMetadata } from "@shared/types";
 
 const props = defineProps<{
@@ -175,12 +170,7 @@ const infoRows = computed(() => {
     ["艺术家", m?.artist ?? ""],
     ["专辑", m?.album ?? ""],
     ["作者", m?.author ?? ""],
-    [
-      "位置",
-      m?.gpsLat && m?.gpsLng
-        ? `${m.gpsLat.toFixed(5)}, ${m.gpsLng.toFixed(5)}`
-        : "",
-    ],
+    ["位置", m?.gpsLat && m?.gpsLng ? `${m.gpsLat.toFixed(5)}, ${m.gpsLng.toFixed(5)}` : ""],
   ];
   return rows.filter(([, v]) => v);
 });
@@ -204,10 +194,9 @@ const infoRows = computed(() => {
           title="收藏 (F)"
           @click="current && emit('favorite', current)"
         >
-          <span
-            class="material-symbols-outlined"
-            :class="{ filled: current?.favorite }"
-          >favorite</span>
+          <span class="material-symbols-outlined" :class="{ filled: current?.favorite }"
+            >favorite</span
+          >
         </button>
         <button class="vbtn" title="信息 (I)" @click="showInfo = !showInfo">
           <span class="material-symbols-outlined">info</span>
@@ -222,12 +211,7 @@ const infoRows = computed(() => {
     <button v-if="index > 0" class="nav prev" title="上一个 (←)" @click.stop="prev">
       <span class="material-symbols-outlined">chevron_left</span>
     </button>
-    <button
-      v-if="index < items.length - 1"
-      class="nav next"
-      title="下一个 (→)"
-      @click.stop="next"
-    >
+    <button v-if="index < items.length - 1" class="nav next" title="下一个 (→)" @click.stop="next">
       <span class="material-symbols-outlined">chevron_right</span>
     </button>
 
@@ -269,9 +253,7 @@ const infoRows = computed(() => {
       <div v-else class="fallback" @click.stop>
         <span class="material-symbols-outlined">menu_book</span>
         <p>{{ current?.name }}</p>
-        <button class="lm-btn lm-btn--filled" @click="openExternally">
-          用系统应用打开
-        </button>
+        <button class="lm-btn lm-btn--filled" @click="openExternally">用系统应用打开</button>
       </div>
 
       <div v-if="loadingImage && current?.type === 'image'" class="spinner"></div>
@@ -305,8 +287,12 @@ const infoRows = computed(() => {
   animation: fade 180ms ease;
 }
 @keyframes fade {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .bar {
@@ -352,7 +338,9 @@ const infoRows = computed(() => {
   background: transparent;
   color: #fff;
   cursor: pointer;
-  transition: background 160ms, transform 140ms var(--md-sys-motion-spring);
+  transition:
+    background 160ms,
+    transform 140ms var(--md-sys-motion-spring);
 }
 .vbtn:hover {
   background: rgba(255, 255, 255, 0.14);
@@ -400,7 +388,9 @@ const infoRows = computed(() => {
   animation: spin 700ms linear infinite;
 }
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .nav {
@@ -418,7 +408,9 @@ const infoRows = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 160ms, transform 160ms;
+  transition:
+    background 160ms,
+    transform 160ms;
 }
 .nav:hover {
   background: rgba(255, 255, 255, 0.22);
@@ -426,8 +418,12 @@ const infoRows = computed(() => {
 .nav .material-symbols-outlined {
   font-size: 30px;
 }
-.prev { left: 20px; }
-.next { right: 20px; }
+.prev {
+  left: 20px;
+}
+.next {
+  right: 20px;
+}
 
 .fallback {
   display: flex;

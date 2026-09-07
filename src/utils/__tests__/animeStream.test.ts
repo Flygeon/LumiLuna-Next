@@ -101,11 +101,7 @@ describe("extractStaticStream", () => {
   });
 
   it("flv 同样命中", () => {
-    const hit = extractStaticStream(
-      `"https://cdn.example/live.flv?x=1"`,
-      rule(),
-      BASE,
-    );
+    const hit = extractStaticStream(`"https://cdn.example/live.flv?x=1"`, rule(), BASE);
     expect(hit?.method).toBe("generic-mp4");
     expect(hit?.url).toBe("https://cdn.example/live.flv?x=1");
   });
@@ -127,9 +123,7 @@ describe("extractStaticStream", () => {
       `"from":"bfzym3u8","id":"e3cDDE","sid":3,"nid":1}</script>`;
     const hit = extractStaticStream(html, rule(), BASE);
     expect(hit?.method).toBe("player-config");
-    expect(hit?.url).toBe(
-      "https://fengbao12.com/video/abc/4b20eb12a14f/index.m3u8",
-    );
+    expect(hit?.url).toBe("https://fengbao12.com/video/abc/4b20eb12a14f/index.m3u8");
   });
 
   it("通用 m3u8 也能命中 JSON 转义写法", () => {
@@ -147,11 +141,7 @@ describe("extractStaticStream", () => {
   });
 
   it("未转义的 URL 行为不变（反转义不得误伤）", () => {
-    const hit = extractStaticStream(
-      `src="https://cdn.example/a/index.m3u8"`,
-      rule(),
-      BASE,
-    );
+    const hit = extractStaticStream(`src="https://cdn.example/a/index.m3u8"`, rule(), BASE);
     expect(hit?.url).toBe("https://cdn.example/a/index.m3u8");
   });
 

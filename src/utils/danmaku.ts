@@ -50,10 +50,7 @@ export function toArtDanmu(d: DanmakuEntry): ArtDanmu {
 }
 
 /** 应用时间轴偏移（毫秒）。正数：弹幕延后；负数：弹幕提前 */
-export function applyTimeOffset(
-  entries: ArtDanmu[],
-  offsetMs: number,
-): ArtDanmu[] {
+export function applyTimeOffset(entries: ArtDanmu[], offsetMs: number): ArtDanmu[] {
   if (!offsetMs) return entries;
   const delta = offsetMs / 1000;
   return entries.map((d) => ({ ...d, time: Math.max(0, d.time + delta) }));
@@ -63,30 +60,21 @@ export function applyTimeOffset(
  * 5 秒时间窗内合并重复弹幕，文本末尾追加 "xN"。
  * 照 `mergeDuplicateDanmakus` 默认实现：归一化（去标点/空白、全角转半角）后比文本。
  */
-export function mergeDuplicates(
-  entries: ArtDanmu[],
-  windowSec = 5,
-): ArtDanmu[] {
+export function mergeDuplicates(entries: ArtDanmu[], windowSec = 5): ArtDanmu[] {
   if (entries.length <= 1) return entries;
   // 先按 time 升序排，方便时间窗扫描
   const sorted = [...entries].sort((a, b) => a.time - b.time);
   const norm = (s: string) =>
     s
       .replace(/[\s\u3000]+/g, "")
-      .replace(/[\uFF01-\uFF5E]/g, (c) =>
-        String.fromCharCode(c.charCodeAt(0) - 0xfee0),
-      )
+      .replace(/[\uFF01-\uFF5E]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0))
       .replace(/[^\w\u4e00-\u9fa5]+/g, "")
       .toLowerCase();
   const out: ArtDanmu[] = [];
   for (const cur of sorted) {
     const key = norm(cur.text);
     const last = out[out.length - 1];
-    if (
-      last &&
-      norm(last.text.split(/ x\d+$/)[0]) === key &&
-      cur.time - last.time <= windowSec
-    ) {
+    if (last && norm(last.text.split(/ x\d+$/)[0]) === key && cur.time - last.time <= windowSec) {
       const m = last.text.match(/^(.*) x(\d+)$/);
       if (m) {
         last.text = `${m[1]} x${Number(m[2]) + 1}`;

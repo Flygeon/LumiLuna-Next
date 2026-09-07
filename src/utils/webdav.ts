@@ -74,9 +74,7 @@ async function kvSet(key: string, value: unknown): Promise<void> {
 }
 
 /** 读取某个目录的持久化索引；无缓存返回 null */
-export async function webdavListCached(
-  path: string,
-): Promise<WebDavEntry[] | null> {
+export async function webdavListCached(path: string): Promise<WebDavEntry[] | null> {
   const hit = listCache.get(path);
   if (hit && Date.now() - hit.t < LIST_CACHE_TTL) return hit.entries;
   const cached = await kvGet<WebDavListCache>(LIST_PREFIX + path);
@@ -127,28 +125,58 @@ export function webdavTest(): Promise<WebDavStatus> {
 // ---- 条目分类（镜像 src-tauri/src/media.rs 的白名单子集）----
 
 const IMAGE_EXTS = new Set([
-  "jpg", "jpeg", "jpe", "png", "gif", "webp", "bmp", "tif", "tiff",
-  "avif", "heic", "heif", "jfif", "ico", "svg",
+  "jpg",
+  "jpeg",
+  "jpe",
+  "png",
+  "gif",
+  "webp",
+  "bmp",
+  "tif",
+  "tiff",
+  "avif",
+  "heic",
+  "heif",
+  "jfif",
+  "ico",
+  "svg",
 ]);
 const VIDEO_EXTS = new Set([
-  "mp4", "m4v", "mov", "mkv", "webm", "avi", "flv", "wmv", "mpg", "mpeg",
-  "ts", "m2ts", "3gp", "ogv",
+  "mp4",
+  "m4v",
+  "mov",
+  "mkv",
+  "webm",
+  "avi",
+  "flv",
+  "wmv",
+  "mpg",
+  "mpeg",
+  "ts",
+  "m2ts",
+  "3gp",
+  "ogv",
 ]);
 const AUDIO_EXTS = new Set([
-  "mp3", "flac", "m4a", "aac", "ogg", "oga", "opus", "wav", "wma", "aiff",
-  "aif", "ape", "alac", "mpc", "wv",
+  "mp3",
+  "flac",
+  "m4a",
+  "aac",
+  "ogg",
+  "oga",
+  "opus",
+  "wav",
+  "wma",
+  "aiff",
+  "aif",
+  "ape",
+  "alac",
+  "mpc",
+  "wv",
 ]);
-const BOOK_EXTS = new Set([
-  "epub", "pdf", "mobi", "azw3", "fb2", "cbz", "cbr", "txt",
-]);
+const BOOK_EXTS = new Set(["epub", "pdf", "mobi", "azw3", "fb2", "cbz", "cbr", "txt"]);
 
-export type DavEntryType =
-  | "dir"
-  | "image"
-  | "video"
-  | "audio"
-  | "book"
-  | "other";
+export type DavEntryType = "dir" | "image" | "video" | "audio" | "book" | "other";
 
 export function entryType(entry: WebDavEntry): DavEntryType {
   if (entry.isDir) return "dir";

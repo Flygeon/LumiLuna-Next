@@ -2,7 +2,32 @@
  * 纯浏览器预览用的 mock 后端（`npm run dev` 无 Tauri 环境时生效）。
  * 只为让 UI 可见，不追求行为等价。
  */
-import type { AnimeHistoryItem, AnimeRuleEntry, FfmpegStatus, ListenSourceStat, ListenStats, LoadedSkin, MediaEntry, NeteaseCloudPage, NeteasePlaylist, NeteaseProfile, NeteaseQrCheck, NeteaseSong, PixivCommentsPage, PixivIllustDetail, PixivIllustPage, PixivLoginStatus, PixivTrendTag, PixivUgoiraFrames, PixivUserDetail, ScanProgress, SkinEntry, TopTrackStat, WebDavEntry, WebDavStatus } from "@shared/types";
+import type {
+  AnimeHistoryItem,
+  AnimeRuleEntry,
+  FfmpegStatus,
+  ListenSourceStat,
+  ListenStats,
+  LoadedSkin,
+  MediaEntry,
+  NeteaseCloudPage,
+  NeteasePlaylist,
+  NeteaseProfile,
+  NeteaseQrCheck,
+  NeteaseSong,
+  PixivCommentsPage,
+  PixivIllustDetail,
+  PixivIllustPage,
+  PixivLoginStatus,
+  PixivTrendTag,
+  PixivUgoiraFrames,
+  PixivUserDetail,
+  ScanProgress,
+  SkinEntry,
+  TopTrackStat,
+  WebDavEntry,
+  WebDavStatus,
+} from "@shared/types";
 
 /** 内联 SVG 占位封面，避免依赖外部图片 */
 function placeholderCover(label: string, hue: number): string {
@@ -19,14 +44,41 @@ function placeholderCover(label: string, hue: number): string {
 }
 
 const DEMO: MediaEntry[] = [
-  entry("demo-a1", "audio", "夜曲.flac", { title: "夜曲", artist: "周杰伦", album: "十一月的萧邦", durationMs: 231000 }),
-  entry("demo-a2", "audio", "稻香.mp3", { title: "稻香", artist: "周杰伦", album: "魔杰座", durationMs: 223000 }),
-  entry("demo-a3", "audio", "Bohemian Rhapsody.flac", { title: "Bohemian Rhapsody", artist: "Queen", album: "A Night at the Opera", durationMs: 354000 }),
+  entry("demo-a1", "audio", "夜曲.flac", {
+    title: "夜曲",
+    artist: "周杰伦",
+    album: "十一月的萧邦",
+    durationMs: 231000,
+  }),
+  entry("demo-a2", "audio", "稻香.mp3", {
+    title: "稻香",
+    artist: "周杰伦",
+    album: "魔杰座",
+    durationMs: 223000,
+  }),
+  entry("demo-a3", "audio", "Bohemian Rhapsody.flac", {
+    title: "Bohemian Rhapsody",
+    artist: "Queen",
+    album: "A Night at the Opera",
+    durationMs: 354000,
+  }),
   entry("demo-i1", "image", "海边日落.jpg", { width: 4032, height: 3024, takenAt: 1719300000 }),
   entry("demo-i2", "image", "城市夜景.png", { width: 3840, height: 2160, takenAt: 1717000000 }),
   entry("demo-i3", "image", "山脉.webp", { width: 2560, height: 1440 }),
-  entry("demo-v1", "video", "旅行记录.mp4", { width: 1920, height: 1080, durationMs: 754000, codec: "H264", fps: 29.97 }),
-  entry("demo-v2", "video", "延时摄影.mov", { width: 3840, height: 2160, durationMs: 62000, codec: "HEVC", fps: 60 }),
+  entry("demo-v1", "video", "旅行记录.mp4", {
+    width: 1920,
+    height: 1080,
+    durationMs: 754000,
+    codec: "H264",
+    fps: 29.97,
+  }),
+  entry("demo-v2", "video", "延时摄影.mov", {
+    width: 3840,
+    height: 2160,
+    durationMs: 62000,
+    codec: "HEVC",
+    fps: 60,
+  }),
   entry("demo-b1", "book", "小王子.epub", { title: "小王子", artist: null }),
   // 用 ?bulk=N 注入大批量图片，便于验证虚拟滚动在大图库下的表现
   ...bulkImages(),
@@ -110,11 +162,8 @@ const favorites = new Set<string>(["demo-a1"]);
 /** 浏览器预览用：扫码轮询计数（800 → 803 推进） */
 let qrCheckCount: number | undefined;
 
-export function mockInvoke<T>(
-  cmd: string,
-  args?: Record<string, unknown>,
-): Promise<T> {
-  const as = <R,>(v: R) => Promise.resolve(v as unknown as T);
+export function mockInvoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
+  const as = <R>(v: R) => Promise.resolve(v as unknown as T);
 
   switch (cmd) {
     case "scan_start":
@@ -199,7 +248,13 @@ export function mockInvoke<T>(
     case "get_metadata": {
       const id = String(args?.fileId ?? "");
       const f = DEMO.find((x) => x.id === id);
-      return as({ fileId: id, title: f?.title, artist: f?.artist, hasCover: false, hasLyrics: false });
+      return as({
+        fileId: id,
+        title: f?.title,
+        artist: f?.artist,
+        hasCover: false,
+        hasLyrics: false,
+      });
     }
     case "toggle_favorite": {
       const id = String(args?.fileId ?? "");
@@ -474,7 +529,11 @@ export function mockInvoke<T>(
     case "pixiv_bookmark_detail":
       return as(false);
     case "pixiv_user_detail":
-      return as<PixivUserDetail>({ user: { id: 0, name: "", account: "" }, totalIllusts: 0, following: 0 });
+      return as<PixivUserDetail>({
+        user: { id: 0, name: "", account: "" },
+        totalIllusts: 0,
+        following: 0,
+      });
     case "pixiv_user_illusts":
     case "pixiv_user_bookmarks":
       return as<PixivIllustPage>({ illusts: [], nextUrl: null });
@@ -519,7 +578,8 @@ export function mockInvoke<T>(
 
     // ---- 皮肤系统（内存 Map 模拟皮肤库；浏览器预览不支持 ZIP 导入）----
     case "is_safe_mode":
-      return as(false);    case "skin_read_external_file":
+      return as(false);
+    case "skin_read_external_file":
       throw new Error("浏览器预览不支持读取本地文件，请在 Tauri 环境测试皮肤导入");
     case "skin_stage_zip":
     case "skin_commit":

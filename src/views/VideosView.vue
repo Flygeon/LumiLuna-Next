@@ -64,34 +64,25 @@ function clearSearch() {
 
     <!-- 本地 / 动漫 分段 -->
     <div v-if="settings.onlineAnimeEnabled" class="video-tabs">
-      <button
-        class="seg"
-        :class="{ active: videosTab === 'local' }"
-        @click="videosTab = 'local'"
-      >{{ t("videos.local") }}</button>
-      <button
-        class="seg"
-        :class="{ active: videosTab === 'anime' }"
-        @click="videosTab = 'anime'"
-      >{{ t("videos.online") }}</button>
+      <button class="seg" :class="{ active: videosTab === 'local' }" @click="videosTab = 'local'">
+        {{ t("videos.local") }}
+      </button>
+      <button class="seg" :class="{ active: videosTab === 'anime' }" @click="videosTab = 'anime'">
+        {{ t("videos.online") }}
+      </button>
     </div>
 
     <!-- 本地视频 -->
     <template v-if="videosTab === 'local' || !settings.onlineAnimeEnabled">
       <LibraryToolbar :count="items.length" @changed="load" />
 
-      <div
-        v-if="ffmpeg && !ffmpeg.available && !bannerDismissed"
-        class="ffmpeg-banner"
-      >
+      <div v-if="ffmpeg && !ffmpeg.available && !bannerDismissed" class="ffmpeg-banner">
         <span class="material-symbols-outlined">info</span>
         <div class="text">
           <strong>未检测到 FFmpeg</strong>
           <span>视频缩略图、时长与分辨率需要 FFmpeg 支持。可在设置中指定其安装目录。</span>
         </div>
-        <button class="lm-btn lm-btn--text" @click="router.push('/settings')">
-          前往设置
-        </button>
+        <button class="lm-btn lm-btn--text" @click="router.push('/settings')">前往设置</button>
         <button class="lm-icon-btn" @click="bannerDismissed = true">
           <span class="material-symbols-outlined">close</span>
         </button>

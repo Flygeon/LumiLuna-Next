@@ -113,9 +113,7 @@ fn reserved_name(id: &str) -> bool {
 fn valid_staging(token: &str) -> bool {
     !token.is_empty()
         && token.len() <= 32
-        && token
-            .chars()
-            .all(|c| c.is_ascii_digit() || c == '-')
+        && token.chars().all(|c| c.is_ascii_digit() || c == '-')
         && token.matches('-').count() == 1
 }
 
@@ -199,14 +197,8 @@ fn parse_meta(v: &serde_json::Value) -> Result<SkinMeta, String> {
             .get("seedColor")
             .and_then(|x| x.as_bool())
             .unwrap_or(false),
-        accent: m
-            .get("accent")
-            .and_then(|x| x.as_str())
-            .map(String::from),
-        format_version: v
-            .get("formatVersion")
-            .and_then(|x| x.as_u64())
-            .unwrap_or(1) as u32,
+        accent: m.get("accent").and_then(|x| x.as_str()).map(String::from),
+        format_version: v.get("formatVersion").and_then(|x| x.as_u64()).unwrap_or(1) as u32,
         has_background: v.get("background").map(|x| !x.is_null()).unwrap_or(false),
         has_icons: v.get("icons").map(|x| !x.is_null()).unwrap_or(false),
     })
@@ -285,13 +277,17 @@ pub fn skin_stage_zip(app: tauri::AppHandle, path: String) -> Result<StagedSkin,
         }
         total += buf.len() as u64;
         if total > ZIP_MAX_TOTAL {
-            return Err(format!("解压总量超过上限（{} MB）", ZIP_MAX_TOTAL / 1024 / 1024));
+            return Err(format!(
+                "解压总量超过上限（{} MB）",
+                ZIP_MAX_TOTAL / 1024 / 1024
+            ));
         }
         if name == "skin.json" {
             if buf.len() as u64 > SKIN_JSON_LIMIT {
                 return Err("skin.json 超过大小上限（256 KB）".into());
             }
-            skin_json = Some(String::from_utf8(buf).map_err(|_| "skin.json 不是 UTF-8 文本".to_string())?);
+            skin_json =
+                Some(String::from_utf8(buf).map_err(|_| "skin.json 不是 UTF-8 文本".to_string())?);
             continue;
         }
         let dest = dest_dir.join(&name);
@@ -335,7 +331,14 @@ pub fn skin_commit(app: tauri::AppHandle, staging: String, id: String) -> Result
     let dest = dir.join(&id);
     let mut trash: Option<PathBuf> = None;
     if dest.exists() {
-        let t = dir.join(format!(".trash-{}-{}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or(0), id));
+        let t = dir.join(format!(
+            ".trash-{}-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_millis())
+                .unwrap_or(0),
+            id
+        ));
         std::fs::rename(&dest, &t).map_err(|e| e.to_string())?;
         trash = Some(t);
     }

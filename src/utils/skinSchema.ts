@@ -131,11 +131,7 @@ const EASING_TOKENS = new Set([
   "--md-sys-motion-spring-soft",
 ]);
 
-const ELEVATION_TOKENS = new Set([
-  "--md-elevation-1",
-  "--md-elevation-2",
-  "--md-elevation-3",
-]);
+const ELEVATION_TOKENS = new Set(["--md-elevation-1", "--md-elevation-2", "--md-elevation-3"]);
 
 /** v2 布局令牌（白名单 + 硬范围，方案书 v2 §6.1）：越界一律拒收 */
 const LAYOUT_TOKENS: Record<string, { min: number; max: number }> = {
@@ -162,7 +158,9 @@ const ELEVATION_VALUE_RE = /^[0-9a-zA-Z .,%()-]{1,96}$/;
 function checkTokenValue(token: string, value: string): string | null {
   if (value.length > 64) return "值长度超过 64 字符";
   if (COLOR_TOKENS.has(token)) {
-    return COLOR_VALUE_RE.test(value.trim()) ? null : "不是合法的 CSS 颜色（支持 #hex / rgb() / hsl() / oklch()）";
+    return COLOR_VALUE_RE.test(value.trim())
+      ? null
+      : "不是合法的 CSS 颜色（支持 #hex / rgb() / hsl() / oklch()）";
   }
   if (LENGTH_TOKENS.has(token)) {
     return LENGTH_VALUE_RE.test(value.trim()) ? null : "应为 px 或 % 长度值（如 12px）";
@@ -254,7 +252,9 @@ export function validateSkin(
   if (formatVersion !== 1 && formatVersion !== 2) {
     return {
       ok: false,
-      errors: [`formatVersion 不受支持（当前支持 1、2，收到 ${String(formatVersion)}），请更新应用或使用受支持格式的皮肤`],
+      errors: [
+        `formatVersion 不受支持（当前支持 1、2，收到 ${String(formatVersion)}），请更新应用或使用受支持格式的皮肤`,
+      ],
       warnings: [],
     };
   }
@@ -285,7 +285,9 @@ export function validateSkin(
 
   const id = typeof m.id === "string" ? m.id.trim() : "";
   if (!ID_RE.test(id) || id.length > 64) {
-    errors.push("manifest.id：应为小写字母/数字/连字符（可点分）、2–64 字符，且作为存储目录名必须无路径字符");
+    errors.push(
+      "manifest.id：应为小写字母/数字/连字符（可点分）、2–64 字符，且作为存储目录名必须无路径字符",
+    );
   }
 
   const name = typeof m.name === "string" ? m.name.trim() : "";
@@ -434,7 +436,10 @@ export function validateSkin(
         const image = checkAssetRef(l.image);
         if (image.value) {
           const size = l.size === undefined ? undefined : l.size;
-          if (size !== undefined && !/^(cover|contain|[0-9.]+(px|%)( [0-9.]+(px|%))?)$/.test(String(size).trim())) {
+          if (
+            size !== undefined &&
+            !/^(cover|contain|[0-9.]+(px|%)( [0-9.]+(px|%))?)$/.test(String(size).trim())
+          ) {
             errors.push(`background.${scope}.size：只允许 cover / contain / 长度值`);
           }
           const position = l.position === undefined ? undefined : String(l.position).trim();
@@ -478,7 +483,8 @@ export function validateSkin(
       if (mode !== "svg" && mode !== "font") {
         errors.push('icons.mode：只允许 "svg" / "font"');
       } else if (mode === "svg") {
-        const dir = i.svg && typeof i.svg === "object" ? (i.svg as Record<string, unknown>).dir : undefined;
+        const dir =
+          i.svg && typeof i.svg === "object" ? (i.svg as Record<string, unknown>).dir : undefined;
         const dirOk = typeof dir === "string" && dir.trim() ? dir.trim().replace(/\/+$/, "") : null;
         if (!dirOk) {
           errors.push("icons.svg.dir：svg 模式必填（包内图标目录，如 assets/icons）");
@@ -490,7 +496,9 @@ export function validateSkin(
           if (svgs.length === 0) {
             errors.push(`icons.svg.dir：目录 ${dirOk} 下没有 .svg 图标`);
           } else if (svgs.some((f) => !/^[a-z0-9_]+$/.test(f.slice(dirOk.length + 1, -4)))) {
-            errors.push(`icons.svg：图标文件名须为小写字母/数字/下划线（Material 图标名），如 home.svg`);
+            errors.push(
+              `icons.svg：图标文件名须为小写字母/数字/下划线（Material 图标名），如 home.svg`,
+            );
           }
           icons = { mode: "svg", svg: { dir: dirOk } };
         }
@@ -507,7 +515,10 @@ export function validateSkin(
               if (c.value) cssRef = c.value;
               else errors.push(`icons.font.css：${c.error}`);
             }
-            icons = { mode: "font", font: { file: file.value, ...(cssRef ? { css: cssRef } : {}) } };
+            icons = {
+              mode: "font",
+              font: { file: file.value, ...(cssRef ? { css: cssRef } : {}) },
+            };
           }
         } else {
           errors.push(`icons.font.file：${file.error ?? "font 模式必填"}`);

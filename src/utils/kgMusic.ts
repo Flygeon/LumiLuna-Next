@@ -14,8 +14,7 @@ import type { LyricLine } from "@shared/types";
 const REQUEST_TIMEOUT_MS = 8000;
 const SIGN_KEY = "LnT6xpN3khm36zse0QzvmgTZ3waWdRSA";
 
-const isTauri =
-  typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+const isTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
 /** 酷狗搜索到的歌曲信息（对应 kg.py format_songinfos 字段） */
 export interface KgSongInfo {
@@ -51,7 +50,7 @@ async function kgRequest(
   const mid = md5(String(now));
   const baseHeaders: Record<string, string> = {
     "User-Agent": `Android14-1070-11070-201-0-${module}-wifi`,
-    "Connection": "Keep-Alive",
+    Connection: "Keep-Alive",
     "Accept-Encoding": "gzip, deflate",
     "KG-Rec": "1",
     "KG-RC": "1",
@@ -176,23 +175,19 @@ export async function kgSearchSongs(keyword: string): Promise<KgSongInfo[]> {
   } catch (e) {
     console.warn("[酷狗歌词] 新版搜索失败，回退旧接口:", e instanceof Error ? e.message : e);
     const domain = OLD_SEARCH_DOMAINS[Math.floor(Math.random() * OLD_SEARCH_DOMAINS.length)];
-    const data = await kgRequest(
-      `http://${domain}/api/v3/search/song`,
-      "SearchSong",
-      {
-        showtype: "14",
-        highlight: "",
-        pagesize: "30",
-        tag_aggr: "1",
-        plat: "0",
-        sver: "5",
-        keyword,
-        correct: "1",
-        api_ver: "1",
-        version: "9108",
-        page: 1,
-      },
-    );
+    const data = await kgRequest(`http://${domain}/api/v3/search/song`, "SearchSong", {
+      showtype: "14",
+      highlight: "",
+      pagesize: "30",
+      tag_aggr: "1",
+      plat: "0",
+      sver: "5",
+      keyword,
+      correct: "1",
+      api_ver: "1",
+      version: "9108",
+      page: 1,
+    });
     songs = (data?.data?.info ?? []).map(formatOldSong);
   }
   searchCache.set(keyword, { t: Date.now(), songs });

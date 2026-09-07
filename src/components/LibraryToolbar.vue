@@ -53,12 +53,7 @@ function clearSearch() {
   <div class="toolbar">
     <div class="search">
       <span class="material-symbols-outlined">search</span>
-      <input
-        v-model="term"
-        type="text"
-        :placeholder="t('actions.search')"
-        spellcheck="false"
-      />
+      <input v-model="term" type="text" :placeholder="t('actions.search')" spellcheck="false" />
       <button v-if="term" class="clear" @click="clearSearch">
         <span class="material-symbols-outlined">close</span>
       </button>
@@ -73,10 +68,9 @@ function clearSearch() {
         @click="pickSort(s.key)"
       >
         {{ s.label }}
-        <span
-          v-if="library.sortBy === s.key"
-          class="material-symbols-outlined arrow"
-        >{{ library.sortDesc ? "arrow_downward" : "arrow_upward" }}</span>
+        <span v-if="library.sortBy === s.key" class="material-symbols-outlined arrow">{{
+          library.sortDesc ? "arrow_downward" : "arrow_upward"
+        }}</span>
       </button>
     </div>
 
@@ -98,11 +92,7 @@ function clearSearch() {
         {{ t("actions.cancel") }}
       </button>
     </div>
-    <button
-      v-else
-      class="lm-btn lm-btn--tonal"
-      @click="library.startScan()"
-    >
+    <button v-else class="lm-btn lm-btn--tonal" @click="library.startScan()">
       <span class="material-symbols-outlined">refresh</span>
       {{ t("actions.rescan") }}
     </button>
@@ -128,7 +118,8 @@ function clearSearch() {
   border-radius: var(--md-sys-shape-corner-extra-large);
   background: var(--md-sys-color-surface-container);
   color: var(--md-sys-color-on-surface-variant);
-  transition: background var(--md-sys-motion-duration-short),
+  transition:
+    background var(--md-sys-motion-duration-short),
     box-shadow var(--md-sys-motion-duration-short);
   min-width: 240px;
 }
@@ -226,8 +217,12 @@ function clearSearch() {
   animation: lm-indeterminate 1.2s ease-in-out infinite;
 }
 @keyframes lm-indeterminate {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(320%); }
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
 }
 .scan-text {
   font-size: var(--md-sys-typescale-body-small-size);

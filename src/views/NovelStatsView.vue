@@ -80,7 +80,15 @@ onMounted(load);
         <div v-if="trend.length === 0" class="state">{{ t("novelStats.empty") }}</div>
         <div v-else class="trend-bars">
           <div v-for="d in trend" :key="d.day" class="bar-col">
-            <div class="bar" :style="{ height: Math.max(4, (d.totalMs / Math.max(...trend.map(x => x.totalMs), 1)) * 80) + 'px' }" :title="`${d.day}: ${formatDuration(d.totalMs)}`"></div>
+            <div
+              class="bar"
+              :style="{
+                height:
+                  Math.max(4, (d.totalMs / Math.max(...trend.map((x) => x.totalMs), 1)) * 80) +
+                  'px',
+              }"
+              :title="`${d.day}: ${formatDuration(d.totalMs)}`"
+            ></div>
             <span class="bar-label">{{ d.day.slice(5) }}</span>
           </div>
         </div>
@@ -92,7 +100,9 @@ onMounted(load);
         <div v-if="sources.length === 0" class="state">{{ t("novelStats.empty") }}</div>
         <div v-else class="source-list">
           <div v-for="s in sources" :key="s.source" class="source-row">
-            <span class="source-name">{{ s.source === "online" ? t("novelStats.online") : t("novelStats.local") }}</span>
+            <span class="source-name">{{
+              s.source === "online" ? t("novelStats.online") : t("novelStats.local")
+            }}</span>
             <span class="source-value">{{ s.readCount }} · {{ formatDuration(s.totalMs) }}</span>
           </div>
         </div>

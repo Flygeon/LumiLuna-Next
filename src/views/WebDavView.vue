@@ -12,13 +12,7 @@ import PageHeader from "@/components/PageHeader.vue";
 import { useSettingsStore } from "@/stores/settings";
 import { usePlayerStore } from "@/stores/player";
 import { capabilities } from "@/capabilities";
-import {
-  entryType,
-  titleOf,
-  webdavList,
-  webdavListCached,
-  webdavMediaUrl,
-} from "@/utils/webdav";
+import { entryType, titleOf, webdavList, webdavListCached, webdavMediaUrl } from "@/utils/webdav";
 import { formatSize } from "@/utils/format";
 import { translate } from "@shared/i18n";
 import type { MediaEntry, MediaType, WebDavEntry } from "@shared/types";
@@ -164,9 +158,7 @@ function toMediaEntry(entry: WebDavEntry, type: MediaType): MediaEntry {
   return {
     id: `webdav:${entry.path}`,
     path: entry.path,
-    parent: entry.path.includes("/")
-      ? entry.path.slice(0, entry.path.lastIndexOf("/"))
-      : "",
+    parent: entry.path.includes("/") ? entry.path.slice(0, entry.path.lastIndexOf("/")) : "",
     name: entry.name,
     ext: entry.name.split(".").pop() ?? "",
     type,
@@ -262,7 +254,7 @@ function typeOf(entry: WebDavEntry) {
           :class="{ current: i === crumbs.length - 1 }"
           @click="i < crumbs.length - 1 && load(c.target)"
         >
-          <span class="material-symbols-outlined" v-if="i === 0">home</span>
+          <span v-if="i === 0" class="material-symbols-outlined">home</span>
           {{ c.label }}
         </button>
         <button class="lm-icon-btn small refresh" title="刷新" @click="refresh">
@@ -295,12 +287,7 @@ function typeOf(entry: WebDavEntry) {
         <section v-if="dirs.length" class="dav-section">
           <h4 class="section-title">{{ t("webdav.folders") }}</h4>
           <div class="dav-grid">
-            <button
-              v-for="d in dirs"
-              :key="d.path"
-              class="tile dir-tile"
-              @click="load(d.path)"
-            >
+            <button v-for="d in dirs" :key="d.path" class="tile dir-tile" @click="load(d.path)">
               <span class="material-symbols-outlined tile-icon folder">folder</span>
               <span class="tile-name" :title="d.name">{{ d.name }}</span>
             </button>
@@ -327,11 +314,9 @@ function typeOf(entry: WebDavEntry) {
                 loading="lazy"
                 alt=""
               />
-              <span
-                v-else
-                class="material-symbols-outlined tile-icon"
-                :class="typeOf(f)"
-              >{{ TYPE_ICONS[typeOf(f)] ?? "description" }}</span>
+              <span v-else class="material-symbols-outlined tile-icon" :class="typeOf(f)">{{
+                TYPE_ICONS[typeOf(f)] ?? "description"
+              }}</span>
               <span class="tile-name" :title="f.name">{{ f.name }}</span>
               <span v-if="!typeOf(f).startsWith('image')" class="tile-size tabular-nums">
                 {{ f.size > 0 ? formatSize(f.size) : "" }}
@@ -478,12 +463,16 @@ function typeOf(entry: WebDavEntry) {
 }
 .tile-icon {
   font-size: 34px;
-  font-variation-settings: 'FILL' 0, 'wght' 300;
+  font-variation-settings:
+    "FILL" 0,
+    "wght" 300;
   color: var(--md-sys-color-on-surface-variant);
 }
 .tile-icon.folder {
   color: var(--md-sys-color-primary);
-  font-variation-settings: 'FILL' 1, 'wght' 400;
+  font-variation-settings:
+    "FILL" 1,
+    "wght" 400;
 }
 .tile-icon.video {
   color: #d98b4a;

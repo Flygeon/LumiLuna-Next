@@ -9,12 +9,7 @@ defineProps<{
 
 <template>
   <div class="window-controls">
-    <button
-      class="wc-btn"
-      title="最小化"
-      aria-label="最小化"
-      @click="minimize"
-    >
+    <button class="wc-btn" title="最小化" aria-label="最小化" @click="minimize">
       <span class="wc-icon minimize" />
     </button>
     <button
@@ -26,12 +21,7 @@ defineProps<{
       <span v-if="isMaximized" class="wc-icon restore" />
       <span v-else class="wc-icon maximize" />
     </button>
-    <button
-      class="wc-btn wc-close"
-      title="关闭"
-      aria-label="关闭"
-      @click="close"
-    >
+    <button class="wc-btn wc-close" title="关闭" aria-label="关闭" @click="close">
       <span class="wc-icon close" />
     </button>
   </div>
@@ -53,7 +43,9 @@ defineProps<{
   background: transparent;
   color: var(--md-sys-color-on-surface-variant);
   cursor: pointer;
-  transition: background 120ms ease, color 120ms ease;
+  transition:
+    background 120ms ease,
+    color 120ms ease;
   outline: none;
 }
 .wc-btn:hover {
@@ -100,7 +92,7 @@ defineProps<{
   height: 10px;
 }
 .wc-icon.restore::before {
-  content: '';
+  content: "";
   position: absolute;
   top: -2px;
   left: 2px;
@@ -110,7 +102,7 @@ defineProps<{
   background: inherit;
 }
 .wc-icon.restore::after {
-  content: '';
+  content: "";
   position: absolute;
   bottom: -2px;
   right: 2px;
@@ -124,7 +116,7 @@ defineProps<{
   height: 10px;
 }
 .wc-icon.close::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
   margin: auto;
@@ -134,7 +126,7 @@ defineProps<{
   transform: rotate(45deg);
 }
 .wc-icon.close::after {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
   margin: auto;

@@ -56,7 +56,10 @@ const items = computed(() =>
 function pick(path: string) {
   selected.value = path;
   void library.loadThumbnails(
-    all.value.filter((f) => f.parent === path).slice(0, 120).map((f) => f.id),
+    all.value
+      .filter((f) => f.parent === path)
+      .slice(0, 120)
+      .map((f) => f.id),
   );
 }
 
@@ -98,9 +101,7 @@ async function open(item: MediaEntry) {
           <span class="tree-count tabular-nums">{{ f.count }}</span>
         </button>
 
-        <div v-if="!loading && !folders.length" class="tree-empty">
-          暂无已索引目录
-        </div>
+        <div v-if="!loading && !folders.length" class="tree-empty">暂无已索引目录</div>
       </aside>
 
       <section class="content">

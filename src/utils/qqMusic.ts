@@ -14,8 +14,7 @@ const API_URL = "https://u.y.qq.com/cgi-bin/musicu.fcg";
 /** 单次请求超时（毫秒） */
 const REQUEST_TIMEOUT_MS = 8000;
 
-const isTauri =
-  typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+const isTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
 /** QQ 搜索到的歌曲信息（对应 qm.py format_songinfos 的字段） */
 export interface QqSongInfo {
@@ -87,10 +86,7 @@ async function rawPost(
 }
 
 /** Tauri 内走插件 fetch（Rust 网络栈）；浏览器预览退回原生 fetch */
-async function tauriSafeFetch(
-  url: string,
-  init: RequestInit,
-): Promise<Response> {
+async function tauriSafeFetch(url: string, init: RequestInit): Promise<Response> {
   if (isTauri) {
     const { fetch } = await import("@tauri-apps/plugin-http");
     return fetch(url, init);
@@ -160,11 +156,7 @@ export async function qqSearchSongs(keyword: string): Promise<QqSongInfo[]> {
     page_id: 1,
     grp: 1,
   };
-  const data = await qqRequest(
-    "DoSearchForQQMusicLite",
-    "music.search.SearchCgiService",
-    param,
-  );
+  const data = await qqRequest("DoSearchForQQMusicLite", "music.search.SearchCgiService", param);
   const items: any[] = data?.body?.item_song ?? [];
   const songs: QqSongInfo[] = items.map((info) => ({
     id: String(info?.id ?? ""),
@@ -228,9 +220,7 @@ async function parseTrack(encrypted: string): Promise<LyricLine[] | null> {
  * 获取歌曲歌词（对应 qm.py get_lyrics / GetPlayLyricInfo）。
  * 返回合并了翻译的 LyricLine[]（含逐字 units）；无歌词或失败返回 null。
  */
-export async function qqFetchLyrics(
-  song: QqSongInfo,
-): Promise<LyricLine[] | null> {
+export async function qqFetchLyrics(song: QqSongInfo): Promise<LyricLine[] | null> {
   const cached = lyricsCache.get(song.id);
   if (cached && Date.now() - cached.t < LYRICS_CACHE_TTL) {
     return cached.lines;
@@ -256,11 +246,7 @@ export async function qqFetchLyrics(
   };
 
   try {
-    const resp = await qqRequest(
-      "GetPlayLyricInfo",
-      "music.musichallSong.PlayLyricInfo",
-      param,
-    );
+    const resp = await qqRequest("GetPlayLyricInfo", "music.musichallSong.PlayLyricInfo", param);
     // lrc_t 判定与 qm.py 一致：qrc_t 非 0 用 qrc_t，否则 lrc_t；字符串 "0" 视为无
     const origT = (resp?.qrc_t ?? 0) !== 0 ? resp?.qrc_t : resp?.lrc_t;
     const orig = resp?.lyric ?? "";

@@ -88,13 +88,7 @@ export interface ScanConfig {
 }
 
 export type ScanStage =
-  | "pending"
-  | "enumerate"
-  | "store"
-  | "parse"
-  | "done"
-  | "cancelled"
-  | "error";
+  "pending" | "enumerate" | "store" | "parse" | "done" | "cancelled" | "error";
 
 /** 扫描进度 */
 export interface ScanProgress {
@@ -562,7 +556,7 @@ export interface TopTrackStat {
   totalMs: number;
   srcUrl?: string | null;
 }
-/** 皮肤清单元信息（skin_list 返回；字段语义见 doc/皮肤系统开发方案书.md §4） */export interface SkinMeta {
+/** 皮肤清单元信息（skin_list 返回；字段语义见 doc/皮肤系统开发方案书.md §4） */ export interface SkinMeta {
   name: string;
   version: string;
   author: string;
@@ -1060,4 +1054,3 @@ export interface PixivSearchOpts {
   bookmarkNumMin?: number;
   bookmarkNumMax?: number;
 }
-

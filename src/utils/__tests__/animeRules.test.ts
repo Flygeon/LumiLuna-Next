@@ -133,9 +133,7 @@ describe("normalizeRule", () => {
 
 describe("validateRule", () => {
   it("XPath 规则缺关键字段", () => {
-    const errors = validateRule(
-      normalizeRule({ name: "x", baseURL: "" }),
-    );
+    const errors = validateRule(normalizeRule({ name: "x", baseURL: "" }));
     expect(errors.join("；")).toContain("baseURL");
     expect(errors.join("；")).toContain("searchURL");
     expect(errors.join("；")).toContain("searchList");
@@ -206,16 +204,11 @@ describe("prepareSearchRequest", () => {
   });
 
   it("URL 校验：空 searchURL 抛可读错误（而非 builder error）", () => {
-    expect(() => prepareSearchRequest(xpathRule({ searchURL: "" }), "刀")).toThrow(
-      /搜索 URL 为空/,
-    );
+    expect(() => prepareSearchRequest(xpathRule({ searchURL: "" }), "刀")).toThrow(/搜索 URL 为空/);
   });
 
   it("URL 校验：缺协议/相对地址基于 baseURL 补全", () => {
-    const spec = prepareSearchRequest(
-      xpathRule({ searchURL: "/search?wd=@keyword" }),
-      "刀",
-    );
+    const spec = prepareSearchRequest(xpathRule({ searchURL: "/search?wd=@keyword" }), "刀");
     expect(spec.url).toBe("https://example.com/search?wd=%E5%88%80");
   });
 
@@ -226,9 +219,9 @@ describe("prepareSearchRequest", () => {
   });
 
   it("URL 校验：既非绝对地址又缺 baseURL 抛错", () => {
-    expect(() =>
-      prepareSearchRequest(xpathRule({ searchURL: "/foo", baseURL: "" }), ""),
-    ).toThrow(/不是绝对地址且缺少 baseURL/);
+    expect(() => prepareSearchRequest(xpathRule({ searchURL: "/foo", baseURL: "" }), "")).toThrow(
+      /不是绝对地址且缺少 baseURL/,
+    );
   });
 
   it("URL 校验：绝对地址非法（缺主机）抛错", () => {
@@ -266,11 +259,7 @@ describe("prepareChapterRequest", () => {
 describe("parseSearchApi", () => {
   it("解析列表并跳过缺字段节点", () => {
     const raw = JSON.stringify({
-      data: [
-        { name: "番剧A", url: "/a" },
-        { name: "番剧B", url: "/b" },
-        { name: "无链接" },
-      ],
+      data: [{ name: "番剧A", url: "/a" }, { name: "番剧B", url: "/b" }, { name: "无链接" }],
     });
     const parsed = parseSearchApi(raw, apiRule());
     expect(parsed.items).toEqual([
@@ -303,7 +292,12 @@ describe("parseChaptersApi：nested", () => {
         ],
       },
     });
-    const parsed = parseChaptersApi(raw, apiRule(), "https://example.com/detail/1", "https://example.com/");
+    const parsed = parseChaptersApi(
+      raw,
+      apiRule(),
+      "https://example.com/detail/1",
+      "https://example.com/",
+    );
     expect(parsed.diagnostics).toEqual([]);
     expect(parsed.roads).toEqual([
       {
@@ -366,7 +360,12 @@ describe("parseChaptersApi：nested", () => {
         roads: [{ name: "A", episodes: [{ name: "第1集", url: "ep-1.mp4" }] }],
       },
     });
-    const parsed = parseChaptersApi(raw, rule, "https://example.com/detail/1", "https://example.com/");
+    const parsed = parseChaptersApi(
+      raw,
+      rule,
+      "https://example.com/detail/1",
+      "https://example.com/",
+    );
     expect(parsed.diagnostics).toEqual([]);
     expect(parsed.roads[0].episodes[0].url).toBe(
       "https://player.example.com/play/123/ep-1.mp4?ep=1",
@@ -387,7 +386,12 @@ describe("parseChaptersApi：nested", () => {
         roadEpisodesPath: "",
       },
     });
-    const parsed = parseChaptersApi(JSON.stringify({ data: {} }), rule, "s", "https://example.com/");
+    const parsed = parseChaptersApi(
+      JSON.stringify({ data: {} }),
+      rule,
+      "s",
+      "https://example.com/",
+    );
     expect(parsed.roads).toEqual([]);
     expect(parsed.diagnostics[0]).toContain("vid");
   });

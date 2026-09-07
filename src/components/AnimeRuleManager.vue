@@ -189,12 +189,16 @@ async function importFromRepo(entry: RepoEntry) {
             :title="r.enabled ? t('anime.rule.disable') : t('anime.rule.enable')"
             @click.stop="anime.setRuleEnabled(r.name, !r.enabled)"
           >
-            <span class="material-symbols-outlined">{{ r.enabled ? "toggle_on" : "toggle_off" }}</span>
+            <span class="material-symbols-outlined">{{
+              r.enabled ? "toggle_on" : "toggle_off"
+            }}</span>
           </button>
           <button
             class="lm-icon-btn small danger rule-del"
             :class="{ confirming: confirmDelete === r.name }"
-            :title="confirmDelete === r.name ? t('anime.rule.deleteConfirm') : t('anime.rule.delete')"
+            :title="
+              confirmDelete === r.name ? t('anime.rule.deleteConfirm') : t('anime.rule.delete')
+            "
             @click.stop="onDelete(r.name)"
           >
             <span class="material-symbols-outlined">
@@ -235,9 +239,7 @@ async function importFromRepo(entry: RepoEntry) {
           :disabled="importingName === entry.name"
           @click="importFromRepo(entry)"
         >
-          <span
-            v-if="importingName === entry.name"
-            class="material-symbols-outlined spin"
+          <span v-if="importingName === entry.name" class="material-symbols-outlined spin"
             >progress_activity</span
           >
           <span v-else-if="repoImported === entry.name" class="material-symbols-outlined ok"
@@ -246,11 +248,15 @@ async function importFromRepo(entry: RepoEntry) {
           <span v-else class="material-symbols-outlined">add</span>
           <span class="rule-name" :title="entry.name">{{ entry.name }}</span>
           <span v-if="entry.version" class="rule-ver tabular-nums">v{{ entry.version }}</span>
-          <span v-if="entry.antiCrawlerEnabled" class="badge">{{ t("anime.rule.antiCrawler") }}</span>
+          <span v-if="entry.antiCrawlerEnabled" class="badge">{{
+            t("anime.rule.antiCrawler")
+          }}</span>
         </button>
       </div>
       <p v-else-if="repoBusy" class="state">{{ t("anime.rule.fromRepoFetching") }}</p>
-      <p v-if="repoImported" class="hint ok-hint">{{ t("anime.rule.imported") }} {{ repoImported }}</p>
+      <p v-if="repoImported" class="hint ok-hint">
+        {{ t("anime.rule.imported") }} {{ repoImported }}
+      </p>
     </section>
 
     <transition name="toast">

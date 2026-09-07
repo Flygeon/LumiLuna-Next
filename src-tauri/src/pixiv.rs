@@ -24,8 +24,7 @@ use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 // ---- 公开客户端凭证（Pixez 现成，直接用）----
 const CLIENT_ID: &str = "MOBrBDS8blbauoSck0ZfDbtuzpyT";
 const CLIENT_SECRET: &str = "lsACyCD94FhDUtGTXi3QzcFE2uU1hqtDaKeqrdwj";
-const HASH_SALT: &str =
-    "28c1fdd170a5204386cb1313c7077b34f83e4aaf4aa829ce78c231e05b0bae2c";
+const HASH_SALT: &str = "28c1fdd170a5204386cb1313c7077b34f83e4aaf4aa829ce78c231e05b0bae2c";
 const UA: &str = "PixivAndroidApp/5.0.155 (Android 10.0; Pixel C)";
 const APP_API: &str = "https://app-api.pixiv.net";
 const OAUTH_URL: &str = "https://oauth.secure.pixiv.net/auth/token";
@@ -233,6 +232,7 @@ struct OAuthTokenRaw {
     access_token: String,
     refresh_token: String,
     #[serde(default)]
+    #[allow(dead_code)]
     expires_in: Option<i64>,
     #[serde(default)]
     user: Option<Value>,
@@ -356,7 +356,9 @@ fn client_hash(time: &str) -> String {
 }
 
 /// 标准 Pixiv App API 请求头（无论鉴权与否都带）
-fn apply_common_headers(req: reqwest::blocking::RequestBuilder) -> reqwest::blocking::RequestBuilder {
+fn apply_common_headers(
+    req: reqwest::blocking::RequestBuilder,
+) -> reqwest::blocking::RequestBuilder {
     let ct = client_time();
     let ch = client_hash(&ct);
     req.header("X-Client-Time", ct)
@@ -418,12 +420,10 @@ fn oauth_exchange_blocking(form: &[(&str, &str)]) -> Result<OAuthTokenRaw, Strin
 fn extract_user(raw: &Option<Value>) -> Option<PixivUser> {
     let v = raw.as_ref()?;
     // OAuth 响应里 user.id 可能是数字也可能是字符串（实测不稳），两种都接受
-    let id = v
-        .get("id")
-        .and_then(|x| {
-            x.as_i64()
-                .or_else(|| x.as_str().and_then(|s| s.parse::<i64>().ok()))
-        })?;
+    let id = v.get("id").and_then(|x| {
+        x.as_i64()
+            .or_else(|| x.as_str().and_then(|s| s.parse::<i64>().ok()))
+    })?;
     let name = v
         .get("name")
         .and_then(|x| x.as_str())
@@ -434,26 +434,31 @@ fn extract_user(raw: &Option<Value>) -> Option<PixivUser> {
         .and_then(|x| x.as_str())
         .unwrap_or("")
         .to_string();
-    let profile = v.get("profile_image_urls").and_then(|x| x.as_object()).map(|o| {
-        let mut u = PixivImageUrls::default();
-        u.medium = o
-            .get("medium")
-            .and_then(|x| x.as_str())
-            .map(|s| s.to_string());
-        u.large = o
-            .get("large")
-            .and_then(|x| x.as_str())
-            .map(|s| s.to_string());
-        // OAuth 的 profile_image_urls 可能是 px_170x170 / px_50x50 等旧键
-        if u.medium.is_none() {
-            u.medium = o
-                .get("px_170x170")
-                .or_else(|| o.get("px_50x50"))
+    let profile = v
+        .get("profile_image_urls")
+        .and_then(|x| x.as_object())
+        .map(|o| {
+            // OAuth 的 profile_image_urls 可能是 px_170x170 / px_50x50 等旧键
+            let medium = o
+                .get("medium")
+                .and_then(|x| x.as_str())
+                .map(|s| s.to_string())
+                .or_else(|| {
+                    o.get("px_170x170")
+                        .or_else(|| o.get("px_50x50"))
+                        .and_then(|x| x.as_str())
+                        .map(|s| s.to_string())
+                });
+            let large = o
+                .get("large")
                 .and_then(|x| x.as_str())
                 .map(|s| s.to_string());
-        }
-        u
-    });
+            PixivImageUrls {
+                medium,
+                large,
+                ..Default::default()
+            }
+        });
     Some(PixivUser {
         id,
         name,
@@ -549,7 +554,8 @@ fn call_api_blocking(
                 &text.chars().take(200).collect::<String>()
             ));
         }
-        return serde_json::from_str::<Value>(&text).map_err(|e| format!("解析 Pixiv 响应失败：{e}"));
+        return serde_json::from_str::<Value>(&text)
+            .map_err(|e| format!("解析 Pixiv 响应失败：{e}"));
     }
     Err("Pixiv 请求重试后仍失败".into())
 }
@@ -815,7 +821,9 @@ pub async fn pixiv_login_open(app: tauri::AppHandle) -> Result<PixivLoginStatus,
             st.logged_in,
             st.user.as_ref().map(|u| (u.id, u.name.clone()))
         )),
-        Err(e) => crate::novel_auth::login_debug_log(&format!("[pixiv] login_open: 换 token 失败：{e}")),
+        Err(e) => {
+            crate::novel_auth::login_debug_log(&format!("[pixiv] login_open: 换 token 失败：{e}"))
+        }
     }
     res
 }
@@ -887,7 +895,10 @@ pub async fn pixiv_ranking(
     mode: String,
     date: Option<String>,
 ) -> Result<PixivIllustPage, String> {
-    let mut q = vec![("filter".into(), "for_android".into()), ("mode".into(), mode)];
+    let mut q = vec![
+        ("filter".into(), "for_android".into()),
+        ("mode".into(), mode),
+    ];
     if let Some(d) = date {
         q.push(("date".into(), d));
     }
@@ -955,8 +966,8 @@ pub async fn pixiv_illust_detail(
             ],
         )?;
         let illust_val = v.get("illust").ok_or("响应缺少 illust 字段")?;
-        let illust: PixivIllust = serde_json::from_value(illust_val.clone())
-            .map_err(|e| format!("解析作品失败：{e}"))?;
+        let illust: PixivIllust =
+            serde_json::from_value(illust_val.clone()).map_err(|e| format!("解析作品失败：{e}"))?;
         // 相关推荐（失败不致命）
         let related = call_api_blocking(
             &app2,
@@ -1079,9 +1090,9 @@ pub async fn pixiv_image(_app: tauri::AppHandle, url: String) -> Result<Vec<u8>,
             "[pixiv] image: 可疑小图 {}B url={url_for_log}",
             b.len()
         )),
-        Err(e) => {
-            crate::novel_auth::login_debug_log(&format!("[pixiv] image: 失败 url={url_for_log}：{e}"))
-        }
+        Err(e) => crate::novel_auth::login_debug_log(&format!(
+            "[pixiv] image: 失败 url={url_for_log}：{e}"
+        )),
         _ => {}
     }
     res
@@ -1103,7 +1114,10 @@ pub async fn pixiv_bookmark_add(
         call_api_post_blocking(
             &app2,
             "/v2/illust/bookmark/add",
-            &[("illust_id", &illust_id.to_string()), ("restrict", &restrict)],
+            &[
+                ("illust_id", &illust_id.to_string()),
+                ("restrict", &restrict),
+            ],
         )
         .map(|_| ())
     })
@@ -1113,10 +1127,7 @@ pub async fn pixiv_bookmark_add(
 
 /// 取消收藏
 #[tauri::command]
-pub async fn pixiv_bookmark_delete(
-    app: tauri::AppHandle,
-    illust_id: i64,
-) -> Result<(), String> {
+pub async fn pixiv_bookmark_delete(app: tauri::AppHandle, illust_id: i64) -> Result<(), String> {
     let app2 = app.clone();
     tokio::task::spawn_blocking(move || {
         call_api_post_blocking(
@@ -1132,10 +1143,7 @@ pub async fn pixiv_bookmark_delete(
 
 /// 查询某作品是否已被收藏（bookmark_detail.id 存在且非 null 即已收藏）
 #[tauri::command]
-pub async fn pixiv_bookmark_detail(
-    app: tauri::AppHandle,
-    illust_id: i64,
-) -> Result<bool, String> {
+pub async fn pixiv_bookmark_detail(app: tauri::AppHandle, illust_id: i64) -> Result<bool, String> {
     let app2 = app.clone();
     tokio::task::spawn_blocking(move || {
         call_api_blocking(
@@ -1242,11 +1250,13 @@ pub async fn pixiv_follow_user(
         let form: Vec<(&str, String)> = if unfollow {
             vec![("user_id", user_id.to_string())]
         } else {
-            vec![("user_id", user_id.to_string()), ("restrict", "public".into())]
+            vec![
+                ("user_id", user_id.to_string()),
+                ("restrict", "public".into()),
+            ]
         };
         // call_api_post_blocking 要求 &[(&str, &str)]，这里借用拼好的表单
-        let form_ref: Vec<(&str, &str)> =
-            form.iter().map(|(k, v)| (*k, v.as_str())).collect();
+        let form_ref: Vec<(&str, &str)> = form.iter().map(|(k, v)| (*k, v.as_str())).collect();
         call_api_post_blocking(&app2, path, &form_ref).map(|_| ())
     })
     .await

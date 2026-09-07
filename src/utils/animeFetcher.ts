@@ -14,7 +14,10 @@ import { capabilities } from "@/capabilities";
 import { animeLog } from "./animeLog";
 
 export class AnimeFetchError extends Error {
-  constructor(message: string, public status?: number) {
+  constructor(
+    message: string,
+    public status?: number,
+  ) {
     super(message);
     this.name = "AnimeFetchError";
   }
@@ -59,13 +62,9 @@ function releaseSlot(): void {
 }
 
 function specKey(ruleName: string, spec: AnimeFetchSpec): string {
-  return [
-    ruleName,
-    spec.method,
-    spec.url,
-    spec.body ?? "",
-    spec.includeCookies ? "c" : "",
-  ].join("|");
+  return [ruleName, spec.method, spec.url, spec.body ?? "", spec.includeCookies ? "c" : ""].join(
+    "|",
+  );
 }
 
 function putCache(key: string, value: AnimeFetchResult): void {

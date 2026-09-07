@@ -175,7 +175,8 @@ mod imp {
         let artists: Vec<String> = artist.iter().cloned().collect();
         let album = album.unwrap_or_default();
 
-        g.manager.set_metadata(title, &artists, &album, duration_ms, art_url.clone());
+        g.manager
+            .set_metadata(title, &artists, &album, duration_ms, art_url.clone());
         g.last_title = title.to_string();
         g.last_artist = artist;
         g.last_album = album;

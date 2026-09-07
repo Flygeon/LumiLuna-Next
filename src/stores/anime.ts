@@ -19,11 +19,7 @@ import {
   prepareChapterRequest,
   prepareSearchRequest,
 } from "@/utils/animeRules";
-import {
-  fetchSubjectDetail,
-  fetchTrending,
-  searchSubjects,
-} from "@/utils/bangumiApi";
+import { fetchSubjectDetail, fetchTrending, searchSubjects } from "@/utils/bangumiApi";
 import { animeFetchCacheStats, fetchAnimeHtml } from "@/utils/animeFetcher";
 import { animeLog } from "@/utils/animeLog";
 import { extractStaticStream } from "@/utils/animeStream";
@@ -143,9 +139,7 @@ export const useAnimeStore = defineStore("anime", () => {
     rulesLoading.value = true;
     try {
       rules.value = await capabilities.animeRulesList();
-      const still = rules.value.some(
-        (r) => r.name === activeRuleName.value && r.enabled,
-      );
+      const still = rules.value.some((r) => r.name === activeRuleName.value && r.enabled);
       if (!still) {
         activeRuleName.value = "";
       }
@@ -206,9 +200,7 @@ export const useAnimeStore = defineStore("anime", () => {
     } catch (e) {
       trendingError.value = e instanceof Error ? e.message : String(e);
       trending.value = [];
-      void animeLog(
-        `热播榜拉取失败 耗时 ${Date.now() - started}ms: ${trendingError.value}`,
-      );
+      void animeLog(`热播榜拉取失败 耗时 ${Date.now() - started}ms: ${trendingError.value}`);
     } finally {
       trendingLoading.value = false;
     }
@@ -236,12 +228,7 @@ export const useAnimeStore = defineStore("anime", () => {
     if (searchItems.value.length > 0 && !searchHasMore.value) return;
     searchLoading.value = true;
     try {
-      const page = await searchSubjects(
-        kw,
-        searchSort.value,
-        30,
-        searchItems.value.length,
-      );
+      const page = await searchSubjects(kw, searchSort.value, 30, searchItems.value.length);
       searchItems.value.push(...page.items);
       searchTotal.value = page.total;
       searchHasMore.value = searchItems.value.length < page.total;
@@ -384,16 +371,12 @@ export const useAnimeStore = defineStore("anime", () => {
       items: [],
     }));
     await Promise.all(
-      enabled.map((r) =>
-        querySingleSource(r.name, kw, { replace: false }).catch(() => {}),
-      ),
+      enabled.map((r) => querySingleSource(r.name, kw, { replace: false }).catch(() => {})),
     );
     sourceSearching.value = false;
     void animeLog(
       `聚合搜索结束 kw="${kw}" 结果=` +
-        sourceSearch.value
-          .map((s) => `${s.pluginName}:${s.status}(${s.items.length})`)
-          .join(", "),
+        sourceSearch.value.map((s) => `${s.pluginName}:${s.status}(${s.items.length})`).join(", "),
     );
   }
 
@@ -405,9 +388,7 @@ export const useAnimeStore = defineStore("anime", () => {
     sourceSearchKeyword.value = kw;
     sourceSearching.value = true;
     await Promise.all(
-      sourceSearch.value.map((s) =>
-        querySingleSource(s.pluginName, kw).catch(() => {}),
-      ),
+      sourceSearch.value.map((s) => querySingleSource(s.pluginName, kw).catch(() => {})),
     );
     sourceSearching.value = false;
   }
@@ -425,10 +406,7 @@ export const useAnimeStore = defineStore("anime", () => {
    * 选中聚合搜索里的一个结果：切到该源并查选集（线路 + 剧集）。
    * 返回是否有有效剧集（false 时调用方应停留在聚合搜索）。
    */
-  async function pickSource(
-    pluginName: string,
-    item: AnimeSearchItem,
-  ): Promise<boolean> {
+  async function pickSource(pluginName: string, item: AnimeSearchItem): Promise<boolean> {
     const entry = rules.value.find((r) => r.name === pluginName && r.enabled);
     if (!entry) return false;
     activeSourceTitle.value = item.name;
@@ -440,9 +418,7 @@ export const useAnimeStore = defineStore("anime", () => {
     try {
       const rule = normalizeRule(JSON.parse(entry.json));
       const spec = prepareChapterRequest(rule, item.src);
-      void animeLog(
-        `[${pluginName}] 选集请求 mode=${rule.chapterMode} url=${spec.url}`,
-      );
+      void animeLog(`[${pluginName}] 选集请求 mode=${rule.chapterMode} url=${spec.url}`);
       const res = await fetchAnimeHtml(rule.name, spec, {
         timeoutMs: DETAIL_TIMEOUT_MS,
       });
@@ -525,9 +501,7 @@ export const useAnimeStore = defineStore("anime", () => {
             ` html=${res.html.length}B`,
         );
       } catch (e) {
-        void animeLog(
-          `[${rule.name}] 播放页抓取失败，转 webview 兜底: ${(e as Error).message}`,
-        );
+        void animeLog(`[${rule.name}] 播放页抓取失败，转 webview 兜底: ${(e as Error).message}`);
       }
       if (token !== resolveToken) return null;
 
@@ -663,9 +637,7 @@ export const useAnimeStore = defineStore("anime", () => {
     title: string,
     cover?: string | null,
   ) {
-    const existing = favorites.value.some(
-      (f) => f.plugin === plugin && f.animeId === animeId,
-    );
+    const existing = favorites.value.some((f) => f.plugin === plugin && f.animeId === animeId);
     try {
       if (existing) {
         await capabilities.animeFavoriteRemove(plugin, animeId);

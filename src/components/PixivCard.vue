@@ -79,7 +79,9 @@ onMounted(async () => {
 }
 .pixiv-card:hover .cover {
   transform: translateY(-4px) scale(1.015);
-  box-shadow: var(--md-elevation-3), inset 0 0 0 1px var(--lm-hairline);
+  box-shadow:
+    var(--md-elevation-3),
+    inset 0 0 0 1px var(--lm-hairline);
 }
 .pixiv-card:active .cover {
   transform: translateY(-1px) scale(0.995);

@@ -10,10 +10,10 @@
 //!   由 `is_login_required` 判定，前端据此提示重新登录。
 
 use serde::{Deserialize, Serialize};
-use tauri::Manager;
 use std::io::Write;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, OnceLock};
+use tauri::Manager;
 
 use crate::novel::{fetch_html, NovelShelfItem};
 
@@ -280,7 +280,11 @@ pub async fn wenku8_login_poll(app: tauri::AppHandle) -> Result<Wenku8LoginStatu
     };
     let found: Vec<String> = cookies
         .iter()
-        .filter(|c| REQUIRED_COOKIE_KEYS.iter().any(|k| c.name().eq_ignore_ascii_case(k)))
+        .filter(|c| {
+            REQUIRED_COOKIE_KEYS
+                .iter()
+                .any(|k| c.name().eq_ignore_ascii_case(k))
+        })
         .map(|c| format!("{}={}", c.name(), c.value()))
         .collect();
     if found.is_empty() {
@@ -299,7 +303,10 @@ pub async fn wenku8_login_poll(app: tauri::AppHandle) -> Result<Wenku8LoginStatu
             nickname: None,
         });
     }
-    login_debug_log(&format!("[poll] 捕获 cookie：命中 {} 个关键字段", found.len()));
+    login_debug_log(&format!(
+        "[poll] 捕获 cookie：命中 {} 个关键字段",
+        found.len()
+    ));
     {
         let mut s = state().lock().unwrap();
         s.cookie = Some(cookie_str.trim().to_string());
@@ -573,14 +580,12 @@ pub fn app_log(msg: String) {
 
 /// 在线书架（bookcase.php）。需要登录态，未登录/过期时返回明确的“需登录”错误。
 #[tauri::command]
-pub fn wenku8_shelf_online(app: tauri::AppHandle, node: String) -> Result<Vec<NovelShelfItem>, String> {
+pub fn wenku8_shelf_online(
+    app: tauri::AppHandle,
+    node: String,
+) -> Result<Vec<NovelShelfItem>, String> {
     ensure_loaded(&app);
-    let html = fetch_html(
-        &app,
-        &node,
-        "GBK",
-        "/modules/article/bookcase.php",
-    )?;
+    let html = fetch_html(&app, &node, "GBK", "/modules/article/bookcase.php")?;
     if is_login_required(&html) {
         return Err("[WENKU8_LOGIN_REQUIRED] 登录态已失效，请重新登录".into());
     }

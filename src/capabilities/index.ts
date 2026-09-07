@@ -71,13 +71,9 @@ import type {
 import { mockInvoke } from "./mock";
 
 /** 在 Tauri 环境下调用；非 Tauri（纯 Web 预览）时降级为 mock。 */
-export const isTauri =
-  typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+export const isTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
-async function safeInvoke<T>(
-  cmd: string,
-  args?: Record<string, unknown>,
-): Promise<T> {
+async function safeInvoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
   if (!isTauri) return mockInvoke<T>(cmd, args);
   return invoke<T>(cmd, args);
 }
@@ -96,10 +92,7 @@ async function loggedNovelInvoke<T>(
   void safeInvoke("app_log", { msg: `${label} -> invoke ${cmd}` }).catch(() => {});
   try {
     const r = await safeInvoke<T>(cmd, args);
-    const len =
-      r && typeof r === "object"
-        ? JSON.stringify(r).length
-        : String(r ?? "").length;
+    const len = r && typeof r === "object" ? JSON.stringify(r).length : String(r ?? "").length;
     void safeInvoke("app_log", { msg: `${label} OK len=${len}` }).catch(() => {});
     // content 场景：额外记录返回正文的开头，确认是真实章节内容而非缓存脏数据/主页导航
     if (tag === "content" && r && typeof r === "object") {
@@ -169,11 +162,7 @@ export const capabilities = {
     return path ? (isTauri ? convertFileSrc(path) : path) : null;
   },
   /** 保存前端渲染的封面（PDF 首页）到缩略图缓存 */
-  async saveThumbnail(
-    fileId: string,
-    jpeg: Uint8Array,
-    size = 320,
-  ): Promise<string | null> {
+  async saveThumbnail(fileId: string, jpeg: Uint8Array, size = 320): Promise<string | null> {
     const path = await safeInvoke<string | null>("save_thumbnail", {
       fileId,
       size,
@@ -206,11 +195,7 @@ export const capabilities = {
   getListenStats(day?: string): Promise<ListenStats | null> {
     return safeInvoke("get_listen_stats", { day: day ?? null });
   },
-  listListenStats(
-    days: number,
-    fromDay?: string,
-    toDay?: string,
-  ): Promise<ListenStats[]> {
+  listListenStats(days: number, fromDay?: string, toDay?: string): Promise<ListenStats[]> {
     return safeInvoke("list_listen_stats", {
       days: days ?? null,
       fromDay: fromDay ?? null,
@@ -252,12 +237,7 @@ export const capabilities = {
   getBookProgress(fileId: string): Promise<BookProgress | null> {
     return safeInvoke("get_book_progress", { fileId });
   },
-  saveBookProgress(
-    bookId: string,
-    location: string,
-    page: number,
-    percent: number,
-  ): Promise<void> {
+  saveBookProgress(bookId: string, location: string, page: number, percent: number): Promise<void> {
     return safeInvoke("save_book_progress", { bookId, location, page, percent });
   },
 
@@ -339,11 +319,7 @@ export const capabilities = {
   neteaseSongUrl(ids: number[]): Promise<{ id: number; url: string }[]> {
     return safeInvoke("netease_song_url", { ids });
   },
-  neteaseSongComments(
-    id: number,
-    offset = 0,
-    limit = 20,
-  ): Promise<NeteaseCommentsPage> {
+  neteaseSongComments(id: number, offset = 0, limit = 20): Promise<NeteaseCommentsPage> {
     return safeInvoke("netease_song_comments", { id, offset, limit });
   },
   neteaseSetSongLiked(id: number, like: boolean): Promise<void> {
@@ -372,7 +348,13 @@ export const capabilities = {
   novelRank(node: string, charset: string, sort: string, page = 1): Promise<NovelCover[]> {
     return safeInvoke("novel_rank", { node, charset, sort, page });
   },
-  novelCategory(node: string, charset: string, tag: string, sort: string, page = 1): Promise<NovelCover[]> {
+  novelCategory(
+    node: string,
+    charset: string,
+    tag: string,
+    sort: string,
+    page = 1,
+  ): Promise<NovelCover[]> {
     return safeInvoke("novel_category", { node, charset, tag, sort, page });
   },
   novelRecommend(node: string, charset: string): Promise<NovelRecommendBlock[]> {
@@ -383,16 +365,38 @@ export const capabilities = {
     return loggedNovelInvoke<NovelDetail>("novel_detail", { node, charset, aid }, "detail", aid);
   },
   novelCatalogue(node: string, charset: string, aid: string): Promise<NovelVolume[]> {
-    return loggedNovelInvoke<NovelVolume[]>("novel_catalogue", { node, charset, aid }, "catalogue", aid);
+    return loggedNovelInvoke<NovelVolume[]>(
+      "novel_catalogue",
+      { node, charset, aid },
+      "catalogue",
+      aid,
+    );
   },
-  novelContent(node: string, charset: string, aid: string, cid: string, title: string): Promise<NovelContent> {
-    return loggedNovelInvoke<NovelContent>("novel_content", { node, charset, aid, cid, title }, "content", aid, cid);
+  novelContent(
+    node: string,
+    charset: string,
+    aid: string,
+    cid: string,
+    title: string,
+  ): Promise<NovelContent> {
+    return loggedNovelInvoke<NovelContent>(
+      "novel_content",
+      { node, charset, aid, cid, title },
+      "content",
+      aid,
+      cid,
+    );
   },
   novelShelfList(): Promise<NovelShelfItem[]> {
     return safeInvoke("novel_shelf_list");
   },
   novelShelfAdd(aid: string, title: string, author?: string, cover?: string): Promise<void> {
-    return safeInvoke("novel_shelf_add", { aid, title, author: author ?? null, cover: cover ?? null });
+    return safeInvoke("novel_shelf_add", {
+      aid,
+      title,
+      author: author ?? null,
+      cover: cover ?? null,
+    });
   },
   novelShelfRemove(aid: string): Promise<void> {
     return safeInvoke("novel_shelf_remove", { aid });
@@ -400,13 +404,23 @@ export const capabilities = {
   novelProgressGet(aid: string): Promise<NovelProgress | null> {
     return safeInvoke("novel_progress_get", { aid });
   },
-  novelProgressSet(aid: string, cid: string, chapterTitle: string, position: number): Promise<void> {
+  novelProgressSet(
+    aid: string,
+    cid: string,
+    chapterTitle: string,
+    position: number,
+  ): Promise<void> {
     return safeInvoke("novel_progress_set", { aid, cid, chapterTitle, position });
   },
   novelChapterCacheGet(aid: string, cid: string): Promise<NovelContent | null> {
     return safeInvoke("novel_chapter_cache_get", { aid, cid });
   },
-  novelChapterCachePut(aid: string, cid: string, title: string, content: NovelContent): Promise<void> {
+  novelChapterCachePut(
+    aid: string,
+    cid: string,
+    title: string,
+    content: NovelContent,
+  ): Promise<void> {
     return safeInvoke("novel_chapter_cache_put", { aid, cid, title, content });
   },
   novelReadSessionStart(input: NovelReadSessionStart): Promise<void> {
@@ -419,10 +433,22 @@ export const capabilities = {
     return safeInvoke("novel_stats_get", { day: day ?? null });
   },
   novelStatsList(days?: number, fromDay?: string, toDay?: string): Promise<NovelDailyStat[]> {
-    return safeInvoke("novel_stats_list", { days: days ?? null, fromDay: fromDay ?? null, toDay: toDay ?? null });
+    return safeInvoke("novel_stats_list", {
+      days: days ?? null,
+      fromDay: fromDay ?? null,
+      toDay: toDay ?? null,
+    });
   },
-  novelSourceBreakdown(days?: number, fromDay?: string, toDay?: string): Promise<NovelSourceStat[]> {
-    return safeInvoke("novel_source_breakdown", { days: days ?? null, fromDay: fromDay ?? null, toDay: toDay ?? null });
+  novelSourceBreakdown(
+    days?: number,
+    fromDay?: string,
+    toDay?: string,
+  ): Promise<NovelSourceStat[]> {
+    return safeInvoke("novel_source_breakdown", {
+      days: days ?? null,
+      fromDay: fromDay ?? null,
+      toDay: toDay ?? null,
+    });
   },
   novelTopBooks(limit?: number, days?: number): Promise<NovelTopBook[]> {
     return safeInvoke("novel_top_books", { limit: limit ?? null, days: days ?? null });
@@ -561,10 +587,7 @@ export const capabilities = {
     return safeInvoke("pixiv_illust_detail", { id });
   },
   /** 作品评论（offset 翻页） */
-  pixivIllustComments(
-    illustId: number,
-    offset?: number | null,
-  ): Promise<PixivCommentsPage> {
+  pixivIllustComments(illustId: number, offset?: number | null): Promise<PixivCommentsPage> {
     return safeInvoke("pixiv_illust_comments", { illustId, offset: offset ?? null });
   },
   pixivImage(url: string): Promise<Uint8Array> {
@@ -711,9 +734,7 @@ export const capabilities = {
     if (!isTauri) return null;
     const result = await dialogOpen({
       multiple: false,
-      filters: [
-        { name: "LumiLuna 皮肤", extensions: ["json", "zip"] },
-      ],
+      filters: [{ name: "LumiLuna 皮肤", extensions: ["json", "zip"] }],
     });
     if (typeof result === "string") return result;
     if (result && typeof result === "object" && "path" in result) {

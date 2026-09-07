@@ -152,10 +152,9 @@ const aliasList = computed(() => props.subject?.alias?.slice(0, 12) ?? []);
             :disabled="anime.sourceSearching"
             @click="doRequeryAll"
           >
-            <span
-              v-if="anime.sourceSearching"
-              class="material-symbols-outlined spin"
-            >progress_activity</span>
+            <span v-if="anime.sourceSearching" class="material-symbols-outlined spin"
+              >progress_activity</span
+            >
             <span v-else class="material-symbols-outlined">search</span>
           </button>
         </div>
@@ -181,15 +180,12 @@ const aliasList = computed(() => props.subject?.alias?.slice(0, 12) ?? []);
                 class="src-status"
                 :class="{ error: statusInfo(result).error }"
                 :title="statusInfo(result).text"
-              >{{ statusInfo(result).text }}</span>
-              <span
-                v-if="result.status === 'pending'"
-                class="material-symbols-outlined spin"
-              >progress_activity</span>
-              <span
-                v-else
-                class="material-symbols-outlined chevron"
-              >expand_more</span>
+                >{{ statusInfo(result).text }}</span
+              >
+              <span v-if="result.status === 'pending'" class="material-symbols-outlined spin"
+                >progress_activity</span
+              >
+              <span v-else class="material-symbols-outlined chevron">expand_more</span>
             </button>
 
             <!-- 命中条目 -->
@@ -216,7 +212,9 @@ const aliasList = computed(() => props.subject?.alias?.slice(0, 12) ?? []);
                     v-if="aliasList.length"
                     class="act"
                     @click="doAliasSearch(result.pluginName, aliasList[0])"
-                  >{{ t("anime.aliasSearch") }}</button>
+                  >
+                    {{ t("anime.aliasSearch") }}
+                  </button>
                   <button class="act" @click="doManualSearch(result.pluginName)">
                     {{ t("anime.manualSearch") }}
                   </button>
@@ -230,7 +228,8 @@ const aliasList = computed(() => props.subject?.alias?.slice(0, 12) ?? []);
                     :key="a"
                     class="alias-chip"
                     @click="doAliasSearch(result.pluginName, a)"
-                  >{{ a }}</span>
+                    >{{ a }}</span
+                  >
                 </div>
                 <div class="manual-row">
                   <input
@@ -238,10 +237,7 @@ const aliasList = computed(() => props.subject?.alias?.slice(0, 12) ?? []);
                     :placeholder="t('anime.manualSearch')"
                     @keyup.enter="doManualSearch(result.pluginName)"
                   />
-                  <button
-                    class="lm-btn lm-btn--tonal"
-                    @click="doManualSearch(result.pluginName)"
-                  >
+                  <button class="lm-btn lm-btn--tonal" @click="doManualSearch(result.pluginName)">
                     <span class="material-symbols-outlined">search</span>
                   </button>
                 </div>

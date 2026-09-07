@@ -26,10 +26,7 @@ async function getAudioBytes(source: SongSource): Promise<ArrayBuffer> {
   if (source.kind === "local" && source.filePath && isTauri) {
     const { readFile } = await import("@tauri-apps/plugin-fs");
     const data = await readFile(source.filePath);
-    return data.buffer.slice(
-      data.byteOffset,
-      data.byteOffset + data.byteLength,
-    ) as ArrayBuffer;
+    return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer;
   }
   if ((source.kind === "online" || source.kind === "webdav") && source.url) {
     const res = await fetch(source.url);

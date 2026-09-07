@@ -67,11 +67,7 @@ export const usePixivStore = defineStore("pixiv", () => {
   const rankingNext = ref<string | null>(null);
   const searchNext = ref<string | null>(null);
 
-  const loginLabel = computed(() =>
-    loginStatus.value.user
-      ? loginStatus.value.user.name
-      : "",
-  );
+  const loginLabel = computed(() => (loginStatus.value.user ? loginStatus.value.user.name : ""));
 
   async function loadLoginStatus() {
     try {
@@ -79,9 +75,7 @@ export const usePixivStore = defineStore("pixiv", () => {
       // 已存 refresh token 但未登录（如 app 重启后 pixiv.json 丢失）→ 尝试恢复
       if (!loginStatus.value.loggedIn && settings.pixivRefreshToken) {
         try {
-          loginStatus.value = await capabilities.pixivSetRefreshToken(
-            settings.pixivRefreshToken,
-          );
+          loginStatus.value = await capabilities.pixivSetRefreshToken(settings.pixivRefreshToken);
         } catch {
           /* 恢复失败忽略，等用户重新登录 */
         }
@@ -445,12 +439,7 @@ export const usePixivStore = defineStore("pixiv", () => {
     const u = illust.imageUrls;
     const q = settings.pixivImageQuality as keyof typeof u;
     const url =
-      (u[q] as string | undefined) ??
-      u.large ??
-      u.medium ??
-      u.squareMedium ??
-      u.original ??
-      "";
+      (u[q] as string | undefined) ?? u.large ?? u.medium ?? u.squareMedium ?? u.original ?? "";
     return url;
   }
 

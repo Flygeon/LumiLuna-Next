@@ -14,15 +14,12 @@ const progress = computed(() =>
   player.duration ? (player.currentTime / player.duration) * 100 : 0,
 );
 
-const canLike = computed(() =>
-  netease.loggedIn &&
-  player.song?.kind === "online" &&
-  Number.isFinite(Number(player.song?.id)),
+const canLike = computed(
+  () =>
+    netease.loggedIn && player.song?.kind === "online" && Number.isFinite(Number(player.song?.id)),
 );
 
-const liked = computed(() =>
-  player.song ? netease.isSongLiked(player.song.id) : false,
-);
+const liked = computed(() => (player.song ? netease.isSongLiked(player.song.id) : false));
 
 async function toggleLike() {
   if (!player.song || !canLike.value) return;
@@ -73,17 +70,17 @@ function seek(e: MouseEvent) {
         <button class="lm-icon-btn" title="上一首" @click="player.previous()">
           <span class="material-symbols-outlined filled">skip_previous</span>
         </button>
-        <button class="lm-icon-btn play" :title="player.playing ? '暂停' : '播放'" @click="player.togglePlay()">
+        <button
+          class="lm-icon-btn play"
+          :title="player.playing ? '暂停' : '播放'"
+          @click="player.togglePlay()"
+        >
           <PlayerControlIcon :name="player.playing ? 'pause' : 'play'" />
         </button>
         <button class="lm-icon-btn" title="下一首" @click="player.next()">
           <span class="material-symbols-outlined filled">skip_next</span>
         </button>
-        <button
-          class="lm-icon-btn"
-          title="展开播放器"
-          @click="router.push('/music/player')"
-        >
+        <button class="lm-icon-btn" title="展开播放器" @click="router.push('/music/player')">
           <span class="material-symbols-outlined">expand_less</span>
         </button>
       </div>
@@ -103,8 +100,12 @@ function seek(e: MouseEvent) {
   animation: slide-up 320ms var(--md-sys-motion-easing-emphasized-decelerate);
 }
 @keyframes slide-up {
-  from { transform: translateY(100%); }
-  to { transform: none; }
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: none;
+  }
 }
 
 .track {
@@ -154,7 +155,9 @@ function seek(e: MouseEvent) {
   border-radius: var(--md-sys-shape-corner-small);
   overflow: hidden;
   background: var(--md-sys-color-surface-container-high);
-  box-shadow: var(--md-elevation-1), inset 0 0 0 1px var(--lm-hairline);
+  box-shadow:
+    var(--md-elevation-1),
+    inset 0 0 0 1px var(--lm-hairline);
 }
 .cover img {
   width: 100%;

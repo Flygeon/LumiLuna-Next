@@ -8,7 +8,12 @@ import NovelDetailPanel from "@/components/NovelDetailPanel.vue";
 import BookReader from "@/components/BookReader.vue";
 import { openWenku8Login, isLoginRequiredError } from "@/novel/wenku8Login";
 import { reloginRequested, clearRelogin } from "@/novel/wenku8Auth";
-import type { NovelCover, NovelRecommendBlock, NovelShelfItem, Wenku8LoginStatus } from "@shared/types";
+import type {
+  NovelCover,
+  NovelRecommendBlock,
+  NovelShelfItem,
+  Wenku8LoginStatus,
+} from "@shared/types";
 
 const settings = useSettingsStore();
 const t = (key: string) => translate(settings.lang, key);
@@ -85,7 +90,12 @@ async function loadShelf() {
 async function loadRank() {
   rankLoading.value = true;
   try {
-    rankResults.value = await capabilities.novelRank(settings.wenku8Node, settings.novelCharset, rankSort.value, 1);
+    rankResults.value = await capabilities.novelRank(
+      settings.wenku8Node,
+      settings.novelCharset,
+      rankSort.value,
+      1,
+    );
     homeError.value = "";
   } catch (e) {
     console.warn("[Novel] 排行榜加载失败:", e);
@@ -111,7 +121,9 @@ async function loadHome() {
 }
 
 async function doSearch() {
-  void capabilities.appLog(`[novel-online] doSearch 被触发 q=${JSON.stringify(searchQuery.value)}`).catch(() => {});
+  void capabilities
+    .appLog(`[novel-online] doSearch 被触发 q=${JSON.stringify(searchQuery.value)}`)
+    .catch(() => {});
   const q = searchQuery.value.trim();
   if (!q) {
     void capabilities.appLog(`[novel-online] doSearch 空查询，忽略`).catch(() => {});
@@ -120,8 +132,15 @@ async function doSearch() {
   searching.value = true;
   searchError.value = "";
   try {
-    searchResults.value = await capabilities.novelSearch(settings.wenku8Node, settings.novelCharset, q, 1);
-    void capabilities.appLog(`[novel-online] doSearch OK results=${searchResults.value.length}`).catch(() => {});
+    searchResults.value = await capabilities.novelSearch(
+      settings.wenku8Node,
+      settings.novelCharset,
+      q,
+      1,
+    );
+    void capabilities
+      .appLog(`[novel-online] doSearch OK results=${searchResults.value.length}`)
+      .catch(() => {});
   } catch (e) {
     searchError.value = e instanceof Error ? e.message : String(e);
     searchResults.value = [];
@@ -137,7 +156,9 @@ function openNovel(item: NovelCover | NovelShelfItem) {
 }
 
 function openReader(cid: string, chapterTitle: string) {
-  void capabilities.appLog(`[novel-online] openReader 被调用 aid=${selected.value.aid} cid=${cid} title=${chapterTitle} 当前 view=${view.value}`);
+  void capabilities.appLog(
+    `[novel-online] openReader 被调用 aid=${selected.value.aid} cid=${cid} title=${chapterTitle} 当前 view=${view.value}`,
+  );
   readerInit.value = { cid, chapterTitle };
   view.value = "reader";
   void capabilities.appLog(`[novel-online] view 已设为 reader=${view.value === "reader"}`);
@@ -167,7 +188,7 @@ onMounted(() => {
 <template>
   <div class="novel-online">
     <!-- 阅读器（Teleport 到 body 避免 NovelOnlineView 的 transform 动画破坏 fixed 定位） -->
-    <Teleport to="body" v-if="view === 'reader'">
+    <Teleport v-if="view === 'reader'" to="body">
       <BookReader
         :novel-source="{
           aid: selected.aid,
@@ -214,7 +235,13 @@ onMounted(() => {
       <section v-if="shelf.length" class="section">
         <h3 class="section-title">{{ t("novel.shelf") }}</h3>
         <div class="novel-grid">
-          <NovelCard v-for="n in shelf" :key="n.aid" :item="n" :subtitle="n.author" @open="openNovel(n)" />
+          <NovelCard
+            v-for="n in shelf"
+            :key="n.aid"
+            :item="n"
+            :subtitle="n.author"
+            @open="openNovel(n)"
+          />
         </div>
       </section>
 
@@ -251,12 +278,14 @@ onMounted(() => {
           <h3 class="section-title">{{ t("novel.rank") }}</h3>
           <div class="rank-tabs">
             <button
-              v-for="s in (['allvisit', 'postdate', 'goodnum'] as const)"
+              v-for="s in ['allvisit', 'postdate', 'goodnum'] as const"
               :key="s"
               class="chip"
               :class="{ active: rankSort === s }"
               @click="pickRank(s)"
-            >{{ t("novel.rank_" + s) }}</button>
+            >
+              {{ t("novel.rank_" + s) }}
+            </button>
           </div>
         </div>
         <div v-if="rankLoading" class="state">{{ t("novel.loading") }}</div>
@@ -275,7 +304,14 @@ onMounted(() => {
 
       <!-- 空态 -->
       <div
-        v-if="!rankLoading && !homeError && !searchResults.length && !rankResults.length && !recommend.length && !shelf.length"
+        v-if="
+          !rankLoading &&
+          !homeError &&
+          !searchResults.length &&
+          !rankResults.length &&
+          !recommend.length &&
+          !shelf.length
+        "
         class="state"
       >
         {{ t("novel.empty") }}

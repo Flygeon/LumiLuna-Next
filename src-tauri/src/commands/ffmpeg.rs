@@ -138,8 +138,10 @@ struct ProbeStream {
     #[serde(default)]
     avg_frame_rate: Option<String>,
     #[serde(default)]
+    #[allow(dead_code)]
     sample_rate: Option<String>,
     #[serde(default)]
+    #[allow(dead_code)]
     channels: Option<i64>,
     #[serde(default)]
     duration: Option<String>,
@@ -214,9 +216,7 @@ pub fn probe_video(path: &str) -> Option<VideoInfo> {
         info.bitrate = format.bit_rate.as_deref().and_then(|b| b.parse().ok());
         if let Some(tags) = &format.tags {
             info.title = tags.get("title").cloned();
-            info.taken_at = tags
-                .get("creation_time")
-                .and_then(|t| parse_iso8601(t));
+            info.taken_at = tags.get("creation_time").and_then(|t| parse_iso8601(t));
         }
     }
 

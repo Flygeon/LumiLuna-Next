@@ -1,18 +1,11 @@
-/**
- * 全局右键菜单（Material Design 3）。
- * - 位置直接由菜单状态 menu.x/menu.y 派生（reactive → computed），
- *   不依赖「watch + nextTick + 改 ref」的二次更新——那套在真实 WebView 里
- *   会失效导致菜单错位到左上角。
- * - 贴边自动翻转用 onUpdated 测量 + margin 位移，best-effort，失败停在光标处。
- * - 点击菜单外 / Esc / 滚动 / 缩放 关闭；不用 window contextmenu 监听，
- *   避免「刚打开又被同一事件关掉」的竞态（mousedown 已覆盖空白处右键关闭）。
- */
+/** * 全局右键菜单（Material Design 3）。 * - 位置直接由菜单状态 menu.x/menu.y 派生（reactive →
+computed）， * 不依赖「watch + nextTick + 改 ref」的二次更新——那套在真实 WebView 里 *
+会失效导致菜单错位到左上角。 * - 贴边自动翻转用 onUpdated 测量 + margin
+位移，best-effort，失败停在光标处。 * - 点击菜单外 / Esc / 滚动 / 缩放 关闭；不用 window contextmenu
+监听， * 避免「刚打开又被同一事件关掉」的竞态（mousedown 已覆盖空白处右键关闭）。 */
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, onUpdated, ref, watch } from "vue";
-import {
-  closeContextMenu,
-  useContextMenu,
-} from "@/composables/useContextMenu";
+import { closeContextMenu, useContextMenu } from "@/composables/useContextMenu";
 
 const menu = useContextMenu();
 const menuRef = ref<HTMLDivElement | null>(null);
@@ -138,7 +131,9 @@ onBeforeUnmount(() => {
   padding: 8px;
   background: var(--md-sys-color-surface-container);
   border-radius: var(--md-sys-shape-corner-extra-large);
-  box-shadow: var(--md-elevation-2), inset 0 0 0 1px var(--lm-hairline);
+  box-shadow:
+    var(--md-elevation-2),
+    inset 0 0 0 1px var(--lm-hairline);
   transform-origin: top left;
   animation: ctx-pop 150ms var(--md-sys-motion-easing-emphasized-decelerate);
 }

@@ -112,7 +112,9 @@ onMounted(loadAll);
               <h3 class="hero-title">{{ t("homeFeed.personalFm") }}</h3>
               <p class="hero-desc">{{ fmSubtitle }}</p>
             </div>
-            <span class="hero-play material-symbols-outlined" :class="{ spinning: fmLoading }">play_arrow</span>
+            <span class="hero-play material-symbols-outlined" :class="{ spinning: fmLoading }"
+              >play_arrow</span
+            >
           </button>
 
           <button class="feed-hero" @click="playDaily">
@@ -121,7 +123,9 @@ onMounted(loadAll);
               <h3 class="hero-title">{{ t("homeFeed.dailyRecommend") }}</h3>
               <p class="hero-desc">{{ dailySubtitle }}</p>
             </div>
-            <span class="hero-play material-symbols-outlined" :class="{ spinning: dailyLoading }">play_arrow</span>
+            <span class="hero-play material-symbols-outlined" :class="{ spinning: dailyLoading }"
+              >play_arrow</span
+            >
           </button>
         </div>
       </section>
@@ -130,7 +134,9 @@ onMounted(loadAll);
       <section v-if="recommendPlaylists.length" class="feed-section">
         <div class="feed-section-head">
           <h3 class="feed-section-title">{{ t("homeFeed.forYou") }}</h3>
-          <span class="feed-section-sub">{{ recommendPlaylists.length }} {{ t("homeFeed.playlists") }}</span>
+          <span class="feed-section-sub"
+            >{{ recommendPlaylists.length }} {{ t("homeFeed.playlists") }}</span
+          >
         </div>
         <div class="playlist-grid">
           <button
@@ -149,13 +155,18 @@ onMounted(loadAll);
             </div>
             <div class="playlist-meta">
               <div class="playlist-name" :title="p.name">{{ p.name }}</div>
-              <div v-if="p.copywriter" class="playlist-desc" :title="p.copywriter">{{ p.copywriter }}</div>
+              <div v-if="p.copywriter" class="playlist-desc" :title="p.copywriter">
+                {{ p.copywriter }}
+              </div>
             </div>
           </button>
         </div>
       </section>
 
-      <div v-if="!recommendPlaylists.length && !dailySongs.length && !fmSongs.length" class="feed-empty">
+      <div
+        v-if="!recommendPlaylists.length && !dailySongs.length && !fmSongs.length"
+        class="feed-empty"
+      >
         {{ t("homeFeed.empty") }}
       </div>
     </template>
@@ -209,7 +220,9 @@ onMounted(loadAll);
   font-family: inherit;
   text-align: left;
   cursor: pointer;
-  transition: transform 180ms var(--md-sys-motion-easing-standard), box-shadow 180ms;
+  transition:
+    transform 180ms var(--md-sys-motion-easing-standard),
+    box-shadow 180ms;
 }
 .feed-hero:hover {
   transform: translateY(-2px);
@@ -311,7 +324,9 @@ onMounted(loadAll);
 }
 .playlist-card:hover .playlist-cover {
   transform: translateY(-4px) scale(1.015);
-  box-shadow: var(--md-elevation-3), inset 0 0 0 1px var(--lm-hairline);
+  box-shadow:
+    var(--md-elevation-3),
+    inset 0 0 0 1px var(--lm-hairline);
 }
 .playlist-card:active .playlist-cover {
   transform: translateY(-1px) scale(0.995);

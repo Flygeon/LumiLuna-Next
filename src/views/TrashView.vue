@@ -8,9 +8,7 @@ import { capabilities } from "@/capabilities";
 import { translate } from "@shared/i18n";
 
 const settings = useSettingsStore();
-const { items, loading, load, open, toggleFavorite } = useEntryList(() =>
-  capabilities.listTrash(),
-);
+const { items, loading, load, open, toggleFavorite } = useEntryList(() => capabilities.listTrash());
 const confirming = ref(false);
 
 function t(key: string) {

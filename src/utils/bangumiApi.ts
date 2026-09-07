@@ -18,8 +18,7 @@
 import { capabilities } from "@/capabilities";
 import type { AnimeFetchSpec, BangumiSubject } from "@shared/types";
 
-const BANGUMI_UA =
-  "LumiLuna/1.0 (Desktop; https://github.com/Flygeon/LumiLuna-Next)";
+const BANGUMI_UA = "LumiLuna/1.0 (Desktop; https://github.com/Flygeon/LumiLuna-Next)";
 const API = "https://api.bgm.tv";
 // next.bgm.tv 的 /p1/* 自 2026-08 起全线不响应，已不再请求。
 
@@ -79,10 +78,7 @@ export function fromP1(raw: unknown): BangumiSubject | null {
         : typeof platform.type === "string"
           ? (platform.type as string)
           : undefined,
-    images:
-      Object.keys(images).length > 0
-        ? (images as BangumiSubject["images"])
-        : undefined,
+    images: Object.keys(images).length > 0 ? (images as BangumiSubject["images"]) : undefined,
     tags: asStrings(d.metaTags),
     alias: aliasFromInfobox(d.infobox),
   };
@@ -117,10 +113,7 @@ export function fromV0(raw: unknown): BangumiSubject | null {
           ? (d.total_episodes as number)
           : undefined,
     platform: typeof d.platform === "string" ? (d.platform as string) : undefined,
-    images:
-      Object.keys(images).length > 0
-        ? (images as BangumiSubject["images"])
-        : undefined,
+    images: Object.keys(images).length > 0 ? (images as BangumiSubject["images"]) : undefined,
     tags: asStrings(d.meta_tags),
     alias: aliasFromInfobox(d.infobox),
   };
@@ -170,9 +163,7 @@ export function fromCalendar(raw: unknown): BangumiSubject | null {
     rating: typeof rating.score === "number" ? rating.score : undefined,
     votes: typeof rating.total === "number" ? rating.total : undefined,
     platform: typeof d.platform === "string" ? d.platform : undefined,
-    images: Object.keys(images).length
-      ? (images as BangumiSubject["images"])
-      : undefined,
+    images: Object.keys(images).length ? (images as BangumiSubject["images"]) : undefined,
     doing: typeof collection.doing === "number" ? collection.doing : undefined,
   };
 }
@@ -187,8 +178,7 @@ export function fromCalendar(raw: unknown): BangumiSubject | null {
  */
 export async function fetchTrending(limit = 30): Promise<BangumiSubject[]> {
   const data = (await getJson(`${API}/calendar`)) as
-    | { weekday?: unknown; items?: unknown }[]
-    | null;
+    { weekday?: unknown; items?: unknown }[] | null;
   const out: BangumiSubject[] = [];
   for (const day of data ?? []) {
     for (const raw of (day?.items as unknown[]) ?? []) {
@@ -202,9 +192,7 @@ export async function fetchTrending(limit = 30): Promise<BangumiSubject[]> {
     const prev = byId.get(s.id);
     if (!prev || (s.doing ?? 0) > (prev.doing ?? 0)) byId.set(s.id, s);
   }
-  return [...byId.values()]
-    .sort((a, b) => (b.doing ?? 0) - (a.doing ?? 0))
-    .slice(0, limit);
+  return [...byId.values()].sort((a, b) => (b.doing ?? 0) - (a.doing ?? 0)).slice(0, limit);
 }
 
 export interface BangumiSearchPage {
@@ -224,10 +212,11 @@ export async function searchSubjects(
     sort,
     filter: { type: [2], nsfw: false },
   });
-  const data = (await getJson(
-    `${API}/v0/search/subjects?limit=${limit}&offset=${offset}`,
-    { method: "POST", body, bodyType: "json" },
-  )) as { data?: unknown[]; total?: number } | null;
+  const data = (await getJson(`${API}/v0/search/subjects?limit=${limit}&offset=${offset}`, {
+    method: "POST",
+    body,
+    bodyType: "json",
+  })) as { data?: unknown[]; total?: number } | null;
   const items: BangumiSubject[] = [];
   for (const e of data?.data ?? []) {
     const subj = fromV0(e);
@@ -243,9 +232,7 @@ export async function searchSubjects(
  * /v0/subjects/{id}：字段更全（含 infobox 别名、meta_tags、summary），
  * 且实测 1s 内返回。拿不到时返回 null，调用方保留列表条目的轻量数据。
  */
-export async function fetchSubjectDetail(
-  id: number | string,
-): Promise<BangumiSubject | null> {
+export async function fetchSubjectDetail(id: number | string): Promise<BangumiSubject | null> {
   const data = await getJson(`${API}/v0/subjects/${id}`);
   return fromV0(data);
 }

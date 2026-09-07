@@ -82,7 +82,9 @@ async function toggleShelf() {
             v-if="volumes.length && volumes[0].chapters.length"
             class="lm-btn lm-btn--filled"
             @click="
-              void capabilities.appLog(`[detail-panel] 立即阅读点击 aid=${props.aid} cid=${volumes[0].chapters[0].cid} title=${volumes[0].chapters[0].title}`);
+              void capabilities.appLog(
+                `[detail-panel] 立即阅读点击 aid=${props.aid} cid=${volumes[0].chapters[0].cid} title=${volumes[0].chapters[0].title}`,
+              );
               emit('read', volumes[0].chapters[0].cid, volumes[0].chapters[0].title);
             "
           >
@@ -90,7 +92,9 @@ async function toggleShelf() {
             {{ t("novel.readNow") }}
           </button>
           <button class="lm-btn lm-btn--tonal" :disabled="shelfBusy" @click="toggleShelf">
-            <span class="material-symbols-outlined">{{ inShelf ? "bookmark_remove" : "bookmark_add" }}</span>
+            <span class="material-symbols-outlined">{{
+              inShelf ? "bookmark_remove" : "bookmark_add"
+            }}</span>
             {{ inShelf ? t("novel.removeShelf") : t("novel.addShelf") }}
           </button>
         </div>
@@ -105,7 +109,9 @@ async function toggleShelf() {
           <h2 class="title">{{ detail.title }}</h2>
           <p v-if="detail.author" class="line">{{ t("novel.author") }}：{{ detail.author }}</p>
           <p v-if="detail.status" class="line">{{ t("novel.status") }}：{{ detail.status }}</p>
-          <p v-if="detail.finUpdate" class="line">{{ t("novel.update") }}：{{ detail.finUpdate }}</p>
+          <p v-if="detail.finUpdate" class="line">
+            {{ t("novel.update") }}：{{ detail.finUpdate }}
+          </p>
           <div v-if="detail.tags.length" class="tags">
             <span v-for="tag in detail.tags" :key="tag" class="tag">{{ tag }}</span>
           </div>

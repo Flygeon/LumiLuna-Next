@@ -21,9 +21,7 @@ const settings = useSettingsStore();
 
 /** 副行文本：按设置的模式取翻译或罗马音（无则空串） */
 function subText(line: { translation?: string; romaji?: string }): string {
-  return settings.lyricSubMode === "translation"
-    ? (line.translation ?? "")
-    : (line.romaji ?? "");
+  return settings.lyricSubMode === "translation" ? (line.translation ?? "") : (line.romaji ?? "");
 }
 
 const containerRef = ref<HTMLDivElement | null>(null);
@@ -37,16 +35,13 @@ const LYRIC_FONTS: Record<LyricFontKey, string> = {
   kai: '"KaiTi","STKaiti","Kai",cursive',
   yuan: '"Yuanti SC","YouYuan","Microsoft JhengHei UI",sans-serif',
 };
-const lyricFontFamily = computed(
-  () => LYRIC_FONTS[settings.lyricFont] ?? LYRIC_FONTS.system,
-);
+const lyricFontFamily = computed(() => LYRIC_FONTS[settings.lyricFont] ?? LYRIC_FONTS.system);
 
 /**
  * 当前行停靠高度。参考用 innerHeight/3.5；这里按容器高度计算以适应分栏布局。
  * 用 2.6 而非 3.5：整块歌词区在右栏偏上，除以 3.5 会把当前行顶到接近顶部。
  */
-const lyricsOffset = () =>
-  containerRef.value ? containerRef.value.clientHeight / 2.6 : 240;
+const lyricsOffset = () => (containerRef.value ? containerRef.value.clientHeight / 2.6 : 240);
 
 const timers: number[] = [];
 
@@ -159,9 +154,7 @@ let ro: ResizeObserver | null = null;
 
 onMounted(async () => {
   await resetLayout();
-  ro = new ResizeObserver(() =>
-    updateLayout(Math.max(0, player.activeLine), 0),
-  );
+  ro = new ResizeObserver(() => updateLayout(Math.max(0, player.activeLine), 0));
   if (containerRef.value) ro.observe(containerRef.value);
   rafId = requestAnimationFrame(rafLoop);
 });
@@ -228,11 +221,7 @@ function rafLoop() {
       >
         <p class="lyric-text" :class="{ pop: i === player.activeLine }">
           <template v-if="settings.wordLyrics && i === player.activeLine && line.units?.length">
-            <span
-              v-for="(u, wi) in line.units"
-              :key="wi"
-              class="word"
-            >{{ u.text }}</span>
+            <span v-for="(u, wi) in line.units" :key="wi" class="word">{{ u.text }}</span>
           </template>
           <template v-else>{{ line.text }}</template>
         </p>
@@ -270,13 +259,7 @@ function rafLoop() {
     black 74%,
     transparent 100%
   );
-  mask-image: linear-gradient(
-    to bottom,
-    transparent 0%,
-    black 22%,
-    black 74%,
-    transparent 100%
-  );
+  mask-image: linear-gradient(to bottom, transparent 0%, black 22%, black 74%, transparent 100%);
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
 }

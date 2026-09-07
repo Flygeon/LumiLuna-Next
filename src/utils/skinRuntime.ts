@@ -27,6 +27,5 @@ export const skinModeLock = computed<SkinMode | null>(() => {
 /** 背景图层显隐（App.vue 渲染 .lm-skin-bg 的开关） */
 export const skinBgActive = computed(
   () =>
-    !skinSafeMode.value &&
-    !!(activeSkinDoc.value?.background && activePrepared.value?.background),
+    !skinSafeMode.value && !!(activeSkinDoc.value?.background && activePrepared.value?.background),
 );
