@@ -6,8 +6,9 @@
  */
 import { computed } from "vue";
 import { useSettingsStore } from "@/stores/settings";
+import { useBangumiCollectStore } from "@/stores/bangumiCollect";
 import { translate } from "@shared/i18n";
-import type { BangumiSubject } from "@shared/types";
+import type { BangumiCollectionCategory, BangumiSubject } from "@shared/types";
 
 const props = defineProps<{
   subject: BangumiSubject | null;
@@ -18,10 +19,32 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: "back"): void;
   (e: "openSources"): void;
+  (e: "openCollection"): void;
 }>();
 
 const settings = useSettingsStore();
+const collect = useBangumiCollectStore();
 const t = (key: string) => translate(settings.lang, key);
+
+/** 追番状态按钮：Bangumi 官方 CollectionType 五类 */
+const STATUS_BTNS: { cat: Exclude<BangumiCollectionCategory, 0>; icon: string }[] = [
+  { cat: 1, icon: "bookmark_add" },
+  { cat: 3, icon: "play_circle" },
+  { cat: 2, icon: "done_all" },
+  { cat: 4, icon: "hourglass_bottom" },
+  { cat: 5, icon: "do_not_disturb_on" },
+];
+
+const subjectId = computed(() => Number(props.subject?.id ?? 0));
+const currentStatus = computed<BangumiCollectionCategory>(() =>
+  subjectId.value ? collect.statusOf(subjectId.value) : 0,
+);
+const saving = computed(() => collect.savingIds.includes(subjectId.value));
+
+async function pickStatus(cat: Exclude<BangumiCollectionCategory, 0>) {
+  if (!subjectId.value || currentStatus.value === cat) return;
+  await collect.setStatus(subjectId.value, cat, props.subject);
+}
 
 const title = computed(() => {
   const s = props.subject;
@@ -101,6 +124,46 @@ const metaParts = computed(() => {
         <div class="alias-row">
           <span v-for="(a, i) in subject.alias" :key="i" class="alias">{{ a }}</span>
         </div>
+      </section>
+
+      <!-- 追番：同步 Bangumi 收藏状态（未连接时引导去「我的追番」授权） -->
+      <section class="block">
+        <h3 class="block-title">
+          <span class="material-symbols-outlined">subscriptions</span>
+          {{ t("anime.myCollection") }}
+        </h3>
+        <template v-if="collect.authorized">
+          <div class="status-row">
+            <button
+              v-for="s in STATUS_BTNS"
+              :key="s.cat"
+              class="status-chip"
+              :class="{ active: currentStatus === s.cat }"
+              :disabled="saving"
+              @click="pickStatus(s.cat)"
+            >
+              <span v-if="saving && currentStatus === s.cat" class="material-symbols-outlined spin"
+                >progress_activity</span
+              >
+              <span v-else class="material-symbols-outlined">{{ s.icon }}</span>
+              {{ t("anime.cat" + s.cat) }}
+            </button>
+          </div>
+          <p class="collect-hint">
+            {{
+              currentStatus === 0
+                ? t("anime.collectNone")
+                : t("anime.collectCurrent").replace("{s}", t("anime.cat" + currentStatus))
+            }}
+            <span v-if="collect.listError" class="collect-error">{{ collect.listError }}</span>
+          </p>
+        </template>
+        <p v-else class="collect-hint">
+          {{ t("anime.collectNeedAuth") }}
+          <button class="link-btn" @click="emit('openCollection')">
+            {{ t("anime.goConnect") }}
+          </button>
+        </p>
       </section>
 
       <div class="cta">
@@ -254,5 +317,71 @@ const metaParts = computed(() => {
 }
 .start-btn {
   min-width: 180px;
+}
+/* 追番状态按钮：MD3 suggestion chip，选中态走 primary 容器层 */
+.status-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-small);
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  font-family: inherit;
+  font-size: var(--md-sys-typescale-label-large-size);
+  cursor: pointer;
+  transition:
+    background var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard),
+    color var(--md-sys-motion-duration-short),
+    border-color var(--md-sys-motion-duration-short);
+}
+.status-chip:hover:not(:disabled):not(.active) {
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+}
+.status-chip.active {
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  border-color: transparent;
+}
+.status-chip:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.status-chip .material-symbols-outlined {
+  font-size: 16px;
+}
+.status-chip .spin {
+  animation: lm-spin 1s linear infinite;
+}
+@keyframes lm-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.collect-hint {
+  margin: 0;
+  font-size: var(--md-sys-typescale-body-small-size);
+  color: var(--md-sys-color-on-surface-variant);
+}
+.collect-error {
+  color: var(--md-sys-color-error);
+}
+.link-btn {
+  border: none;
+  background: transparent;
+  color: var(--md-sys-color-primary);
+  font-family: inherit;
+  font-size: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
 }
 </style>

@@ -14,6 +14,7 @@ import {
   type DesktopLyricsDoubleClick,
 } from "@/stores/settings";
 import { useSkinsStore } from "@/stores/skins";
+import { useBangumiCollectStore } from "@/stores/bangumiCollect";
 import { useLibraryStore } from "@/stores/library";
 import AudioEffectsPanel from "@/components/AudioEffectsPanel.vue";
 import { capabilities } from "@/capabilities";
@@ -25,6 +26,26 @@ import type { FfmpegStatus, SkinEntry } from "@shared/types";
 const settings = useSettingsStore();
 const library = useLibraryStore();
 const router = useRouter();
+const bangumiCollect = useBangumiCollectStore();
+const bangumiTokenDraft = ref(settings.bangumiToken);
+
+async function connectBangumi() {
+  await bangumiCollect.init();
+  await bangumiCollect.connect(bangumiTokenDraft.value);
+}
+
+function disconnectBangumi() {
+  bangumiCollect.disconnect();
+  bangumiTokenDraft.value = "";
+}
+
+async function openBangumiTokenPage() {
+  try {
+    await capabilities.openUrl("https://next.bgm.tv/demo/access-token");
+  } catch {
+    /* 打不开浏览器时用户可手动访问 */
+  }
+}
 
 const ffmpeg = ref<FfmpegStatus | null>(null);
 const checking = ref(false);
@@ -98,12 +119,13 @@ function setTheme(mode: ThemeMode) {
   settings.applyTheme(mode);
 }
 
-// ---- 配色方案（Material You 种子色）----
+// ---- 配色方案（Material You 种子色，三阶取色：primary/secondary/tertiary 联动）----
+// 顺序对齐设计参考图：默认（松绿）/ 青色 / 蓝色 三套主打方案在前
 const COLOR_SEEDS = [
-  { key: "blue", hex: "#1A5C9E" },
+  { key: "green", hex: "#006D36" },
   { key: "teal", hex: "#00696E" },
+  { key: "blue", hex: "#1A5C9E" },
   { key: "violet", hex: "#6750A4" },
-  { key: "green", hex: "#4C662B" },
   { key: "amber", hex: "#8F4C00" },
   { key: "rose", hex: "#B3261E" },
   { key: "pink", hex: "#8B4A6C" },
@@ -962,6 +984,54 @@ function resetDesktopLyricsBounds() {
         <span class="row-label">{{ t("settings.onlineAnimeEnable") }}</span>
         <input v-model="settings.onlineAnimeEnabled" type="checkbox" />
       </label>
+      <template v-if="settings.onlineAnimeEnabled">
+        <p class="hint">{{ t("settings.bangumiHint") }}</p>
+        <div class="dav-form">
+          <div class="field">
+            <label>{{ t("settings.bangumiTokenLabel") }}</label>
+            <div class="token-line">
+              <input
+                v-model="bangumiTokenDraft"
+                type="password"
+                spellcheck="false"
+                autocomplete="off"
+                :placeholder="t('settings.bangumiTokenPlaceholder')"
+              />
+              <button
+                class="lm-btn lm-btn--filled"
+                :disabled="bangumiCollect.authState === 'checking' || !bangumiTokenDraft.trim()"
+                @click="connectBangumi"
+              >
+                {{ t("settings.bangumiConnect") }}
+              </button>
+              <button
+                v-if="bangumiCollect.authorized"
+                class="lm-btn lm-btn--text"
+                @click="disconnectBangumi"
+              >
+                {{ t("settings.bangumiDisconnect") }}
+              </button>
+            </div>
+            <p v-if="bangumiCollect.authorized" class="token-state ok">
+              {{
+                t("settings.bangumiConnected").replace(
+                  "{u}",
+                  bangumiCollect.user?.nickname || settings.bangumiUsername,
+                )
+              }}
+            </p>
+            <p v-else-if="bangumiCollect.authError" class="token-state err">
+              {{ bangumiCollect.authError }}
+            </p>
+            <p class="hint">
+              {{ t("settings.bangumiTokenHelp") }}
+              <button class="link-inline" @click="openBangumiTokenPage">
+                {{ t("settings.bangumiTokenLink") }}
+              </button>
+            </p>
+          </div>
+        </div>
+      </template>
     </section>
 
     <!-- 在线 Pixiv -->
@@ -1208,6 +1278,51 @@ function resetDesktopLyricsBounds() {
   font-weight: var(--md-sys-typescale-title-medium-weight);
 }
 
+.token-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.token-line input {
+  flex: 1;
+  min-width: 220px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-medium);
+  background: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface);
+  font-family: inherit;
+  font-size: var(--md-sys-typescale-body-medium-size);
+  outline: none;
+}
+.token-line input:focus {
+  border-color: var(--md-sys-color-primary);
+}
+.token-line .material-symbols-outlined {
+  font-size: 18px;
+}
+.token-state {
+  margin: 6px 0 0;
+  font-size: var(--md-sys-typescale-body-small-size);
+}
+.token-state.ok {
+  color: var(--md-sys-color-primary);
+}
+.token-state.err {
+  color: var(--md-sys-color-error);
+}
+.link-inline {
+  border: none;
+  background: transparent;
+  color: var(--md-sys-color-primary);
+  font-family: inherit;
+  font-size: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+}
 .hint {
   margin-bottom: 16px;
   font-size: var(--md-sys-typescale-body-small-size);

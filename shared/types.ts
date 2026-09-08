@@ -786,6 +786,39 @@ export interface BangumiSubject {
 }
 
 /**
+ * Bangumi 收藏类别（官方 CollectionType 口径）：
+ * 1 想看 / 2 看过 / 3 在看 / 4 搁置 / 5 抛弃。
+ * 0 仅作为「未收藏」的本地哨兵值，不会发给服务器。
+ */
+export type BangumiCollectionCategory = 0 | 1 | 2 | 3 | 4 | 5;
+
+/**
+ * 用户的一条 Bangumi 条目收藏（GET /v0/users/{username}/collections 的数组元素）。
+ * subject 复用 BangumiSubject 归一化模型（收藏接口内嵌的是 v0 SubjectVO，字段更瘦）。
+ */
+export interface BangumiUserCollection {
+  subjectId: number;
+  category: BangumiCollectionCategory;
+  /** 用户评分（0-10，未打分为 undefined） */
+  rate?: number;
+  /** 用户短评 */
+  comment?: string;
+  /** 最后更新时间（服务器原样字符串） */
+  updatedAt?: string;
+  /** 剧集收集进度（collect=已看集数，done=标记为看过集数） */
+  epStatus?: { collected?: number; done?: number };
+  subject: BangumiSubject;
+}
+
+/** GET /v0/me 返回的当前授权用户信息（access token 对应的账号） */
+export interface BangumiAuthUser {
+  id: string;
+  username: string;
+  nickname: string;
+  avatar?: string;
+}
+
+/**
  * 聚合搜索的单源结果（照 Kazumi SourceSheet：每个插件一张卡片，
  * 显示状态 + 命中条目）。）
  */

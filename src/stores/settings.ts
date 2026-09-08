@@ -46,8 +46,12 @@ const store = new LazyStore("settings.json");
 
 const DEFAULTS = {
   theme: "system" as ThemeMode,
-  /** MD3 动态配色的种子色（十六进制）；由它实时生成整套颜色令牌 */
-  seedColor: "#1A5C9E",
+  /**
+   * MD3 动态配色的种子色（十六进制）；由它实时生成整套颜色令牌。
+   * 默认取 Material Design 3 基线绿（对齐三阶取色：primary 绿 / secondary 灰绿 /
+   * tertiary 青），与 tokens/theme.css 的静态兜底同色系。
+   */
+  seedColor: "#006D36",
   /** 激活皮肤的 id；空串 = 默认皮肤（动态配色） */
   activeSkin: "",
   /** 已删除的内置皮肤 id（删除即记忆，不再播种复活） */
@@ -163,6 +167,12 @@ const DEFAULTS = {
   danmakuSpeed: 5,
   /** 弹幕防重叠 */
   danmakuAntiOverlap: true,
+  /** Bangumi 官方 Access Token（在 https://next.bgm.tv/demo/access-token 获取；与 pixivRefreshToken 同款本地保存） */
+  bangumiToken: "",
+  /** 当前连接的 Bangumi 用户名（token 校验成功后写入，收藏接口按它查询） */
+  bangumiUsername: "",
+  /** 上次成功同步 Bangumi 收藏的时间戳（0 = 从未同步；首次授权后自动做一次全量同步） */
+  bangumiSyncedAt: 0,
 };
 
 export const useSettingsStore = defineStore("settings", () => {
@@ -234,6 +244,9 @@ export const useSettingsStore = defineStore("settings", () => {
   const danmakuTimeOffsetMs = ref(DEFAULTS.danmakuTimeOffsetMs);
   const danmakuSpeed = ref(DEFAULTS.danmakuSpeed);
   const danmakuAntiOverlap = ref(DEFAULTS.danmakuAntiOverlap);
+  const bangumiToken = ref(DEFAULTS.bangumiToken);
+  const bangumiUsername = ref(DEFAULTS.bangumiUsername);
+  const bangumiSyncedAt = ref(DEFAULTS.bangumiSyncedAt);
   const loaded = ref(false);
 
   // 单一注册表：新增设置项只需在此加一行，load/save 自动覆盖
@@ -306,6 +319,9 @@ export const useSettingsStore = defineStore("settings", () => {
     danmakuTimeOffsetMs,
     danmakuSpeed,
     danmakuAntiOverlap,
+    bangumiToken,
+    bangumiUsername,
+    bangumiSyncedAt,
   } as const;
 
   async function load() {

@@ -9,8 +9,10 @@
 import { computed, onMounted, ref } from "vue";
 import { useSettingsStore } from "@/stores/settings";
 import { useAnimeStore } from "@/stores/anime";
+import { useBangumiCollectStore } from "@/stores/bangumiCollect";
 import { translate } from "@shared/i18n";
 import AnimeCard from "@/components/AnimeCard.vue";
+import AnimeCollectionPanel from "@/components/AnimeCollectionPanel.vue";
 import AnimeInfoPanel from "@/components/AnimeInfoPanel.vue";
 import SourceSheet from "@/components/SourceSheet.vue";
 import AnimeEpisodesPanel from "@/components/AnimeEpisodesPanel.vue";
@@ -20,9 +22,12 @@ import type { AnimeHistoryItem, AnimeSearchItem, BangumiSubject } from "@shared/
 
 const settings = useSettingsStore();
 const anime = useAnimeStore();
+const collect = useBangumiCollectStore();
 const t = (key: string) => translate(settings.lang, key);
 
-const view = ref<"home" | "search" | "info" | "episodes" | "player" | "rules">("home");
+const view = ref<"home" | "search" | "collections" | "info" | "episodes" | "player" | "rules">(
+  "home",
+);
 /** 当前打开的 Bangumi 条目 */
 const currentSubject = ref<BangumiSubject | null>(null);
 /** 聚合搜索 Sheet 是否打开（在详情页之上） */
@@ -46,6 +51,8 @@ const SORTS: { value: typeof sort.value; label: () => string }[] = [
 onMounted(async () => {
   await anime.loadRules();
   void anime.loadHistory();
+  // 追番面板：有 token 时后台校验并展示离线缓存，不阻塞主页
+  void collect.init();
   if (!anime.trending.length && !anime.trendingLoading) {
     void anime.fetchTrendingList();
   }
@@ -220,6 +227,10 @@ function backFromEpisodes() {
           <span class="material-symbols-outlined">search</span>
           {{ t("anime.searchPageTitle") }}
         </button>
+        <button class="lm-btn lm-btn--tonal" @click="view = 'collections'">
+          <span class="material-symbols-outlined">subscriptions</span>
+          {{ t("anime.myCollection") }}
+        </button>
         <button class="lm-btn lm-btn--tonal" @click="view = 'rules'">
           <span class="material-symbols-outlined">rule</span>
           {{ t("anime.manageRules") }}
@@ -344,6 +355,13 @@ function backFromEpisodes() {
       </template>
     </template>
 
+    <!-- 我的追番（Bangumi 收藏） -->
+    <AnimeCollectionPanel
+      v-else-if="view === 'collections'"
+      @back="view = 'home'"
+      @open="openInfo"
+    />
+
     <!-- 详情 -->
     <template v-else-if="view === 'info' && currentSubject">
       <AnimeInfoPanel
@@ -352,6 +370,7 @@ function backFromEpisodes() {
         :error="anime.detailError"
         @back="backFromInfo"
         @open-sources="openSources"
+        @open-collection="view = 'collections'"
       />
       <SourceSheet
         v-if="sourcesOpen"
