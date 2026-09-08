@@ -410,7 +410,7 @@ fn oauth_exchange_blocking(form: &[(&str, &str)]) -> Result<OAuthTokenRaw, Strin
         return Err(format!(
             "Pixiv 登录失败（{}）：{}",
             status,
-            &text.chars().take(300).collect::<String>()
+            text.chars().take(300).collect::<String>()
         ));
     }
     serde_json::from_str::<OAuthTokenRaw>(&text).map_err(|e| format!("解析登录响应失败：{e}"))
@@ -551,7 +551,7 @@ fn call_api_blocking(
             return Err(format!(
                 "Pixiv API 返回 {}：{}",
                 status,
-                &text.chars().take(200).collect::<String>()
+                text.chars().take(200).collect::<String>()
             ));
         }
         return serde_json::from_str::<Value>(&text)
@@ -598,7 +598,7 @@ fn call_api_post_blocking(
             return Err(format!(
                 "Pixiv API 返回 {}：{}",
                 status,
-                &text.chars().take(200).collect::<String>()
+                text.chars().take(200).collect::<String>()
             ));
         }
         // 收藏/关注类 POST 有时返回空体：解析失败按 Null 处理即可，
