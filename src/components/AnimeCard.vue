@@ -2,11 +2,11 @@
 import type { AnimeItem } from "@shared/types";
 
 defineProps<{ item: AnimeItem; subtitle?: string }>();
-defineEmits<{ (e: "open"): void }>();
+defineEmits<{ (e: "open", ev: MouseEvent): void }>();
 </script>
 
 <template>
-  <button class="anime-card" @click="$emit('open')">
+  <button class="anime-card" @click="$emit('open', $event)">
     <div class="cover">
       <img
         v-if="item.cover"
@@ -48,7 +48,7 @@ defineEmits<{ (e: "open"): void }>();
   align-items: center;
   justify-content: center;
   width: 100%;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 3 / 4;
   border-radius: var(--md-sys-shape-corner-large);
   overflow: hidden;
   background: var(--md-sys-color-surface-container);

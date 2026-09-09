@@ -241,6 +241,19 @@ export const useAnimeStore = defineStore("anime", () => {
     }
   }
 
+  /**
+   * 直接展示一份已拉全的详情（不再发请求）。
+   * 观看历史点击等场景已自行 fetchSubjectDetail 拿到完整数据，
+   * 走 fetchBangumiInfo 会重复请求同一条目。
+   */
+  function showSubject(subject: BangumiSubject) {
+    bangumiDetail.value = subject;
+    activeBangumiId.value = String(subject.id);
+    activeBangumiTitle.value = titleOf(subject);
+    detailLoading.value = false;
+    detailError.value = "";
+  }
+
   /** 打开条目详情：拉 Bangumi 元数据（简介/评分/总话数等） */
   async function fetchBangumiInfo(subject: BangumiSubject) {
     detailLoading.value = true;
@@ -702,6 +715,7 @@ export const useAnimeStore = defineStore("anime", () => {
     searchBangumi,
     loadMoreBangumi,
     fetchBangumiInfo,
+    showSubject,
     searchSources,
     requeryAllSources,
     requerySingleSource,

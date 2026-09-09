@@ -130,6 +130,11 @@ describe("authRequest 域名与错误", () => {
     });
     await expect(setCollectionStatus("tok", 458282, 3)).resolves.toBeUndefined();
   });
+
+  it("服务器返回空 body 不抛 JSON 解析错误（详情页追番按钮回归）", async () => {
+    animeFetch.mockImplementationOnce(() => Promise.resolve({ html: "", finalUrl: undefined }));
+    await expect(setCollectionStatus("tok", 458282, 1)).resolves.toBeUndefined();
+  });
 });
 
 describe("fetchAllCollections 分页", () => {

@@ -18,6 +18,7 @@ import SourceSheet from "@/components/SourceSheet.vue";
 import AnimeEpisodesPanel from "@/components/AnimeEpisodesPanel.vue";
 import AnimePlayer from "@/components/AnimePlayer.vue";
 import AnimeRuleManager from "@/components/AnimeRuleManager.vue";
+import { fetchSubjectDetail, searchSubjects } from "@/utils/bangumiApi";
 import type { AnimeHistoryItem, AnimeSearchItem, BangumiSubject } from "@shared/types";
 
 const settings = useSettingsStore();
@@ -32,6 +33,16 @@ const view = ref<"home" | "search" | "collections" | "info" | "episodes" | "play
 const currentSubject = ref<BangumiSubject | null>(null);
 /** 聚合搜索 Sheet 是否打开（在详情页之上） */
 const sourcesOpen = ref(false);
+/** hero 过渡动画：来源卡片封面元素与其视口位置（进详情页时飞入） */
+const heroFrom = ref<{ el: HTMLElement; rect: DOMRect } | null>(null);
+
+/** 从卡片点击事件里提取封面元素与 rect（hero 动画起点） */
+function heroTarget(ev?: MouseEvent) {
+  const card = ev?.target instanceof Element ? ev.target.closest(".anime-card") : null;
+  const cover = card?.querySelector<HTMLElement>(".cover");
+  return cover ? { el: cover, rect: cover.getBoundingClientRect() } : null;
+}
+
 /** 播放参数 */
 const playing = ref<{ roadIndex: number; episodeIndex: number; initialSeekMs?: number } | null>(
   null,
@@ -82,8 +93,9 @@ function toCard(s: BangumiSubject) {
   };
 }
 
-/** 点热门/搜索结果条目 → 详情页 */
-function openInfo(s: BangumiSubject) {
+/** 点热门/搜索结果条目 → 详情页（带 hero 飞入动画） */
+function openInfo(s: BangumiSubject, ev?: MouseEvent) {
+  heroFrom.value = heroTarget(ev);
   currentSubject.value = s;
   view.value = "info";
   void anime.fetchBangumiInfo(s);
@@ -178,8 +190,36 @@ function onPlayerSwitch(roadIndex: number, episodeIndex: number) {
   playEpisode(roadIndex, episodeIndex);
 }
 
-/** 历史续播：回查该源线路后跳到上次位置 */
-async function openHistory(h: AnimeHistoryItem) {
+/**
+ * 点击观看历史 → 打开 Bangumi 详情页（不再直接续播，由用户在详情页选源选集）。
+ * animeId 是 Bangumi 数字 id 时直接拉详情；是 "s:标题" 兜底键时按标题搜一次。
+ * 两条路都查不到（源已删/离线）才退回旧的续播逻辑。
+ */
+async function openHistory(h: AnimeHistoryItem, ev?: MouseEvent) {
+  const hero = heroTarget(ev);
+  const numericId = /^\d+$/.test(h.animeId) ? Number(h.animeId) : 0;
+  try {
+    if (numericId) {
+      const full = await fetchSubjectDetail(numericId);
+      if (full) {
+        heroFrom.value = hero;
+        currentSubject.value = full;
+        view.value = "info";
+        anime.showSubject(full);
+        return;
+      }
+    } else if (h.title) {
+      const page = await searchSubjects(h.title, "match", 1);
+      const hit = page.items[0];
+      if (hit) {
+        openInfoWithHero(hit, hero);
+        return;
+      }
+    }
+  } catch {
+    /* 网络失败走下方续播兜底 */
+  }
+  // 兜底：找不到 Bangumi 条目时按旧逻辑回查该源线路续播
   if (picking) return;
   picking = true;
   try {
@@ -201,6 +241,14 @@ async function openHistory(h: AnimeHistoryItem) {
   } finally {
     picking = false;
   }
+}
+
+/** 搜索结果轻量条目 → 详情页（hero 起点已提取好，避免重复量 rect） */
+function openInfoWithHero(s: BangumiSubject, hero: { el: HTMLElement; rect: DOMRect } | null) {
+  heroFrom.value = hero;
+  currentSubject.value = s;
+  view.value = "info";
+  void anime.fetchBangumiInfo(s);
 }
 
 function backFromInfo() {
@@ -250,7 +298,7 @@ function backFromEpisodes() {
               cover: h.cover ?? undefined,
             }"
             :subtitle="h.lastEpisode ?? undefined"
-            @open="openHistory(h)"
+            @open="openHistory(h, $event)"
           />
         </div>
       </section>
@@ -272,7 +320,7 @@ function backFromEpisodes() {
             v-for="s in anime.trending"
             :key="s.id"
             :item="toCard(s)"
-            @open="openInfo(s)"
+            @open="openInfo(s, $event)"
           />
         </div>
         <div v-else class="state">{{ t("anime.searchNoResult") }}</div>
@@ -334,7 +382,7 @@ function backFromEpisodes() {
             v-for="s in anime.searchItems"
             :key="s.id"
             :item="toCard(s)"
-            @open="openInfo(s)"
+            @open="openInfo(s, $event)"
           />
         </div>
         <div v-else class="state">{{ t("anime.searchNoResult") }}</div>
@@ -368,6 +416,7 @@ function backFromEpisodes() {
         :subject="anime.bangumiDetail"
         :loading="anime.detailLoading"
         :error="anime.detailError"
+        :hero-from="heroFrom"
         @back="backFromInfo"
         @open-sources="openSources"
         @open-collection="view = 'collections'"
@@ -452,7 +501,7 @@ function backFromEpisodes() {
 }
 .anime-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 16px;
 }
 .search-head {

@@ -85,7 +85,10 @@ async function authRequest(
         userAgent: BANGUMI_UA,
       });
       preferredDomain = domain;
-      return JSON.parse(res.html);
+      // 写操作（POST 收藏）Bangumi 可能返回空 body：JSON.parse("") 会抛
+      // "Unexpected end of JSON input"——空响应按成功处理，返回 null
+      const text = res.html.trim();
+      return text ? JSON.parse(text) : null;
     } catch (e) {
       const status = httpStatusOf(e instanceof Error ? e.message : String(e));
       if (status !== null) {

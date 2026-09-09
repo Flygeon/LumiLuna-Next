@@ -17,7 +17,7 @@ import type { BangumiCollectionCategory, BangumiSubject } from "@shared/types";
 
 const emit = defineEmits<{
   (e: "back"): void;
-  (e: "open", subject: BangumiSubject): void;
+  (e: "open", subject: BangumiSubject, ev?: MouseEvent): void;
 }>();
 
 const settings = useSettingsStore();
@@ -199,7 +199,7 @@ async function disconnect() {
           :key="c.subjectId"
           :item="toCard(c.subject)"
           :subtitle="cardSubtitle(c.category, c.epStatus)"
-          @open="emit('open', c.subject)"
+          @open="emit('open', c.subject, $event)"
         />
       </div>
       <div v-else-if="collect.listLoading" class="state">{{ t("anime.loading") }}</div>
@@ -396,7 +396,7 @@ async function disconnect() {
 
 .anime-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 16px;
 }
 .state {

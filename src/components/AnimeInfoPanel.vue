@@ -4,7 +4,7 @@
  * 封面 + 标题（中文名主、原语名副）+ 评分/排名/放送日期/平台/总话数
  * + 简介 + 标签 + 别名，底部「开始观看」进入聚合搜索（SourceSheet）。
  */
-import { computed } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useSettingsStore } from "@/stores/settings";
 import { useBangumiCollectStore } from "@/stores/bangumiCollect";
 import { translate } from "@shared/i18n";
@@ -14,6 +14,8 @@ const props = defineProps<{
   subject: BangumiSubject | null;
   loading: boolean;
   error: string;
+  /** hero 飞入动画起点：来源卡片封面元素与其视口 rect */
+  heroFrom?: { el: HTMLElement; rect: DOMRect } | null;
 }>();
 
 const emit = defineEmits<{
@@ -25,6 +27,49 @@ const emit = defineEmits<{
 const settings = useSettingsStore();
 const collect = useBangumiCollectStore();
 const t = (key: string) => translate(settings.lang, key);
+
+/**
+ * hero 过渡（FLIP）：详情页封面从来源卡片的位置/尺寸飞入就位。
+ * 双 rAF 后再量终点 rect，避开页面入场动画（lm-rise）起始帧的位移；
+ * 飞行期间隐藏来源封面防重影，动画结束/取消时恢复。
+ */
+const coverRef = ref<HTMLElement | null>(null);
+
+onMounted(() => {
+  const hero = props.heroFrom;
+  const el = coverRef.value;
+  if (!hero?.el?.isConnected || !el) return;
+  const from = hero.rect;
+  if (!from.width || !from.height) return;
+  requestAnimationFrame(() =>
+    requestAnimationFrame(() => {
+      const target = coverRef.value;
+      if (!target) return;
+      const to = target.getBoundingClientRect();
+      if (!to.width || !to.height) return;
+      const dx = from.left - to.left;
+      const dy = from.top - to.top;
+      const sx = from.width / to.width;
+      const sy = from.height / to.height;
+      hero.el.style.visibility = "hidden";
+      const restore = () => {
+        hero.el.style.visibility = "";
+      };
+      const anim = target.animate(
+        [
+          {
+            transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`,
+            transformOrigin: "top left",
+          },
+          { transform: "none", transformOrigin: "top left" },
+        ],
+        { duration: 420, easing: "cubic-bezier(0.05, 0.7, 0.1, 1)" },
+      );
+      anim.onfinish = restore;
+      anim.oncancel = restore;
+    }),
+  );
+});
 
 /** 追番状态按钮：Bangumi 官方 CollectionType 五类 */
 const STATUS_BTNS: { cat: Exclude<BangumiCollectionCategory, 0>; icon: string }[] = [
@@ -92,7 +137,7 @@ const metaParts = computed(() => {
 
     <template v-else-if="subject">
       <div class="hero">
-        <div class="cover">
+        <div ref="coverRef" class="cover">
           <img
             v-if="subject.images?.large"
             :src="subject.images.large"
