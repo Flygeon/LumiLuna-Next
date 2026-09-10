@@ -63,10 +63,13 @@ export async function openWenku8Login(): Promise<Wenku8LoginStatus> {
   const start = Date.now();
   let userClosed = false;
   if (win) {
-    let handled = false;
+    // 注意：这里绝不能注册 win.onCloseRequested —— Tauri v2 中注册后窗口的
+    // 关闭请求会被前端接管（后端 prevent 默认关闭、等 JS 端 destroy），而
+    // 登录窗口加载的是远程页（wenku8.net，无 Tauri IPC），接管链走不通，
+    // 表现为「点 X 没反应、登录成功后端 close 也关不掉」（桌面歌词窗曾踩过
+    // 同款坑，见 useDesktopChrome）。destroyed 事件仅作加速信号，可收不到；
+    // 用户取消的可靠判定走 Rust 轮询的 [WENKU8_LOGIN_CANCELLED]。
     const onClose = () => {
-      if (handled) return;
-      handled = true;
       userClosed = true;
       try {
         capabilities
@@ -76,23 +79,27 @@ export async function openWenku8Login(): Promise<Wenku8LoginStatus> {
         // 忽略日志上报失败
       }
     };
-    win.onCloseRequested(onClose).catch(() => {});
     win.once("destroyed", onClose);
   }
 
   // 轮询：Rust 直接读登录 webview 的 cookie（含 httpOnly），命中即返回成功。
-  // 不依赖远程页注入脚本；用户点 X 关闭时 next 轮询判为取消。
+  // 不依赖远程页注入脚本；用户点 X 关窗后，Rust 侧发现窗口不存在且无登录态，
+  // 返回 [WENKU8_LOGIN_CANCELLED] 错误，据此结束等待。
   while (Date.now() - start < TIMEOUT) {
     try {
       const status = await capabilities.wenku8LoginPoll();
       if (status.loggedIn) return status;
-    } catch {
-      /* 窗口刚关闭时 poll 可能报错，忽略，交由 userClosed 判定 */
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes("[WENKU8_LOGIN_CANCELLED]") || userClosed) {
+        throw new Error("登录未完成或已取消，请重试");
+      }
+      /* 其它瞬时错误忽略，继续轮询 */
     }
     if (userClosed) throw new Error("登录未完成或已取消，请重试");
     await sleep(POLL_INTERVAL);
   }
-  win?.close().catch(() => {});
+  win?.destroy().catch(() => {});
   throw new Error("登录超时，请重试");
 }
 

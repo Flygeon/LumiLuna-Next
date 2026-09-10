@@ -234,6 +234,8 @@ pub async fn wenku8_login_submit(
 /// 由主窗口每 ~1.5s 调用一次（主窗口 invoke 可靠，不依赖远程页注入脚本
 /// 或 window.__TAURI__ 在远程 webview 中是否可用）。
 /// 若登录态已被快速通道（注入脚本 submit）先保存，直接返回成功。
+/// 登录窗口已被用户关闭且无登录态时返回 `[WENKU8_LOGIN_CANCELLED]` 错误，
+/// 前端据此结束等待（用户取消）。
 #[tauri::command]
 pub async fn wenku8_login_poll(app: tauri::AppHandle) -> Result<Wenku8LoginStatus, String> {
     ensure_loaded(&app);
@@ -250,12 +252,10 @@ pub async fn wenku8_login_poll(app: tauri::AppHandle) -> Result<Wenku8LoginStatu
         }
     }
     let Some(w) = app.get_webview_window("wenku8-login") else {
-        // 窗口已关闭且未登录 → 视为取消
-        return Ok(Wenku8LoginStatus {
-            logged_in: false,
-            uname: None,
-            nickname: None,
-        });
+        // 窗口已关闭且无登录态 → 用户中途点了 X（或窗口被关）。
+        // 返回明确的取消标记：前端不再依赖远程登录窗口的 close 事件
+        // （远程页无 Tauri IPC，事件接管链走不通，见 wenku8Login.ts 注释）。
+        return Err("[WENKU8_LOGIN_CANCELLED] 登录窗口已关闭，未完成登录".into());
     };
     // Windows 下 cookies() 必须在独立线程调用，避免同步命令主线程死锁（同 build 修复）
     let w2 = w.clone();
@@ -526,7 +526,7 @@ pub async fn wenku8_login_open(app: tauri::AppHandle) -> Result<(), String> {
     login_debug_log("准备在 spawn_blocking 中调用 build()（避免主线程嵌套死锁）");
     let app2 = app.clone();
     let result = tauri::async_runtime::spawn_blocking(move || {
-        let w = tauri::WebviewWindowBuilder::new(
+        tauri::WebviewWindowBuilder::new(
             &app2,
             label,
             tauri::WebviewUrl::External("https://www.wenku8.net/login.php".parse().unwrap()),
@@ -540,16 +540,12 @@ pub async fn wenku8_login_open(app: tauri::AppHandle) -> Result<(), String> {
         .initialization_script(LOGIN_INJECT_JS)
         .build()
         .map_err(|e| format!("创建登录窗口失败：{e}"))?;
-        // 自动打开开发者工具，便于排查白屏/网络问题（机制同主窗口 open_devtools）。
-        // 注意：Tauri v2 的 open_devtools() 返回 ()（infallible），不返回 Result。
-        w.open_devtools();
-        Ok::<(), String>(())
+        Ok(())
     })
     .await;
     match result {
         Ok(Ok(())) => {
             login_debug_log("窗口创建成功（build 返回，窗口应已可见）");
-            login_debug_log("open_devtools: 已调用");
             login_debug_log("wenku8_login_open 结束（返回 Ok）");
             Ok(())
         }
