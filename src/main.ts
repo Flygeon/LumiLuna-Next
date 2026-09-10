@@ -53,3 +53,14 @@ window.addEventListener("unhandledrejection", (e) => {
 });
 
 app.mount("#app");
+
+// 启动加载动画收尾：Vue 挂载后让 index.html 里的 splash 淡出并移除。
+// transitionend 在个别 webview 里可能不触发，加超时兜底强制移除。
+const splash = document.getElementById("boot-splash");
+if (splash) {
+  requestAnimationFrame(() => {
+    splash.classList.add("boot-splash--leaving");
+    splash.addEventListener("transitionend", () => splash.remove(), { once: true });
+    window.setTimeout(() => splash.remove(), 1000);
+  });
+}

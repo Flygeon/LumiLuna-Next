@@ -1,11 +1,105 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>LumiLuna · 光影媒体库</title>
+    <style>
+      /* 启动加载动画（MD3 风格）：内联保证首帧即显示，覆盖 bundle 加载与
+         Vue 初始化期间；main.ts 挂载完成后淡出移除。颜色对齐 theme.css
+         的默认令牌（surface / on-surface / primary），深色跟随系统。 */
+      #boot-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 28px;
+        background: #fcfcfc;
+        color: #1a1c1e;
+        font-family: "Helvetica Neue", "Microsoft YaHei", system-ui, sans-serif;
+        transition:
+          opacity 320ms cubic-bezier(0.2, 0, 0, 1),
+          visibility 320ms;
+      }
+      #boot-splash.boot-splash--leaving {
+        opacity: 0;
+        visibility: hidden;
+      }
+      #boot-splash .boot-spinner {
+        width: 48px;
+        height: 48px;
+        animation: boot-rotate 1.6s linear infinite;
+      }
+      #boot-splash .boot-spinner circle {
+        fill: none;
+        stroke: #1a5c9e;
+        stroke-width: 4;
+        stroke-linecap: round;
+        stroke-dasharray: 1 126;
+        stroke-dashoffset: 0;
+        animation: boot-dash 1.2s ease-in-out infinite;
+      }
+      #boot-splash .boot-title {
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+      }
+      #boot-splash .boot-sub {
+        margin-top: -18px;
+        font-size: 12px;
+        color: #44474e;
+      }
+      @keyframes boot-rotate {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      /* MD3 indeterminate 指示器：弧长从一点舒展到近满圆再收拢前移 */
+      @keyframes boot-dash {
+        0% {
+          stroke-dasharray: 1 126;
+          stroke-dashoffset: 0;
+        }
+        50% {
+          stroke-dasharray: 89 126;
+          stroke-dashoffset: -20;
+        }
+        100% {
+          stroke-dasharray: 89 126;
+          stroke-dashoffset: -125;
+        }
+      }
+      @media (prefers-color-scheme: dark) {
+        #boot-splash {
+          background: #0f0f11;
+          color: #e2e2e5;
+        }
+        #boot-splash .boot-spinner circle {
+          stroke: #8bb9f0;
+        }
+        #boot-splash .boot-sub {
+          color: #c7c9cd;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #boot-splash .boot-spinner,
+        #boot-splash .boot-spinner circle {
+          animation-duration: 3.2s;
+        }
+      }
+    </style>
   </head>
   <body>
+    <div id="boot-splash" aria-hidden="true">
+      <svg class="boot-spinner" viewBox="0 0 48 48">
+        <circle cx="24" cy="24" r="20" />
+      </svg>
+      <div class="boot-title">LumiLuna</div>
+      <div class="boot-sub">光影媒体库</div>
+    </div>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>

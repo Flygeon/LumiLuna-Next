@@ -46,12 +46,8 @@ const store = new LazyStore("settings.json");
 
 const DEFAULTS = {
   theme: "system" as ThemeMode,
-  /**
-   * MD3 动态配色的种子色（十六进制）；由它实时生成整套颜色令牌。
-   * 默认取 Material Design 3 基线绿（对齐三阶取色：primary 绿 / secondary 灰绿 /
-   * tertiary 青），与 tokens/theme.css 的静态兜底同色系。
-   */
-  seedColor: "#006D36",
+  /** MD3 动态配色的种子色（十六进制）；由它实时生成整套颜色令牌 */
+  seedColor: "#1A5C9E",
   /** 激活皮肤的 id；空串 = 默认皮肤（动态配色） */
   activeSkin: "",
   /** 已删除的内置皮肤 id（删除即记忆，不再播种复活） */

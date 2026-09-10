@@ -6,7 +6,7 @@
  *   → 选中源 → 选集（线路 × 剧集）→ 播放器。
  * 另有：观看历史（点击续播）、规则管理（导入/启用 Kazumi 规则源）。
  */
-import { computed, onMounted, ref } from "vue";
+import { computed, nextTick, onMounted, ref } from "vue";
 import { useSettingsStore } from "@/stores/settings";
 import { useAnimeStore } from "@/stores/anime";
 import { useBangumiCollectStore } from "@/stores/bangumiCollect";
@@ -19,6 +19,7 @@ import AnimeEpisodesPanel from "@/components/AnimeEpisodesPanel.vue";
 import AnimePlayer from "@/components/AnimePlayer.vue";
 import AnimeRuleManager from "@/components/AnimeRuleManager.vue";
 import { fetchSubjectDetail, searchSubjects } from "@/utils/bangumiApi";
+import { landHeroFlight, startHeroFlight, type HeroFlight } from "@/utils/heroTransition";
 import type { AnimeHistoryItem, AnimeSearchItem, BangumiSubject } from "@shared/types";
 
 const settings = useSettingsStore();
@@ -33,14 +34,25 @@ const view = ref<"home" | "search" | "collections" | "info" | "episodes" | "play
 const currentSubject = ref<BangumiSubject | null>(null);
 /** 聚合搜索 Sheet 是否打开（在详情页之上） */
 const sourcesOpen = ref(false);
-/** hero 过渡动画：来源卡片封面元素与其视口位置（进详情页时飞入） */
-const heroFrom = ref<{ el: HTMLElement; rect: DOMRect } | null>(null);
+/** 详情页面板引用：hero 飞行层的降落点（封面元素）从这里取 */
+const infoPanel = ref<InstanceType<typeof AnimeInfoPanel> | null>(null);
+/** 进行中的 hero 飞行（overlay 克隆层），见 utils/heroTransition */
+let heroFlight: HeroFlight | null = null;
 
-/** 从卡片点击事件里提取封面元素与 rect（hero 动画起点） */
-function heroTarget(ev?: MouseEvent) {
+/** 从卡片点击事件里提取封面元素并起飞（克隆飞行层、隐藏源封面） */
+function heroTakeoff(ev?: MouseEvent) {
+  heroFlight?.cancel();
   const card = ev?.target instanceof Element ? ev.target.closest(".anime-card") : null;
-  const cover = card?.querySelector<HTMLElement>(".cover");
-  return cover ? { el: cover, rect: cover.getBoundingClientRect() } : null;
+  heroFlight = startHeroFlight(card?.querySelector<HTMLElement>(".cover"));
+}
+
+/** 详情页挂载完成后让飞行层降落到详情页封面上 */
+async function heroLand() {
+  const flight = heroFlight;
+  heroFlight = null;
+  if (!flight) return;
+  await nextTick();
+  landHeroFlight(flight, () => infoPanel.value?.coverEl);
 }
 
 /** 播放参数 */
@@ -94,11 +106,12 @@ function toCard(s: BangumiSubject) {
 }
 
 /** 点热门/搜索结果条目 → 详情页（带 hero 飞入动画） */
-function openInfo(s: BangumiSubject, ev?: MouseEvent) {
-  heroFrom.value = heroTarget(ev);
+async function openInfo(s: BangumiSubject, ev?: MouseEvent) {
+  heroTakeoff(ev);
   currentSubject.value = s;
   view.value = "info";
   void anime.fetchBangumiInfo(s);
+  await heroLand();
 }
 
 /** 开始 Bangumi 搜索（带排序） */
@@ -196,23 +209,28 @@ function onPlayerSwitch(roadIndex: number, episodeIndex: number) {
  * 两条路都查不到（源已删/离线）才退回旧的续播逻辑。
  */
 async function openHistory(h: AnimeHistoryItem, ev?: MouseEvent) {
-  const hero = heroTarget(ev);
   const numericId = /^\d+$/.test(h.animeId) ? Number(h.animeId) : 0;
   try {
     if (numericId) {
       const full = await fetchSubjectDetail(numericId);
       if (full) {
-        heroFrom.value = hero;
+        // 详情已拉全：直接展示，不再让详情页重复请求
+        heroTakeoff(ev);
         currentSubject.value = full;
         view.value = "info";
         anime.showSubject(full);
+        await heroLand();
         return;
       }
     } else if (h.title) {
       const page = await searchSubjects(h.title, "match", 1);
       const hit = page.items[0];
       if (hit) {
-        openInfoWithHero(hit, hero);
+        heroTakeoff(ev);
+        currentSubject.value = hit;
+        view.value = "info";
+        void anime.fetchBangumiInfo(hit);
+        await heroLand();
         return;
       }
     }
@@ -241,14 +259,6 @@ async function openHistory(h: AnimeHistoryItem, ev?: MouseEvent) {
   } finally {
     picking = false;
   }
-}
-
-/** 搜索结果轻量条目 → 详情页（hero 起点已提取好，避免重复量 rect） */
-function openInfoWithHero(s: BangumiSubject, hero: { el: HTMLElement; rect: DOMRect } | null) {
-  heroFrom.value = hero;
-  currentSubject.value = s;
-  view.value = "info";
-  void anime.fetchBangumiInfo(s);
 }
 
 function backFromInfo() {
@@ -413,10 +423,10 @@ function backFromEpisodes() {
     <!-- 详情 -->
     <template v-else-if="view === 'info' && currentSubject">
       <AnimeInfoPanel
+        ref="infoPanel"
         :subject="anime.bangumiDetail"
         :loading="anime.detailLoading"
         :error="anime.detailError"
-        :hero-from="heroFrom"
         @back="backFromInfo"
         @open-sources="openSources"
         @open-collection="view = 'collections'"

@@ -119,13 +119,12 @@ function setTheme(mode: ThemeMode) {
   settings.applyTheme(mode);
 }
 
-// ---- 配色方案（Material You 种子色，三阶取色：primary/secondary/tertiary 联动）----
-// 顺序对齐设计参考图：默认（松绿）/ 青色 / 蓝色 三套主打方案在前
+// ---- 配色方案（Material You 种子色）----
 const COLOR_SEEDS = [
-  { key: "green", hex: "#006D36" },
-  { key: "teal", hex: "#00696E" },
   { key: "blue", hex: "#1A5C9E" },
+  { key: "teal", hex: "#00696E" },
   { key: "violet", hex: "#6750A4" },
+  { key: "green", hex: "#4C662B" },
   { key: "amber", hex: "#8F4C00" },
   { key: "rose", hex: "#B3261E" },
   { key: "pink", hex: "#8B4A6C" },
