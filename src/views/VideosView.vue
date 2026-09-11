@@ -63,7 +63,7 @@ function clearSearch() {
     <PageHeader :title="t('nav.videos')" :description="t('navDesc.videos')" />
 
     <!-- 本地 / 动漫 分段 -->
-    <div v-if="settings.onlineAnimeEnabled" class="video-tabs">
+    <div v-if="settings.onlineAnimeEnabled" class="online-tabs">
       <button class="seg" :class="{ active: videosTab === 'local' }" @click="videosTab = 'local'">
         {{ t("videos.local") }}
       </button>
@@ -142,7 +142,7 @@ function clearSearch() {
 .view {
   min-height: 100%;
 }
-.video-tabs {
+.online-tabs {
   display: flex;
   gap: 4px;
   width: fit-content;
@@ -151,7 +151,7 @@ function clearSearch() {
   border-radius: var(--md-sys-shape-corner-full);
   background: var(--md-sys-color-surface-container);
 }
-.video-tabs .seg {
+.online-tabs .seg {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -164,7 +164,7 @@ function clearSearch() {
   font-size: var(--md-sys-typescale-label-large-size);
   cursor: pointer;
 }
-.video-tabs .seg.active {
+.online-tabs .seg.active {
   background: var(--md-sys-color-surface-container-high);
   color: var(--md-sys-color-on-surface);
   box-shadow: var(--md-elevation-1);

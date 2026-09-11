@@ -20,6 +20,8 @@ const router = createRouter({
     { path: "/trash", component: () => import("@/views/TrashView.vue") },
     { path: "/settings", component: () => import("@/views/SettingsView.vue") },
     { path: "/desktop-lyrics", component: () => import("@/views/DesktopLyrics.vue") },
+    { path: "/extensions", component: () => import("@/views/ExtensionsView.vue") },
+    { path: "/extension-host", component: () => import("@/views/ExtensionHost.vue") },
   ],
 });
 

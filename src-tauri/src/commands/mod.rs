@@ -1,5 +1,6 @@
 pub mod app;
 pub mod book;
+pub mod extension;
 pub mod ffmpeg;
 pub mod metadata;
 pub mod scan;

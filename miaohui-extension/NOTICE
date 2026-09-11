@@ -1,0 +1,20 @@
+MiaoHui extension for LumiLuna
+==============================
+
+This extension package is a port of MiaoHui (秒回), an offline local
+content search engine, originally developed by Kian0034:
+    https://github.com/Kian0034/miaohui  (MIT License)
+
+Ported into the LumiLuna extension framework with the following changes:
+  * PySide6 GUI / tray / hotkey replaced by the LumiLuna extension host
+    (window, tray menu, global shortcut are contributed via manifest.json).
+  * OCR unified to RapidOCR (ONNX) on all platforms; the macOS
+    Apple Vision branch was removed.
+  * Added engine/service.py exposing a localhost HTTP API consumed by
+    the LumiLuna host via ext_invoke.
+  * Data directory relocated via the MIAOHUI_SUPPORT_DIR environment
+    variable to extensions/miaohui/data.
+
+The original engine core (core/) is reused as-is under the MIT license.
+This package is distributed independently from LumiLuna (GPL-3.0); the
+MIT license above applies to this package and must be preserved.

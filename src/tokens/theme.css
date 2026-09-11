@@ -8,6 +8,34 @@
   font-display: swap;
 }
 @font-face {
+  src: url("../assets/fonts/GoogleSans-400.ttf") format("truetype");
+  font-family: "Google Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  src: url("../assets/fonts/GoogleSans-500.ttf") format("truetype");
+  font-family: "Google Sans";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  src: url("../assets/fonts/GoogleSans-600.ttf") format("truetype");
+  font-family: "Google Sans";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  src: url("../assets/fonts/GoogleSans-700.ttf") format("truetype");
+  font-family: "Google Sans";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
   src: url("../assets/fonts/sf-pro-display_regular.woff2");
   font-family: "SFPro-Regular";
 }
@@ -197,8 +225,8 @@ body,
 
 body {
   font-family:
-    "SarasaGothicSC-Regular", "SFPro-Regular", "Helvetica Neue", "Microsoft YaHei", system-ui,
-    sans-serif;
+    "Google Sans", "SarasaGothicSC-Regular", "SFPro-Regular", "Helvetica Neue", "Microsoft YaHei",
+    system-ui, sans-serif;
   background: var(--md-sys-color-background);
   color: var(--md-sys-color-on-background);
   font-size: var(--md-sys-typescale-body-medium-size);

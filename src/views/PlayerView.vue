@@ -562,31 +562,32 @@ onBeforeUnmount(() => {
 }
 .progress-bar {
   width: 425px;
-  height: 5px;
-  background: rgba(255, 255, 255, 0.22);
-  border-radius: 4px;
+  height: 6px;
+  padding: 0;
+  background: color-mix(in srgb, var(--md-sys-color-on-surface) 22%, transparent);
+  border-radius: var(--md-sys-shape-corner-full);
   position: relative;
   cursor: pointer;
-  transition: height 250ms cubic-bezier(0.25, 0.8, 0.25, 1);
+  transition: height 220ms var(--md-sys-motion-spring-soft);
 }
 .progress-bar:hover,
 .progress-bar.dragging {
-  height: 10px;
+  height: 12px;
 }
 .progress-fill {
   height: 100%;
-  background: #fff;
-  border-radius: 4px;
+  background: var(--md-sys-color-primary);
+  border-radius: inherit;
 }
 .progress-thumb {
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: 8px;
-  height: 8px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.25);
+  background: var(--md-sys-color-primary);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--md-sys-color-primary) 28%, transparent);
   opacity: 0;
   transition: opacity 200ms;
 }
@@ -613,17 +614,18 @@ onBeforeUnmount(() => {
   gap: 10px;
 }
 .main-btn {
-  width: 68px;
-  height: 68px;
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
-  border: none;
-  background: #fff;
-  color: #000;
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-primary) 70%, transparent);
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 200ms;
+  box-shadow: var(--md-elevation-2);
+  transition: transform 200ms var(--md-sys-motion-spring), box-shadow 200ms var(--md-sys-motion-easing-standard);
 }
 .main-btn .player-control-icon {
   width: 34px;
@@ -631,18 +633,20 @@ onBeforeUnmount(() => {
   filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.2));
 }
 .main-btn:hover {
-  transform: scale(1.03);
+  transform: scale(1.04);
+  box-shadow: var(--md-elevation-3);
 }
 .main-btn:active {
   transform: scale(0.8);
 }
 .side-btn {
-  width: 30px;
-  height: 30px;
-  border: none;
-  background: transparent;
-  color: #fff;
-  opacity: 0.7;
+  width: 44px;
+  height: 44px;
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-on-surface) 22%, transparent);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--md-sys-color-surface-container-high) 72%, transparent);
+  color: var(--md-sys-color-on-surface);
+  opacity: 0.9;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -659,7 +663,9 @@ onBeforeUnmount(() => {
 }
 .side-btn.active {
   opacity: 1;
-  color: #fff;
+  color: var(--md-sys-color-primary);
+  border-color: var(--md-sys-color-primary);
+  background: color-mix(in srgb, var(--md-sys-color-primary-container) 72%, transparent);
 }
 .side-btn:active {
   transform: scale(0.8);

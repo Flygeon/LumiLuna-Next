@@ -126,6 +126,10 @@ pub fn run() {
             )));
             // Windows 系统媒体控件（SMTC）会话
             commands::smtc::setup(app.handle());
+            // 扩展框架：发现 extensions/、拉起引擎、注册热键（须在 tray 之前，托盘菜单要读扩展贡献）
+            if let Err(error) = commands::extension::setup(app.handle()) {
+                eprintln!("setup extensions failed: {error}");
+            }
             // 系统托盘（播放控制 / 显示主界面 / 退出）
             if let Err(error) = tray::setup(app.handle()) {
                 eprintln!("setup tray failed: {error}");
@@ -268,6 +272,14 @@ pub fn run() {
             pixiv::pixiv_search_suggest,
             pixiv::pixiv_ugoira_frames,
             pixiv::pixiv_frame_bytes,
+
+            // ---- 扩展框架 ----
+            commands::extension::ext_list,
+            commands::extension::ext_install,
+            commands::extension::ext_uninstall,
+            commands::extension::ext_set_enabled,
+            commands::extension::ext_invoke,
+            commands::extension::ext_open,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

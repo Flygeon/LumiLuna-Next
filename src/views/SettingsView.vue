@@ -293,13 +293,38 @@ async function clearCache() {
 function resetDesktopLyricsBounds() {
   settings.desktopLyricsBounds = { width: 420, height: 120 };
 }
+
+const settingSections = [
+  { id: "settings-appearance", label: "外观" },
+  { id: "settings-library", label: "媒体库" },
+  { id: "settings-playback", label: "播放" },
+  { id: "settings-online", label: "在线服务" },
+  { id: "settings-sync", label: "同步与网络" },
+  { id: "settings-other", label: "其他" },
+];
+
+function focusSettingSection(id: string) {
+  document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
 </script>
 
 <template>
   <div class="settings-view">
     <PageHeader :title="t('nav.settings')" :description="t('navDesc.settings')" />
+    <aside class="settings-nav" aria-label="设置分类">
+      <div class="settings-nav-title">设置分类</div>
+      <button
+        v-for="section in settingSections"
+        :key="section.id"
+        class="settings-nav-item"
+        type="button"
+        @click="focusSettingSection(section.id)"
+      >
+        {{ section.label }}
+      </button>
+    </aside>
     <!-- 外观 -->
-    <section class="card">
+    <section id="settings-appearance" class="card">
       <h3>{{ t("settings.appearance") }}</h3>
 
       <div class="row">
@@ -495,7 +520,7 @@ function resetDesktopLyricsBounds() {
     </section>
 
     <!-- 扫描目录 -->
-    <section class="card">
+    <section id="settings-library" class="card">
       <h3>{{ t("settings.scanDirs") }}</h3>
       <p class="hint">{{ t("settings.scanDirsHint") }}</p>
 
@@ -836,7 +861,7 @@ function resetDesktopLyricsBounds() {
     </section>
 
     <!-- 播放器 -->
-    <section class="card">
+    <section id="settings-playback" class="card">
       <h3>{{ t("settings.playback") }}</h3>
       <p class="hint">{{ t("settings.playerBgHint") }}</p>
       <div class="row">
@@ -903,7 +928,7 @@ function resetDesktopLyricsBounds() {
     </section>
 
     <!-- 实验性：在线音乐 -->
-    <section class="card">
+    <section id="settings-online" class="card">
       <h3>{{ t("settings.online") }}</h3>
       <p class="hint">{{ t("settings.onlineHint") }}</p>
       <label class="row switch-row">
@@ -1153,7 +1178,7 @@ function resetDesktopLyricsBounds() {
     </section>
 
     <!-- WebDAV -->
-    <section class="card">
+    <section id="settings-sync" class="card">
       <h3>{{ t("settings.webdav") }}</h3>
       <p class="hint">{{ t("settings.webdavHint") }}</p>
 
@@ -1231,7 +1256,7 @@ function resetDesktopLyricsBounds() {
     </section>
 
     <!-- 关于 -->
-    <section class="card">
+    <section id="settings-other" class="card">
       <h3>{{ t("settings.about") }}</h3>
       <div class="row">
         <span class="row-label">{{ t("settings.version") }}</span>
@@ -1258,12 +1283,48 @@ function resetDesktopLyricsBounds() {
 
 <style scoped>
 .settings-view {
-  max-width: 760px;
+  display: grid;
+  grid-template-columns: 180px minmax(0, 760px);
+  align-items: start;
+  gap: 0 24px;
+  max-width: 1000px;
   margin: 0 auto;
   padding-bottom: 40px;
 }
+.settings-view :deep(.page-header) { grid-column: 1 / -1; }
+.settings-nav {
+  position: sticky;
+  top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 0;
+}
+.settings-nav-title {
+  padding: 8px 14px 10px;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 12px;
+  font-weight: 600;
+}
+.settings-nav-item {
+  min-height: 42px;
+  padding: 0 14px;
+  border: none;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.settings-nav-item:hover {
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+}
 
 .card {
+  grid-column: 2;
+  scroll-margin-top: 18px;
   background: var(--md-sys-color-surface-container-low);
   border-radius: var(--md-sys-shape-corner-large);
   padding: 20px 22px;
@@ -1730,5 +1791,26 @@ function resetDesktopLyricsBounds() {
 .toast-leave-to {
   opacity: 0;
   transform: translate(-50%, 12px);
+}
+
+@media (max-width: 760px) {
+  .settings-view {
+    display: block;
+    max-width: 760px;
+  }
+  .settings-nav {
+    position: static;
+    flex-direction: row;
+    overflow-x: auto;
+    margin-bottom: 12px;
+    padding: 0 0 4px;
+  }
+  .settings-nav-title { display: none; }
+  .settings-nav-item {
+    flex: 0 0 auto;
+    min-height: 36px;
+    white-space: nowrap;
+  }
+  .card { scroll-margin-top: 12px; }
 }
 </style>

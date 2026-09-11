@@ -1,0 +1,46 @@
+{
+  "id": "miaohui",
+  "name": "秒回 · 内容检索",
+  "version": "0.1.0",
+  "author": "Kian0034（移植至 LumiLuna 扩展框架）",
+  "license": "MIT",
+  "minHostVersion": "2.0.0",
+  "engines": {
+    "cmd": "service.py",
+    "args": ["--service"],
+    "supportEnv": "MIAOHUI_SUPPORT_DIR",
+    "readyLine": "READY <port>"
+  },
+  "web": {
+    "dist": "web/dist",
+    "defaultRoute": "search"
+  },
+  "contributes": {
+    "windows": [
+      {
+        "route": "search",
+        "title": "内容检索",
+        "width": 760,
+        "height": 520,
+        "alwaysOnTop": true,
+        "decorations": false
+      }
+    ],
+    "hotkeys": [
+      { "accelerator": "Ctrl+Alt+Space", "route": "search", "action": "toggle" }
+    ],
+    "tray": [
+      { "id": "search", "title": "内容搜索", "action": "open:search" },
+      { "id": "reindex", "title": "重建索引", "action": "invoke:index" }
+    ],
+    "settings": {
+      "schema": [
+        { "key": "roots", "type": "paths", "label": "索引目录" },
+        { "key": "sensitive_protection", "type": "bool", "default": true, "label": "敏感目录保护" },
+        { "key": "asr_enabled", "type": "bool", "default": true, "label": "语音（ASR）索引" },
+        { "key": "ocr_enabled", "type": "bool", "default": true, "label": "画面（OCR）索引" }
+      ]
+    }
+  },
+  "permissions": ["opener:open-path", "fs:read:ext", "ext:invoke"]
+}

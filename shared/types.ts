@@ -1087,3 +1087,22 @@ export interface PixivSearchOpts {
   bookmarkNumMin?: number;
   bookmarkNumMax?: number;
 }
+
+// ---- 扩展框架 ----
+
+/** 已安装扩展摘要（对应 Rust `ExtInfo`，camelCase） */
+export interface ExtInfo {
+  id: string;
+  name: string;
+  version: string;
+  enabled: boolean;
+  hasEngine: boolean;
+  engineReady: boolean;
+}
+
+/** 扩展安装来源（对应 Rust `ExtSource`） */
+export interface ExtSource {
+  kind: "folder" | "zip" | "url";
+  path?: string | null;
+  url?: string | null;
+}

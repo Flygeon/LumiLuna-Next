@@ -166,6 +166,10 @@ onBeforeUnmount(() => {
 });
 
 const hasLyrics = computed(() => player.lyrics.length > 0);
+/** 视觉高亮落后播放时间轴一行，保留当前行用于逐字填充与点击跳转。 */
+const highlightedLine = computed(() =>
+  player.activeLine > 0 ? player.activeLine - 1 : player.activeLine,
+);
 
 // ---- Apple Music 式逐字填充 + 逐字弹跳 ----
 // 固定结构渐变 + 移动 background-position（比每帧改渐变 stop 平滑省资源）。
@@ -211,7 +215,7 @@ function rafLoop() {
         :key="i"
         :ref="(el) => setLineRef(el, i)"
         class="lyric-item"
-        :class="{ active: i === player.activeLine, instrumental: line.instrumental }"
+        :class="{ active: i === highlightedLine, instrumental: line.instrumental }"
         :style="{
           fontSize: settings.lyricFontSize + 'px',
           lineHeight: settings.lyricLineHeight,
@@ -219,7 +223,7 @@ function rafLoop() {
         }"
         @click="player.seekToLyric(i)"
       >
-        <p class="lyric-text" :class="{ pop: i === player.activeLine }">
+        <p class="lyric-text" :class="{ pop: i === highlightedLine }">
           <template v-if="settings.wordLyrics && i === player.activeLine && line.units?.length">
             <span v-for="(u, wi) in line.units" :key="wi" class="word">{{ u.text }}</span>
           </template>

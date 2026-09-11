@@ -1,0 +1,30 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "extension",
+  "description": "扩展共享窗口能力（所有扩展 UI 复用此窗口，按 ?ext=&route= 区分）",
+  "windows": ["extension"],
+  "permissions": [
+    "core:default",
+    "core:event:default",
+    "core:event:allow-listen",
+    "core:event:allow-emit",
+    "core:event:allow-emit-to",
+    "core:window:allow-close",
+    "core:window:allow-hide",
+    "core:window:allow-show",
+    "core:window:allow-minimize",
+    "core:window:allow-unminimize",
+    "core:window:allow-set-focus",
+    "core:window:allow-set-always-on-top",
+    "core:window:allow-set-skip-taskbar",
+    "opener:default",
+    "opener:allow-open-path",
+    "opener:allow-open-url",
+    "opener:allow-reveal-item-in-dir",
+    "store:default",
+    {
+      "identifier": "fs:allow-read-file",
+      "allow": [{ "path": "**/extensions/**" }]
+    }
+  ]
+}

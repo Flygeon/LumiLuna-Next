@@ -1,0 +1,16 @@
+# MiaoHui 扩展包引擎依赖（不含 GUI；GUI 由 LumiLuna 主机提供）
+# Windows 视频库 PyPI 名为 "av"（大小写敏感）。
+hnswlib>=0.8.0
+av>=12.0,<16.0
+onnxruntime>=1.17
+numpy<2.3
+Pillow>=10
+cryptography>=42
+jieba>=0.42
+# ASR（faster-whisper / CTranslate2）
+faster-whisper>=1.0
+# OCR（RapidOCR，纯离线 ONNX，跨平台统一）
+rapidocr-onnxruntime>=1.3
+opencv-python-headless>=4.9
+# 模型自举（hf-mirror）
+huggingface_hub>=0.23

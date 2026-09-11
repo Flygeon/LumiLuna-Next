@@ -51,7 +51,7 @@ function clearSearch() {
     <PageHeader :title="t('nav.images')" :description="t('navDesc.images')" />
 
     <!-- 本地 / Pixiv 分段 -->
-    <div v-if="settings.onlinePixivEnabled" class="image-tabs">
+    <div v-if="settings.onlinePixivEnabled" class="online-tabs">
       <button class="seg" :class="{ active: imagesTab === 'local' }" @click="imagesTab = 'local'">
         {{ t("pixiv.local") }}
       </button>
@@ -118,7 +118,7 @@ function clearSearch() {
 .view {
   min-height: 100%;
 }
-.image-tabs {
+.online-tabs {
   display: flex;
   gap: 4px;
   width: fit-content;
@@ -127,7 +127,7 @@ function clearSearch() {
   border-radius: var(--md-sys-shape-corner-full);
   background: var(--md-sys-color-surface-container);
 }
-.image-tabs .seg {
+.online-tabs .seg {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -140,7 +140,7 @@ function clearSearch() {
   font-size: var(--md-sys-typescale-label-large-size);
   cursor: pointer;
 }
-.image-tabs .seg.active {
+.online-tabs .seg.active {
   background: var(--md-sys-color-surface-container-high);
   color: var(--md-sys-color-on-surface);
   box-shadow: var(--md-elevation-1);

@@ -67,6 +67,8 @@ import type {
   PixivUserDetail,
   PixivTrendTag,
   PixivUgoiraFrames,
+  ExtInfo,
+  ExtSource,
 } from "@shared/types";
 import { mockInvoke } from "./mock";
 
@@ -741,5 +743,49 @@ export const capabilities = {
       return (result as { path: string }).path;
     }
     return null;
+  },
+
+  // ---- 扩展框架（host 侧通用桥接）----
+  /** 列出已安装扩展 */
+  extList(): Promise<ExtInfo[]> {
+    return safeInvoke("ext_list");
+  },
+  /** 安装扩展（folder / zip / url） */
+  extInstall(source: ExtSource): Promise<ExtInfo> {
+    return safeInvoke("ext_install", { source });
+  },
+  /** 卸载扩展 */
+  extUninstall(id: string): Promise<void> {
+    return safeInvoke("ext_uninstall", { id });
+  },
+  /** 启用 / 禁用扩展 */
+  extSetEnabled(id: string, enabled: boolean): Promise<void> {
+    return safeInvoke("ext_set_enabled", { id, enabled });
+  },
+  /** 通用路由：把调用转发到扩展引擎的 localhost HTTP */
+  extInvoke(id: string, method: string, payload: unknown): Promise<unknown> {
+    return safeInvoke("ext_invoke", { id, method, payload });
+  },
+  /** 打开文件 / 视频跳秒（主机代执行；扩展经 ext_invoke("open") 同效） */
+  extOpen(path: string, ts?: number, reveal?: boolean): Promise<void> {
+    return safeInvoke("ext_open", { path, ts: ts ?? null, reveal: !!reveal });
+  },
+  /** 订阅扩展窗口导航事件（Rust 端 emit_to("extension", "ext:navigate")） */
+  async onExtNavigate(
+    handler: (payload: { ext: string; route: string }) => void,
+  ): Promise<UnlistenFn> {
+    if (!isTauri) return () => {};
+    return listen<{ ext: string; route: string }>("ext:navigate", (e) =>
+      handler(e.payload),
+    );
+  },
+  /** 订阅扩展事件（Rust 端 emit `ext://<id>/<event>`） */
+  async onExtEvent(
+    id: string,
+    event: string,
+    handler: (payload: unknown) => void,
+  ): Promise<UnlistenFn> {
+    if (!isTauri) return () => {};
+    return listen<unknown>(`ext://${id}/${event}`, (e) => handler(e.payload));
   },
 };

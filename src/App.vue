@@ -16,6 +16,7 @@ import { activeSkinDoc, skinBgActive, skinSafeMode } from "@/utils/skinRuntime";
 import { translate } from "@shared/i18n";
 import { listen, type Event, type UnlistenFn } from "@tauri-apps/api/event";
 import { getCurrentWebview, type DragDropEvent } from "@tauri-apps/api/webview";
+import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import {
   DL_BOUNDS_EVENT,
   DL_CONTROL_EVENT,
@@ -113,10 +114,12 @@ const navItems = computed(() => [
   { key: "treasure", path: "/treasure", icon: "inventory_2", type: null },
 ]);
 const bottomItems = [
-  { key: "favorites", path: "/favorites", icon: "favorite" },
-  { key: "history", path: "/history", icon: "history" },
-  { key: "trash", path: "/trash", icon: "delete" },
-  { key: "settings", path: "/settings", icon: "settings" },
+  { key: "favorites", path: "/favorites", icon: "favorite", label: "" },
+  { key: "history", path: "/history", icon: "history", label: "" },
+  { key: "trash", path: "/trash", icon: "delete", label: "" },
+  // shared/i18n.ts 为 WIP 文件禁改，扩展导航名走本地 fallback
+  { key: "extensions", path: "/extensions", icon: "extension", label: "扩展" },
+  { key: "settings", path: "/settings", icon: "settings", label: "" },
 ];
 
 function t(key: string) {
@@ -125,6 +128,18 @@ function t(key: string) {
 
 const isPlayerPage = computed(() => route.path === "/music/player");
 const isDesktopLyricsPage = computed(() => route.path === "/desktop-lyrics");
+const isExtensionHostPage = computed(() => route.path === "/extension-host");
+
+// 扩展窗口（label: extension，由 Rust open_extension_window 创建）加载的是
+// 主 SPA，默认会 redirect 到 /images —— 按 label 重定向到扩展宿主路由。
+const isExtensionWindow = (() => {
+  if (!isTauri) return false;
+  try {
+    return getCurrentWebviewWindow().label === "extension";
+  } catch {
+    return false;
+  }
+})();
 
 function isActive(path: string) {
   return route.path === path;
@@ -135,6 +150,10 @@ function countOf(type: string | null): number {
 }
 
 onMounted(async () => {
+  if (isExtensionWindow) {
+    void router.replace("/extension-host");
+    return; // 扩展宿主窗口不需要主界面初始化（皮肤/媒体库）
+  }
   await settings.load();
   // 皮肤加载（含 --safe-mode 检测、内置皮肤播种、激活皮肤解析）须在主题解析前完成
   await skins.load();
@@ -204,23 +223,26 @@ router.afterEach((to) => {
     :class="{
       'has-player': player.song && !isPlayerPage,
       'desktop-lyrics-page': isDesktopLyricsPage,
+      'extension-host-page': isExtensionHostPage,
     }"
   >
     <!-- 皮肤背景图层（v2：变量由 skinLoader 写入；播放器页/桌面歌词页不渲染） -->
     <div
-      v-if="skinBgActive && !isPlayerPage && !isDesktopLyricsPage"
+      v-if="skinBgActive && !isPlayerPage && !isDesktopLyricsPage && !isExtensionHostPage"
       class="lm-skin-bg"
       aria-hidden="true"
     ></div>
 
-    <!-- Windows 自定义标题栏（仅 Tauri 桌面版，播放页与桌面歌词页隐藏） -->
-    <WindowTitleBar v-if="isTauri && !isPlayerPage && !isDesktopLyricsPage" />
+    <!-- Windows 自定义标题栏（仅 Tauri 桌面版，播放页/桌面歌词页/扩展宿主页隐藏） -->
+    <WindowTitleBar
+      v-if="isTauri && !isPlayerPage && !isDesktopLyricsPage && !isExtensionHostPage"
+    />
 
     <!-- 主体：左侧导航 + 内容区 -->
     <div class="app-body">
       <!-- 左侧导航 Rail -->
       <nav
-        v-if="!isPlayerPage && !isDesktopLyricsPage"
+        v-if="!isPlayerPage && !isDesktopLyricsPage && !isExtensionHostPage"
         class="nav-rail lm-glass"
         data-lm-region="nav"
       >
@@ -262,7 +284,9 @@ router.afterEach((to) => {
                 item.icon
               }}</span>
             </span>
-            <span class="label">{{ t("nav." + item.key) }}</span>
+            <span class="label">{{
+              item.label || t("nav." + item.key)
+            }}</span>
           </button>
         </div>
       </nav>
@@ -281,7 +305,9 @@ router.afterEach((to) => {
       </div>
     </div>
 
-    <MiniPlayer v-if="player.song && !isPlayerPage && !isDesktopLyricsPage" />
+    <MiniPlayer
+      v-if="player.song && !isPlayerPage && !isDesktopLyricsPage && !isExtensionHostPage"
+    />
 
     <!-- 全局 M3 右键菜单与文本输入框（Teleport 到 body） -->
     <ContextMenu />
