@@ -47,8 +47,7 @@ async function toggle(ext: ExtInfo) {
 }
 
 async function uninstall(ext: ExtInfo) {
-  if (!window.confirm(`卸载扩展「${ext.name}」？数据目录（索引/模型）将一并删除。`))
-    return;
+  if (!window.confirm(`卸载扩展「${ext.name}」？数据目录（索引/模型）将一并删除。`)) return;
   busy.value = ext.id;
   try {
     await capabilities.extUninstall(ext.id);
@@ -65,8 +64,7 @@ async function install(kind: "folder" | "zip") {
   const selected = await dialogOpen({
     directory: kind === "folder",
     multiple: false,
-    filters:
-      kind === "zip" ? [{ name: "扩展包", extensions: ["zip"] }] : undefined,
+    filters: kind === "zip" ? [{ name: "扩展包", extensions: ["zip"] }] : undefined,
   });
   if (typeof selected !== "string") return;
   const source: ExtSource =
@@ -117,9 +115,7 @@ onActivated(load);
           <button :disabled="busy === ext.id" @click="toggle(ext)">
             {{ ext.enabled ? "禁用" : "启用" }}
           </button>
-          <button class="danger" :disabled="busy === ext.id" @click="uninstall(ext)">
-            卸载
-          </button>
+          <button class="danger" :disabled="busy === ext.id" @click="uninstall(ext)">卸载</button>
         </div>
       </div>
     </div>
@@ -127,30 +123,86 @@ onActivated(load);
 </template>
 
 <style scoped>
-.view { padding: 0 20px 40px; }
-.toolbar { display: flex; gap: 10px; margin: 12px 0; }
+.view {
+  padding: 0 20px 40px;
+}
+.toolbar {
+  display: flex;
+  gap: 10px;
+  margin: 12px 0;
+}
 .toolbar button {
-  padding: 6px 14px; border-radius: 8px; cursor: pointer;
-  border: 1px solid var(--border, #ccc); background: transparent;
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid var(--border, #ccc);
+  background: transparent;
 }
-.toolbar button:hover:not(:disabled) { background: rgba(128, 128, 128, 0.1); }
-.toolbar button:disabled { opacity: 0.5; cursor: default; }
-.toast { color: #4a90d9; font-size: 13px; margin: 4px 0; }
-.empty { color: rgba(128, 128, 128, 0.8); text-align: center; padding: 60px 0; line-height: 2; }
+.toolbar button:hover:not(:disabled) {
+  background: rgba(128, 128, 128, 0.1);
+}
+.toolbar button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.toast {
+  color: #4a90d9;
+  font-size: 13px;
+  margin: 4px 0;
+}
+.empty {
+  color: rgba(128, 128, 128, 0.8);
+  text-align: center;
+  padding: 60px 0;
+  line-height: 2;
+}
 .ext-card {
-  border: 1px solid var(--border, #ccc); border-radius: 10px;
-  padding: 12px 16px; margin-bottom: 12px;
+  border: 1px solid var(--border, #ccc);
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
 }
-.head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-.name { font-weight: 600; }
-.sub { font-size: 12px; color: rgba(128, 128, 128, 0.9); margin-top: 2px; }
-.state { margin-left: 8px; padding: 1px 8px; border-radius: 10px; font-size: 11px; }
-.state.on { background: rgba(74, 144, 217, 0.15); color: #4a90d9; }
-.state.off { background: rgba(128, 128, 128, 0.15); color: rgba(128, 128, 128, 0.9); }
-.ops { display: flex; gap: 8px; }
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.name {
+  font-weight: 600;
+}
+.sub {
+  font-size: 12px;
+  color: rgba(128, 128, 128, 0.9);
+  margin-top: 2px;
+}
+.state {
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+}
+.state.on {
+  background: rgba(74, 144, 217, 0.15);
+  color: #4a90d9;
+}
+.state.off {
+  background: rgba(128, 128, 128, 0.15);
+  color: rgba(128, 128, 128, 0.9);
+}
+.ops {
+  display: flex;
+  gap: 8px;
+}
 .ops button {
-  padding: 5px 12px; border-radius: 8px; cursor: pointer;
-  border: 1px solid var(--border, #ccc); background: transparent;
+  padding: 5px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid var(--border, #ccc);
+  background: transparent;
 }
-.ops .danger:hover { background: rgba(220, 80, 80, 0.12); border-color: rgba(220, 80, 80, 0.5); }
+.ops .danger:hover {
+  background: rgba(220, 80, 80, 0.12);
+  border-color: rgba(220, 80, 80, 0.5);
+}
 </style>

@@ -43,9 +43,13 @@ async function navigateTo(ext: string, route: string) {
 
 // ---- iframe postMessage 桥接 ----
 function onMessage(ev: MessageEvent) {
-  const m = ev.data as
-    | { source?: string; type?: string; reqId?: string; method?: string; payload?: unknown }
-    | null;
+  const m = ev.data as {
+    source?: string;
+    type?: string;
+    reqId?: string;
+    method?: string;
+    payload?: unknown;
+  } | null;
   if (!m || m.source !== "miaohui-ext" || m.type !== "invoke" || !m.reqId) return;
   const ext = current.value?.ext ?? "";
   const reply = (ok: boolean, data?: unknown, error?: string) => {

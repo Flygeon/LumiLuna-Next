@@ -775,9 +775,7 @@ export const capabilities = {
     handler: (payload: { ext: string; route: string }) => void,
   ): Promise<UnlistenFn> {
     if (!isTauri) return () => {};
-    return listen<{ ext: string; route: string }>("ext:navigate", (e) =>
-      handler(e.payload),
-    );
+    return listen<{ ext: string; route: string }>("ext:navigate", (e) => handler(e.payload));
   },
   /** 订阅扩展事件（Rust 端 emit `ext://<id>/<event>`） */
   async onExtEvent(

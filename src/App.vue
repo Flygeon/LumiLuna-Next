@@ -284,9 +284,7 @@ router.afterEach((to) => {
                 item.icon
               }}</span>
             </span>
-            <span class="label">{{
-              item.label || t("nav." + item.key)
-            }}</span>
+            <span class="label">{{ item.label || t("nav." + item.key) }}</span>
           </button>
         </div>
       </nav>
