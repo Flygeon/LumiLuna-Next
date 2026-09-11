@@ -272,7 +272,6 @@ pub fn run() {
             pixiv::pixiv_search_suggest,
             pixiv::pixiv_ugoira_frames,
             pixiv::pixiv_frame_bytes,
-
             // ---- 扩展框架 ----
             commands::extension::ext_list,
             commands::extension::ext_install,

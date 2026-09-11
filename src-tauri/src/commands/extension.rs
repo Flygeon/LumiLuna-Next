@@ -25,9 +25,7 @@ use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use tauri::{
-    Emitter, Manager, WebviewUrl, WebviewWindowBuilder,
-};
+use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
 // ---- Manifest 结构（camelCase 过桥）----
@@ -349,7 +347,10 @@ fn spawn_engine(app: &tauri::AppHandle, id: &str) -> Result<u16, String> {
         }
         None => command(&program),
     };
-    c.args(&args).current_dir(&dir).stdout(Stdio::piped()).stderr(Stdio::null());
+    c.args(&args)
+        .current_dir(&dir)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null());
     if let Some(env) = &support_env {
         c.env(env, &data_dir);
     }
@@ -383,10 +384,7 @@ fn resolve_python() -> Option<String> {
 }
 
 /// 从引擎 stdout 读取首行 `READY <port>`（超时则失败，不阻塞启动）。
-fn read_ready_port(
-    stdout: Option<impl std::io::Read>,
-    timeout: Duration,
-) -> Result<u16, String> {
+fn read_ready_port(stdout: Option<impl std::io::Read>, timeout: Duration) -> Result<u16, String> {
     let mut stdout = stdout.ok_or_else(|| "引擎 stdout 未捕获".to_string())?;
     let (tx, rx) = mpsc::channel::<String>();
     std::thread::spawn(move || {
@@ -585,8 +583,7 @@ pub async fn ext_invoke(
                     .get("reveal")
                     .and_then(|v| v.as_bool())
                     .unwrap_or(false);
-            return ext_open_impl(&app, &path, ts, reveal)
-                .map(|_| json!({ "ok": true }));
+            return ext_open_impl(&app, &path, ts, reveal).map(|_| json!({ "ok": true }));
         }
         let port = {
             let map = app.state::<ExtState>().map.lock().unwrap();
@@ -604,7 +601,8 @@ pub async fn ext_invoke(
             .timeout(Duration::from_secs(30))
             .send()
             .map_err(|e| format!("调用扩展引擎失败：{e}"))?;
-        resp.json::<Value>().map_err(|e| format!("扩展引擎返回非 JSON：{e}"))
+        resp.json::<Value>()
+            .map_err(|e| format!("扩展引擎返回非 JSON：{e}"))
     })
     .await
     .map_err(|e| format!("扩展调用异常：{e}"))
@@ -633,13 +631,17 @@ pub fn open_extension_window(
         );
         return Ok(());
     }
-    let builder = WebviewWindowBuilder::new(app, "extension", WebviewUrl::App(PathBuf::from("/index.html")))
-        .title("LumiLuna · 扩展")
-        .inner_size(760.0, 520.0)
-        .minimizable(false)
-        .resizable(true)
-        .decorations(false)
-        .always_on_top(true);
+    let builder = WebviewWindowBuilder::new(
+        app,
+        "extension",
+        WebviewUrl::App(PathBuf::from("/index.html")),
+    )
+    .title("LumiLuna · 扩展")
+    .inner_size(760.0, 520.0)
+    .minimizable(false)
+    .resizable(true)
+    .decorations(false)
+    .always_on_top(true);
     let _win = builder.build(app)?;
     let _ = app.emit_to(
         "extension",
@@ -675,7 +677,11 @@ fn register_hotkeys(app: &tauri::AppHandle) {
             }
             if let Some(c) = &e.manifest.contributes {
                 for h in &c.hotkeys {
-                    regs.push((e.manifest.id.clone(), h.route.clone(), h.accelerator.clone()));
+                    regs.push((
+                        e.manifest.id.clone(),
+                        h.route.clone(),
+                        h.accelerator.clone(),
+                    ));
                 }
             }
         }
@@ -758,8 +764,7 @@ pub fn handle_tray_event(app: &tauri::AppHandle, id: &str) {
 // ---- 打开 / 视频跳秒（主机代执行，扩展不直接持有权限）----
 
 const VIDEO_EXTS: &[&str] = &[
-    ".mp4", ".mov", ".m4v", ".mkv", ".avi", ".webm", ".flv", ".wmv", ".3gp",
-    ".mpg", ".mpeg", ".ts",
+    ".mp4", ".mov", ".m4v", ".mkv", ".avi", ".webm", ".flv", ".wmv", ".3gp", ".mpg", ".mpeg", ".ts",
 ];
 
 #[cfg(windows)]
@@ -782,10 +787,14 @@ fn player_candidates() -> Vec<PathBuf> {
 #[cfg(not(windows))]
 fn player_candidates() -> Vec<PathBuf> {
     // macOS/Linux 常见安装路径
-    ["/Applications/mpv.app/Contents/MacOS/mpv", "/usr/bin/mpv", "/usr/local/bin/mpv"]
-        .iter()
-        .map(PathBuf::from)
-        .collect()
+    [
+        "/Applications/mpv.app/Contents/MacOS/mpv",
+        "/usr/bin/mpv",
+        "/usr/local/bin/mpv",
+    ]
+    .iter()
+    .map(PathBuf::from)
+    .collect()
 }
 
 fn is_video(path: &str) -> bool {

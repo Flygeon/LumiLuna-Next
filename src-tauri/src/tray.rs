@@ -40,7 +40,13 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
     let sub = if !ext_items.is_empty() {
         let mut owned: Vec<MenuItem> = Vec::new();
         for (id, title) in &ext_items {
-            owned.push(MenuItem::with_id(app, id.clone(), title.clone(), true, None::<&str>)?);
+            owned.push(MenuItem::with_id(
+                app,
+                id.clone(),
+                title.clone(),
+                true,
+                None::<&str>,
+            )?);
         }
         let refs: Vec<&dyn IsMenuItem> = owned.iter().collect();
         Some(Submenu::with_items(app, &refs, "扩展")?)
@@ -48,13 +54,7 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
         None
     };
 
-    let mut items: Vec<&dyn IsMenuItem> = vec![
-        &toggle,
-        &next,
-        &prev,
-        &separator,
-        &show,
-    ];
+    let mut items: Vec<&dyn IsMenuItem> = vec![&toggle, &next, &prev, &separator, &show];
     if let Some(sub) = &sub {
         items.push(sub);
     }
