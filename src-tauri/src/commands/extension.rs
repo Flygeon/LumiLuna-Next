@@ -703,7 +703,6 @@ fn register_hotkeys(app: &tauri::AppHandle) {
                 continue;
             }
         };
-        let app2 = app.clone();
         if let Err(err) = app
             .global_shortcut()
             .on_shortcut(shortcut, move |a, _sc, ev| {
