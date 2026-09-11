@@ -390,26 +390,26 @@ fn read_ready_port(
     stdout: Option<impl std::io::Read + Send + 'static>,
     timeout: Duration,
 ) -> Result<u16, String> {
-    let mut stdout = stdout.ok_or_else(|| "引擎 stdout 未捕获".to_string())?;
+    let stdout = stdout.ok_or_else(|| "引擎 stdout 未捕获".to_string())?;
     let (tx, rx) = mpsc::channel::<String>();
     std::thread::spawn(move || {
         let mut line = String::new();
         let mut reader = BufReader::new(stdout);
         while reader.read_line(&mut line).unwrap_or(0) > 0 {
-            let l = line.trim().to_string();
-            if l.starts_with("READY") {
-                let _ = tx.send(l);
+            let trimmed = line.trim().to_string();
+            if trimmed.starts_with("READY") {
+                let _ = tx.send(trimmed);
                 break;
             }
             line.clear();
         }
     });
     match rx.recv_timeout(timeout) {
-        Ok(l) => l
+        Ok(line) => line
             .split_whitespace()
             .nth(1)
             .and_then(|s| s.parse::<u16>().ok())
-            .ok_or_else(|| format!("无法解析引擎端口：{l}")),
+            .ok_or_else(|| format!("无法解析引擎端口：{line}")),
         Err(_) => Err("等待扩展引擎就绪超时".into()),
     }
 }
