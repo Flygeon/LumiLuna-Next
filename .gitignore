@@ -41,3 +41,14 @@ fix-nav2.cjs
 *.apk
 *.AppImage
 *.msi
+
+# local reference projects and workspace artifacts
+播放器参考/
+播放器参考项目/
+歌词获取项目参考/
+图片视频索引项目参考/
+小说项目参考/
+在线播放参考/
+pixiv图片客户端参考/
+.vscode/
+.trae-html-share-packages/
