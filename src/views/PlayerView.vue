@@ -625,7 +625,9 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   box-shadow: var(--md-elevation-2);
-  transition: transform 200ms var(--md-sys-motion-spring), box-shadow 200ms var(--md-sys-motion-easing-standard);
+  transition:
+    transform 200ms var(--md-sys-motion-spring),
+    box-shadow 200ms var(--md-sys-motion-easing-standard);
 }
 .main-btn .player-control-icon {
   width: 34px;

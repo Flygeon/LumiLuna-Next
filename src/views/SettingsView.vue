@@ -1291,7 +1291,9 @@ function focusSettingSection(id: string) {
   margin: 0 auto;
   padding-bottom: 40px;
 }
-.settings-view :deep(.page-header) { grid-column: 1 / -1; }
+.settings-view :deep(.page-header) {
+  grid-column: 1 / -1;
+}
 .settings-nav {
   position: sticky;
   top: 12px;
@@ -1805,12 +1807,16 @@ function focusSettingSection(id: string) {
     margin-bottom: 12px;
     padding: 0 0 4px;
   }
-  .settings-nav-title { display: none; }
+  .settings-nav-title {
+    display: none;
+  }
   .settings-nav-item {
     flex: 0 0 auto;
     min-height: 36px;
     white-space: nowrap;
   }
-  .card { scroll-margin-top: 12px; }
+  .card {
+    scroll-margin-top: 12px;
+  }
 }
 </style>
