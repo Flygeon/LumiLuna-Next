@@ -307,7 +307,8 @@ fn load_extensions(app: &tauri::AppHandle) -> Result<(), String> {
 /// 拉起扩展引擎，读取 stdout `READY <port>` 行，存入端口。
 fn spawn_engine(app: &tauri::AppHandle, id: &str) -> Result<u16, String> {
     let (dir, cmd, args, support_env) = {
-        let map = app.state::<ExtState>().map.lock().unwrap();
+        let state = app.state::<ExtState>();
+        let map = state.map.lock().unwrap();
         let ext = map.get(id).ok_or_else(|| format!("扩展不存在：{id}"))?;
         let eng = ext
             .manifest
@@ -358,7 +359,8 @@ fn spawn_engine(app: &tauri::AppHandle, id: &str) -> Result<u16, String> {
 
     let port = read_ready_port(child.stdout.take(), Duration::from_secs(20))?;
 
-    let mut map = app.state::<ExtState>().map.lock().unwrap();
+    let state = app.state::<ExtState>();
+    let mut map = state.map.lock().unwrap();
     if let Some(ext) = map.get_mut(id) {
         ext.child = Some(child);
         ext.port = Some(port);
@@ -384,7 +386,10 @@ fn resolve_python() -> Option<String> {
 }
 
 /// 从引擎 stdout 读取首行 `READY <port>`（超时则失败，不阻塞启动）。
-fn read_ready_port(stdout: Option<impl std::io::Read>, timeout: Duration) -> Result<u16, String> {
+fn read_ready_port(
+    stdout: Option<impl std::io::Read + Send + 'static>,
+    timeout: Duration,
+) -> Result<u16, String> {
     let mut stdout = stdout.ok_or_else(|| "引擎 stdout 未捕获".to_string())?;
     let (tx, rx) = mpsc::channel::<String>();
     std::thread::spawn(move || {
@@ -523,7 +528,8 @@ pub async fn ext_uninstall(app: tauri::AppHandle, id: String) -> Result<(), Stri
         if dir.is_dir() {
             std::fs::remove_dir_all(&dir).map_err(|e| e.to_string())?;
         }
-        app.state::<ExtState>().map.lock().unwrap().remove(&id);
+        let state = app.state::<ExtState>();
+        state.map.lock().unwrap().remove(&id);
         Ok(())
     })
     .await
@@ -540,7 +546,8 @@ pub async fn ext_set_enabled(
 ) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
         {
-            let mut map = app.state::<ExtState>().map.lock().unwrap();
+            let state = app.state::<ExtState>();
+            let mut map = state.map.lock().unwrap();
             let ext = map.get_mut(&id).ok_or("扩展不存在")?;
             ext.enabled = enabled;
         }
@@ -586,7 +593,8 @@ pub async fn ext_invoke(
             return ext_open_impl(&app, &path, ts, reveal).map(|_| json!({ "ok": true }));
         }
         let port = {
-            let map = app.state::<ExtState>().map.lock().unwrap();
+            let state = app.state::<ExtState>();
+            let map = state.map.lock().unwrap();
             map.get(&id).and_then(|e| e.port)
         };
         let port = match port {
@@ -642,7 +650,7 @@ pub fn open_extension_window(
     .resizable(true)
     .decorations(false)
     .always_on_top(true);
-    let _win = builder.build(app)?;
+    let _win = builder.build()?;
     let _ = app.emit_to(
         "extension",
         "ext:navigate",
@@ -670,7 +678,8 @@ pub fn toggle_extension_window(
 fn register_hotkeys(app: &tauri::AppHandle) {
     let mut regs: Vec<(String, String, String)> = Vec::new(); // (ext_id, route, accelerator)
     {
-        let map = app.state::<ExtState>().map.lock().unwrap();
+        let state = app.state::<ExtState>();
+        let map = state.map.lock().unwrap();
         for e in map.values() {
             if !e.enabled {
                 continue;
@@ -695,16 +704,19 @@ fn register_hotkeys(app: &tauri::AppHandle) {
             }
         };
         let app2 = app.clone();
-        if let Err(err) = app.global_shortcut().register(shortcut, move |a, _sc, ev| {
-            if ev.state == ShortcutState::Pressed {
-                let app3 = a.clone();
-                let ext = ext_id.clone();
-                let rt = route.clone();
-                tauri::async_runtime::spawn_blocking(move || {
-                    let _ = toggle_extension_window(&app3, &ext, &rt);
-                });
-            }
-        }) {
+        if let Err(err) = app
+            .global_shortcut()
+            .on_shortcut(shortcut, move |a, _sc, ev| {
+                if ev.state == ShortcutState::Pressed {
+                    let app3 = a.clone();
+                    let ext = ext_id.clone();
+                    let rt = route.clone();
+                    tauri::async_runtime::spawn_blocking(move || {
+                        let _ = toggle_extension_window(&app3, &ext, &rt);
+                    });
+                }
+            })
+        {
             eprintln!("[ext] 注册热键失败 {accel}：{err}");
         }
     }
@@ -713,7 +725,8 @@ fn register_hotkeys(app: &tauri::AppHandle) {
 /// 收集托盘菜单项：(menu_id, title)，menu_id 形如 `ext:<ext_id>:<item_id>`
 pub fn tray_menu_items(app: &tauri::AppHandle) -> Vec<(String, String)> {
     let mut out = Vec::new();
-    let map = app.state::<ExtState>().map.lock().unwrap();
+    let state = app.state::<ExtState>();
+    let map = state.map.lock().unwrap();
     for e in map.values() {
         if !e.enabled {
             continue;
@@ -736,7 +749,8 @@ pub fn handle_tray_event(app: &tauri::AppHandle, id: &str) {
         return;
     };
     let action = {
-        let map = app.state::<ExtState>().map.lock().unwrap();
+        let state = app.state::<ExtState>();
+        let map = state.map.lock().unwrap();
         map.get(ext_id)
             .and_then(|e| e.manifest.contributes.as_ref())
             .and_then(|c| c.tray.iter().find(|t| t.id == item_id))

@@ -7,7 +7,7 @@
 //! 「扩展」子菜单列出各已安装扩展在 manifest 中声明的托盘贡献项，
 //! 菜单 id 形如 `ext:<ext_id>:<item_id>`，由扩展框架处理。
 
-use tauri::menu::{IsMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu};
+use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Emitter, Manager,
@@ -38,29 +38,26 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
     // 扩展子菜单：收集各扩展声明的托盘贡献项
     let ext_items = extension::tray_menu_items(app);
     let sub = if !ext_items.is_empty() {
-        let mut owned: Vec<MenuItem> = Vec::new();
+        let submenu = Submenu::new(app, "扩展", true)?;
         for (id, title) in &ext_items {
-            owned.push(MenuItem::with_id(
-                app,
-                id.clone(),
-                title.clone(),
-                true,
-                None::<&str>,
-            )?);
+            let item = MenuItem::with_id(app, id.clone(), title.clone(), true, None::<&str>)?;
+            submenu.append(&item)?;
         }
-        let refs: Vec<&dyn IsMenuItem> = owned.iter().collect();
-        Some(Submenu::with_items(app, &refs, "扩展")?)
+        Some(submenu)
     } else {
         None
     };
 
-    let mut items: Vec<&dyn IsMenuItem> = vec![&toggle, &next, &prev, &separator, &show];
+    let menu = Menu::new(app)?;
+    menu.append(&toggle)?;
+    menu.append(&next)?;
+    menu.append(&prev)?;
+    menu.append(&separator)?;
+    menu.append(&show)?;
     if let Some(sub) = &sub {
-        items.push(sub);
+        menu.append(sub)?;
     }
-    items.push(&quit);
-
-    let menu = Menu::with_items(app, &items)?;
+    menu.append(&quit)?;
 
     let icon = app
         .default_window_icon()
