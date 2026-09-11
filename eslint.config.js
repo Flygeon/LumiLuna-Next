@@ -16,6 +16,7 @@ export default [
       "*.config.*",
       "coverage/**",
       "src/assets/**",
+      "**/*参考*/**",
     ],
   },
   js.configs.recommended,
