@@ -410,9 +410,6 @@ const infoRows = computed(() => {
   width: 52px;
   height: 52px;
 }
-.nav .material-symbols-outlined {
-  font-size: 30px;
-}
 .prev {
   left: 20px;
 }

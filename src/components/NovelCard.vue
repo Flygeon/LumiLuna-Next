@@ -13,14 +13,18 @@ const cover = computed(() => {
   if ("imageUrl" in item) return item.imageUrl;
   return item.cover;
 });
+
+/** 无封面时的占位 SVG（纯色，确保 img 直接 slot=header 触发 has-header-media） */
+const PLACEHOLDER_COVER =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 3 4'%3E%3Crect width='100%25' height='100%25' fill='%232a2a2e'/%3E%3C/svg%3E";
+
+const coverSrc = computed(() => cover.value || PLACEHOLDER_COVER);
 </script>
 
 <template>
+  <!-- 媒体卡：img 直接 slot="header"，触发 has-header-media，封面边到边铺满 -->
   <m3e-card class="novel-card" variant="elevated" actionable @click="$emit('open')">
-    <div slot="header" class="cover">
-      <img v-if="cover" :src="cover" :alt="item.title" loading="lazy" />
-      <span v-else class="material-symbols-outlined">menu_book</span>
-    </div>
+    <img slot="header" class="cover-img" :src="coverSrc" :alt="item.title" loading="lazy" />
     <div class="meta">
       <div class="title" :title="item.title">{{ item.title }}</div>
       <div v-if="subtitle" class="sub" :title="subtitle">{{ subtitle }}</div>
@@ -35,23 +39,10 @@ const cover = computed(() => {
 .novel-card {
   cursor: pointer;
 }
-.cover {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.cover-img {
   width: 100%;
   aspect-ratio: 3 / 4;
-  overflow: hidden;
-  background: var(--md-sys-color-surface-container);
-  color: var(--md-sys-color-outline);
-}
-.cover img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.cover .material-symbols-outlined {
-  font-size: 36px;
+  display: block;
 }
 .meta {
   min-width: 0;

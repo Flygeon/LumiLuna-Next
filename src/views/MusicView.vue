@@ -695,7 +695,7 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
       <div v-if="error" class="error-bar">
         <span class="material-symbols-outlined">error</span>
         {{ error }}
-        <m3e-icon-button class="error-close" @click="error = ''">
+        <m3e-icon-button size="medium" class="error-close" @click="error = ''">
           <span class="material-symbols-outlined">close</span>
         </m3e-icon-button>
       </div>

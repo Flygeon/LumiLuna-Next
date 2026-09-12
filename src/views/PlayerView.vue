@@ -206,6 +206,7 @@ onBeforeUnmount(() => {
           <div class="ctrl-group left">
             <m3e-icon-button
               class="side-btn"
+              size="medium"
               toggle
               :selected="player.repeatMode !== 'off'"
               :title="t('player.repeat')"
@@ -219,6 +220,7 @@ onBeforeUnmount(() => {
             </m3e-icon-button>
             <m3e-icon-button
               class="side-btn"
+              size="medium"
               toggle
               :selected="player.shuffleMode"
               :title="t('player.shuffle')"
@@ -230,7 +232,12 @@ onBeforeUnmount(() => {
             </m3e-icon-button>
           </div>
           <div class="ctrl-group center">
-            <m3e-icon-button class="side-btn" :title="t('player.prev')" @click="player.previous()">
+            <m3e-icon-button
+              class="side-btn"
+              size="medium"
+              :title="t('player.prev')"
+              @click="player.previous()"
+            >
               <span class="material-symbols-outlined filled">skip_previous</span>
             </m3e-icon-button>
             <m3e-fab
@@ -242,7 +249,12 @@ onBeforeUnmount(() => {
             >
               <PlayerControlIcon :name="player.playing ? 'pause' : 'play'" />
             </m3e-fab>
-            <m3e-icon-button class="side-btn" :title="t('player.next')" @click="player.next()">
+            <m3e-icon-button
+              class="side-btn"
+              size="medium"
+              :title="t('player.next')"
+              @click="player.next()"
+            >
               <span class="material-symbols-outlined filled">skip_next</span>
             </m3e-icon-button>
           </div>
@@ -251,6 +263,7 @@ onBeforeUnmount(() => {
             <div ref="panelAnchor" class="panel-anchor" @pointerdown.stop>
               <m3e-icon-button
                 class="side-btn panel-toggle"
+                size="medium"
                 toggle
                 :selected="panelOpen"
                 :title="t('player.tools')"
@@ -620,7 +633,7 @@ onBeforeUnmount(() => {
   --m3e-fab-medium-container-height: 64px;
   --m3e-fab-medium-container-width: 64px;
   --m3e-fab-medium-shape: 50%;
-  --m3e-fab-icon-size: 34px;
+  --m3e-fab-medium-icon-size: 34px;
 }
 .main-btn .player-control-icon {
   width: 34px;
@@ -639,7 +652,7 @@ onBeforeUnmount(() => {
   filter: drop-shadow(0 0 8px rgba(0, 0, 0, 0.25));
 }
 .side-btn .material-symbols-outlined {
-  font-size: 21px;
+  /* font-size 由 --m3e-icon-button-medium-icon-size 控制（shadow DOM ::slotted(*) !important 覆盖外部 font-size） */
   font-variation-settings:
     "FILL" 1,
     "wght" 500,
@@ -652,8 +665,8 @@ onBeforeUnmount(() => {
   --m3e-icon-button-hover-icon-color: var(--md-sys-color-primary);
 }
 .speed {
-  width: 48px;
-  min-width: 48px;
+  /* 不设固定宽度，让 m3e-button 按内容自适应，避免 "1x" 被裁剪 */
+  min-width: 40px;
   --m3e-button-text-label-text-font-size: 13px;
   --m3e-button-label-text-color: var(--md-sys-color-on-surface);
 }

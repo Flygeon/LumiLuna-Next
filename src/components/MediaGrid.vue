@@ -390,9 +390,6 @@ function subtitleOf(item: MediaEntry): string {
   height: 36px;
   flex: none;
 }
-.fav .material-symbols-outlined {
-  font-size: 19px;
-}
 .fav.on {
   --m3e-filled-icon-button-icon-color: #ff6b81;
   --m3e-filled-icon-button-hover-icon-color: #ff6b81;

@@ -62,6 +62,8 @@ defineProps<{
   --m3e-icon-button-shape-square: 0;
   --m3e-icon-button-container-height: 48px;
   --m3e-icon-button-container-width: 44px;
+  /* 图标尺寸走组件令牌：shadow DOM ::slotted(*){font-size:inherit !important} 会覆盖外部 font-size */
+  --m3e-icon-button-icon-size: 18px;
   width: 44px;
   height: 48px;
   --m3e-icon-button-icon-color: var(--md-sys-color-on-surface-variant);
@@ -82,7 +84,6 @@ defineProps<{
 }
 
 .wc-icon {
-  font-size: 18px;
   line-height: 1;
 }
 </style>

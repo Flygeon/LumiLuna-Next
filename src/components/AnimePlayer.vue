@@ -559,13 +559,12 @@ onBeforeUnmount(() => {
   top: 12px;
   left: 12px;
   z-index: 6;
+  /* 图标尺寸走组件令牌：shadow DOM ::slotted(*){font-size:inherit !important} 会覆盖外部 font-size */
+  --m3e-icon-button-icon-size: 24px;
   --md-icon-button-container-color: rgba(0, 0, 0, 0.55);
   --md-icon-button-selected-container-color: rgba(0, 0, 0, 0.55);
   --md-sys-color-on-surface: #fff;
   color: #fff;
-}
-.overlay-close .material-symbols-outlined {
-  font-size: 24px;
 }
 
 /* 选集抽屉 */

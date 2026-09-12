@@ -61,27 +61,29 @@ function seek(e: MouseEvent) {
         <m3e-icon-button
           v-if="canLike"
           class="like"
+          size="medium"
           :class="{ on: liked }"
           :title="liked ? '取消喜欢' : '喜欢'"
           @click="toggleLike"
         >
           <span class="material-symbols-outlined" :class="{ filled: liked }">favorite</span>
         </m3e-icon-button>
-        <m3e-icon-button title="上一首" @click="player.previous()">
+        <m3e-icon-button size="medium" title="上一首" @click="player.previous()">
           <span class="material-symbols-outlined filled">skip_previous</span>
         </m3e-icon-button>
         <m3e-icon-button
           class="play"
+          size="medium"
           variant="tonal"
           :title="player.playing ? '暂停' : '播放'"
           @click="player.togglePlay()"
         >
           <PlayerControlIcon :name="player.playing ? 'pause' : 'play'" />
         </m3e-icon-button>
-        <m3e-icon-button title="下一首" @click="player.next()">
+        <m3e-icon-button size="medium" title="下一首" @click="player.next()">
           <span class="material-symbols-outlined filled">skip_next</span>
         </m3e-icon-button>
-        <m3e-icon-button title="展开播放器" @click="router.push('/music/player')">
+        <m3e-icon-button size="medium" title="展开播放器" @click="router.push('/music/player')">
           <span class="material-symbols-outlined">expand_less</span>
         </m3e-icon-button>
       </div>

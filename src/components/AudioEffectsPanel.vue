@@ -225,6 +225,7 @@ function switchSelected(e: Event): boolean {
               {{ p.name }}
             </m3e-filter-chip>
             <m3e-icon-button
+              size="medium"
               class="preset-action"
               :title="t('player.effectsShare')"
               @click="showSharePopup(p.id)"
@@ -232,6 +233,7 @@ function switchSelected(e: Event): boolean {
               <span class="material-symbols-outlined">ios_share</span>
             </m3e-icon-button>
             <m3e-icon-button
+              size="medium"
               class="preset-action preset-delete"
               :title="t('player.effectsDelete')"
               @click="deletePreset(p.id)"
@@ -364,7 +366,7 @@ function switchSelected(e: Event): boolean {
               <span class="popup-opt-label">{{ t("player.effectsShareUpload") }}</span>
             </button>
           </div>
-          <m3e-icon-button class="popup-close" @click="closeSharePopup">
+          <m3e-icon-button size="medium" class="popup-close" @click="closeSharePopup">
             <span class="material-symbols-outlined">close</span>
           </m3e-icon-button>
         </div>
@@ -425,7 +427,7 @@ function switchSelected(e: Event): boolean {
             </m3e-button>
           </div>
 
-          <m3e-icon-button class="popup-close" @click="closeSharePopup">
+          <m3e-icon-button size="medium" class="popup-close" @click="closeSharePopup">
             <span class="material-symbols-outlined">close</span>
           </m3e-icon-button>
         </div>

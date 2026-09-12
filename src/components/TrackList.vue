@@ -141,6 +141,7 @@ function onRowContext(e: MouseEvent, item: MediaEntry, index: number) {
 
         <div class="r-actions">
           <m3e-icon-button
+            size="medium"
             class="r-action"
             :class="{ on: item.favorite }"
             :title="item.favorite ? t('context.unfavorite') : t('context.favorite')"
@@ -151,6 +152,7 @@ function onRowContext(e: MouseEvent, item: MediaEntry, index: number) {
             >
           </m3e-icon-button>
           <m3e-icon-button
+            size="medium"
             class="r-action"
             :title="t('context.playNext')"
             @click.stop="
@@ -161,6 +163,7 @@ function onRowContext(e: MouseEvent, item: MediaEntry, index: number) {
             <span class="material-symbols-outlined">skip_next</span>
           </m3e-icon-button>
           <m3e-icon-button
+            size="medium"
             class="r-action"
             :title="t('context.addToQueue')"
             @click.stop="
@@ -171,6 +174,7 @@ function onRowContext(e: MouseEvent, item: MediaEntry, index: number) {
             <span class="material-symbols-outlined">queue_music</span>
           </m3e-icon-button>
           <m3e-icon-button
+            size="medium"
             class="r-action"
             :title="t('actions.more')"
             @click.stop="onRowContext($event, item, index)"

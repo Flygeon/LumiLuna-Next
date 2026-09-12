@@ -379,7 +379,7 @@ html {
   --m3e-icon-button-hover-state-layer-color: rgba(255, 255, 255, 0.18);
 }
 .control-bar .ctr .material-symbols-outlined {
-  font-size: 17px;
+  /* 尺寸由 --m3e-icon-button-icon-size 控制（shadow DOM ::slotted(*) !important 覆盖外部 font-size） */
   line-height: 1;
   font-variation-settings: "FILL" 1;
 }

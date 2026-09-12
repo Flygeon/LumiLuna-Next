@@ -1096,14 +1096,13 @@ const PDF_MODES = [
   gap: 2px;
 }
 .rbtn {
+  /* 图标尺寸走组件令牌：shadow DOM ::slotted(*){font-size:inherit !important} 会覆盖外部 font-size */
+  --m3e-icon-button-icon-size: 20px;
   --md-icon-button-container-color: transparent;
   --md-icon-button-selected-container-color: transparent;
   --md-icon-button-hover-container-color: color-mix(in srgb, var(--reader-fg) 14%, transparent);
   --md-icon-button-pressed-container-color: color-mix(in srgb, var(--reader-fg) 14%, transparent);
   color: var(--reader-fg);
-}
-.rbtn .material-symbols-outlined {
-  font-size: 20px;
 }
 .rbtn.active {
   --md-icon-button-container-color: color-mix(in srgb, var(--reader-fg) 18%, transparent);
@@ -1419,7 +1418,8 @@ const PDF_MODES = [
   --md-icon-button-container-color: color-mix(in srgb, var(--reader-fg) 12%, transparent);
   --md-icon-button-hover-container-color: color-mix(in srgb, var(--reader-fg) 24%, transparent);
   --md-icon-button-pressed-container-color: color-mix(in srgb, var(--reader-fg) 24%, transparent);
-  --md-icon-button-icon-size: 26px;
+  /* 库只识别 --m3e- 前缀；原 --md-icon-button-icon-size 无效导致翻页箭头退回默认尺寸 */
+  --m3e-icon-button-icon-size: 26px;
   color: var(--reader-fg);
   z-index: 2;
 }
