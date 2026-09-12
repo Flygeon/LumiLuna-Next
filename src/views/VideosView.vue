@@ -6,6 +6,7 @@ import LibraryToolbar from "@/components/LibraryToolbar.vue";
 import MediaGrid from "@/components/MediaGrid.vue";
 import MediaViewer from "@/components/MediaViewer.vue";
 import AnimeOnlineView from "@/components/AnimeOnlineView.vue";
+import SegmentedTabs from "@/components/SegmentedTabs.vue";
 import EmptyState from "@/components/EmptyState.vue";
 import { useLibraryStore } from "@/stores/library";
 import { useSettingsStore } from "@/stores/settings";
@@ -25,6 +26,11 @@ const bannerDismissed = ref(false);
 const viewerIndex = ref(-1);
 /** 本地 / 动漫 分段（在线番剧开关开启时显示） */
 const videosTab = ref<"local" | "anime">("local");
+/** 在线番剧未启用时不传 tab，组件会只渲染内容、不显示分段条 */
+const videoTabs = computed(() => [
+  { value: "local", label: t("videos.local") },
+  { value: "anime", label: t("videos.online") },
+]);
 
 function t(key: string) {
   return translate(settings.lang, key);
@@ -63,69 +69,66 @@ function clearSearch() {
     <PageHeader :title="t('nav.videos')" :description="t('navDesc.videos')" />
 
     <!-- 本地 / 动漫 分段 -->
-    <div v-if="settings.onlineAnimeEnabled" class="online-tabs">
-      <button class="seg" :class="{ active: videosTab === 'local' }" @click="videosTab = 'local'">
-        {{ t("videos.local") }}
-      </button>
-      <button class="seg" :class="{ active: videosTab === 'anime' }" @click="videosTab = 'anime'">
-        {{ t("videos.online") }}
-      </button>
-    </div>
+    <SegmentedTabs v-model="videosTab" :tabs="settings.onlineAnimeEnabled ? videoTabs : []">
+      <!-- 本地视频 -->
+      <template v-if="videosTab === 'local' || !settings.onlineAnimeEnabled">
+        <LibraryToolbar :count="items.length" @changed="load" />
 
-    <!-- 本地视频 -->
-    <template v-if="videosTab === 'local' || !settings.onlineAnimeEnabled">
-      <LibraryToolbar :count="items.length" @changed="load" />
-
-      <div v-if="ffmpeg && !ffmpeg.available && !bannerDismissed" class="ffmpeg-banner">
-        <span class="material-symbols-outlined">info</span>
-        <div class="text">
-          <strong>未检测到 FFmpeg</strong>
-          <span>视频缩略图、时长与分辨率需要 FFmpeg 支持。可在设置中指定其安装目录。</span>
+        <div v-if="ffmpeg && !ffmpeg.available && !bannerDismissed" class="ffmpeg-banner">
+          <span class="material-symbols-outlined">info</span>
+          <div class="text">
+            <strong>未检测到 FFmpeg</strong>
+            <span>视频缩略图、时长与分辨率需要 FFmpeg 支持。可在设置中指定其安装目录。</span>
+          </div>
+          <button class="lm-btn lm-btn--text" @click="router.push('/settings')">前往设置</button>
+          <button class="lm-icon-btn" @click="bannerDismissed = true">
+            <span class="material-symbols-outlined">close</span>
+          </button>
         </div>
-        <button class="lm-btn lm-btn--text" @click="router.push('/settings')">前往设置</button>
-        <button class="lm-icon-btn" @click="bannerDismissed = true">
-          <span class="material-symbols-outlined">close</span>
-        </button>
-      </div>
 
-      <MediaGrid
-        v-if="library.loading || items.length"
-        :items="items"
-        :loading="library.loading"
-        aspect="16/9"
-        :min-width="260"
-        subtitle="resolution"
-        @open="openViewer"
-        @favorite="library.toggleFavorite"
-      />
+        <MediaGrid
+          v-if="library.loading || items.length"
+          :items="items"
+          :loading="library.loading"
+          aspect="16/9"
+          :min-width="260"
+          subtitle="resolution"
+          @open="openViewer"
+          @favorite="library.toggleFavorite"
+        />
 
-      <EmptyState
-        v-else-if="library.search"
-        icon="search_off"
-        :title="`未找到与「${library.search}」匹配的视频`"
-        description="试试其它关键词，或清除搜索条件。"
-        action-label="清除搜索"
-        @action="clearSearch"
-      />
+        <EmptyState
+          v-else-if="library.search"
+          icon="search_off"
+          :title="`未找到与「${library.search}」匹配的视频`"
+          description="试试其它关键词，或清除搜索条件。"
+          action-label="清除搜索"
+          @action="clearSearch"
+        />
 
-      <EmptyState
-        v-else
-        icon="movie"
-        :title="t('library.empty')"
-        :description="
-          hasScanDirs
-            ? '已配置扫描目录，点击开始扫描以建立视频索引。'
-            : '尚未配置扫描目录。请先在设置中添加要索引的文件夹。'
-        "
-        :action-label="hasScanDirs ? t('actions.scan') : ''"
-        secondary-label="前往设置"
-        @action="library.startScan()"
-        @secondary="router.push('/settings')"
-      />
-    </template>
+        <EmptyState
+          v-else
+          icon="movie"
+          :title="t('library.empty')"
+          :description="
+            hasScanDirs
+              ? '已配置扫描目录，点击开始扫描以建立视频索引。'
+              : '尚未配置扫描目录。请先在设置中添加要索引的文件夹。'
+          "
+          :action-label="hasScanDirs ? t('actions.scan') : ''"
+          secondary-label="前往设置"
+          @action="library.startScan()"
+          @secondary="router.push('/settings')"
+        />
+      </template>
 
-    <!-- 在线番剧 -->
-    <AnimeOnlineView v-else-if="settings.onlineAnimeEnabled && videosTab === 'anime'" />
+      <!-- 在线番剧：用 KeepAlive 缓存实例。
+           此前切到「本地」再切回「动漫」会整棵重建：重放全部卡片入场动画 +
+           重新解码封面图 + 重跑 loadRules/loadHistory，观感就是"刷新卡卡的"。 -->
+      <KeepAlive v-else>
+        <AnimeOnlineView />
+      </KeepAlive>
+    </SegmentedTabs>
 
     <MediaViewer
       v-if="viewerIndex >= 0"
@@ -141,32 +144,5 @@ function clearSearch() {
 <style scoped>
 .view {
   min-height: 100%;
-}
-.online-tabs {
-  display: flex;
-  gap: 4px;
-  width: fit-content;
-  padding: 3px;
-  margin-bottom: 16px;
-  border-radius: var(--md-sys-shape-corner-full);
-  background: var(--md-sys-color-surface-container);
-}
-.online-tabs .seg {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 6px 18px;
-  border: none;
-  border-radius: var(--md-sys-shape-corner-full);
-  background: transparent;
-  color: var(--md-sys-color-on-surface-variant);
-  font-family: inherit;
-  font-size: var(--md-sys-typescale-label-large-size);
-  cursor: pointer;
-}
-.online-tabs .seg.active {
-  background: var(--md-sys-color-surface-container-high);
-  color: var(--md-sys-color-on-surface);
-  box-shadow: var(--md-elevation-1);
 }
 </style>

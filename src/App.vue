@@ -540,6 +540,9 @@ router.afterEach((to) => {
 .main-content {
   flex: 1;
   overflow-y: auto;
+  /* 滚动条按占位计算：自定义滚动条宽 10px，内容长短不同的页面/分类切换时
+     滚动条忽有忽无会让整块内容左右跳 10px（表现为"卡片宽度不一样、左栏不固定"） */
+  scrollbar-gutter: stable;
   padding: var(--lm-content-pad);
   /* 迷你播放条不遮挡末行内容 */
   padding-bottom: var(--lm-content-pad);

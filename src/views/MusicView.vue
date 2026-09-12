@@ -8,6 +8,7 @@ import TrackList from "@/components/TrackList.vue";
 import EmptyState from "@/components/EmptyState.vue";
 import NowPlayingFeed from "@/components/NowPlayingFeed.vue";
 import CachedCover from "@/components/CachedCover.vue";
+import SegmentedTabs from "@/components/SegmentedTabs.vue";
 import { useLibraryStore } from "@/stores/library";
 import { usePlayerStore } from "@/stores/player";
 import { useSettingsStore } from "@/stores/settings";
@@ -64,6 +65,12 @@ onActivated(() => {
 // ---- 在线音乐（实验性）----
 const onlineMode = computed(() => settings.enableOnlineMusic);
 const tab = ref<"feed" | "playlists" | "search">("feed");
+/** 非在线模式（本地/详情）不传 tab，组件只渲染内容、不显示分段条 */
+const onlineTabs = computed(() => [
+  { value: "feed", label: t("homeFeed.forYou") },
+  { value: "playlists", label: t("online.playlists") },
+  { value: "search", label: t("online.search") },
+]);
 
 type Detail =
   | { type: "local" }
@@ -452,126 +459,116 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
   <div class="view">
     <PageHeader :title="t('nav.music')" :description="t('navDesc.music')" />
     <!-- 在线音乐：推荐 / 歌单 / 搜索 切换 -->
-    <div v-if="showOnlineRoot" class="online-tabs">
-      <button class="seg" :class="{ active: tab === 'feed' }" @click="tab = 'feed'">
-        {{ t("homeFeed.forYou") }}
-      </button>
-      <button class="seg" :class="{ active: tab === 'playlists' }" @click="tab = 'playlists'">
-        {{ t("online.playlists") }}
-      </button>
-      <button class="seg" :class="{ active: tab === 'search' }" @click="tab = 'search'">
-        {{ t("online.search") }}
-      </button>
-    </div>
+    <SegmentedTabs v-model="tab" :tabs="showOnlineRoot ? onlineTabs : []">
+      <!-- 现在就听信息流 -->
+      <template v-if="showOnlineRoot && tab === 'feed'">
+        <NowPlayingFeed @play-songs="handleFeedPlaySongs" @open-playlist="openNeteasePlaylist" />
+      </template>
 
-    <!-- 现在就听信息流 -->
-    <template v-if="showOnlineRoot && tab === 'feed'">
-      <NowPlayingFeed @play-songs="handleFeedPlaySongs" @open-playlist="openNeteasePlaylist" />
-    </template>
-
-    <!-- 歌单根列表 -->
-    <template v-if="showOnlineRoot && tab === 'playlists'">
-      <!-- 网易云账号条 -->
-      <div v-if="settings.neteaseEnabled" class="netease-bar">
-        <template v-if="netease.loggedIn">
-          <CachedCover
-            v-if="netease.profile?.avatarUrl"
-            :url="netease.profile.avatarUrl"
-            class="avatar"
-            alt=""
-          />
-          <span v-else class="avatar placeholder">
-            <span class="material-symbols-outlined">person</span>
-          </span>
-          <span class="nickname">{{ netease.profile?.nickname ?? "" }}</span>
-          <span class="spacer"></span>
-          <button class="lm-btn lm-btn--text" @click="logoutNetease">
-            <span class="material-symbols-outlined">logout</span>
-            {{ t("netease.logout") }}
-          </button>
-        </template>
-        <template v-else>
-          <span class="avatar placeholder">
-            <span class="material-symbols-outlined">person</span>
-          </span>
-          <span class="nickname">{{ t("netease.loginHint") }}</span>
-          <span class="spacer"></span>
-          <button class="lm-btn lm-btn--tonal" @click="netease.openQr()">
-            <span class="material-symbols-outlined">qr_code</span>
-            {{ t("netease.login") }}
-          </button>
-        </template>
-      </div>
-      <p class="online-hint">{{ t("online.hint") }}</p>
-      <div class="online-grid">
-        <button
-          v-for="c in playlistCards"
-          :key="c.key"
-          class="song-card"
-          @click="openPlaylist(c)"
-          @contextmenu="onPlaylistContext($event, c)"
-        >
-          <button
-            v-if="c.key.startsWith('user:')"
-            class="p-remove"
-            :title="t('online.removePlaylist')"
-            @click.stop="removePlaylist(c.id!)"
-          >
-            <span class="material-symbols-outlined">close</span>
-          </button>
-          <div class="thumb">
-            <CachedCover v-if="coverOf(c)" :url="coverOf(c)" :alt="c.name" />
-            <span v-else class="placeholder material-symbols-outlined">
-              {{
-                c.key === "local" ? "library_music" : c.key === "cloud" ? "cloud" : "queue_music"
-              }}
+      <!-- 歌单根列表 -->
+      <template v-if="showOnlineRoot && tab === 'playlists'">
+        <!-- 网易云账号条 -->
+        <div v-if="settings.neteaseEnabled" class="netease-bar">
+          <template v-if="netease.loggedIn">
+            <CachedCover
+              v-if="netease.profile?.avatarUrl"
+              :url="netease.profile.avatarUrl"
+              class="avatar"
+              alt=""
+            />
+            <span v-else class="avatar placeholder">
+              <span class="material-symbols-outlined">person</span>
             </span>
-          </div>
-          <div class="s-meta">
-            <div class="s-title" :title="c.name">{{ c.name }}</div>
-            <div class="s-artist">{{ subtitleOf(c) }}</div>
-          </div>
-        </button>
-      </div>
+            <span class="nickname">{{ netease.profile?.nickname ?? "" }}</span>
+            <span class="spacer"></span>
+            <button class="lm-btn lm-btn--text" @click="logoutNetease">
+              <span class="material-symbols-outlined">logout</span>
+              {{ t("netease.logout") }}
+            </button>
+          </template>
+          <template v-else>
+            <span class="avatar placeholder">
+              <span class="material-symbols-outlined">person</span>
+            </span>
+            <span class="nickname">{{ t("netease.loginHint") }}</span>
+            <span class="spacer"></span>
+            <button class="lm-btn lm-btn--tonal" @click="netease.openQr()">
+              <span class="material-symbols-outlined">qr_code</span>
+              {{ t("netease.login") }}
+            </button>
+          </template>
+        </div>
+        <p class="online-hint">{{ t("online.hint") }}</p>
+        <div class="online-grid">
+          <button
+            v-for="c in playlistCards"
+            :key="c.key"
+            class="song-card"
+            @click="openPlaylist(c)"
+            @contextmenu="onPlaylistContext($event, c)"
+          >
+            <button
+              v-if="c.key.startsWith('user:')"
+              class="p-remove"
+              :title="t('online.removePlaylist')"
+              @click.stop="removePlaylist(c.id!)"
+            >
+              <span class="material-symbols-outlined">close</span>
+            </button>
+            <div class="thumb">
+              <CachedCover v-if="coverOf(c)" :url="coverOf(c)" :alt="c.name" />
+              <span v-else class="placeholder material-symbols-outlined">
+                {{
+                  c.key === "local" ? "library_music" : c.key === "cloud" ? "cloud" : "queue_music"
+                }}
+              </span>
+            </div>
+            <div class="s-meta">
+              <div class="s-title" :title="c.name">{{ c.name }}</div>
+              <div class="s-artist">{{ subtitleOf(c) }}</div>
+            </div>
+          </button>
+        </div>
 
-      <div class="add-playlist">
-        <input v-model="addId" :placeholder="t('online.addId')" />
-        <input v-model="addName" :placeholder="t('online.addName')" />
-        <button class="lm-btn lm-btn--tonal" @click="addPlaylist">
-          <span class="material-symbols-outlined">add</span>
-          {{ t("online.addBtn") }}
-        </button>
-      </div>
-      <p v-if="settings.onlinePlaylists.length" class="online-hint">
-        {{ t("online.addHint") }}
-      </p>
+        <div class="add-playlist">
+          <input v-model="addId" :placeholder="t('online.addId')" />
+          <input v-model="addName" :placeholder="t('online.addName')" />
+          <button class="lm-btn lm-btn--tonal" @click="addPlaylist">
+            <span class="material-symbols-outlined">add</span>
+            {{ t("online.addBtn") }}
+          </button>
+        </div>
+        <p v-if="settings.onlinePlaylists.length" class="online-hint">
+          {{ t("online.addHint") }}
+        </p>
 
-      <div v-if="onlineError" class="error-bar">
-        <span class="material-symbols-outlined">error</span>
-        {{ onlineError }}
-      </div>
-      <div v-if="onlineLoading" class="loading">{{ t("online.loading") }}</div>
-    </template>
+        <div v-if="onlineError" class="error-bar">
+          <span class="material-symbols-outlined">error</span>
+          {{ onlineError }}
+        </div>
+        <div v-if="onlineLoading" class="loading">{{ t("online.loading") }}</div>
+      </template>
 
-    <!-- 搜索根 -->
-    <template v-if="showOnlineRoot && tab === 'search'">
-      <div class="search-bar">
-        <input
-          v-model="searchQuery"
-          :placeholder="t('online.searchPlaceholder')"
-          @keyup.enter="doSearch"
-        />
-        <button class="lm-btn lm-btn--tonal" @click="doSearch">
-          <span class="material-symbols-outlined">search</span>
-          {{ t("online.searchBtn") }}
-        </button>
-      </div>
-      <div v-if="onlineError" class="error-bar">
-        <span class="material-symbols-outlined">error</span>
-        {{ onlineError }}
-      </div>
-      <div v-if="onlineLoading" class="loading">{{ t("online.loading") }}</div>
-    </template>
+      <!-- 搜索根 -->
+      <template v-if="showOnlineRoot && tab === 'search'">
+        <div class="search-bar">
+          <input
+            v-model="searchQuery"
+            :placeholder="t('online.searchPlaceholder')"
+            @keyup.enter="doSearch"
+          />
+          <button class="lm-btn lm-btn--tonal" @click="doSearch">
+            <span class="material-symbols-outlined">search</span>
+            {{ t("online.searchBtn") }}
+          </button>
+        </div>
+        <div v-if="onlineError" class="error-bar">
+          <span class="material-symbols-outlined">error</span>
+          {{ onlineError }}
+        </div>
+        <div v-if="onlineLoading" class="loading">{{ t("online.loading") }}</div>
+      </template>
+    </SegmentedTabs>
 
     <!-- 歌单 / 搜索详情 -->
     <template v-if="detail">
@@ -873,32 +870,6 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
 <style scoped>
 .view {
   min-height: 100%;
-}
-
-/* ---- 在线音乐 ---- */
-.online-tabs {
-  display: inline-flex;
-  gap: 4px;
-  padding: 3px;
-  margin-bottom: 14px;
-  background: var(--md-sys-color-surface-container-high);
-  border-radius: var(--md-sys-shape-corner-extra-large);
-}
-.online-tabs .seg {
-  border: none;
-  background: transparent;
-  padding: 8px 22px;
-  border-radius: var(--md-sys-shape-corner-extra-large);
-  cursor: pointer;
-  font-family: inherit;
-  font-size: var(--md-sys-typescale-label-large-size);
-  color: var(--md-sys-color-on-surface-variant);
-  transition: all var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard);
-}
-.online-tabs .seg.active {
-  background: var(--md-sys-color-secondary-container);
-  color: var(--md-sys-color-on-secondary-container);
-  font-weight: 600;
 }
 
 .online-hint {

@@ -6,13 +6,14 @@ defineEmits<{ (e: "open", ev: MouseEvent): void }>();
 </script>
 
 <template>
-  <button class="anime-card" @click="$emit('open', $event)">
+  <button class="anime-card" :data-anime-id="item.src" @click="$emit('open', $event)">
     <div class="cover">
       <img
         v-if="item.cover"
         :src="item.cover"
         :alt="item.title"
         loading="lazy"
+        decoding="async"
         referrerpolicy="no-referrer"
       />
       <span v-else class="material-symbols-outlined">movie</span>

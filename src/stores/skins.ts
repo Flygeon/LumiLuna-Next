@@ -22,7 +22,8 @@ async function appVersionSafe(): Promise<string> {
   } catch {
     /* 取不到版本就按当前发布版本处理，仅影响 minAppVersion 门槛 */
   }
-  return "1.1.0";
+  // 非 Tauri（浏览器预览）时用构建期注入的版本，别再写死字符串
+  return __APP_VERSION__;
 }
 
 export const useSkinsStore = defineStore("skins", () => {

@@ -54,6 +54,9 @@ const devtoolsEnabled = ref(
   typeof window !== "undefined" && localStorage.getItem("lumiluna-devtools-enabled") === "1",
 );
 
+/** 应用版本号：构建期由 vite define 注入（来源 package.json），勿再写死字符串 */
+const APP_VERSION = __APP_VERSION__;
+
 function t(key: string) {
   return translate(settings.lang, key);
 }
@@ -1281,7 +1284,7 @@ function selectSection(id: string) {
       <h3>{{ t("settings.about") }}</h3>
       <div class="row">
         <span class="row-label">{{ t("settings.version") }}</span>
-        <span class="value">1.1.0</span>
+        <span class="value">{{ APP_VERSION }}</span>
       </div>
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.devtools") }}</span>
@@ -1305,10 +1308,10 @@ function selectSection(id: string) {
 <style scoped>
 .settings-view {
   display: grid;
-  grid-template-columns: 180px minmax(0, 760px);
+  grid-template-columns: 180px minmax(0, 800px);
   align-items: start;
   gap: 0 24px;
-  max-width: 1000px;
+  max-width: 1040px;
   margin: 0 auto;
   padding-bottom: 40px;
 }

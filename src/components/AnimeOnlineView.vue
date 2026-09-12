@@ -38,11 +38,24 @@ const sourcesOpen = ref(false);
 const infoPanel = ref<InstanceType<typeof AnimeInfoPanel> | null>(null);
 /** 进行中的 hero 飞行（overlay 克隆层），见 utils/heroTransition */
 let heroFlight: HeroFlight | null = null;
+/** 进入详情页时被点的那张卡片（返回时 hero 的降落落点） */
+let heroOriginCard: HTMLElement | null = null;
+/** 源卡片的条目标识：列表若被重建导致元素失联，按 id 找回落点 */
+let heroOriginId: string | null = null;
+/** 详情页的来源视图：返回时回到这里，而不是一律弹回主页 */
+let infoOriginView: "home" | "search" | "collections" = "home";
 
-/** 从卡片点击事件里提取封面元素并起飞（克隆飞行层、隐藏源封面） */
+/**
+ * 从卡片点击事件里提取封面元素并起飞（克隆飞行层、隐藏源封面）。
+ * 同时记下来源卡片与来源视图，供返回时的反向 hero 使用——
+ * 必须在 `view.value = "info"` 之前调用，否则记到的是详情页自身。
+ */
 function heroTakeoff(ev?: MouseEvent) {
   heroFlight?.cancel();
   const card = ev?.target instanceof Element ? ev.target.closest(".anime-card") : null;
+  heroOriginCard = card instanceof HTMLElement ? card : null;
+  heroOriginId = heroOriginCard?.getAttribute("data-anime-id") ?? null;
+  infoOriginView = (view.value === "info" ? "home" : view.value) as typeof infoOriginView;
   heroFlight = startHeroFlight(card?.querySelector<HTMLElement>(".cover"));
 }
 
@@ -261,10 +274,37 @@ async function openHistory(h: AnimeHistoryItem, ev?: MouseEvent) {
   }
 }
 
+/**
+ * 详情页返回：补上反向 hero（详情封面 → 当初点的那张卡片）。
+ * 同时回到真正的来源视图——此前固定回 home，从搜索页点进来会被直接弹回主页。
+ */
 function backFromInfo() {
+  const originCard = heroOriginCard?.isConnected ? heroOriginCard : null;
+  const originId = heroOriginId;
+  heroOriginCard = null;
+  heroOriginId = null;
+
+  // 起飞要在详情页仍挂载时进行（需要量它的 rect）
+  const flight = startHeroFlight(infoPanel.value?.coverEl);
+
+  const target = infoOriginView;
+  infoOriginView = "home";
   currentSubject.value = null;
-  view.value = "home";
-  void anime.loadHistory();
+  view.value = target;
+  if (target === "home") void anime.loadHistory();
+
+  if (!flight) return;
+  landHeroFlight(flight, () => {
+    // 返回后主页列表是重建过的，原元素多半已失联，按 id 找回来
+    const card =
+      (originCard?.isConnected ? originCard : null) ??
+      (originId
+        ? document.querySelector<HTMLElement>(
+            `.anime-card[data-anime-id="${CSS.escape(originId)}"]`,
+          )
+        : null);
+    return card?.querySelector<HTMLElement>(".cover");
+  });
 }
 
 function backFromEpisodes() {
