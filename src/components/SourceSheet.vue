@@ -174,20 +174,23 @@ const aliasList = computed(() => props.subject?.alias?.slice(0, 12) ?? []);
 
         <div v-else class="cards">
           <div v-for="result in anime.sourceSearch" :key="result.pluginName" class="card">
-            <!-- 卡片头：源名 + 状态 -->
-            <button class="card-head" @click="toggle(result.pluginName)">
+            <!-- 卡片头：源名 + 状态（可折叠） -->
+            <m3e-list-item class="card-head" @click="toggle(result.pluginName)">
               <span class="src-name">{{ result.pluginName }}</span>
               <span
+                slot="supporting-text"
                 class="src-status"
                 :class="{ error: statusInfo(result).error }"
                 :title="statusInfo(result).text"
                 >{{ statusInfo(result).text }}</span
               >
-              <span v-if="result.status === 'pending'" class="material-symbols-outlined spin"
-                >progress_activity</span
+              <span
+                slot="trailing"
+                class="material-symbols-outlined card-trail"
+                :class="{ spin: result.status === 'pending' }"
+                >{{ result.status === "pending" ? "progress_activity" : "expand_more" }}</span
               >
-              <span v-else class="material-symbols-outlined chevron">expand_more</span>
-            </button>
+            </m3e-list-item>
 
             <!-- 命中条目 -->
             <button
@@ -342,23 +345,9 @@ const aliasList = computed(() => props.subject?.alias?.slice(0, 12) ?? []);
   overflow: hidden;
 }
 .card-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 12px 14px;
-  border: none;
-  background: transparent;
-  color: var(--md-sys-color-on-surface);
-  font-family: inherit;
-  text-align: left;
   cursor: pointer;
 }
-.card-head:hover {
-  background: var(--md-sys-color-surface-container-high);
-}
 .src-name {
-  flex: 1;
   min-width: 0;
   font-size: var(--md-sys-typescale-title-small-size);
   font-weight: 500;
@@ -367,10 +356,8 @@ const aliasList = computed(() => props.subject?.alias?.slice(0, 12) ?? []);
   text-overflow: ellipsis;
 }
 .src-status {
-  flex: none;
   font-size: var(--md-sys-typescale-label-small-size);
   color: var(--md-sys-color-on-surface-variant);
-  max-width: 48%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -378,13 +365,9 @@ const aliasList = computed(() => props.subject?.alias?.slice(0, 12) ?? []);
 .src-status.error {
   color: var(--md-sys-color-error);
 }
-.card-head .material-symbols-outlined {
-  flex: none;
+.card-trail {
   font-size: 18px;
   color: var(--md-sys-color-on-surface-variant);
-}
-.card-head .chevron {
-  transition: transform 220ms var(--md-sys-motion-spring-spatial-fast);
 }
 .spin {
   animation: lm-spin 1s linear infinite;

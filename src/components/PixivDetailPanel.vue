@@ -197,11 +197,11 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
       </div>
 
       <div class="info">
-        <button class="author-row author-link" :title="illust.user.name" @click="openUser">
-          <span class="material-symbols-outlined">person</span>
-          <span>{{ illust.user.name }}</span>
-          <span class="material-symbols-outlined chev">chevron_right</span>
-        </button>
+        <m3e-list-item class="author-row" :title="illust.user.name" @click="openUser">
+          <span slot="leading" class="material-symbols-outlined">person</span>
+          {{ illust.user.name }}
+          <span slot="trailing" class="material-symbols-outlined chev">chevron_right</span>
+        </m3e-list-item>
 
         <div class="stats">
           <span class="chip-static">
@@ -404,34 +404,24 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
   gap: 12px;
   min-width: 0;
 }
+/* 作者行：m3e-list-item（leading 头像图标 / 标题 / trailing 箭头） */
 .author-row {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: var(--md-sys-typescale-title-medium-size);
-  font-weight: 500;
-}
-.author-link {
-  padding: 4px 8px;
-  margin-left: -8px;
-  border: none;
-  border-radius: var(--md-sys-shape-corner-medium);
-  background: transparent;
-  color: inherit;
-  font-family: inherit;
   align-self: flex-start;
+  max-width: 100%;
+  border-radius: var(--md-sys-shape-corner-medium);
+  /* 单行紧凑高度，保留原作者行的视觉密度 */
+  --m3e-list-item-one-line-height: 40px;
+  --m3e-list-item-height: 40px;
+  --m3e-list-item-leading-space: 0;
+  --m3e-list-item-trailing-space: 4px;
+  --m3e-list-item-icon-size: 20px;
+  --m3e-list-item-leading-color: var(--md-sys-color-primary);
+  --m3e-list-item-font-size: var(--md-sys-typescale-title-medium-size);
+  --m3e-list-item-font-weight: 500;
   cursor: pointer;
 }
-.author-link:hover {
-  background: var(--md-sys-color-surface-container);
-}
-.author-link .chev {
-  font-size: 16px;
-  color: var(--md-sys-color-on-surface-variant);
-}
-.author-row .material-symbols-outlined {
-  font-size: 20px;
-  color: var(--md-sys-color-primary);
+.author-row .chev {
+  --m3e-list-item-trailing-color: var(--md-sys-color-on-surface-variant);
 }
 .stats {
   display: flex;

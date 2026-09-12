@@ -144,9 +144,9 @@ onBeforeUnmount(() => {
 
     <!-- 顶部覆盖层（空白处可拖拽窗口） -->
     <div class="player-topbar" @pointerdown="startDrag">
-      <button class="back" @click="router.back()" @pointerdown.stop>
-        <span class="material-symbols-outlined">arrow_back</span> {{ t("player.back") }}
-      </button>
+      <m3e-icon-button class="back" @click="router.back()" @pointerdown.stop>
+        <span class="material-symbols-outlined">arrow_back</span>
+      </m3e-icon-button>
     </div>
 
     <div class="player-body">
@@ -275,29 +275,23 @@ onBeforeUnmount(() => {
 
               <Transition name="panel-pop">
                 <div v-if="panelOpen" class="tools-panel">
-                  <div class="segment">
-                    <button
-                      class="seg-btn"
-                      :class="{ active: rightTab === 'lyrics' }"
+                  <m3e-segmented-button class="segment">
+                    <m3e-button-segment
+                      :checked="rightTab === 'lyrics'"
                       @click="rightTab = 'lyrics'"
                     >
                       {{ t("actions.lyrics") }}
-                    </button>
-                    <button
-                      class="seg-btn"
-                      :class="{ active: rightTab === 'queue' }"
-                      @click="rightTab = 'queue'"
-                    >
+                    </m3e-button-segment>
+                    <m3e-button-segment :checked="rightTab === 'queue'" @click="rightTab = 'queue'">
                       {{ t("actions.queue") }}
-                    </button>
-                    <button
-                      class="seg-btn"
-                      :class="{ active: rightTab === 'effects' }"
+                    </m3e-button-segment>
+                    <m3e-button-segment
+                      :checked="rightTab === 'effects'"
                       @click="rightTab = 'effects'"
                     >
                       {{ t("player.effects") }}
-                    </button>
-                  </div>
+                    </m3e-button-segment>
+                  </m3e-segmented-button>
 
                   <div v-if="sourceBadge || hasSubLine" class="tools-extra">
                     <button
@@ -407,15 +401,10 @@ onBeforeUnmount(() => {
   left: 24px;
   top: calc(50% + 6px);
   transform: translateY(-50%);
-  border: none;
-  background: transparent;
-  color: #fff;
-  font-size: 15px;
-  cursor: pointer;
   opacity: 0.9;
-  display: flex;
-  align-items: center;
-  gap: 4px;
+  /* m3e-icon-button：顶栏白色返回箭头 */
+  --m3e-icon-button-icon-color: #fff;
+  --m3e-icon-button-hover-icon-color: #fff;
 }
 .back:hover {
   opacity: 1;
@@ -671,12 +660,14 @@ onBeforeUnmount(() => {
   --m3e-button-label-text-color: var(--md-sys-color-on-surface);
 }
 .segment {
-  display: flex;
-  gap: 6px;
-  padding: 3px;
+  /* 深色工具面板上的分段按钮：半透明白轨道、选中白块黑字 */
   background: rgba(255, 255, 255, 0.12);
   border-radius: 12px;
   align-self: flex-start;
+  --m3e-segmented-button-outline-color: transparent;
+  --m3e-segmented-button-selected-container-color: #fff;
+  --m3e-segmented-button-selected-label-text-color: #000;
+  --m3e-segmented-button-unselected-label-text-color: rgba(255, 255, 255, 0.6);
 }
 
 .source-badge {
@@ -723,22 +714,6 @@ onBeforeUnmount(() => {
 .source-badge.sub.disabled {
   opacity: 0.4;
   cursor: default;
-}
-.seg-btn {
-  border: none;
-  background: transparent;
-  color: #fff;
-  opacity: 0.6;
-  padding: 6px 18px;
-  border-radius: 10px;
-  cursor: pointer;
-  font-size: 13px;
-  transition: all 200ms var(--md-sys-motion-spring-effects-fast);
-}
-.seg-btn.active {
-  background: #fff;
-  color: #000;
-  opacity: 1;
 }
 .right-content {
   flex: 1;

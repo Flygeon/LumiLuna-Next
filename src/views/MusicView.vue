@@ -507,14 +507,15 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
             @click="openPlaylist(c)"
             @contextmenu="onPlaylistContext($event, c)"
           >
-            <button
+            <m3e-icon-button
               v-if="c.key.startsWith('user:')"
               class="p-remove"
+              size="extra-small"
               :title="t('online.removePlaylist')"
               @click.stop="removePlaylist(c.id!)"
             >
               <span class="material-symbols-outlined">close</span>
-            </button>
+            </m3e-icon-button>
             <div class="thumb">
               <CachedCover v-if="coverOf(c)" :url="coverOf(c)" :alt="c.name" />
               <span v-else class="placeholder material-symbols-outlined">
@@ -580,23 +581,23 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
         <span v-if="detail.type !== 'local'" class="count tabular-nums">
           {{ detail.songs.length }} {{ t("online.tracks") }}
         </span>
-        <div v-if="detail.type !== 'local'" class="segmented view-toggle">
-          <button
-            class="seg"
-            :class="{ active: settings.musicViewMode === 'grid' }"
-            :title="t('settings.musicViewMode_grid')"
-            @click="settings.musicViewMode = 'grid'"
-          >
-            <span class="material-symbols-outlined">grid_view</span>
-          </button>
-          <button
-            class="seg"
-            :class="{ active: settings.musicViewMode === 'list' }"
-            :title="t('settings.musicViewMode_list')"
-            @click="settings.musicViewMode = 'list'"
-          >
-            <span class="material-symbols-outlined">view_list</span>
-          </button>
+        <div v-if="detail.type !== 'local'" class="view-toggle">
+          <m3e-segmented-button>
+            <m3e-button-segment
+              :checked="settings.musicViewMode === 'grid'"
+              :title="t('settings.musicViewMode_grid')"
+              @click="settings.musicViewMode = 'grid'"
+            >
+              <span slot="icon" class="material-symbols-outlined">grid_view</span>
+            </m3e-button-segment>
+            <m3e-button-segment
+              :checked="settings.musicViewMode === 'list'"
+              :title="t('settings.musicViewMode_list')"
+              @click="settings.musicViewMode = 'list'"
+            >
+              <span slot="icon" class="material-symbols-outlined">view_list</span>
+            </m3e-button-segment>
+          </m3e-segmented-button>
         </div>
       </div>
 
@@ -659,36 +660,37 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
       <div v-if="detail.type === 'cloud' && detail.loadingMore" class="loading">
         {{ t("online.loading") }}
       </div>
-      <button
+      <m3e-button
         v-if="detail.type === 'cloud' && !detail.loadingMore && netease.cloudHasMore"
+        variant="tonal"
         class="load-more"
         @click="loadMoreCloud"
       >
         {{ t("netease.loadMore") }}
-      </button>
+      </m3e-button>
     </template>
 
     <!-- 本地音乐（原模式 或 点开「本地音乐」歌单） -->
     <template v-if="showLocal">
       <div class="local-head">
         <LibraryToolbar :count="items.length" @changed="load" />
-        <div class="segmented view-toggle">
-          <button
-            class="seg"
-            :class="{ active: settings.musicViewMode === 'grid' }"
-            :title="t('settings.musicViewMode_grid')"
-            @click="settings.musicViewMode = 'grid'"
-          >
-            <span class="material-symbols-outlined">grid_view</span>
-          </button>
-          <button
-            class="seg"
-            :class="{ active: settings.musicViewMode === 'list' }"
-            :title="t('settings.musicViewMode_list')"
-            @click="settings.musicViewMode = 'list'"
-          >
-            <span class="material-symbols-outlined">view_list</span>
-          </button>
+        <div class="view-toggle">
+          <m3e-segmented-button>
+            <m3e-button-segment
+              :checked="settings.musicViewMode === 'grid'"
+              :title="t('settings.musicViewMode_grid')"
+              @click="settings.musicViewMode = 'grid'"
+            >
+              <span slot="icon" class="material-symbols-outlined">grid_view</span>
+            </m3e-button-segment>
+            <m3e-button-segment
+              :checked="settings.musicViewMode === 'list'"
+              :title="t('settings.musicViewMode_list')"
+              @click="settings.musicViewMode = 'list'"
+            >
+              <span slot="icon" class="material-symbols-outlined">view_list</span>
+            </m3e-button-segment>
+          </m3e-segmented-button>
         </div>
       </div>
 
@@ -750,28 +752,28 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
         <div class="qr-card">
           <h3>{{ t("netease.loginTitle") }}</h3>
           <!-- 切换 tab -->
-          <div class="phone-tabs">
-            <button
-              :class="['phone-tab', { active: netease.authTab === 'qr' }]"
+          <m3e-segmented-button class="phone-tabs">
+            <m3e-button-segment
+              :checked="netease.authTab === 'qr'"
               @click="
                 netease.authTab = 'qr';
                 netease.phoneError = '';
               "
             >
-              <span class="material-symbols-outlined">qr_code</span>
+              <span slot="icon" class="material-symbols-outlined">qr_code</span>
               {{ t("netease.qrTab") }}
-            </button>
-            <button
-              :class="['phone-tab', { active: netease.authTab === 'phone' }]"
+            </m3e-button-segment>
+            <m3e-button-segment
+              :checked="netease.authTab === 'phone'"
               @click="
                 netease.authTab = 'phone';
                 netease.phoneError = '';
               "
             >
-              <span class="material-symbols-outlined">smartphone</span>
+              <span slot="icon" class="material-symbols-outlined">smartphone</span>
               {{ t("netease.phoneTab") }}
-            </button>
-          </div>
+            </m3e-button-segment>
+          </m3e-segmented-button>
 
           <!-- 扫码登录 -->
           <template v-if="netease.authTab === 'qr'">
@@ -832,7 +834,8 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
                   class="phone-input sms-input"
                   @keyup.enter="netease.phoneLogin()"
                 />
-                <button
+                <m3e-button
+                  variant="tonal"
                   class="sms-btn"
                   :disabled="netease.smsSending || netease.smsCooldown > 0"
                   @click="netease.sendSmsCaptcha()"
@@ -840,16 +843,17 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
                   <template v-if="netease.smsCooldown > 0"> {{ netease.smsCooldown }}s </template>
                   <template v-else-if="netease.smsSending"> 发送中… </template>
                   <template v-else> 获取验证码 </template>
-                </button>
+                </m3e-button>
               </div>
               <p v-if="netease.phoneError" class="phone-error">{{ netease.phoneError }}</p>
-              <button
+              <m3e-button
+                variant="filled"
                 class="phone-login-btn"
                 :disabled="netease.phoneLogging"
                 @click="netease.phoneLogin()"
               >
                 {{ netease.phoneLogging ? "登录中…" : "登录" }}
-              </button>
+              </m3e-button>
               <div class="phone-actions">
                 <m3e-button variant="text" @click="netease.closeQr()">
                   {{ t("actions.cancel") }}
@@ -906,17 +910,15 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
   position: absolute;
   top: 6px;
   right: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border: none;
+  z-index: 2;
+  opacity: 0;
+  /* m3e-icon-button(extra-small)：封面右上角悬浮关闭钮，深色半透明圆底、白图标 */
+  --m3e-icon-button-extra-small-container-height: 26px;
+  --m3e-icon-button-extra-small-icon-size: 15px;
+  --m3e-icon-button-icon-color: #fff;
+  --m3e-icon-button-hover-icon-color: #fff;
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.45);
-  color: #fff;
-  cursor: pointer;
-  opacity: 0;
   transition:
     opacity var(--md-sys-motion-duration-short),
     background 160ms var(--md-sys-motion-spring-effects-fast);
@@ -926,9 +928,6 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
 }
 .p-remove:hover {
   background: var(--md-sys-color-error);
-}
-.p-remove .material-symbols-outlined {
-  font-size: 16px;
 }
 
 .search-bar {
@@ -1116,31 +1115,12 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
   margin-bottom: 0;
 }
 .view-toggle {
-  display: flex;
-  gap: 2px;
   flex: none;
-  padding: 3px;
-  border-radius: var(--lm-shape-button);
-  background: var(--md-sys-color-surface-container);
 }
-.view-toggle .seg {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 30px;
-  border: none;
-  border-radius: var(--md-sys-shape-corner-medium);
-  background: transparent;
-  color: var(--md-sys-color-on-surface-variant);
-  cursor: pointer;
-}
-.view-toggle .seg.active {
-  background: var(--md-sys-color-secondary-container);
-  color: var(--md-sys-color-on-secondary-container);
-}
-.view-toggle .material-symbols-outlined {
-  font-size: 18px;
+/* 视图切换（网格/列表）：m3e-segmented-button 紧凑高度 */
+.view-toggle m3e-segmented-button {
+  --m3e-segmented-button-height: 32px;
+  --m3e-segmented-button-icon-size: 18px;
 }
 
 .error-bar {
@@ -1295,35 +1275,12 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
 /* ---- 手机号登录 tab ---- */
 .phone-tabs {
   display: flex;
-  gap: 4px;
   width: 100%;
-  background: var(--md-sys-color-surface-container);
-  border-radius: var(--md-sys-shape-corner-full);
-  padding: 3px;
 }
-.phone-tab {
+.phone-tabs m3e-segmented-button {
   flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 6px 10px;
-  border: none;
-  border-radius: var(--md-sys-shape-corner-full);
-  background: transparent;
-  color: var(--md-sys-color-on-surface-variant);
-  font-family: inherit;
-  font-size: var(--md-sys-typescale-label-small-size);
-  cursor: pointer;
-  transition: all var(--md-sys-motion-duration-short) var(--md-sys-motion-spring-effects-fast);
-}
-.phone-tab.active {
-  background: var(--md-sys-color-surface-container-high);
-  color: var(--md-sys-color-on-surface);
-  box-shadow: var(--md-elevation-1);
-}
-.phone-tab .material-symbols-outlined {
-  font-size: 16px;
+  --m3e-segmented-button-height: 38px;
+  --m3e-segmented-button-icon-size: 16px;
 }
 .phone-form {
   display: flex;
@@ -1359,25 +1316,9 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
   min-width: 0;
 }
 .sms-btn {
-  height: 40px;
-  padding: 0 14px;
-  border: none;
-  border-radius: var(--md-sys-shape-corner-full);
-  background: var(--md-sys-color-surface-container-high);
-  color: var(--md-sys-color-on-surface);
-  font-family: inherit;
-  font-size: var(--md-sys-typescale-label-small-size);
-  font-weight: 500;
-  cursor: pointer;
+  /* m3e-button(tonal)：按内容宽度，不抢占验证码输入框 */
+  flex: none;
   white-space: nowrap;
-  transition: all var(--md-sys-motion-duration-short) var(--md-sys-motion-spring-effects-fast);
-}
-.sms-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.sms-btn:hover:not(:disabled) {
-  background: var(--md-sys-color-surface-container-highest);
 }
 .phone-error {
   font-size: var(--md-sys-typescale-body-small-size);
@@ -1386,24 +1327,8 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
   margin: 0;
 }
 .phone-login-btn {
-  height: 40px;
+  /* m3e-button(filled)：主操作按钮，整行宽 */
   width: 100%;
-  border: none;
-  border-radius: var(--md-sys-shape-corner-full);
-  background: var(--md-sys-color-primary);
-  color: var(--md-sys-color-on-primary);
-  font-family: inherit;
-  font-size: var(--md-sys-typescale-label-large-size);
-  font-weight: 500;
-  cursor: pointer;
-  transition: all var(--md-sys-motion-duration-short) var(--md-sys-motion-spring-effects-fast);
-}
-.phone-login-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.phone-login-btn:hover:not(:disabled) {
-  opacity: 0.92;
 }
 .phone-actions {
   display: flex;
@@ -1419,22 +1344,9 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
   opacity: 0;
 }
 
-/* 云盘加载更多 */
+/* 云盘加载更多：m3e-button(tonal)，水平居中 */
 .load-more {
   display: block;
   margin: 18px auto 8px;
-  padding: 9px 22px;
-  border: 1px solid var(--md-sys-color-outline-variant);
-  border-radius: var(--md-sys-shape-corner-full);
-  background: transparent;
-  color: var(--md-sys-color-on-surface-variant);
-  font-family: inherit;
-  font-size: var(--md-sys-typescale-label-large-size);
-  cursor: pointer;
-  transition: all var(--md-sys-motion-duration-short) var(--md-sys-motion-spring-effects-fast);
-}
-.load-more:hover {
-  background: var(--md-sys-color-surface-container-high);
-  color: var(--md-sys-color-on-surface);
 }
 </style>

@@ -241,7 +241,7 @@ router.afterEach((to) => {
     <!-- 主体：左侧导航 + 内容区 -->
     <div class="app-body">
       <!-- 左侧导航 Rail -->
-      <nav
+      <m3e-nav-rail
         v-if="!isPlayerPage && !isDesktopLyricsPage && !isExtensionHostPage"
         class="nav-rail lm-glass"
         data-lm-region="nav"
@@ -251,43 +251,43 @@ router.afterEach((to) => {
           <span class="brand-name">{{ t("app.name") }}</span>
         </div>
 
-        <div class="nav-group">
-          <button
-            v-for="item in navItems"
-            :key="item.key"
-            class="nav-item"
-            :class="{ active: isActive(item.path) }"
-            @click="router.push(item.path)"
+        <m3e-nav-item
+          v-for="item in navItems"
+          :key="item.key"
+          :selected="isActive(item.path)"
+          @click="router.push(item.path)"
+        >
+          <span
+            slot="icon"
+            class="material-symbols-outlined nav-icon"
+            :class="{ filled: isActive(item.path) }"
           >
-            <span class="indicator">
-              <span class="material-symbols-outlined" :class="{ filled: isActive(item.path) }">{{
-                item.icon
-              }}</span>
-              <span v-if="countOf(item.type)" class="badge tabular-nums">{{
-                countOf(item.type) > 999 ? "999+" : countOf(item.type)
-              }}</span>
-            </span>
-            <span class="label">{{ t("nav." + item.key) }}</span>
-          </button>
-        </div>
+            {{ item.icon }}
+            <span v-if="countOf(item.type)" class="badge tabular-nums">{{
+              countOf(item.type) > 999 ? "999+" : countOf(item.type)
+            }}</span>
+          </span>
+          {{ t("nav." + item.key) }}
+        </m3e-nav-item>
 
         <div class="nav-group bottom">
-          <button
+          <m3e-nav-item
             v-for="item in bottomItems"
             :key="item.key"
-            class="nav-item"
-            :class="{ active: isActive(item.path) }"
+            :selected="isActive(item.path)"
             @click="router.push(item.path)"
           >
-            <span class="indicator">
-              <span class="material-symbols-outlined" :class="{ filled: isActive(item.path) }">{{
-                item.icon
-              }}</span>
+            <span
+              slot="icon"
+              class="material-symbols-outlined nav-icon"
+              :class="{ filled: isActive(item.path) }"
+            >
+              {{ item.icon }}
             </span>
-            <span class="label">{{ item.label || t("nav." + item.key) }}</span>
-          </button>
+            {{ item.label || t("nav." + item.key) }}
+          </m3e-nav-item>
         </div>
-      </nav>
+      </m3e-nav-rail>
 
       <!-- 内容区 -->
       <div class="content" data-lm-region="content">
@@ -411,14 +411,12 @@ router.afterEach((to) => {
 }
 
 /* ---- 导航 Rail ---- */
+/* 外部宽度由 --lm-nav-width 控制；通过自定义属性把 compact 宽度喂给 m3e-nav-rail，
+   使内部药丸指示器与负外边距仍按此宽度对齐 */
 .nav-rail {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
+  --m3e-nav-rail-compact-width: var(--lm-nav-width);
   width: var(--lm-nav-width);
   flex: none;
-  padding: 14px 8px 12px;
   border-right: 1px solid var(--lm-hairline);
   z-index: 10;
 }
@@ -428,6 +426,7 @@ router.afterEach((to) => {
   flex-direction: column;
   align-items: center;
   gap: 2px;
+  width: 100%;
   margin-bottom: 14px;
   color: var(--md-sys-color-primary);
 }
@@ -443,61 +442,20 @@ router.afterEach((to) => {
   letter-spacing: 0.6px;
 }
 
-.nav-group {
+/* 底部导航组：推到 rail 底部。m3e-nav-item 宿主默认 flex:1，这里复位为不拉伸 */
+.nav-group.bottom {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 4px;
   width: 100%;
-}
-.nav-group.bottom {
   margin-top: auto;
 }
-
-.nav-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  width: 100%;
-  padding: 6px 0 7px;
-  border: none;
-  background: transparent;
-  color: var(--md-sys-color-on-surface-variant);
-  font-family: inherit;
-  cursor: pointer;
-  border-radius: var(--md-sys-shape-corner-medium);
-}
-.nav-item:focus-visible {
-  outline: 2px solid var(--md-sys-color-primary);
-  outline-offset: -2px;
+.nav-group.bottom m3e-nav-item {
+  flex: none;
 }
 
-/* M3 药丸形状选中指示器 */
-.indicator {
+/* 图标插槽内的角标定位上下文 */
+.nav-icon {
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 56px;
-  height: 32px;
-  border-radius: 16px;
-  transition:
-    background var(--md-sys-motion-duration-short) var(--md-sys-motion-spring-effects-fast),
-    transform 200ms var(--md-sys-motion-spring);
-}
-.nav-item:hover .indicator {
-  background: var(--md-sys-color-surface-container-high);
-}
-.nav-item.active .indicator {
-  background: var(--md-sys-color-secondary-container);
-  color: var(--md-sys-color-on-secondary-container);
-}
-.nav-item:active .indicator {
-  transform: scale(0.9);
-}
-.indicator .material-symbols-outlined {
-  font-size: 22px;
 }
 
 .badge {
@@ -516,16 +474,6 @@ router.afterEach((to) => {
   font-size: 10px;
   font-weight: 500;
   line-height: 1;
-}
-
-.label {
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.2px;
-}
-.nav-item.active .label {
-  color: var(--md-sys-color-on-surface);
-  font-weight: 500;
 }
 
 /* ---- 内容区 ---- */

@@ -12,6 +12,7 @@
 // - m3e-dialog：对话框（文本输入 / 确认弹窗）
 // - m3e-form-field：表单字段容器（dialog 内输入框）
 // - m3e-progress-indicator：加载指示器（circular-progress）
+// - m3e-nav-rail / m3e-nav-bar / m3e-nav-item：左侧导航 rail（m3e-nav-item 由 nav-bar 定义）
 import "@m3e/web/button";
 import "@m3e/web/button-group";
 import "@m3e/web/list";
@@ -25,3 +26,5 @@ import "@m3e/web/segmented-button";
 import "@m3e/web/dialog";
 import "@m3e/web/form-field";
 import "@m3e/web/progress-indicator";
+import "@m3e/web/nav-bar";
+import "@m3e/web/nav-rail";

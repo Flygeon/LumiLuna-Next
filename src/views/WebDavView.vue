@@ -287,10 +287,19 @@ function typeOf(entry: WebDavEntry) {
         <section v-if="dirs.length" class="dav-section">
           <h4 class="section-title">{{ t("webdav.folders") }}</h4>
           <div class="dav-grid">
-            <button v-for="d in dirs" :key="d.path" class="tile dir-tile" @click="load(d.path)">
-              <span class="material-symbols-outlined tile-icon folder">folder</span>
-              <span class="tile-name" :title="d.name">{{ d.name }}</span>
-            </button>
+            <m3e-card
+              v-for="d in dirs"
+              :key="d.path"
+              class="dir-tile"
+              variant="elevated"
+              actionable
+              @click="load(d.path)"
+            >
+              <div slot="content" class="dir-tile-inner">
+                <span class="material-symbols-outlined dir-tile-icon">folder</span>
+                <span class="dir-tile-name" :title="d.name">{{ d.name }}</span>
+              </div>
+            </m3e-card>
           </div>
         </section>
 
@@ -470,11 +479,30 @@ function typeOf(entry: WebDavEntry) {
     "wght" 300;
   color: var(--md-sys-color-on-surface-variant);
 }
-.tile-icon.folder {
-  color: var(--md-sys-color-primary);
+.dir-tile {
+  cursor: pointer;
+  --m3e-card-shape: var(--md-sys-shape-corner-extra-large);
+}
+.dir-tile-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.dir-tile-icon {
+  font-size: 34px;
   font-variation-settings:
     "FILL" 1,
     "wght" 400;
+  color: var(--md-sys-color-primary);
+}
+.dir-tile-name {
+  width: 100%;
+  font-size: var(--md-sys-typescale-body-small-size);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .tile-icon.video {
   color: #d98b4a;

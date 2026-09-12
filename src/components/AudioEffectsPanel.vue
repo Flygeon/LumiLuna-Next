@@ -361,14 +361,22 @@ function switchChecked(e: Event): boolean {
         <div class="popup-card">
           <h4 class="popup-title">{{ t("player.effectsShare") }}</h4>
           <div class="popup-actions">
-            <button class="popup-opt" @click="copyShareCode(sharePopupPresetId!)">
-              <span class="material-symbols-outlined">content_copy</span>
-              <span class="popup-opt-label">{{ t("player.effectsShareCopy") }}</span>
-            </button>
-            <button class="popup-opt" @click="openUploadPopup(sharePopupPresetId!)">
-              <span class="material-symbols-outlined">cloud_upload</span>
-              <span class="popup-opt-label">{{ t("player.effectsShareUpload") }}</span>
-            </button>
+            <m3e-button
+              class="popup-opt"
+              variant="outlined"
+              @click="copyShareCode(sharePopupPresetId!)"
+            >
+              <span slot="icon" class="material-symbols-outlined">content_copy</span>
+              {{ t("player.effectsShareCopy") }}
+            </m3e-button>
+            <m3e-button
+              class="popup-opt"
+              variant="outlined"
+              @click="openUploadPopup(sharePopupPresetId!)"
+            >
+              <span slot="icon" class="material-symbols-outlined">cloud_upload</span>
+              {{ t("player.effectsShareUpload") }}
+            </m3e-button>
           </div>
           <m3e-icon-button size="medium" class="popup-close" @click="closeSharePopup">
             <span class="material-symbols-outlined">close</span>
@@ -699,29 +707,10 @@ function switchChecked(e: Event): boolean {
   gap: 6px;
 }
 .popup-opt {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  border: none;
-  border-radius: var(--md-sys-shape-corner-medium);
-  background: transparent;
-  color: var(--md-sys-color-on-surface);
-  font-family: inherit;
-  font-size: var(--md-sys-typescale-body-medium-size);
-  cursor: pointer;
-  text-align: left;
-  transition: background 120ms var(--md-sys-motion-spring-effects-fast);
-}
-.popup-opt:hover {
-  background: var(--md-sys-color-surface-container-highest);
-}
-.popup-opt .material-symbols-outlined {
-  font-size: 22px;
-  color: var(--md-sys-color-primary);
-}
-.popup-opt-label {
-  font-weight: 500;
+  width: 100%;
+  /* 行高稍高，保留原 .popup-opt 行的点击高度 */
+  --m3e-button-medium-container-height: 48px;
+  --m3e-button-icon-size: 20px;
 }
 .popup-close {
   position: absolute;

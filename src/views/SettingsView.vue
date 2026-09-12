@@ -518,8 +518,9 @@ function selectSection(id: string) {
               >
               <span class="ver tabular-nums">{{ s.meta.version }}</span>
             </span>
-            <button
-              class="lm-icon-btn small danger skin-del"
+            <m3e-icon-button
+              class="skin-del"
+              size="extra-small"
               :class="{ confirming: confirmDeleteSkin === s.id }"
               :title="
                 confirmDeleteSkin === s.id
@@ -531,18 +532,20 @@ function selectSection(id: string) {
               <span class="material-symbols-outlined">
                 {{ confirmDeleteSkin === s.id ? "check" : "close" }}
               </span>
-            </button>
+            </m3e-icon-button>
           </div>
-          <button class="skin-card import" @click="importSkin">
-            <span class="material-symbols-outlined">add</span>
-            <span class="skin-name">{{ t("settings.skinImport") }}</span>
-          </button>
+          <m3e-card actionable class="skin-card import" @click="importSkin">
+            <span slot="content" class="skin-import-inner">
+              <span class="material-symbols-outlined">add</span>
+              <span class="skin-name">{{ t("settings.skinImport") }}</span>
+            </span>
+          </m3e-card>
         </div>
         <div v-if="settings.activeSkin" class="actions skin-actions">
-          <button class="lm-btn lm-btn--text" @click="skins.activate('')">
-            <span class="material-symbols-outlined">restart_alt</span>
+          <m3e-button variant="text" @click="skins.activate('')">
+            <span slot="icon" class="material-symbols-outlined">restart_alt</span>
             {{ t("settings.skinRestoreDefault") }}
-          </button>
+          </m3e-button>
         </div>
       </div>
       <p class="hint">{{ t("settings.skinsHint") }}</p>
@@ -814,25 +817,25 @@ function selectSection(id: string) {
       </div>
 
       <div class="actions">
-        <button class="lm-btn lm-btn--tonal" @click="chooseFfmpegDir">
-          <span class="material-symbols-outlined">folder_open</span>
+        <m3e-button variant="tonal" @click="chooseFfmpegDir">
+          <span slot="icon" class="material-symbols-outlined">folder_open</span>
           {{ t("settings.ffmpegChoose") }}
-        </button>
-        <button class="lm-btn lm-btn--outlined" :disabled="checking" @click="recheckFfmpeg">
-          <span class="material-symbols-outlined">refresh</span>
+        </m3e-button>
+        <m3e-button variant="outlined" :disabled="checking" @click="recheckFfmpeg">
+          <span slot="icon" class="material-symbols-outlined">refresh</span>
           {{ t("settings.ffmpegRecheck") }}
-        </button>
-        <button v-if="settings.ffmpegDir" class="lm-btn lm-btn--text" @click="resetFfmpegDir">
+        </m3e-button>
+        <m3e-button v-if="settings.ffmpegDir" variant="text" @click="resetFfmpegDir">
           {{ t("settings.ffmpegReset") }}
-        </button>
-        <button
+        </m3e-button>
+        <m3e-button
           v-if="!ffmpeg?.available"
-          class="lm-btn lm-btn--text"
+          variant="text"
           @click="capabilities.openFfmpegDownloadPage()"
         >
-          <span class="material-symbols-outlined">download</span>
+          <span slot="icon" class="material-symbols-outlined">download</span>
           {{ t("settings.ffmpegDownload") }}
-        </button>
+        </m3e-button>
       </div>
     </section>
 
@@ -1095,9 +1098,9 @@ function selectSection(id: string) {
       </label>
 
       <div class="actions">
-        <button class="lm-btn lm-btn--outlined" @click="resetDesktopLyricsBounds">
+        <m3e-button variant="outlined" @click="resetDesktopLyricsBounds">
           {{ t("settings.desktopLyricsResetPos") }}
-        </button>
+        </m3e-button>
       </div>
     </section>
 
@@ -1278,20 +1281,20 @@ function selectSection(id: string) {
                 autocomplete="off"
                 :placeholder="t('settings.bangumiTokenPlaceholder')"
               />
-              <button
-                class="lm-btn lm-btn--filled"
+              <m3e-button
+                variant="filled"
                 :disabled="bangumiCollect.authState === 'checking' || !bangumiTokenDraft.trim()"
                 @click="connectBangumi"
               >
                 {{ t("settings.bangumiConnect") }}
-              </button>
-              <button
+              </m3e-button>
+              <m3e-button
                 v-if="bangumiCollect.authorized"
-                class="lm-btn lm-btn--text"
+                variant="text"
                 @click="disconnectBangumi"
               >
                 {{ t("settings.bangumiDisconnect") }}
-              </button>
+              </m3e-button>
             </div>
             <p v-if="bangumiCollect.authorized" class="token-state ok">
               {{
@@ -1306,9 +1309,9 @@ function selectSection(id: string) {
             </p>
             <p class="hint">
               {{ t("settings.bangumiTokenHelp") }}
-              <button class="link-inline" @click="openBangumiTokenPage">
+              <m3e-button variant="text" class="link-inline" @click="openBangumiTokenPage">
                 {{ t("settings.bangumiTokenLink") }}
-              </button>
+              </m3e-button>
             </p>
           </div>
         </div>
@@ -1505,15 +1508,18 @@ function selectSection(id: string) {
                 spellcheck="false"
                 autocomplete="new-password"
               />
-              <button
-                class="lm-icon-btn small"
+              <m3e-icon-button
+                class="pass-toggle"
+                size="extra-small"
+                toggle
+                :selected="showDavPass"
                 :title="showDavPass ? 'hide' : 'show'"
                 @click="showDavPass = !showDavPass"
               >
                 <span class="material-symbols-outlined">
                   {{ showDavPass ? "visibility_off" : "visibility" }}
                 </span>
-              </button>
+              </m3e-icon-button>
             </div>
           </div>
         </div>
@@ -1531,14 +1537,14 @@ function selectSection(id: string) {
         </div>
 
         <div class="actions">
-          <button class="lm-btn lm-btn--tonal" :disabled="davTesting" @click="testWebDav">
-            <span class="material-symbols-outlined">cloud_sync</span>
+          <m3e-button variant="tonal" :disabled="davTesting" @click="testWebDav">
+            <span slot="icon" class="material-symbols-outlined">cloud_sync</span>
             {{ davTesting ? t("settings.webdavTesting") : t("settings.webdavTest") }}
-          </button>
-          <button class="lm-btn lm-btn--outlined" @click="router.push('/webdav')">
-            <span class="material-symbols-outlined">cloud</span>
+          </m3e-button>
+          <m3e-button variant="outlined" @click="router.push('/webdav')">
+            <span slot="icon" class="material-symbols-outlined">cloud</span>
             {{ t("settings.webdavOpen") }}
-          </button>
+          </m3e-button>
         </div>
       </div>
     </section>
@@ -1556,10 +1562,10 @@ function selectSection(id: string) {
       </label>
       <p class="hint">{{ t("settings.devtoolsHint") }}</p>
       <div class="actions">
-        <button class="lm-btn lm-btn--outlined" @click="clearCache">
-          <span class="material-symbols-outlined">cleaning_services</span>
+        <m3e-button variant="outlined" @click="clearCache">
+          <span slot="icon" class="material-symbols-outlined">cleaning_services</span>
           {{ t("settings.clearCache") }}
-        </button>
+        </m3e-button>
       </div>
     </section>
 
@@ -1689,14 +1695,11 @@ function selectSection(id: string) {
   color: var(--md-sys-color-error);
 }
 .link-inline {
-  border: none;
-  background: transparent;
-  color: var(--md-sys-color-primary);
-  font-family: inherit;
-  font-size: inherit;
-  text-decoration: underline;
-  cursor: pointer;
-  padding: 0;
+  /* 段落内联文字链接：用 m3e-button text 渲染，压缩高度以融入行文 */
+  height: 26px;
+  margin: 0;
+  vertical-align: middle;
+  --m3e-button-label-text-color: var(--md-sys-color-primary);
 }
 .hint {
   margin-bottom: 16px;
@@ -1937,14 +1940,23 @@ function selectSection(id: string) {
   border: 1px dashed var(--md-sys-color-outline);
 }
 .skin-card.import {
-  border: 1px dashed var(--md-sys-color-outline-variant);
   background: transparent;
   color: var(--md-sys-color-on-surface-variant);
+  /* m3e-card actionable：透明底 + 描边，保留“新增”虚线卡片的观感 */
+  --m3e-card-container-color: transparent;
+  --m3e-card-outline-color: var(--md-sys-color-outline-variant);
+  --m3e-card-outline-thickness: 1px;
+  --m3e-card-padding: 10px 12px;
 }
 .skin-card.import:hover {
   color: var(--md-sys-color-primary);
-  border-color: var(--md-sys-color-primary);
-  background: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent);
+  --m3e-card-outline-color: var(--md-sys-color-primary);
+  --m3e-card-container-color: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent);
+}
+.skin-import-inner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 .skin-card.import .material-symbols-outlined {
   font-size: 20px;
@@ -1995,8 +2007,9 @@ function selectSection(id: string) {
   color: var(--md-sys-color-on-surface-variant);
 }
 .skin-del {
-  width: 24px;
-  height: 24px;
+  /* m3e-icon-button(extra-small)：24dp 圆形删除钮，默认隐藏，卡片 hover 显现 */
+  --m3e-icon-button-extra-small-container-height: 24px;
+  --m3e-icon-button-extra-small-icon-size: 16px;
   opacity: 0;
 }
 .skin-card:hover .skin-del {
@@ -2004,7 +2017,8 @@ function selectSection(id: string) {
 }
 .skin-del.confirming {
   opacity: 1;
-  color: var(--md-sys-color-error);
+  --m3e-icon-button-icon-color: var(--md-sys-color-error);
+  --m3e-icon-button-hover-icon-color: var(--md-sys-color-error);
 }
 .skin-actions {
   margin-top: 0;
@@ -2073,16 +2087,10 @@ function selectSection(id: string) {
   direction: rtl;
   text-align: left;
 }
-.lm-icon-btn.small {
-  width: 30px;
-  height: 30px;
-}
-.lm-icon-btn.small .material-symbols-outlined {
-  font-size: 17px;
-}
-.lm-icon-btn.danger:hover {
-  background: var(--md-sys-color-error-container);
-  color: var(--md-sys-color-error);
+.pass-toggle {
+  /* 密码显隐：m3e-icon-button(extra-small)，30dp 贴合输入框高度 */
+  --m3e-icon-button-extra-small-container-height: 30px;
+  --m3e-icon-button-extra-small-icon-size: 18px;
 }
 
 .notice {
@@ -2135,9 +2143,6 @@ function selectSection(id: string) {
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 4px;
-}
-.actions .material-symbols-outlined {
-  font-size: 18px;
 }
 
 .toast {
