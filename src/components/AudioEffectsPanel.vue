@@ -451,10 +451,8 @@ const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k
   font-size: var(--md-sys-typescale-body-medium-size);
   font-weight: 500;
 }
+/* 开关视觉统一在 src/tokens/theme.css 的「M3 Switch」全局样式里 */
 .enable-row input[type="checkbox"] {
-  width: 20px;
-  height: 20px;
-  accent-color: var(--md-sys-color-primary);
   cursor: pointer;
 }
 

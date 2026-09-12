@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import PageHeader from "@/components/PageHeader.vue";
 import {
@@ -83,6 +83,14 @@ onMounted(async () => {
   } else {
     ffmpeg.value = await capabilities.ffmpegStatus();
   }
+  // 左栏高亮随内容滚动联动（设置页可能滚在内部容器上，用捕获阶段）
+  window.addEventListener("scroll", onViewportScroll, true);
+  syncActiveSection();
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("scroll", onViewportScroll, true);
+  window.clearTimeout(syncTimer);
 });
 
 async function recheckFfmpeg() {
@@ -294,17 +302,63 @@ function resetDesktopLyricsBounds() {
   settings.desktopLyricsBounds = { width: 420, height: 120 };
 }
 
-const settingSections = [
-  { id: "settings-appearance", label: "外观" },
-  { id: "settings-library", label: "媒体库" },
-  { id: "settings-playback", label: "播放" },
-  { id: "settings-online", label: "在线服务" },
-  { id: "settings-sync", label: "同步与网络" },
-  { id: "settings-other", label: "其他" },
+/** 左侧分类导航：按内容顺序分组，点谁滚到谁。 */
+const settingNav = [
+  { title: "通用", items: [{ id: "settings-appearance", label: "外观", icon: "palette" }] },
+  {
+    title: "媒体",
+    items: [
+      { id: "settings-library", label: "媒体库", icon: "video_library" },
+      { id: "settings-playback", label: "播放", icon: "play_circle" },
+    ],
+  },
+  {
+    title: "在线",
+    items: [
+      { id: "settings-online", label: "在线服务", icon: "public" },
+      { id: "settings-sync", label: "同步与网络", icon: "cloud" },
+    ],
+  },
+  { title: "系统", items: [{ id: "settings-other", label: "关于", icon: "info" }] },
 ];
 
+const settingSectionIds = settingNav.flatMap((group) => group.items.map((item) => item.id));
+const activeSection = ref(settingSectionIds[0]);
+
+let navLockUntil = 0;
+let syncTimer = 0;
+
 function focusSettingSection(id: string) {
+  activeSection.value = id;
+  // 平滑滚动期间锁住联动，否则高亮会被滚动中途经过的分类截走
+  navLockUntil = Date.now() + 1200;
   document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+/** 滚动联动：滚停后才回写高亮，避免平滑滚动中途来回闪。 */
+function onViewportScroll(ev: Event) {
+  if (Date.now() < navLockUntil) return;
+  window.clearTimeout(syncTimer);
+  const scrollTarget = ev.target;
+  syncTimer = window.setTimeout(() => syncActiveSection(scrollTarget), 120);
+}
+
+function syncActiveSection(scrollTarget?: EventTarget | null) {
+  let current = settingSectionIds[0];
+  for (const id of settingSectionIds) {
+    const el = document.getElementById(id);
+    if (el && el.getBoundingClientRect().top <= 140) current = id;
+  }
+  // 触底时点亮最后一个分类，否则末项永远高亮不到
+  const scroller = scrollTarget instanceof Element ? scrollTarget : document.scrollingElement;
+  if (
+    scroller &&
+    scroller.scrollHeight > scroller.clientHeight + 8 &&
+    scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 8
+  ) {
+    current = settingSectionIds[settingSectionIds.length - 1];
+  }
+  activeSection.value = current;
 }
 </script>
 
@@ -312,16 +366,20 @@ function focusSettingSection(id: string) {
   <div class="settings-view">
     <PageHeader :title="t('nav.settings')" :description="t('navDesc.settings')" />
     <aside class="settings-nav" aria-label="设置分类">
-      <div class="settings-nav-title">设置分类</div>
-      <button
-        v-for="section in settingSections"
-        :key="section.id"
-        class="settings-nav-item"
-        type="button"
-        @click="focusSettingSection(section.id)"
-      >
-        {{ section.label }}
-      </button>
+      <template v-for="group in settingNav" :key="group.title">
+        <div class="settings-nav-group">{{ group.title }}</div>
+        <button
+          v-for="item in group.items"
+          :key="item.id"
+          class="settings-nav-item"
+          :class="{ active: activeSection === item.id }"
+          type="button"
+          @click="focusSettingSection(item.id)"
+        >
+          <span class="material-symbols-outlined">{{ item.icon }}</span>
+          <span class="settings-nav-label">{{ item.label }}</span>
+        </button>
+      </template>
     </aside>
     <!-- 外观 -->
     <section id="settings-appearance" class="card">
@@ -599,7 +657,7 @@ function focusSettingSection(id: string) {
     </section>
 
     <!-- FFmpeg -->
-    <section class="card">
+    <section id="settings-playback" class="card">
       <h3>{{ t("settings.ffmpeg") }}</h3>
       <p class="hint">{{ t("settings.ffmpegHint") }}</p>
 
@@ -861,7 +919,7 @@ function focusSettingSection(id: string) {
     </section>
 
     <!-- 播放器 -->
-    <section id="settings-playback" class="card">
+    <section class="card">
       <h3>{{ t("settings.playback") }}</h3>
       <p class="hint">{{ t("settings.playerBgHint") }}</p>
       <div class="row">
@@ -1291,37 +1349,62 @@ function focusSettingSection(id: string) {
   margin: 0 auto;
   padding-bottom: 40px;
 }
-.settings-view :deep(.page-header) {
+/* PageHeader 的根类名是 .page-head（不是 .page-header）——
+   之前写错导致标题没占满整行、被挤进 180px 左栏，整页错位。 */
+.settings-view :deep(.page-head) {
   grid-column: 1 / -1;
 }
 .settings-nav {
+  grid-column: 1;
   position: sticky;
   top: 12px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 8px 0;
+  gap: 2px;
+  padding: 4px 0;
 }
-.settings-nav-title {
-  padding: 8px 14px 10px;
+.settings-nav-group {
+  padding: 12px 12px 4px;
   color: var(--md-sys-color-on-surface-variant);
   font-size: 12px;
   font-weight: 600;
+  letter-spacing: 0.4px;
+  opacity: 0.8;
 }
 .settings-nav-item {
-  min-height: 42px;
-  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 0 12px;
   border: none;
   border-radius: var(--md-sys-shape-corner-full);
   background: transparent;
   color: var(--md-sys-color-on-surface-variant);
   font: inherit;
+  font-size: var(--md-sys-typescale-label-large-size);
   text-align: left;
   cursor: pointer;
+  transition:
+    background-color 160ms var(--md-sys-motion-easing-standard),
+    color 160ms var(--md-sys-motion-easing-standard);
+}
+.settings-nav-item .material-symbols-outlined {
+  font-size: 20px;
+}
+.settings-nav-label {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 .settings-nav-item:hover {
   background: var(--md-sys-color-surface-container-high);
   color: var(--md-sys-color-on-surface);
+}
+.settings-nav-item.active {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+  font-weight: 600;
 }
 
 .card {
@@ -1413,13 +1496,8 @@ function focusSettingSection(id: string) {
   color: var(--md-sys-color-on-surface-variant);
 }
 
+/* 开关视觉统一在 src/tokens/theme.css 的「M3 Switch」全局样式里，此处只管点击区域 */
 .switch-row {
-  cursor: pointer;
-}
-.switch-row input[type="checkbox"] {
-  width: 20px;
-  height: 20px;
-  accent-color: var(--md-sys-color-primary);
   cursor: pointer;
 }
 
@@ -1807,7 +1885,7 @@ function focusSettingSection(id: string) {
     margin-bottom: 12px;
     padding: 0 0 4px;
   }
-  .settings-nav-title {
+  .settings-nav-group {
     display: none;
   }
   .settings-nav-item {

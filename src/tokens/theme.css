@@ -425,6 +425,87 @@ body {
   }
 }
 
+/* ---- M3 Switch（全局开关） ----
+ * 原生 checkbox 一律改造为 Material 3 开关（本项目 checkbox 全部是"启用/关闭"用途：
+ * 设置页 .switch-row、播放器音效面板 .enable-row）。
+ * 轨道 52×32（border-box，2px 描边），滑块用 ::before：
+ *   未选中 16px 贴左（外沿 8px，outline 色）；选中 24px 贴右（外沿 4px，on-primary 色）。
+ * 用 left 位移而非 transform：offset 相对 border 内盒，尺寸可直接按内盒算。
+ * 若将来需要系统原生多选框（多选列表等），给它加 .lm-checkbox-native 类退出这套样式。
+ */
+input[type="checkbox"] {
+  position: relative;
+  flex: none;
+  appearance: none;
+  -webkit-appearance: none;
+  width: 52px;
+  height: 32px;
+  margin: 0;
+  border: 2px solid var(--md-sys-color-outline);
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-surface-container-highest);
+  cursor: pointer;
+  transition:
+    background-color 200ms var(--md-sys-motion-easing-standard),
+    border-color 200ms var(--md-sys-motion-easing-standard);
+}
+input[type="checkbox"]::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 6px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--md-sys-color-outline);
+  transform: translateY(-50%);
+  transition:
+    left 220ms var(--md-sys-motion-spring-soft),
+    width 220ms var(--md-sys-motion-spring-soft),
+    height 220ms var(--md-sys-motion-spring-soft),
+    background-color 200ms var(--md-sys-motion-easing-standard),
+    box-shadow 200ms var(--md-sys-motion-easing-standard);
+}
+input[type="checkbox"]:checked {
+  border-color: var(--md-sys-color-primary);
+  background: var(--md-sys-color-primary);
+}
+input[type="checkbox"]:checked::before {
+  left: 22px;
+  width: 24px;
+  height: 24px;
+  background: var(--md-sys-color-on-primary);
+}
+input[type="checkbox"]:hover::before {
+  box-shadow: 0 0 0 8px color-mix(in srgb, var(--md-sys-color-on-surface) 10%, transparent);
+}
+input[type="checkbox"]:checked:hover::before {
+  box-shadow: 0 0 0 8px color-mix(in srgb, var(--md-sys-color-primary) 14%, transparent);
+}
+input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+input[type="checkbox"]:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+/* 逃生舱：需要系统原生多选框时加这个类 */
+input[type="checkbox"].lm-checkbox-native {
+  appearance: auto;
+  -webkit-appearance: auto;
+  width: auto;
+  height: auto;
+  border: none;
+  background: none;
+  opacity: 1;
+  accent-color: var(--md-sys-color-primary);
+}
+input[type="checkbox"].lm-checkbox-native::before {
+  content: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
