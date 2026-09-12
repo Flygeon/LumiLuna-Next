@@ -11,7 +11,7 @@
  *
  * 内容方向感知滑动过渡沿用原实现（向右切旧内容左移淡出、新内容从右滑入，反向相反）。
  */
-import { ref, watch, nextTick } from "vue";
+import { ref, watch, nextTick, onMounted } from "vue";
 
 const props = defineProps<{
   modelValue: string;
@@ -24,22 +24,56 @@ const dir = ref<"next" | "prev">("next");
 const indexOf = (value: string) => props.tabs.findIndex((t) => t.value === value);
 const groupRef = ref<HTMLElement | null>(null);
 
+interface M3eGroup extends HTMLElement {
+  updateComplete?: Promise<unknown>;
+}
+
 function select(value: string) {
   if (value === props.modelValue) return;
   dir.value = indexOf(value) >= indexOf(props.modelValue) ? "next" : "prev";
   emit("update:modelValue", value);
 }
 
+/**
+ * m3e-button-group 的连通圆角（--connected/--first/--last）由库在 connectedCallback
+ * 与 slotchange 时「异步」计算：updateButtons 对每个子按钮 await waitForUpgrade +
+ * waitForUpdate 后才写入自定义态。在 WebView2/Tauri 下自定义元素升级较慢，首次重算时
+ * 子按钮尚未真正升级，custom state 静默失效且之后不再触发 slotchange —— 连通效果永久
+ * 丢失（全部退回独立圆角）。这里强制：等子按钮真实升级后，多时机向内部 <slot> 重派发
+ * slotchange，让库重新计算并写入连通态。
+ */
+async function syncConnected() {
+  const group = groupRef.value as M3eGroup | null;
+  if (!group || !group.shadowRoot) return;
+  if (!customElements.get("m3e-button")) {
+    await customElements.whenDefined("m3e-button");
+  }
+  // 确保连通前提：variant 为 connected（极端情况下曾被重置为 standard 时纠正回来）
+  group.setAttribute("variant", "connected");
+  // 等 group 自身完成渲染，内部 slot 已存在
+  try {
+    await group.updateComplete;
+  } catch {
+    /* 非 Lit 实例或已就绪，忽略 */
+  }
+  const fire = () => {
+    const slot = group.shadowRoot?.querySelector("slot");
+    if (slot) slot.dispatchEvent(new Event("slotchange"));
+  };
+  // 多时机重派发，覆盖升级竞态（rAF / 120ms / 400ms 三档兜底）
+  requestAnimationFrame(fire);
+  requestAnimationFrame(() => requestAnimationFrame(fire));
+  setTimeout(fire, 120);
+  setTimeout(fire, 400);
+}
+
+onMounted(syncConnected);
 watch(
   () => props.modelValue,
   (nv, ov) => {
     dir.value = indexOf(nv) >= indexOf(ov) ? "next" : "prev";
-    // 防御：Tauri/WebView2 下自定义元素升级时序偶发导致连通圆角状态未重算，
-    // 在切换后强制重派发 slotchange，让 m3e-button-group 重新应用 --first/--last/--connected。
-    void nextTick().then(() => {
-      const slot = groupRef.value?.shadowRoot?.querySelector("slot");
-      if (slot) slot.dispatchEvent(new Event("slotchange"));
-    });
+    // 切换后强制重算连通圆角（防御重挂载/升级竞态）
+    void nextTick(syncConnected);
   },
 );
 </script>
@@ -98,6 +132,14 @@ watch(
   font-variation-settings: "FILL" 1;
 }
 
+/* hover 轻微缩放弹簧（M3 Expressive）。用户要求保留原有的 transform 动画 */
+.online-tabs :deep(m3e-button) {
+  transition: transform 220ms var(--md-sys-motion-spring-spatial);
+}
+.online-tabs :deep(m3e-button:hover) {
+  transform: scale(1.02);
+}
+
 /* 内容方向感知滑动过渡（沿用原实现） */
 .tabs-panels {
   display: grid;
@@ -135,7 +177,8 @@ watch(
   .tabs-next-enter-active,
   .tabs-next-leave-active,
   .tabs-prev-enter-active,
-  .tabs-prev-leave-active {
+  .tabs-prev-leave-active,
+  .online-tabs :deep(m3e-button) {
     transition: none;
   }
 }
