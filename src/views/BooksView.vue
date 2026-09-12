@@ -77,7 +77,7 @@ function clearSearch() {
     <!-- 本地 / 在线(轻小说) / 网络小说(笔趣阁) 分段 -->
     <SegmentedTabs v-model="bookTab" :tabs="bookTabs.length > 1 ? bookTabs : []">
       <!-- 本地书籍 -->
-      <template v-if="bookTab === 'local' || (bookTabs.length <= 1)">
+      <template v-if="bookTab === 'local' || bookTabs.length <= 1">
         <LibraryToolbar :count="items.length" @changed="load" />
 
         <MediaGrid
