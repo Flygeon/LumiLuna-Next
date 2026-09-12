@@ -32,36 +32,23 @@ const cover = computed(() => {
 </template>
 
 <style scoped>
-/* M3 Filled Card：容器分层底色 + 1 级高程，封面内缩、文字与封面留 8dp 间距 */
 .novel-card {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 8px 8px 12px;
+  padding: 0;
   border: none;
-  border-radius: var(--md-sys-shape-corner-large);
-  background: var(--md-sys-color-surface-container-low);
+  background: transparent;
   color: inherit;
   font-family: inherit;
   text-align: left;
   cursor: pointer;
   outline: none;
-  box-shadow: var(--md-elevation-1);
-  transition:
-    background var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard),
-    box-shadow var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard),
-    transform 200ms var(--md-sys-motion-spring);
-}
-.novel-card:hover {
-  background: var(--md-sys-color-surface-container);
-  box-shadow: var(--md-elevation-2);
-}
-.novel-card:active {
-  transform: scale(0.99);
 }
 .novel-card:focus-visible {
   outline: 2px solid var(--md-sys-color-primary);
   outline-offset: 4px;
+  border-radius: var(--md-sys-shape-corner-large);
 }
 .cover {
   display: flex;
@@ -69,10 +56,23 @@ const cover = computed(() => {
   justify-content: center;
   width: 100%;
   aspect-ratio: 3 / 4;
-  border-radius: var(--md-sys-shape-corner-medium);
+  border-radius: var(--md-sys-shape-corner-large);
   overflow: hidden;
-  background: var(--md-sys-color-surface-container-high);
+  background: var(--md-sys-color-surface-container);
+  box-shadow: inset 0 0 0 1px var(--lm-hairline);
   color: var(--md-sys-color-outline);
+  transition:
+    transform 220ms var(--md-sys-motion-spring-soft),
+    box-shadow 220ms var(--md-sys-motion-easing-standard);
+}
+.novel-card:hover .cover {
+  transform: translateY(-4px) scale(1.015);
+  box-shadow:
+    var(--md-elevation-3),
+    inset 0 0 0 1px var(--lm-hairline);
+}
+.novel-card:active .cover {
+  transform: translateY(-1px) scale(0.995);
 }
 .cover img {
   width: 100%;
@@ -93,7 +93,7 @@ const cover = computed(() => {
   text-overflow: ellipsis;
 }
 .sub {
-  margin-top: 4px;
+  margin-top: 2px;
   font-size: var(--md-sys-typescale-body-small-size);
   color: var(--md-sys-color-on-surface-variant);
   white-space: nowrap;

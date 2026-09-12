@@ -173,13 +173,11 @@ onMounted(load);
   color: var(--md-sys-color-on-surface-variant);
 }
 .card {
-  background: var(--md-sys-color-surface-container);
+  background: var(--md-sys-color-surface-container-low);
   border-radius: var(--md-sys-shape-corner-large);
   padding: 18px 20px;
   margin-bottom: 16px;
-  box-shadow:
-    var(--md-elevation-1),
-    inset 0 0 0 1px var(--lm-hairline);
+  box-shadow: inset 0 0 0 1px var(--lm-hairline);
 }
 .card-title {
   margin: 0 0 14px;

@@ -1376,14 +1376,11 @@ function selectSection(id: string) {
 .card {
   grid-column: 2;
   scroll-margin-top: 18px;
-  /* M3 Filled Card：分层容器底色 + 1 级高程，与页面背景拉开 Z 轴差异 */
-  background: var(--md-sys-color-surface-container);
+  background: var(--md-sys-color-surface-container-low);
   border-radius: var(--md-sys-shape-corner-large);
   padding: 20px 22px;
   margin-bottom: 16px;
-  box-shadow:
-    var(--md-elevation-1),
-    inset 0 0 0 1px var(--lm-hairline);
+  box-shadow: inset 0 0 0 1px var(--lm-hairline);
   animation: lm-rise 340ms var(--md-sys-motion-easing-emphasized-decelerate) both;
 }
 .card h3 {

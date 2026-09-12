@@ -183,10 +183,8 @@ loadPresets();
   gap: 14px;
   padding: 14px 18px;
   border-radius: var(--md-sys-shape-corner-large);
-  background: var(--md-sys-color-surface-container);
-  box-shadow:
-    var(--md-elevation-1),
-    inset 0 0 0 1px var(--lm-hairline);
+  background: var(--md-sys-color-surface-container-low);
+  box-shadow: inset 0 0 0 1px var(--lm-hairline);
   transition: transform 200ms var(--md-sys-motion-spring-soft);
 }
 .preset-card:hover {

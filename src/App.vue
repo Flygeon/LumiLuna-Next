@@ -255,23 +255,19 @@ router.afterEach((to) => {
           <button
             v-for="item in navItems"
             :key="item.key"
-            class="nav-item lm-interactive"
+            class="nav-item"
             :class="{ active: isActive(item.path) }"
-            :aria-current="isActive(item.path) ? 'page' : undefined"
             @click="router.push(item.path)"
           >
             <span class="indicator">
               <span class="material-symbols-outlined" :class="{ filled: isActive(item.path) }">{{
                 item.icon
               }}</span>
-            </span>
-            <!-- 带文字标签的导航：徽章跟随标签（紧凑纯图标 Rail 才挂图标角） -->
-            <span class="label-row">
-              <span class="label">{{ t("nav." + item.key) }}</span>
               <span v-if="countOf(item.type)" class="badge tabular-nums">{{
                 countOf(item.type) > 999 ? "999+" : countOf(item.type)
               }}</span>
             </span>
+            <span class="label">{{ t("nav." + item.key) }}</span>
           </button>
         </div>
 
@@ -279,9 +275,8 @@ router.afterEach((to) => {
           <button
             v-for="item in bottomItems"
             :key="item.key"
-            class="nav-item lm-interactive"
+            class="nav-item"
             :class="{ active: isActive(item.path) }"
-            :aria-current="isActive(item.path) ? 'page' : undefined"
             @click="router.push(item.path)"
           >
             <span class="indicator">
@@ -289,9 +284,7 @@ router.afterEach((to) => {
                 item.icon
               }}</span>
             </span>
-            <span class="label-row">
-              <span class="label">{{ item.label || t("nav." + item.key) }}</span>
-            </span>
+            <span class="label">{{ item.label || t("nav." + item.key) }}</span>
           </button>
         </div>
       </nav>
@@ -417,10 +410,7 @@ router.afterEach((to) => {
   overflow: hidden;
 }
 
-/* ---- 导航 Rail ----
- * M3 Navigation Rail 规格：条目 56dp 目标高度、图标 24dp、标签 label-medium(12sp)；
- * 选中态用 secondary-container 全圆角（20dp）Tonal 容器承载，而非仅图标变色。
- * hover/pressed 走 .lm-interactive 状态层（8%/12%），不做整块换底色。 */
+/* ---- 导航 Rail ---- */
 .nav-rail {
   display: flex;
   flex-direction: column;
@@ -428,7 +418,7 @@ router.afterEach((to) => {
   gap: 4px;
   width: var(--lm-nav-width);
   flex: none;
-  padding: 12px 8px;
+  padding: 14px 8px 12px;
   border-right: 1px solid var(--lm-hairline);
   z-index: 10;
 }
@@ -438,7 +428,7 @@ router.afterEach((to) => {
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
   color: var(--md-sys-color-primary);
 }
 .brand-mark {
@@ -456,7 +446,7 @@ router.afterEach((to) => {
 .nav-group {
   display: flex;
   flex-direction: column;
-  align-items: stretch;
+  align-items: center;
   gap: 4px;
   width: 100%;
 }
@@ -468,75 +458,73 @@ router.afterEach((to) => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
   gap: 4px;
   width: 100%;
-  min-height: 56px;
-  padding: 6px 4px;
+  padding: 6px 0 7px;
   border: none;
-  border-radius: 20px;
   background: transparent;
   color: var(--md-sys-color-on-surface-variant);
   font-family: inherit;
   cursor: pointer;
-  transition:
-    background var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard),
-    color var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard);
+  border-radius: var(--md-sys-shape-corner-medium);
 }
 .nav-item:focus-visible {
   outline: 2px solid var(--md-sys-color-primary);
   outline-offset: -2px;
 }
-/* 选中态：M3 Tonal 容器（全圆角 20dp） */
-.nav-item.active {
-  background: var(--md-sys-color-secondary-container);
-  color: var(--md-sys-color-on-secondary-container);
-}
 
-/* 图标区：24dp 图标 + 56dp 宽的点击带，容器高亮已上移到条目本身，避免双重填充 */
+/* M3 药丸形状选中指示器 */
 .indicator {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 56px;
-  height: 24px;
+  height: 32px;
+  border-radius: 16px;
+  transition:
+    background var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard),
+    transform 200ms var(--md-sys-motion-spring);
+}
+.nav-item:hover .indicator {
+  background: var(--md-sys-color-surface-container-high);
+}
+.nav-item.active .indicator {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+.nav-item:active .indicator {
+  transform: scale(0.9);
 }
 .indicator .material-symbols-outlined {
-  font-size: 24px;
+  font-size: 22px;
 }
 
 .badge {
-  flex: none;
-  display: inline-flex;
+  position: absolute;
+  top: -3px;
+  right: 4px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
-  border-radius: var(--md-sys-shape-corner-full);
+  border-radius: 9px;
   background: var(--md-sys-color-primary);
   color: var(--md-sys-color-on-primary);
-  font-size: var(--md-sys-typescale-label-small-size);
+  font-size: 10px;
   font-weight: 600;
   line-height: 1;
 }
 
-.label-row {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  max-width: 100%;
-  min-width: 0;
-}
 .label {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
-  letter-spacing: 0.5px;
-  line-height: 16px;
-  white-space: nowrap;
+  letter-spacing: 0.2px;
 }
 .nav-item.active .label {
+  color: var(--md-sys-color-on-surface);
   font-weight: 600;
 }
 
