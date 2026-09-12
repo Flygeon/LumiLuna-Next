@@ -549,11 +549,6 @@ pub async fn bqg_content(
                 if let Some(txt) = v.get("text").and_then(|x| x.as_str()) {
                     // 验证门未过时正文很短（壳页只有「加载中」），需等真实正文渲染
                     if txt.trim().len() > 50 {
-                        let title = v
-                            .get("title")
-                            .and_then(|x| x.as_str())
-                            .unwrap_or("")
-                            .to_string();
                         stop_webview(&webview);
                         return Ok(NovelContent {
                             text: txt.trim().to_string(),
