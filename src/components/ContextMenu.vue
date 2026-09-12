@@ -163,7 +163,8 @@ onBeforeUnmount(() => {
   font-size: var(--md-sys-typescale-body-medium-size);
   text-align: left;
   cursor: pointer;
-  transition: background var(--md-sys-motion-duration-short) var(--md-sys-motion-spring-effects-fast);
+  transition: background var(--md-sys-motion-duration-short)
+    var(--md-sys-motion-spring-effects-fast);
 }
 .ctx-item:hover,
 .ctx-item.active {

@@ -208,7 +208,8 @@ const roadIndex = ref(0);
   font-size: var(--md-sys-typescale-body-small-size);
   text-align: left;
   cursor: pointer;
-  transition: background var(--md-sys-motion-duration-short) var(--md-sys-motion-spring-effects-fast);
+  transition: background var(--md-sys-motion-duration-short)
+    var(--md-sys-motion-spring-effects-fast);
 }
 .ep:hover {
   background: var(--md-sys-color-surface-container-high);

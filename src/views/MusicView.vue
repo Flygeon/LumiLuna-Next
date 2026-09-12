@@ -1344,7 +1344,8 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
   font-size: var(--md-sys-typescale-body-small-size);
   outline: none;
   box-sizing: border-box;
-  transition: border-color var(--md-sys-motion-duration-short) var(--md-sys-motion-spring-effects-fast);
+  transition: border-color var(--md-sys-motion-duration-short)
+    var(--md-sys-motion-spring-effects-fast);
 }
 .phone-input:focus {
   border-color: var(--md-sys-color-primary);

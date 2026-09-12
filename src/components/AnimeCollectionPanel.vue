@@ -377,7 +377,8 @@ async function disconnect() {
   font-family: inherit;
   font-size: var(--md-sys-typescale-label-large-size);
   cursor: pointer;
-  transition: background var(--md-sys-motion-duration-short) var(--md-sys-motion-spring-effects-fast);
+  transition: background var(--md-sys-motion-duration-short)
+    var(--md-sys-motion-spring-effects-fast);
 }
 .tab .material-symbols-outlined {
   font-size: 16px;

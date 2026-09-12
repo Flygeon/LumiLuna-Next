@@ -15,6 +15,7 @@
 
 import os
 import re
+import subprocess
 import sys
 import urllib.request
 
@@ -120,6 +121,19 @@ def main() -> int:
         ]
     with open(OUT_CSS, "w", encoding="utf-8", newline="\n") as f:
         f.write("\n".join(lines) + "\n")
+
+    # CI 会跑 `npm run format:check`（含 src/**/*.css），unicode-range 一行太长会被判
+    # 格式不合规 → 生成后直接过一遍 prettier；没装就跳过，不影响产出。
+    try:
+        subprocess.run(
+            ["npx", "prettier", "--write", os.path.relpath(OUT_CSS, ROOT)],
+            cwd=ROOT,
+            shell=os.name == "nt",  # Windows 上 npx 是 npx.cmd，必须走 shell
+            check=False,
+            capture_output=True,
+        )
+    except OSError:
+        pass
 
     print(f"完成：{len(picked)} 个分片 / {total / 1024:.0f} KB")
     print(f"  {os.path.relpath(OUT_FONT_DIR, ROOT)}")
