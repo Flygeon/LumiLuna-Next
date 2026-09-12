@@ -19,6 +19,41 @@ const items = [
   { to: "/extensions", icon: "extension", title: "扩展", sub: "已安装的扩展" },
 ];
 
+// 更多工具（文件夹浏览 / WebDAV / 音效预设市场 / 时长统计 / 阅读统计）。
+// 与上方百宝箱核心项共用同一套 M3E 连通列表结构，避免两段列表风格割裂。
+const tools = [
+  {
+    to: "/folders",
+    icon: "folder",
+    title: t("settings.treasure.folders"),
+    sub: t("settings.treasure.foldersHint"),
+  },
+  {
+    to: "/webdav",
+    icon: "cloud",
+    title: t("settings.treasure.webdav"),
+    sub: t("settings.treasure.webdavHint"),
+  },
+  {
+    to: "/treasure/market",
+    icon: "storefront",
+    title: t("settings.treasure.market"),
+    sub: t("settings.treasure.marketHint"),
+  },
+  {
+    to: "/stats",
+    icon: "bar_chart",
+    title: t("settings.treasure.stats"),
+    sub: t("settings.treasure.statsHint"),
+  },
+  {
+    to: "/novel-stats",
+    icon: "menu_book",
+    title: t("settings.treasure.novelStats"),
+    sub: t("settings.treasure.novelStatsHint"),
+  },
+];
+
 function open(to: string) {
   void router.push(to);
 }
@@ -48,52 +83,16 @@ function open(to: string) {
     </div>
 
     <h3 class="section-title">更多工具</h3>
-    <div class="card-grid">
-      <button class="t-card" @click="router.push('/folders')">
-        <span class="t-icon material-symbols-outlined">folder</span>
-        <div class="t-body">
-          <div class="t-name">{{ t("settings.treasure.folders") }}</div>
-          <div class="t-desc">{{ t("settings.treasure.foldersHint") }}</div>
-        </div>
-        <span class="material-symbols-outlined t-arrow">chevron_right</span>
-      </button>
-
-      <button class="t-card" @click="router.push('/webdav')">
-        <span class="t-icon material-symbols-outlined">cloud</span>
-        <div class="t-body">
-          <div class="t-name">{{ t("settings.treasure.webdav") }}</div>
-          <div class="t-desc">{{ t("settings.treasure.webdavHint") }}</div>
-        </div>
-        <span class="material-symbols-outlined t-arrow">chevron_right</span>
-      </button>
-
-      <button class="t-card" @click="router.push('/treasure/market')">
-        <span class="t-icon material-symbols-outlined">storefront</span>
-        <div class="t-body">
-          <div class="t-name">{{ t("settings.treasure.market") }}</div>
-          <div class="t-desc">{{ t("settings.treasure.marketHint") }}</div>
-        </div>
-        <span class="material-symbols-outlined t-arrow">chevron_right</span>
-      </button>
-
-      <button class="t-card" @click="router.push('/stats')">
-        <span class="t-icon material-symbols-outlined">bar_chart</span>
-        <div class="t-body">
-          <div class="t-name">{{ t("settings.treasure.stats") }}</div>
-          <div class="t-desc">{{ t("settings.treasure.statsHint") }}</div>
-        </div>
-        <span class="material-symbols-outlined t-arrow">chevron_right</span>
-      </button>
-
-      <button class="t-card" @click="router.push('/novel-stats')">
-        <span class="t-icon material-symbols-outlined">menu_book</span>
-        <div class="t-body">
-          <div class="t-name">{{ t("settings.treasure.novelStats") }}</div>
-          <div class="t-desc">{{ t("settings.treasure.novelStatsHint") }}</div>
-        </div>
-        <span class="material-symbols-outlined t-arrow">chevron_right</span>
-      </button>
-    </div>
+    <m3e-list v-if="tools.length" class="treasure-list" variant="segmented">
+      <m3e-list-item v-for="tool in tools" :key="tool.to" class="t-item" @click="open(tool.to)">
+        <span slot="leading" class="lead-circle">
+          <span class="material-symbols-outlined">{{ tool.icon }}</span>
+        </span>
+        <span class="li-title">{{ tool.title }}</span>
+        <span slot="supporting-text" class="li-sub">{{ tool.sub }}</span>
+        <span slot="trailing" class="material-symbols-outlined li-trail">chevron_right</span>
+      </m3e-list-item>
+    </m3e-list>
   </div>
 </template>
 
@@ -177,61 +176,5 @@ function open(to: string) {
   font-size: var(--md-sys-typescale-title-small-size);
   font-weight: 500;
   color: var(--md-sys-color-on-surface-variant);
-}
-
-/* ---- 既有工具卡片（保留）---- */
-.card-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.t-card {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 20px 22px;
-  border: none;
-  border-radius: var(--lm-shape-card);
-  background: var(--md-sys-color-surface-container-low);
-  box-shadow: inset 0 0 0 1px var(--lm-hairline);
-  color: var(--md-sys-color-on-surface);
-  font-family: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition:
-    transform 200ms var(--md-sys-motion-spring-soft),
-    box-shadow 200ms var(--md-sys-motion-spring-effects-fast);
-}
-.t-card:hover {
-  transform: translateY(-2px);
-  box-shadow:
-    var(--md-elevation-2),
-    inset 0 0 0 1px var(--lm-hairline);
-}
-.t-card:active {
-  transform: scale(0.98);
-}
-.t-icon {
-  font-size: 36px;
-  color: var(--md-sys-color-primary);
-  flex: none;
-}
-.t-body {
-  flex: 1;
-  min-width: 0;
-}
-.t-name {
-  font-size: var(--md-sys-typescale-title-medium-size);
-  font-weight: 500;
-}
-.t-desc {
-  margin-top: 4px;
-  font-size: var(--md-sys-typescale-body-small-size);
-  color: var(--md-sys-color-on-surface-variant);
-}
-.t-arrow {
-  font-size: 22px;
-  color: var(--md-sys-color-on-surface-variant);
-  opacity: 0.5;
 }
 </style>
