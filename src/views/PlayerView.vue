@@ -96,7 +96,8 @@ function formatTime(s: number) {
 function onProgressClick(e: MouseEvent) {
   const bar = e.currentTarget as HTMLElement;
   const rect = bar.getBoundingClientRect();
-  const pct = (e.clientX - rect.left) / rect.width;
+  // 点按热区被扩大到 48dp（见 .progress-bar::before），越界坐标必须夹取
+  const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
   player.seek(pct * player.duration);
 }
 
@@ -560,19 +561,22 @@ onBeforeUnmount(() => {
   width: 425px;
   margin-top: 24px;
 }
+/* M3 Slider：轨道固定 4dp（不再 hover 变粗），拇指 20dp 常显，
+   hover/drag 时叠加 40dp 状态层圆环。 */
 .progress-bar {
+  position: relative;
   width: 425px;
-  height: 6px;
+  height: var(--lm-slider-rail);
   padding: 0;
   background: color-mix(in srgb, var(--md-sys-color-on-surface) 22%, transparent);
   border-radius: var(--md-sys-shape-corner-full);
-  position: relative;
   cursor: pointer;
-  transition: height 220ms var(--md-sys-motion-spring-soft);
 }
-.progress-bar:hover,
-.progress-bar.dragging {
-  height: 12px;
+/* 把物理点按/拖拽热区扩到 48dp（仅热区，不改视觉与命中几何） */
+.progress-bar::before {
+  content: "";
+  position: absolute;
+  inset: calc((var(--lm-touch-target) - var(--lm-slider-rail)) / -2) 0;
 }
 .progress-fill {
   height: 100%;
@@ -583,21 +587,22 @@ onBeforeUnmount(() => {
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: 14px;
-  height: 14px;
+  width: var(--lm-slider-thumb);
+  height: var(--lm-slider-thumb);
   border-radius: 50%;
   background: var(--md-sys-color-primary);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--md-sys-color-primary) 28%, transparent);
-  opacity: 0;
-  transition: opacity 200ms;
+  box-shadow: 0 0 0 0 transparent;
+  transition: box-shadow 200ms var(--md-sys-motion-easing-standard);
 }
-.progress-bar:hover .progress-thumb {
-  opacity: 1;
+.progress-bar:hover .progress-thumb,
+.progress-bar:focus-visible .progress-thumb,
+.progress-bar.dragging .progress-thumb {
+  box-shadow: 0 0 0 10px color-mix(in srgb, var(--md-sys-color-primary) 12%, transparent);
 }
 .time-row {
   display: flex;
   justify-content: space-between;
-  margin-top: 6px;
+  margin-top: 8px;
   font-size: 12px;
   opacity: 0.7;
 }
@@ -611,7 +616,7 @@ onBeforeUnmount(() => {
 .ctrl-group {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 .main-btn {
   width: 64px;
@@ -641,19 +646,47 @@ onBeforeUnmount(() => {
 .main-btn:active {
   transform: scale(0.8);
 }
+/* 次要控制键：M3 IconButton（48dp 圆形容器）+ 8%/12% 状态层 */
 .side-btn {
-  width: 44px;
-  height: 44px;
+  position: relative;
+  width: 48px;
+  height: 48px;
   border: 1px solid color-mix(in srgb, var(--md-sys-color-on-surface) 22%, transparent);
   border-radius: 50%;
   background: color-mix(in srgb, var(--md-sys-color-surface-container-high) 72%, transparent);
   color: var(--md-sys-color-on-surface);
-  opacity: 0.9;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  filter: drop-shadow(0 0 8px rgba(0, 0, 0, 0.25));
+  transition:
+    background var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard),
+    border-color var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard),
+    color var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard);
+}
+.side-btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--md-sys-color-on-surface);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard);
+}
+.side-btn > * {
+  position: relative;
+  z-index: 1;
+}
+.side-btn:hover::after {
+  opacity: var(--lm-state-hover);
+}
+.side-btn:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+.side-btn:active::after {
+  opacity: var(--lm-state-press);
 }
 .side-btn .material-symbols-outlined {
   font-size: 21px;
@@ -664,7 +697,6 @@ onBeforeUnmount(() => {
     "opsz" 24;
 }
 .side-btn.active {
-  opacity: 1;
   color: var(--md-sys-color-primary);
   border-color: var(--md-sys-color-primary);
   background: color-mix(in srgb, var(--md-sys-color-primary-container) 72%, transparent);

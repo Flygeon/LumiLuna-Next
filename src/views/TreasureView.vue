@@ -92,8 +92,10 @@ function t(key: string) {
   padding: 20px 22px;
   border: none;
   border-radius: var(--md-sys-shape-corner-large);
-  background: var(--md-sys-color-surface-container-low);
-  box-shadow: inset 0 0 0 1px var(--lm-hairline);
+  background: var(--md-sys-color-surface-container);
+  box-shadow:
+    var(--md-elevation-1),
+    inset 0 0 0 1px var(--lm-hairline);
   color: var(--md-sys-color-on-surface);
   font-family: inherit;
   text-align: left;

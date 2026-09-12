@@ -305,6 +305,8 @@ function subtitleOf(item: MediaEntry): string {
   outline-offset: 4px;
 }
 
+/* M3 Elevated Card 缩略图：分层底色（surface-container-high）承载图像，
+   静置即带 1 级高程，与页面背景形成明确的 Z 轴层次。 */
 .thumb {
   position: relative;
   display: flex;
@@ -312,16 +314,18 @@ function subtitleOf(item: MediaEntry): string {
   justify-content: center;
   overflow: hidden;
   border-radius: var(--md-sys-shape-corner-large);
-  background: var(--md-sys-color-surface-container);
-  box-shadow: inset 0 0 0 1px var(--lm-hairline);
+  background: var(--md-sys-color-surface-container-high);
+  box-shadow:
+    var(--md-elevation-1),
+    inset 0 0 0 1px var(--lm-hairline);
   transition:
     transform 220ms var(--md-sys-motion-spring-soft),
     box-shadow 220ms var(--md-sys-motion-easing-standard);
 }
 .cell:hover .thumb {
-  transform: translateY(-4px) scale(1.015);
+  transform: translateY(-2px);
   box-shadow:
-    var(--md-elevation-3),
+    var(--md-elevation-2),
     inset 0 0 0 1px var(--lm-hairline);
 }
 .cell:active .thumb {
@@ -348,11 +352,11 @@ function subtitleOf(item: MediaEntry): string {
   position: absolute;
   right: 8px;
   bottom: 8px;
-  padding: 2px 7px;
+  padding: 2px 8px;
   border-radius: var(--md-sys-shape-corner-small);
-  background: rgba(0, 0, 0, 0.68);
+  background: color-mix(in srgb, var(--md-sys-color-scrim) 68%, transparent);
   color: #fff;
-  font-size: 11px;
+  font-size: var(--md-sys-typescale-label-small-size);
   font-weight: 500;
 }
 
@@ -385,7 +389,7 @@ function subtitleOf(item: MediaEntry): string {
   height: 34px;
   border: none;
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.4);
+  background: color-mix(in srgb, var(--md-sys-color-scrim) 55%, transparent);
   color: #fff;
   cursor: pointer;
   transition:
@@ -393,18 +397,18 @@ function subtitleOf(item: MediaEntry): string {
     background 160ms;
 }
 .fav:hover {
-  background: rgba(0, 0, 0, 0.6);
+  background: color-mix(in srgb, var(--md-sys-color-scrim) 78%, transparent);
   transform: scale(1.1);
 }
 .fav .material-symbols-outlined {
   font-size: 19px;
 }
 .fav.on {
-  color: #ff6b81;
+  color: var(--md-sys-color-error);
 }
 
 .meta {
-  padding: 0 2px;
+  padding: 0 4px;
   min-width: 0;
 }
 .title {

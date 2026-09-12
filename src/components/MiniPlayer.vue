@@ -35,10 +35,12 @@ function seek(e: MouseEvent) {
 
 <template>
   <div class="mini-player lm-glass" data-lm-region="miniplayer">
-    <!-- 进度条置顶，点击可跳转 -->
+    <!-- 进度条置顶：M3 Slider（4dp 圆角轨道 + 20dp 拇指 + hover 状态层） -->
     <div class="track" @click.stop="seek">
-      <div class="fill" :style="{ width: progress + '%' }">
-        <span class="knob"></span>
+      <div class="rail">
+        <div class="fill" :style="{ width: progress + '%' }">
+          <span class="knob"></span>
+        </div>
       </div>
     </div>
 
@@ -67,17 +69,25 @@ function seek(e: MouseEvent) {
         >
           <span class="material-symbols-outlined" :class="{ filled: liked }">favorite</span>
         </button>
-        <button class="lm-icon-btn" title="上一首" @click="player.previous()">
+        <button
+          class="lm-icon-btn lm-icon-btn--lg lm-icon-btn--tonal"
+          title="上一首"
+          @click="player.previous()"
+        >
           <span class="material-symbols-outlined filled">skip_previous</span>
         </button>
         <button
-          class="lm-icon-btn play"
+          class="lm-icon-btn lm-icon-btn--lg play"
           :title="player.playing ? '暂停' : '播放'"
           @click="player.togglePlay()"
         >
           <PlayerControlIcon :name="player.playing ? 'pause' : 'play'" />
         </button>
-        <button class="lm-icon-btn" title="下一首" @click="player.next()">
+        <button
+          class="lm-icon-btn lm-icon-btn--lg lm-icon-btn--tonal"
+          title="下一首"
+          @click="player.next()"
+        >
           <span class="material-symbols-outlined filled">skip_next</span>
         </button>
         <button class="lm-icon-btn" title="展开播放器" @click="router.push('/music/player')">
@@ -96,6 +106,8 @@ function seek(e: MouseEvent) {
   bottom: 0;
   height: var(--lm-miniplayer-height);
   z-index: 50;
+  display: flex;
+  flex-direction: column;
   border-top: 1px solid var(--lm-hairline);
   animation: slide-up 320ms var(--md-sys-motion-easing-emphasized-decelerate);
 }
@@ -108,39 +120,53 @@ function seek(e: MouseEvent) {
   }
 }
 
+/* M3 Slider：轨道 4dp 全圆角；拇指 20dp；hover 时放大并叠加状态层。
+   外层 .track 只负责扩大点按热区，视觉全部落在 .rail 上。 */
 .track {
-  position: relative;
-  height: 4px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  height: 12px;
+  padding: 0 8px;
   cursor: pointer;
-  background: var(--md-sys-color-surface-container-highest);
 }
-.track:hover .knob {
-  opacity: 1;
+.rail {
+  position: relative;
+  width: 100%;
+  height: var(--lm-slider-rail);
+  border-radius: var(--md-sys-shape-corner-full);
+  background: color-mix(in srgb, var(--md-sys-color-on-surface) 16%, transparent);
 }
 .fill {
   position: relative;
   height: 100%;
+  border-radius: inherit;
   background: var(--md-sys-color-primary);
   transition: width 180ms linear;
 }
+/* M3 Slider 拇指：常显 20dp 圆点；hover/focus 叠加 40dp 状态层圆环 */
 .knob {
   position: absolute;
-  right: -5px;
+  right: 0;
   top: 50%;
-  width: 10px;
-  height: 10px;
+  width: var(--lm-slider-thumb);
+  height: var(--lm-slider-thumb);
   border-radius: 50%;
   background: var(--md-sys-color-primary);
-  transform: translateY(-50%);
-  opacity: 0;
-  transition: opacity var(--md-sys-motion-duration-short);
+  transform: translate(50%, -50%);
+  transition: box-shadow 200ms var(--md-sys-motion-easing-standard);
+}
+.track:hover .knob,
+.track:focus-visible .knob {
+  box-shadow: 0 0 0 10px color-mix(in srgb, var(--md-sys-color-primary) 12%, transparent);
 }
 
 .body {
+  flex: 1;
+  min-height: 0;
   display: flex;
   align-items: center;
-  gap: 14px;
-  height: calc(var(--lm-miniplayer-height) - 4px);
+  gap: 16px;
   padding: 0 16px;
   cursor: pointer;
 }
@@ -197,21 +223,22 @@ function seek(e: MouseEvent) {
 .controls {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 8px;
 }
+/* 主播放键：M3 Filled IconButton（48dp），作为媒体栏的第一动作 */
 .controls .play {
-  width: 44px;
-  height: 44px;
-  background: var(--md-sys-color-primary-container);
-  color: var(--md-sys-color-on-primary-container);
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+}
+.controls .play::after {
+  background: var(--md-sys-color-on-primary);
 }
 .controls .play:hover {
-  filter: brightness(1.08);
+  color: var(--md-sys-color-on-primary);
 }
 .controls .play .player-control-icon {
   width: 26px;
   height: 23px;
-  filter: drop-shadow(0 0 6px rgba(0, 0, 0, 0.18));
 }
 .like.on {
   color: var(--md-sys-color-error);

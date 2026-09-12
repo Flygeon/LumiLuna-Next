@@ -143,9 +143,22 @@
   --md-sys-motion-spring-soft: cubic-bezier(0.34, 1.2, 0.64, 1);
 
   /* ---- 应用级令牌 ---- */
-  --md-elevation-1: 0 1px 3px rgba(0, 0, 0, 0.2);
-  --md-elevation-2: 0 2px 6px rgba(0, 0, 0, 0.2);
-  --md-elevation-3: 0 8px 24px rgba(0, 0, 0, 0.25);
+  /* M3 高程（Elevation）阴影：umbra + penumbra 双层，替代单层大模糊投影。
+     层级只表达"谁浮在谁上方"，不做装饰性重阴影。 */
+  --md-elevation-1: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.15);
+  --md-elevation-2: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 2px 6px 2px rgba(0, 0, 0, 0.15);
+  --md-elevation-3: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 4px 8px 3px rgba(0, 0, 0, 0.15);
+  --md-elevation-4: 0 2px 3px 0 rgba(0, 0, 0, 0.3), 0 6px 10px 4px rgba(0, 0, 0, 0.15);
+  /* M3 状态层不透明度：hover 8% / focus 10% / pressed 12%（统一以 on-surface 为基色） */
+  --lm-state-hover: 0.08;
+  --lm-state-focus: 0.1;
+  --lm-state-press: 0.12;
+  /* M3 触控目标：视觉尺寸可更小，但物理点按区不小于 48dp */
+  --lm-touch-target: 48px;
+  /* M3 Slider 规格：轨道 4dp 圆角、拇指 20dp、状态层 40dp */
+  --lm-slider-rail: 4px;
+  --lm-slider-thumb: 20px;
+  --lm-slider-state: 40px;
 
   /* 毛玻璃表面与发丝分隔线（设计指南 0.1「内容即英雄」） */
   --lm-scrim-surface: rgba(252, 252, 252, 0.72);
@@ -369,8 +382,38 @@ body {
   transform: none;
 }
 
-/* 图标按钮 */
+/* M3 状态层基元：交互容器统一用 8%/10%/12% 的半透明覆盖层表达 hover/focus/pressed，
+ * 而不是整块换底色——组件只需加 .lm-interactive 类（需 position 非 static）。 */
+.lm-interactive {
+  position: relative;
+}
+.lm-interactive::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--md-sys-color-on-surface);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard);
+}
+.lm-interactive > * {
+  position: relative;
+  z-index: 1;
+}
+.lm-interactive:hover::after {
+  opacity: var(--lm-state-hover);
+}
+.lm-interactive:focus-visible::after {
+  opacity: var(--lm-state-focus);
+}
+.lm-interactive:active::after {
+  opacity: var(--lm-state-press);
+}
+
+/* 图标按钮（M3 IconButton）：40dp 圆形容器 + 48dp 触控目标 + 状态层 */
 .lm-icon-btn {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -382,15 +425,77 @@ body {
   color: var(--md-sys-color-on-surface-variant);
   cursor: pointer;
   transition:
-    background var(--md-sys-motion-duration-short),
+    color var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard),
     transform 120ms var(--md-sys-motion-spring);
 }
+/* 状态层：覆盖在图标之上，用极低不透明度，视觉上等同于图标下方的 state layer */
+.lm-icon-btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--md-sys-color-on-surface-variant);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard);
+}
+.lm-icon-btn > * {
+  position: relative;
+  z-index: 1;
+}
 .lm-icon-btn:hover {
-  background: var(--md-sys-color-surface-container-high);
   color: var(--md-sys-color-on-surface);
+}
+.lm-icon-btn:hover::after {
+  opacity: var(--lm-state-hover);
+}
+.lm-icon-btn:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+.lm-icon-btn:focus-visible::after {
+  opacity: var(--lm-state-focus);
 }
 .lm-icon-btn:active {
   transform: scale(0.92);
+}
+.lm-icon-btn:active::after {
+  opacity: var(--lm-state-press);
+}
+/* M3 Filled IconButton：主色容器 */
+.lm-icon-btn--filled {
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+}
+.lm-icon-btn--filled::after {
+  background: var(--md-sys-color-on-primary);
+}
+.lm-icon-btn--filled:hover {
+  color: var(--md-sys-color-on-primary);
+}
+/* M3 Filled Tonal IconButton：次级容器 */
+.lm-icon-btn--tonal {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+.lm-icon-btn--tonal::after {
+  background: var(--md-sys-color-on-secondary-container);
+}
+.lm-icon-btn--tonal:hover {
+  color: var(--md-sys-color-on-secondary-container);
+}
+/* M3 尺寸档位：small 32 / large 48 / extra-large 56（默认 40） */
+.lm-icon-btn--sm {
+  width: 32px;
+  height: 32px;
+}
+.lm-icon-btn--lg {
+  width: 48px;
+  height: 48px;
+}
+.lm-icon-btn--xl {
+  width: 56px;
+  height: 56px;
 }
 
 /* 骨架屏微光 */

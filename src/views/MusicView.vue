@@ -904,13 +904,13 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
 
 .p-remove {
   position: absolute;
-  top: 6px;
-  right: 6px;
+  top: 12px;
+  right: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   border: none;
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.45);
@@ -968,18 +968,37 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 16px;
 }
+/* M3 Filled Card：容器用 surface-container 分层底色 + 1 级高程，
+   封面内缩在卡片 padding 之内，标题/副标题与图片保持 8dp 间距。 */
 .song-card {
   position: relative;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 0;
+  padding: 8px 8px 12px;
   border: none;
-  background: transparent;
+  border-radius: var(--md-sys-shape-corner-large);
+  background: var(--md-sys-color-surface-container-low);
   color: inherit;
   font-family: inherit;
   text-align: left;
   cursor: pointer;
+  box-shadow: var(--md-elevation-1);
+  transition:
+    background var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard),
+    box-shadow var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard),
+    transform 200ms var(--md-sys-motion-spring);
+}
+.song-card:hover {
+  background: var(--md-sys-color-surface-container);
+  box-shadow: var(--md-elevation-2);
+}
+.song-card:active {
+  transform: scale(0.99);
+}
+.song-card:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
 }
 .song-card .thumb {
   position: relative;
@@ -988,13 +1007,9 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
   justify-content: center;
   width: 100%;
   aspect-ratio: 1;
-  border-radius: var(--md-sys-shape-corner-large);
+  border-radius: var(--md-sys-shape-corner-medium);
   overflow: hidden;
-  background: var(--md-sys-color-surface-container);
-  box-shadow: inset 0 0 0 1px var(--lm-hairline);
-  transition:
-    transform 220ms var(--md-sys-motion-spring-soft),
-    box-shadow 220ms var(--md-sys-motion-easing-standard);
+  background: var(--md-sys-color-surface-container-high);
 }
 .song-card .thumb img {
   width: 100%;
@@ -1006,17 +1021,8 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
   color: var(--md-sys-color-outline);
   opacity: 0.7;
 }
-.song-card:hover .thumb {
-  transform: translateY(-4px) scale(1.015);
-  box-shadow:
-    var(--md-elevation-3),
-    inset 0 0 0 1px var(--lm-hairline);
-}
-.song-card:active .thumb {
-  transform: translateY(-1px) scale(0.995);
-}
 .s-meta {
-  padding: 0 2px;
+  padding: 0;
   min-width: 0;
 }
 .s-title {
@@ -1027,7 +1033,7 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
   text-overflow: ellipsis;
 }
 .s-artist {
-  margin-top: 2px;
+  margin-top: 4px;
   font-size: var(--md-sys-typescale-body-small-size);
   color: var(--md-sys-color-on-surface-variant);
   white-space: nowrap;
