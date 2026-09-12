@@ -35,7 +35,7 @@ onMounted(async () => {
   <!-- 媒体卡：img 直接 slot="header"，触发 has-header-media，封面边到边铺满 -->
   <m3e-card class="pixiv-card" variant="elevated" actionable @click="$emit('open')">
     <img slot="header" class="cover-img" :src="coverSrc" :alt="illust.title" loading="lazy" />
-    <div class="meta">
+    <div slot="content" class="meta">
       <div class="title" :title="illust.title">{{ illust.title }}</div>
       <div class="sub">
         <span class="bm" :title="bmLabel">

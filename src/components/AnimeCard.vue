@@ -31,7 +31,7 @@ const coverSrc = computed(() => props.item.cover || PLACEHOLDER_COVER);
       decoding="async"
       referrerpolicy="no-referrer"
     />
-    <div class="meta">
+    <div slot="content" class="meta">
       <div class="title" :title="item.title">{{ item.title }}</div>
       <div v-if="subtitle" class="sub" :title="subtitle">{{ subtitle }}</div>
     </div>

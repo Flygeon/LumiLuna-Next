@@ -25,7 +25,7 @@ const coverSrc = computed(() => cover.value || PLACEHOLDER_COVER);
   <!-- 媒体卡：img 直接 slot="header"，触发 has-header-media，封面边到边铺满 -->
   <m3e-card class="novel-card" variant="elevated" actionable @click="$emit('open')">
     <img slot="header" class="cover-img" :src="coverSrc" :alt="item.title" loading="lazy" />
-    <div class="meta">
+    <div slot="content" class="meta">
       <div class="title" :title="item.title">{{ item.title }}</div>
       <div v-if="subtitle" class="sub" :title="subtitle">{{ subtitle }}</div>
       <div v-else-if="'author' in item && item.author" class="sub" :title="item.author">

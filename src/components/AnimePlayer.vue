@@ -561,9 +561,14 @@ onBeforeUnmount(() => {
   z-index: 6;
   /* 图标尺寸走组件令牌：shadow DOM ::slotted(*){font-size:inherit !important} 会覆盖外部 font-size */
   --m3e-icon-button-icon-size: 24px;
-  --md-icon-button-container-color: rgba(0, 0, 0, 0.55);
-  --md-icon-button-selected-container-color: rgba(0, 0, 0, 0.55);
-  --md-sys-color-on-surface: #fff;
+  /* standard 变体无 resting container token：常驻半透明圆底直接设在 host，
+     hover/pressed 反馈走组件 state-layer（白色，适配视频画面） */
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 50%;
+  --m3e-icon-button-icon-color: #fff;
+  --m3e-icon-button-hover-icon-color: #fff;
+  --m3e-standard-icon-button-hover-state-layer-color: #fff;
+  --m3e-standard-icon-button-pressed-state-layer-color: #fff;
   color: #fff;
 }
 

@@ -182,12 +182,12 @@ function importPreset() {
 
 const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k` : String(hz));
 
-/** m3e-slider / m3e-switch 事件读取：custom element 上的最新值 */
+/** m3e-slider 的 input target 是 thumb（读 .value）；m3e-switch 的 change target 是开关本身（读 .checked） */
 function sliderValue(e: Event): number {
   return Number((e.target as HTMLElement & { value: number | string }).value);
 }
-function switchSelected(e: Event): boolean {
-  return Boolean((e.target as HTMLElement & { selected: boolean }).selected);
+function switchChecked(e: Event): boolean {
+  return Boolean((e.target as HTMLElement & { checked: boolean }).checked);
 }
 </script>
 
@@ -197,8 +197,8 @@ function switchSelected(e: Event): boolean {
       <span class="material-symbols-outlined">graphic_eq</span>
       <span class="enable-label">{{ t("player.effectsEnable") }}</span>
       <m3e-switch
-        :selected="effects.config.enabled"
-        @change="effects.setEnabled(switchSelected($event))"
+        :checked="effects.config.enabled"
+        @change="effects.setEnabled(switchChecked($event))"
       />
     </label>
 
@@ -281,10 +281,11 @@ function switchSelected(e: Event): boolean {
               :min="-12"
               :max="12"
               :step="1"
-              :value="band.gain"
               :disabled="!effects.config.enabled"
               @input="effects.setEqBand(i, sliderValue($event))"
-            />
+            >
+              <m3e-slider-thumb :value="band.gain"></m3e-slider-thumb>
+            </m3e-slider>
             <span class="eq-value tabular-nums">{{
               band.gain > 0 ? `+${band.gain}` : band.gain
             }}</span>
@@ -305,10 +306,11 @@ function switchSelected(e: Event): boolean {
             :min="-12"
             :max="12"
             :step="1"
-            :value="effects.config.bassBoost"
             :disabled="!effects.config.enabled"
             @input="effects.setBassBoost(sliderValue($event))"
-          />
+          >
+            <m3e-slider-thumb :value="effects.config.bassBoost"></m3e-slider-thumb>
+          </m3e-slider>
           <span class="slider-value tabular-nums">{{ effects.config.bassBoost }}</span>
         </label>
         <label class="slider-row">
@@ -321,10 +323,11 @@ function switchSelected(e: Event): boolean {
             :min="0"
             :max="100"
             :step="1"
-            :value="effects.config.reverb"
             :disabled="!effects.config.enabled"
             @input="effects.setReverb(sliderValue($event))"
-          />
+          >
+            <m3e-slider-thumb :value="effects.config.reverb"></m3e-slider-thumb>
+          </m3e-slider>
           <span class="slider-value tabular-nums">{{ effects.config.reverb }}</span>
         </label>
         <label class="slider-row">
@@ -337,10 +340,11 @@ function switchSelected(e: Event): boolean {
             :min="0"
             :max="100"
             :step="1"
-            :value="effects.config.stereoWidth"
             :disabled="!effects.config.enabled"
             @input="effects.setStereoWidth(sliderValue($event))"
-          />
+          >
+            <m3e-slider-thumb :value="effects.config.stereoWidth"></m3e-slider-thumb>
+          </m3e-slider>
           <span class="slider-value tabular-nums">{{ effects.config.stereoWidth }}</span>
         </label>
       </section>

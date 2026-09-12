@@ -268,6 +268,25 @@ function onSizeSlider(value: string) {
   applySize(posToMb(Number(value)));
 }
 
+/** m3e-slider（对数位置滑块）input：事件 target 是 m3e-slider-thumb，读 thumb.value（0-100 的位置） */
+function onSizeSliderInput(e: Event) {
+  const el = e.target as HTMLElement & { value: number | string };
+  const v = Number(el.value);
+  if (Number.isFinite(v)) onSizeSlider(String(v));
+}
+
+/** m3e-slider 通用 input：target 是 thumb，直接读 value 写回 store（替代原生 range 的 v-model.number） */
+function onSliderInput(e: Event, set: (v: number) => void) {
+  const el = e.target as HTMLElement & { value: number | string };
+  const v = Number(el.value);
+  if (Number.isFinite(v)) set(v);
+}
+
+/** m3e-switch change：target 是开关本身，读 checked（模板内联交叉类型断言无法解析，统一走此函数） */
+function checkedOf(e: Event): boolean {
+  return Boolean((e.target as HTMLElement & { checked: boolean }).checked);
+}
+
 function applySize(mb: number) {
   settings.minFileSizeMb = mb;
   // 阈值变了，已缓存的各类型列表和角标都要重取
@@ -344,18 +363,20 @@ async function pickBgVideo() {
   if (typeof p === "string") settings.bgVideoPath = p;
 }
 
-/** m3e-slider 的值挂在 m3e-slider-thumb 上，input 事件里读 thumb.value */
+/** m3e-slider 的 input 事件 target 是 m3e-slider-thumb，直接读 thumb.value */
 function onBgBlurInput(event: Event) {
-  const el = event.target as HTMLElement & { thumb?: { value: number } };
-  if (el.thumb && Number.isFinite(el.thumb.value)) {
-    settings.bgBlur = Math.round(el.thumb.value);
+  const el = event.target as HTMLElement & { value: number | string };
+  const v = Number(el.value);
+  if (Number.isFinite(v)) {
+    settings.bgBlur = Math.round(v);
   }
 }
 
 function onBgOverlayInput(event: Event) {
-  const el = event.target as HTMLElement & { thumb?: { value: number } };
-  if (el.thumb && Number.isFinite(el.thumb.value)) {
-    settings.bgOverlay = Math.round(el.thumb.value);
+  const el = event.target as HTMLElement & { value: number | string };
+  const v = Number(el.value);
+  if (Number.isFinite(v)) {
+    settings.bgOverlay = Math.round(v);
   }
 }
 
@@ -423,18 +444,17 @@ function selectSection(id: string) {
         <div class="row-label">
           <span>{{ t("settings.theme") }}</span>
         </div>
-        <div class="segmented">
-          <button
+        <m3e-segmented-button>
+          <m3e-button-segment
             v-for="mode in ['system', 'light', 'dark'] as ThemeMode[]"
             :key="mode"
-            class="seg"
-            :class="{ active: settings.theme === mode }"
+            :checked="settings.theme === mode"
             :disabled="themeLocked"
             @click="setTheme(mode)"
           >
             {{ t("settings." + mode) }}
-          </button>
-        </div>
+          </m3e-button-segment>
+        </m3e-segmented-button>
       </div>
       <p v-if="themeLockHint" class="hint">{{ themeLockHint }}</p>
 
@@ -531,22 +551,14 @@ function selectSection(id: string) {
         <div class="row-label">
           <span>{{ t("settings.language") }}</span>
         </div>
-        <div class="segmented">
-          <button
-            class="seg"
-            :class="{ active: settings.lang === 'zh' }"
-            @click="settings.lang = 'zh'"
-          >
+        <m3e-segmented-button>
+          <m3e-button-segment :checked="settings.lang === 'zh'" @click="settings.lang = 'zh'">
             简体中文
-          </button>
-          <button
-            class="seg"
-            :class="{ active: settings.lang === 'en' }"
-            @click="settings.lang = 'en'"
-          >
+          </m3e-button-segment>
+          <m3e-button-segment :checked="settings.lang === 'en'" @click="settings.lang = 'en'">
             English
-          </button>
-        </div>
+          </m3e-button-segment>
+        </m3e-segmented-button>
       </div>
 
       <div class="row">
@@ -591,22 +603,17 @@ function selectSection(id: string) {
         <div class="row-label">
           <span>{{ t("settings.closeAction") }}</span>
         </div>
-        <div class="segmented">
-          <button
-            class="seg"
-            :class="{ active: settings.closeToTray }"
-            @click="settings.closeToTray = true"
-          >
+        <m3e-segmented-button>
+          <m3e-button-segment :checked="settings.closeToTray" @click="settings.closeToTray = true">
             {{ t("settings.closeAction_tray") }}
-          </button>
-          <button
-            class="seg"
-            :class="{ active: !settings.closeToTray }"
+          </m3e-button-segment>
+          <m3e-button-segment
+            :checked="!settings.closeToTray"
             @click="settings.closeToTray = false"
           >
             {{ t("settings.closeAction_quit") }}
-          </button>
-        </div>
+          </m3e-button-segment>
+        </m3e-segmented-button>
       </div>
       <p class="hint">{{ t("settings.closeToTrayHint") }}</p>
     </section>
@@ -707,25 +714,27 @@ function selectSection(id: string) {
       <h3>{{ t("settings.scanDirs") }}</h3>
       <p class="hint">{{ t("settings.scanDirsHint") }}</p>
 
-      <div v-if="settings.scanDirs.length" class="dir-list">
-        <div v-for="(dir, i) in settings.scanDirs" :key="dir" class="dir-item">
-          <span class="material-symbols-outlined">folder</span>
-          <span class="dir-path" :title="dir">{{ dir }}</span>
-          <button class="lm-icon-btn small danger" @click="removeScanDir(i)">
-            <span class="material-symbols-outlined">close</span>
-          </button>
-        </div>
-      </div>
+      <m3e-list v-if="settings.scanDirs.length" variant="segmented" class="dir-list">
+        <m3e-list-item v-for="(dir, i) in settings.scanDirs" :key="dir">
+          <span slot="leading" class="lead-circle">
+            <span class="material-symbols-outlined">folder</span>
+          </span>
+          <span class="li-title dir-path" :title="dir">{{ dir }}</span>
+          <span slot="trailing">
+            <m3e-icon-button class="danger-icon" @click="removeScanDir(i)">close</m3e-icon-button>
+          </span>
+        </m3e-list-item>
+      </m3e-list>
       <div v-else class="notice">{{ t("settings.globalScanHint") }}</div>
 
       <div class="actions">
-        <button class="lm-btn lm-btn--tonal" @click="addScanDir">
+        <m3e-button @click="addScanDir">
           <span class="material-symbols-outlined">create_new_folder</span>
           {{ t("settings.addScanDir") }}
-        </button>
-        <button v-if="settings.scanDirs.length" class="lm-btn lm-btn--text" @click="clearScanDirs">
+        </m3e-button>
+        <m3e-button v-if="settings.scanDirs.length" variant="text" @click="clearScanDirs">
           {{ t("settings.clearScanDirs") }}
-        </button>
+        </m3e-button>
       </div>
     </section>
 
@@ -734,29 +743,23 @@ function selectSection(id: string) {
       <h3>{{ t("settings.minSize") }}</h3>
       <p class="hint">{{ t("settings.minSizeHint") }}</p>
       <div class="row">
-        <input
-          type="range"
-          min="0"
-          max="100"
-          step="1"
-          :value="sliderPos"
-          @input="onSizeSlider(($event.target as HTMLInputElement).value)"
-        />
+        <m3e-slider min="0" max="100" step="1" labelled class="grow" @input="onSizeSliderInput">
+          <m3e-slider-thumb :value="sliderPos"></m3e-slider-thumb>
+        </m3e-slider>
         <span class="value tabular-nums">
           {{ settings.minFileSizeMb > 0 ? sizeLabel : t("settings.minSizeOff") }}
         </span>
       </div>
-      <div class="presets">
-        <button
+      <m3e-filter-chip-set class="preset-chips">
+        <m3e-filter-chip
           v-for="p in SIZE_PRESETS"
           :key="p"
-          class="chip"
-          :class="{ active: settings.minFileSizeMb === p }"
+          :selected="settings.minFileSizeMb === p"
           @click="applySize(p)"
         >
           {{ p === 0 ? t("settings.minSizeOff") : `${p} MB` }}
-        </button>
-      </div>
+        </m3e-filter-chip>
+      </m3e-filter-chip-set>
     </section>
 
     <!-- 阅读 -->
@@ -767,17 +770,16 @@ function selectSection(id: string) {
         <div class="row-label">
           <span>{{ t("settings.pdfMode") }}</span>
         </div>
-        <div class="segmented">
-          <button
+        <m3e-segmented-button>
+          <m3e-button-segment
             v-for="m in ['single', 'dual', 'scroll'] as PdfReadMode[]"
             :key="m"
-            class="seg"
-            :class="{ active: settings.pdfReadMode === m }"
+            :checked="settings.pdfReadMode === m"
             @click="settings.pdfReadMode = m"
           >
             {{ t("settings.pdfMode_" + m) }}
-          </button>
-        </div>
+          </m3e-button-segment>
+        </m3e-segmented-button>
       </div>
     </section>
 
@@ -839,86 +841,121 @@ function selectSection(id: string) {
       <h3>{{ t("settings.lyrics") }}</h3>
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.wordLyrics") }}</span>
-        <input v-model="settings.wordLyrics" type="checkbox" />
+        <m3e-switch
+          :checked="settings.wordLyrics"
+          @change="settings.wordLyrics = checkedOf($event)"
+        ></m3e-switch>
       </label>
       <p class="hint">{{ t("settings.wordLyricsHint") }}</p>
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.preciseLyrics") }}</span>
-        <input v-model="settings.preciseLyrics" type="checkbox" />
+        <m3e-switch
+          :checked="settings.preciseLyrics"
+          @change="settings.preciseLyrics = checkedOf($event)"
+        ></m3e-switch>
       </label>
       <p class="hint">{{ t("settings.preciseLyricsHint") }}</p>
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.detectInstrumental") }}</span>
-        <input v-model="settings.detectInstrumental" type="checkbox" />
+        <m3e-switch
+          :checked="settings.detectInstrumental"
+          @change="settings.detectInstrumental = checkedOf($event)"
+        ></m3e-switch>
       </label>
       <p class="hint">{{ t("settings.detectInstrumentalHint") }}</p>
       <div class="row">
         <div class="row-label">
           <span>{{ t("settings.lyricFont") }}</span>
         </div>
-        <div class="presets inline">
-          <button
+        <m3e-filter-chip-set>
+          <m3e-filter-chip
             v-for="k in LYRIC_FONT_KEYS"
             :key="k"
-            class="chip"
-            :class="{ active: settings.lyricFont === k }"
+            :selected="settings.lyricFont === k"
             @click="settings.lyricFont = k"
           >
             {{ t("settings.lyricFont_" + k) }}
-          </button>
-        </div>
+          </m3e-filter-chip>
+        </m3e-filter-chip-set>
       </div>
       <div class="row">
         <div class="row-label">
           <span>{{ t("settings.lyricFontSize") }}</span>
         </div>
-        <input v-model.number="settings.lyricFontSize" type="range" min="16" max="48" />
+        <m3e-slider
+          min="16"
+          max="48"
+          step="1"
+          labelled
+          class="grow"
+          @input="onSliderInput($event, (v) => (settings.lyricFontSize = v))"
+        >
+          <m3e-slider-thumb :value="settings.lyricFontSize"></m3e-slider-thumb>
+        </m3e-slider>
         <span class="value tabular-nums">{{ settings.lyricFontSize }}px</span>
       </div>
       <div class="row">
         <div class="row-label">
           <span>{{ t("settings.lyricLineHeight") }}</span>
         </div>
-        <input
-          v-model.number="settings.lyricLineHeight"
-          type="range"
+        <m3e-slider
           min="1.6"
           max="3.2"
           step="0.1"
-        />
+          labelled
+          class="grow"
+          @input="onSliderInput($event, (v) => (settings.lyricLineHeight = v))"
+        >
+          <m3e-slider-thumb :value="settings.lyricLineHeight"></m3e-slider-thumb>
+        </m3e-slider>
         <span class="value tabular-nums">{{ settings.lyricLineHeight.toFixed(1) }}</span>
       </div>
       <div class="row">
         <div class="row-label">
           <span>{{ t("settings.lyricLineGap") }}</span>
         </div>
-        <input v-model.number="settings.lyricLineGap" type="range" min="0" max="64" step="1" />
+        <m3e-slider
+          min="0"
+          max="64"
+          step="1"
+          labelled
+          class="grow"
+          @input="onSliderInput($event, (v) => (settings.lyricLineGap = v))"
+        >
+          <m3e-slider-thumb :value="settings.lyricLineGap"></m3e-slider-thumb>
+        </m3e-slider>
         <span class="value tabular-nums">{{ settings.lyricLineGap }}px</span>
       </div>
       <div class="row">
         <div class="row-label">
           <span>{{ t("settings.lyricTranslationSize") }}</span>
         </div>
-        <input
-          v-model.number="settings.lyricTranslationSize"
-          type="range"
+        <m3e-slider
           min="40"
           max="120"
           step="5"
-        />
+          labelled
+          class="grow"
+          @input="onSliderInput($event, (v) => (settings.lyricTranslationSize = v))"
+        >
+          <m3e-slider-thumb :value="settings.lyricTranslationSize"></m3e-slider-thumb>
+        </m3e-slider>
         <span class="value tabular-nums">{{ settings.lyricTranslationSize }}%</span>
       </div>
       <div class="row">
         <div class="row-label">
           <span>{{ t("settings.lyricTranslationGap") }}</span>
         </div>
-        <input
-          v-model.number="settings.lyricTranslationGap"
-          type="range"
+        <m3e-slider
           min="0"
           max="24"
           step="1"
-        />
+          labelled
+          class="grow"
+          @input="onSliderInput($event, (v) => (settings.lyricTranslationGap = v))"
+        >
+          <m3e-slider-thumb :value="settings.lyricTranslationGap"></m3e-slider-thumb>
+        </m3e-slider>
         <span class="value tabular-nums">{{ settings.lyricTranslationGap }}px</span>
       </div>
     </section>
@@ -929,63 +966,73 @@ function selectSection(id: string) {
 
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.desktopLyricsEnable") }}</span>
-        <input v-model="settings.desktopLyricsEnabled" type="checkbox" />
+        <m3e-switch
+          :checked="settings.desktopLyricsEnabled"
+          @change="settings.desktopLyricsEnabled = checkedOf($event)"
+        ></m3e-switch>
       </label>
 
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.desktopLyricsShowNext") }}</span>
-        <input v-model="settings.desktopLyricsShowNext" type="checkbox" />
+        <m3e-switch
+          :checked="settings.desktopLyricsShowNext"
+          @change="settings.desktopLyricsShowNext = checkedOf($event)"
+        ></m3e-switch>
       </label>
 
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.desktopLyricsShowTranslation") }}</span>
-        <input v-model="settings.desktopLyricsShowTranslation" type="checkbox" />
+        <m3e-switch
+          :checked="settings.desktopLyricsShowTranslation"
+          @change="settings.desktopLyricsShowTranslation = checkedOf($event)"
+        ></m3e-switch>
       </label>
 
       <div class="row">
         <div class="row-label">
           <span>{{ t("settings.desktopLyricsToolbar") }}</span>
         </div>
-        <div class="segmented">
-          <button
+        <m3e-segmented-button>
+          <m3e-button-segment
             v-for="m in ['click', 'always'] as DesktopLyricsToolbar[]"
             :key="m"
-            class="seg"
-            :class="{ active: settings.desktopLyricsToolbar === m }"
+            :checked="settings.desktopLyricsToolbar === m"
             @click="settings.desktopLyricsToolbar = m"
           >
             {{ t("settings.desktopLyricsToolbar_" + m) }}
-          </button>
-        </div>
+          </m3e-button-segment>
+        </m3e-segmented-button>
       </div>
       <div class="row">
         <div class="row-label">
           <span>{{ t("settings.desktopLyricsDoubleClick") }}</span>
         </div>
-        <div class="segmented">
-          <button
+        <m3e-segmented-button>
+          <m3e-button-segment
             v-for="m in ['none', 'toggle'] as DesktopLyricsDoubleClick[]"
             :key="m"
-            class="seg"
-            :class="{ active: settings.desktopLyricsDoubleClick === m }"
+            :checked="settings.desktopLyricsDoubleClick === m"
             @click="settings.desktopLyricsDoubleClick = m"
           >
             {{ t("settings.desktopLyricsDoubleClick_" + m) }}
-          </button>
-        </div>
+          </m3e-button-segment>
+        </m3e-segmented-button>
       </div>
 
       <div class="row">
         <div class="row-label">
           <span>{{ t("settings.desktopLyricsFontSize") }}</span>
         </div>
-        <input
-          v-model.number="settings.desktopLyricsFontSize"
-          type="range"
+        <m3e-slider
           min="16"
           max="64"
           step="1"
-        />
+          labelled
+          class="grow"
+          @input="onSliderInput($event, (v) => (settings.desktopLyricsFontSize = v))"
+        >
+          <m3e-slider-thumb :value="settings.desktopLyricsFontSize"></m3e-slider-thumb>
+        </m3e-slider>
         <span class="value tabular-nums">{{ settings.desktopLyricsFontSize }}px</span>
       </div>
 
@@ -993,13 +1040,16 @@ function selectSection(id: string) {
         <div class="row-label">
           <span>{{ t("settings.desktopLyricsOpacity") }}</span>
         </div>
-        <input
-          v-model.number="settings.desktopLyricsOpacity"
-          type="range"
+        <m3e-slider
           min="30"
           max="100"
           step="5"
-        />
+          labelled
+          class="grow"
+          @input="onSliderInput($event, (v) => (settings.desktopLyricsOpacity = v))"
+        >
+          <m3e-slider-thumb :value="settings.desktopLyricsOpacity"></m3e-slider-thumb>
+        </m3e-slider>
         <span class="value tabular-nums">{{ settings.desktopLyricsOpacity }}%</span>
       </div>
 
@@ -1007,33 +1057,41 @@ function selectSection(id: string) {
         <div class="row-label">
           <span>{{ t("settings.desktopLyricsAnimation") }}</span>
         </div>
-        <div class="presets inline">
-          <button
+        <m3e-filter-chip-set>
+          <m3e-filter-chip
             v-for="k in LYRICS_ANIMATIONS"
             :key="k"
-            class="chip"
-            :class="{ active: settings.desktopLyricsAnimation === k }"
+            :selected="settings.desktopLyricsAnimation === k"
             @click="settings.desktopLyricsAnimation = k"
           >
             {{ t("settings.desktopLyricsAnim_" + k) }}
-          </button>
-        </div>
+          </m3e-filter-chip>
+        </m3e-filter-chip-set>
       </div>
 
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.desktopLyricsLocked") }}</span>
-        <input v-model="settings.desktopLyricsLocked" type="checkbox" />
+        <m3e-switch
+          :checked="settings.desktopLyricsLocked"
+          @change="settings.desktopLyricsLocked = checkedOf($event)"
+        ></m3e-switch>
       </label>
 
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.desktopLyricsClickThrough") }}</span>
-        <input v-model="settings.desktopLyricsClickThrough" type="checkbox" />
+        <m3e-switch
+          :checked="settings.desktopLyricsClickThrough"
+          @change="settings.desktopLyricsClickThrough = checkedOf($event)"
+        ></m3e-switch>
       </label>
       <p class="hint">{{ t("settings.desktopLyricsClickThroughHint") }}</p>
 
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.desktopLyricsAlwaysOnTop") }}</span>
-        <input v-model="settings.desktopLyricsAlwaysOnTop" type="checkbox" />
+        <m3e-switch
+          :checked="settings.desktopLyricsAlwaysOnTop"
+          @change="settings.desktopLyricsAlwaysOnTop = checkedOf($event)"
+        ></m3e-switch>
       </label>
 
       <div class="actions">
@@ -1051,38 +1109,39 @@ function selectSection(id: string) {
         <div class="row-label">
           <span>{{ t("settings.playerBg") }}</span>
         </div>
-        <div class="segmented">
-          <button
+        <m3e-segmented-button>
+          <m3e-button-segment
             v-for="m in ['animated', 'image', 'off'] as PlayerBgMode[]"
             :key="m"
-            class="seg"
-            :class="{ active: settings.playerBg === m }"
+            :checked="settings.playerBg === m"
             @click="settings.playerBg = m"
           >
             {{ t("settings.playerBg_" + m) }}
-          </button>
-        </div>
+          </m3e-button-segment>
+        </m3e-segmented-button>
       </div>
       <div class="row">
         <div class="row-label">
           <span>{{ t("settings.musicViewMode") }}</span>
         </div>
-        <div class="segmented">
-          <button
+        <m3e-segmented-button>
+          <m3e-button-segment
             v-for="m in ['grid', 'list'] as const"
             :key="m"
-            class="seg"
-            :class="{ active: settings.musicViewMode === m }"
+            :checked="settings.musicViewMode === m"
             @click="settings.musicViewMode = m"
           >
             {{ t("settings.musicViewMode_" + m) }}
-          </button>
-        </div>
+          </m3e-button-segment>
+        </m3e-segmented-button>
       </div>
       <p class="hint">{{ t("player.hotkeysHint") }}</p>
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.lyricBlur") }}</span>
-        <input v-model="settings.lyricBlur" type="checkbox" />
+        <m3e-switch
+          :checked="settings.lyricBlur"
+          @change="settings.lyricBlur = checkedOf($event)"
+        ></m3e-switch>
       </label>
     </section>
 
@@ -1094,17 +1153,16 @@ function selectSection(id: string) {
         <div class="row-label">
           <span>{{ t("settings.shareCodePreference") }}</span>
         </div>
-        <div class="segmented">
-          <button
+        <m3e-segmented-button>
+          <m3e-button-segment
             v-for="mode in ['chinese', 'original', 'both'] as ShareCodePreference[]"
             :key="mode"
-            class="seg"
-            :class="{ active: settings.shareCodePreference === mode }"
+            :checked="settings.shareCodePreference === mode"
             @click="settings.shareCodePreference = mode"
           >
             {{ t("settings.shareCodePreference_" + mode) }}
-          </button>
-        </div>
+          </m3e-button-segment>
+        </m3e-segmented-button>
       </div>
       <p class="hint">{{ t("settings.shareCodePreferenceHint") }}</p>
       <AudioEffectsPanel />
@@ -1116,28 +1174,33 @@ function selectSection(id: string) {
       <p class="hint">{{ t("settings.onlineHint") }}</p>
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.onlineEnable") }}</span>
-        <input v-model="settings.enableOnlineMusic" type="checkbox" />
+        <m3e-switch
+          :checked="settings.enableOnlineMusic"
+          @change="settings.enableOnlineMusic = checkedOf($event)"
+        ></m3e-switch>
       </label>
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.neteaseEnable") }}</span>
-        <input v-model="settings.neteaseEnabled" type="checkbox" />
+        <m3e-switch
+          :checked="settings.neteaseEnabled"
+          @change="settings.neteaseEnabled = checkedOf($event)"
+        ></m3e-switch>
       </label>
       <p class="hint">{{ t("settings.neteaseHint") }}</p>
       <div v-if="settings.enableOnlineMusic" class="row">
         <div class="row-label">
           <span>{{ t("settings.onlineServer") }}</span>
         </div>
-        <div class="segmented">
-          <button
+        <m3e-segmented-button>
+          <m3e-button-segment
             v-for="s in ['netease'] as const"
             :key="s"
-            class="seg"
-            :class="{ active: settings.musicServer === s }"
+            :checked="settings.musicServer === s"
             @click="settings.musicServer = s"
           >
             {{ t("settings.onlineServer_" + s) }}
-          </button>
-        </div>
+          </m3e-button-segment>
+        </m3e-segmented-button>
       </div>
     </section>
 
@@ -1147,43 +1210,47 @@ function selectSection(id: string) {
       <p class="hint">{{ t("settings.onlineNovelHint") }}</p>
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.onlineNovelEnable") }}</span>
-        <input v-model="settings.onlineNovelEnabled" type="checkbox" />
+        <m3e-switch
+          :checked="settings.onlineNovelEnabled"
+          @change="settings.onlineNovelEnabled = checkedOf($event)"
+        ></m3e-switch>
       </label>
       <label class="row switch-row">
         <span class="row-label">是否启用笔趣阁小说阅读</span>
-        <input v-model="settings.bqgNovelEnabled" type="checkbox" />
+        <m3e-switch
+          :checked="settings.bqgNovelEnabled"
+          @change="settings.bqgNovelEnabled = checkedOf($event)"
+        ></m3e-switch>
       </label>
       <div v-if="settings.onlineNovelEnabled" class="row">
         <div class="row-label">
           <span>{{ t("settings.wenku8Node") }}</span>
         </div>
-        <div class="segmented">
-          <button
+        <m3e-segmented-button>
+          <m3e-button-segment
             v-for="n in ['cc', 'net'] as const"
             :key="n"
-            class="seg"
-            :class="{ active: settings.wenku8Node === n }"
+            :checked="settings.wenku8Node === n"
             @click="settings.wenku8Node = n"
           >
             {{ t("settings.wenku8Node_" + n) }}
-          </button>
-        </div>
+          </m3e-button-segment>
+        </m3e-segmented-button>
       </div>
       <div v-if="settings.onlineNovelEnabled" class="row">
         <div class="row-label">
           <span>{{ t("settings.novelCharset") }}</span>
         </div>
-        <div class="segmented">
-          <button
+        <m3e-segmented-button>
+          <m3e-button-segment
             v-for="c in ['gbk', 'big5'] as const"
             :key="c"
-            class="seg"
-            :class="{ active: settings.novelCharset === c }"
+            :checked="settings.novelCharset === c"
             @click="settings.novelCharset = c"
           >
             {{ t("settings.novelCharset_" + c) }}
-          </button>
-        </div>
+          </m3e-button-segment>
+        </m3e-segmented-button>
       </div>
     </section>
 
@@ -1193,7 +1260,10 @@ function selectSection(id: string) {
       <p class="hint">{{ t("settings.onlineAnimeHint") }}</p>
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.onlineAnimeEnable") }}</span>
-        <input v-model="settings.onlineAnimeEnabled" type="checkbox" />
+        <m3e-switch
+          :checked="settings.onlineAnimeEnabled"
+          @change="settings.onlineAnimeEnabled = checkedOf($event)"
+        ></m3e-switch>
       </label>
       <template v-if="settings.onlineAnimeEnabled">
         <p class="hint">{{ t("settings.bangumiHint") }}</p>
@@ -1251,24 +1321,26 @@ function selectSection(id: string) {
       <p class="hint">{{ t("settings.onlinePixivHint") }}</p>
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.onlinePixivEnabled") }}</span>
-        <input v-model="settings.onlinePixivEnabled" type="checkbox" />
+        <m3e-switch
+          :checked="settings.onlinePixivEnabled"
+          @change="settings.onlinePixivEnabled = checkedOf($event)"
+        ></m3e-switch>
       </label>
       <template v-if="settings.onlinePixivEnabled">
         <div class="row">
           <div class="row-label">
             <span>{{ t("settings.pixivQuality") }}</span>
           </div>
-          <div class="segmented">
-            <button
+          <m3e-segmented-button>
+            <m3e-button-segment
               v-for="q in ['squareMedium', 'medium', 'large', 'original'] as const"
               :key="q"
-              class="seg"
-              :class="{ active: settings.pixivImageQuality === q }"
+              :checked="settings.pixivImageQuality === q"
               @click="settings.pixivImageQuality = q"
             >
               {{ t("settings.pixivQuality_" + q) }}
-            </button>
-          </div>
+            </m3e-button-segment>
+          </m3e-segmented-button>
         </div>
         <p class="hint">{{ t("settings.pixivRefreshTokenHint") }}</p>
         <div class="dav-form">
@@ -1291,7 +1363,10 @@ function selectSection(id: string) {
       <p class="hint">{{ t("settings.danmakuHint") }}</p>
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.danmakuEnable") }}</span>
-        <input v-model="settings.danmakuEnabled" type="checkbox" />
+        <m3e-switch
+          :checked="settings.danmakuEnabled"
+          @change="settings.danmakuEnabled = checkedOf($event)"
+        ></m3e-switch>
       </label>
       <template v-if="settings.danmakuEnabled">
         <div class="dav-form">
@@ -1317,31 +1392,51 @@ function selectSection(id: string) {
         <div class="dav-grid">
           <label class="field">
             <span>{{ t("settings.danmakuOpacity") }} {{ settings.danmakuOpacity }}%</span>
-            <input
-              v-model.number="settings.danmakuOpacity"
-              type="range"
+            <m3e-slider
               min="10"
               max="100"
               step="5"
-            />
+              labelled
+              @input="onSliderInput($event, (v) => (settings.danmakuOpacity = v))"
+            >
+              <m3e-slider-thumb :value="settings.danmakuOpacity"></m3e-slider-thumb>
+            </m3e-slider>
           </label>
           <label class="field">
             <span>{{ t("settings.danmakuFontSize") }} {{ settings.danmakuFontSize }}px</span>
-            <input
-              v-model.number="settings.danmakuFontSize"
-              type="range"
+            <m3e-slider
               min="12"
               max="48"
               step="1"
-            />
+              labelled
+              @input="onSliderInput($event, (v) => (settings.danmakuFontSize = v))"
+            >
+              <m3e-slider-thumb :value="settings.danmakuFontSize"></m3e-slider-thumb>
+            </m3e-slider>
           </label>
           <label class="field">
             <span>{{ t("settings.danmakuArea") }} {{ settings.danmakuArea }}%</span>
-            <input v-model.number="settings.danmakuArea" type="range" min="20" max="100" step="5" />
+            <m3e-slider
+              min="20"
+              max="100"
+              step="5"
+              labelled
+              @input="onSliderInput($event, (v) => (settings.danmakuArea = v))"
+            >
+              <m3e-slider-thumb :value="settings.danmakuArea"></m3e-slider-thumb>
+            </m3e-slider>
           </label>
           <label class="field">
             <span>{{ t("settings.danmakuSpeed") }} {{ settings.danmakuSpeed }}</span>
-            <input v-model.number="settings.danmakuSpeed" type="range" min="1" max="10" step="1" />
+            <m3e-slider
+              min="1"
+              max="10"
+              step="1"
+              labelled
+              @input="onSliderInput($event, (v) => (settings.danmakuSpeed = v))"
+            >
+              <m3e-slider-thumb :value="settings.danmakuSpeed"></m3e-slider-thumb>
+            </m3e-slider>
           </label>
         </div>
         <div class="dav-grid">
@@ -1358,7 +1453,10 @@ function selectSection(id: string) {
           </label>
           <label class="row switch-row">
             <span class="row-label">{{ t("settings.danmakuAntiOverlap") }}</span>
-            <input v-model="settings.danmakuAntiOverlap" type="checkbox" />
+            <m3e-switch
+              :checked="settings.danmakuAntiOverlap"
+              @change="settings.danmakuAntiOverlap = checkedOf($event)"
+            ></m3e-switch>
           </label>
         </div>
       </template>
@@ -1371,7 +1469,10 @@ function selectSection(id: string) {
 
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.webdavEnable") }}</span>
-        <input v-model="settings.webdavEnabled" type="checkbox" />
+        <m3e-switch
+          :checked="settings.webdavEnabled"
+          @change="settings.webdavEnabled = checkedOf($event)"
+        ></m3e-switch>
       </label>
 
       <div v-if="settings.webdavEnabled" class="dav-form">
@@ -1451,7 +1552,7 @@ function selectSection(id: string) {
       </div>
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.devtools") }}</span>
-        <input type="checkbox" :checked="devtoolsEnabled" @change="toggleDevtools" />
+        <m3e-switch :checked="devtoolsEnabled" @change="toggleDevtools"></m3e-switch>
       </label>
       <p class="hint">{{ t("settings.devtoolsHint") }}</p>
       <div class="actions">
@@ -1614,9 +1715,25 @@ function selectSection(id: string) {
   flex: 1;
   font-size: var(--md-sys-typescale-body-medium-size);
 }
-.row input[type="range"] {
+/* 迁移后的 m3e 控件在 .row 里的占位：滑块填满剩余空间，分段按钮/开关按内容宽度 */
+.row m3e-slider.grow {
   flex: 2;
-  accent-color: var(--md-sys-color-primary);
+  min-width: 0;
+}
+.row m3e-segmented-button {
+  flex: 0 1 auto;
+}
+.row m3e-switch {
+  flex: none;
+}
+/* 弹幕网格里的滑块铺满单元格 */
+.dav-grid m3e-slider {
+  width: 100%;
+  min-width: 0;
+}
+/* 独立成段的预设 chip 组（体积预设）与上方留白 */
+.preset-chips {
+  margin-top: 12px;
 }
 .value {
   min-width: 52px;
@@ -1704,33 +1821,6 @@ function selectSection(id: string) {
   border-radius: 50%;
   background: none;
   cursor: pointer;
-}
-
-.segmented {
-  display: inline-flex;
-  padding: 3px;
-  gap: 2px;
-  background: var(--md-sys-color-surface-container-high);
-  border-radius: var(--lm-shape-button);
-}
-.seg {
-  border: none;
-  background: transparent;
-  padding: 7px 16px;
-  border-radius: var(--lm-shape-button);
-  cursor: pointer;
-  font-family: inherit;
-  font-size: var(--md-sys-typescale-label-large-size);
-  color: var(--md-sys-color-on-surface-variant);
-  transition: all var(--md-sys-motion-duration-short) var(--md-sys-motion-spring-effects-fast);
-}
-.seg:hover {
-  color: var(--md-sys-color-on-surface);
-}
-.seg.active {
-  background: var(--md-sys-color-secondary-container);
-  color: var(--md-sys-color-on-secondary-container);
-  font-weight: 500;
 }
 
 /* 配色方案色板 */
@@ -1921,10 +2011,41 @@ function selectSection(id: string) {
 }
 
 .dir-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  /* 连通分组列表令牌，与背景分区/百宝箱风格统一 */
+  --m3e-segmented-list-container-shape: 28px;
+  --m3e-segmented-list-segment-gap: 3px;
+  --m3e-segmented-list-item-container-color: var(--md-sys-color-surface-container-high);
+  --m3e-segmented-list-item-container-shape: 8px;
+  --m3e-segmented-list-item-hover-container-shape: 8px;
+  --m3e-segmented-list-item-focus-container-shape: 8px;
+  --m3e-segmented-list-item-selected-container-shape: 8px;
+  --m3e-list-item-two-line-height: 64px;
+  --m3e-list-item-font-size: var(--md-sys-typescale-body-large-size);
+  --m3e-list-item-leading-space: 16px;
+  --m3e-list-item-trailing-space: 12px;
   margin-bottom: 12px;
+}
+.dir-list .lead-circle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+}
+.dir-list .lead-circle .material-symbols-outlined {
+  font-size: 22px;
+}
+.dir-list .li-title {
+  color: var(--md-sys-color-on-surface);
+}
+.dir-list .danger-icon {
+  color: var(--md-sys-color-on-surface-variant);
+}
+.dir-list .danger-icon:hover {
+  color: var(--md-sys-color-error);
 }
 .dir-item {
   display: flex;
@@ -2017,42 +2138,6 @@ function selectSection(id: string) {
 }
 .actions .material-symbols-outlined {
   font-size: 18px;
-}
-
-.presets {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 12px;
-}
-/* 放在 .row 里的选择芯片：去掉上边距，与标签对齐 */
-.presets.inline {
-  margin-top: 0;
-}
-.presets.inline .chip {
-  height: 30px;
-  padding: 0 12px;
-}
-.presets .chip {
-  height: 32px;
-  padding: 0 14px;
-  border: 1px solid var(--md-sys-color-outline-variant);
-  border-radius: var(--md-sys-shape-corner-small);
-  background: transparent;
-  color: var(--md-sys-color-on-surface-variant);
-  font-family: inherit;
-  font-size: var(--md-sys-typescale-label-large-size);
-  cursor: pointer;
-  transition: all var(--md-sys-motion-duration-short) var(--md-sys-motion-spring-effects-fast);
-}
-.presets .chip:hover {
-  background: var(--md-sys-color-surface-container-high);
-}
-.presets .chip.active {
-  background: var(--md-sys-color-secondary-container);
-  color: var(--md-sys-color-on-secondary-container);
-  border-color: transparent;
-  font-weight: 500;
 }
 
 .toast {

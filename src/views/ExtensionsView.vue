@@ -105,7 +105,7 @@ onActivated(load);
     </div>
 
     <m3e-card v-for="ext in list" :key="ext.id" class="ext-card">
-      <div class="head">
+      <div slot="content" class="head">
         <div class="info">
           <div class="name">{{ ext.name }}</div>
           <div class="sub">
@@ -165,7 +165,8 @@ onActivated(load);
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  padding: 4px;
+  /* 内边距由 m3e-card content slot 提供（16px），这里不重复 */
+  padding: 0;
 }
 .info {
   min-width: 0;

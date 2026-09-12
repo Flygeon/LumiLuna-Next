@@ -184,7 +184,7 @@ async function disconnect() {
           v-for="tabItem in TABS"
           :key="tabItem.key"
           :value="tabItem.key"
-          :selected="tab === tabItem.key"
+          :checked="tab === tabItem.key"
           @click="tab = tabItem.key"
         >
           <span slot="icon" class="material-symbols-outlined">{{ tabItem.icon }}</span>

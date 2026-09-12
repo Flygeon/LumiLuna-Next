@@ -813,7 +813,7 @@ const PDF_MODES = [
           <m3e-button-segment
             v-for="m in PDF_MODES"
             :key="m.key"
-            :selected="mode === m.key"
+            :checked="mode === m.key"
             @click="settings.pdfReadMode = m.key"
           >
             <span class="material-symbols-outlined">{{ m.icon }}</span>
@@ -862,13 +862,14 @@ const PDF_MODES = [
           <span class="set-label">字号</span>
           <m3e-slider
             class="set-slider"
-            :value="settings.readerFontPct"
             min="60"
             max="220"
             step="5"
             discrete
             @input="settings.readerFontPct = Number(($event.target as HTMLInputElement).value)"
-          />
+          >
+            <m3e-slider-thumb :value="settings.readerFontPct"></m3e-slider-thumb>
+          </m3e-slider>
           <span class="set-value tabular-nums">{{ settings.readerFontPct }}%</span>
         </div>
         <div class="set-row">
@@ -890,24 +891,26 @@ const PDF_MODES = [
           <span class="set-label">行距</span>
           <m3e-slider
             class="set-slider"
-            :value="settings.readerLineHeight"
             min="1"
             max="2.6"
             step="0.1"
             @input="settings.readerLineHeight = Number(($event.target as HTMLInputElement).value)"
-          />
+          >
+            <m3e-slider-thumb :value="settings.readerLineHeight"></m3e-slider-thumb>
+          </m3e-slider>
           <span class="set-value tabular-nums">{{ settings.readerLineHeight.toFixed(1) }}</span>
         </div>
         <div class="set-row">
           <span class="set-label">段间距</span>
           <m3e-slider
             class="set-slider"
-            :value="settings.readerParaSpacing"
             min="0"
             max="24"
             step="2"
             @input="settings.readerParaSpacing = Number(($event.target as HTMLInputElement).value)"
-          />
+          >
+            <m3e-slider-thumb :value="settings.readerParaSpacing"></m3e-slider-thumb>
+          </m3e-slider>
           <span class="set-value tabular-nums">{{
             settings.readerParaSpacing === 0 ? "原书" : settings.readerParaSpacing + "px"
           }}</span>
@@ -1098,15 +1101,18 @@ const PDF_MODES = [
 .rbtn {
   /* 图标尺寸走组件令牌：shadow DOM ::slotted(*){font-size:inherit !important} 会覆盖外部 font-size */
   --m3e-icon-button-icon-size: 20px;
-  --md-icon-button-container-color: transparent;
-  --md-icon-button-selected-container-color: transparent;
-  --md-icon-button-hover-container-color: color-mix(in srgb, var(--reader-fg) 14%, transparent);
-  --md-icon-button-pressed-container-color: color-mix(in srgb, var(--reader-fg) 14%, transparent);
+  /* standard 变体透明常驻，hover/pressed 反馈走 state-layer（reader-fg 色调） */
   color: var(--reader-fg);
+  --m3e-icon-button-icon-color: var(--reader-fg);
+  --m3e-standard-icon-button-hover-state-layer-color: var(--reader-fg);
+  --m3e-standard-icon-button-hover-state-layer-opacity: 0.14;
+  --m3e-standard-icon-button-pressed-state-layer-color: var(--reader-fg);
+  --m3e-standard-icon-button-pressed-state-layer-opacity: 0.14;
 }
 .rbtn.active {
-  --md-icon-button-container-color: color-mix(in srgb, var(--reader-fg) 18%, transparent);
-  --md-icon-button-selected-container-color: color-mix(in srgb, var(--reader-fg) 18%, transparent);
+  /* 手动 active 态（非 m3e toggle）：host 常驻淡圆底 */
+  background: color-mix(in srgb, var(--reader-fg) 18%, transparent);
+  border-radius: 50%;
 }
 
 /* 顶栏背景色切换：一行色板 */
@@ -1415,12 +1421,18 @@ const PDF_MODES = [
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  --md-icon-button-container-color: color-mix(in srgb, var(--reader-fg) 12%, transparent);
-  --md-icon-button-hover-container-color: color-mix(in srgb, var(--reader-fg) 24%, transparent);
-  --md-icon-button-pressed-container-color: color-mix(in srgb, var(--reader-fg) 24%, transparent);
+  /* 常驻淡圆底设在 host（standard 变体无 resting container token） */
+  background: color-mix(in srgb, var(--reader-fg) 12%, transparent);
+  border-radius: 50%;
+  /* hover/pressed 叠加同色 state-layer，视觉上加深到约 24% */
+  --m3e-standard-icon-button-hover-state-layer-color: var(--reader-fg);
+  --m3e-standard-icon-button-hover-state-layer-opacity: 0.12;
+  --m3e-standard-icon-button-pressed-state-layer-color: var(--reader-fg);
+  --m3e-standard-icon-button-pressed-state-layer-opacity: 0.12;
   /* 库只识别 --m3e- 前缀；原 --md-icon-button-icon-size 无效导致翻页箭头退回默认尺寸 */
   --m3e-icon-button-icon-size: 26px;
   color: var(--reader-fg);
+  --m3e-icon-button-icon-color: var(--reader-fg);
   z-index: 2;
 }
 .prev {

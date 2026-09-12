@@ -369,14 +369,13 @@ onBeforeUnmount(() => {
   background: color-mix(in srgb, currentColor 6%, transparent);
 }
 .tool-btn {
-  --md-icon-button-container-color: transparent;
-  --md-icon-button-selected-container-color: transparent;
-  --md-icon-button-hover-container-color: color-mix(in srgb, currentColor 12%, transparent);
-  --md-icon-button-pressed-container-color: color-mix(in srgb, currentColor 12%, transparent);
+  /* standard 变体透明常驻，hover/pressed 反馈走 state-layer（currentColor 色调） */
   color: inherit;
-}
-.tool-btn::part(icon) {
-  color: inherit;
+  --m3e-icon-button-icon-color: currentColor;
+  --m3e-standard-icon-button-hover-state-layer-color: currentColor;
+  --m3e-standard-icon-button-hover-state-layer-opacity: 0.12;
+  --m3e-standard-icon-button-pressed-state-layer-color: currentColor;
+  --m3e-standard-icon-button-pressed-state-layer-opacity: 0.12;
 }
 .tool-btn:disabled {
   opacity: 0.35;
