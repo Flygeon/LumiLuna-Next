@@ -63,5 +63,13 @@ export default [
       "no-debugger": "warn",
     },
   },
+  {
+    // 这两个组件向 @m3e/web 自定义元素（web components）投影内容，用的是原生 slot
+    // 属性（web components 的插槽机制），并非 Vue 2 已废弃的具名插槽语法，故关闭该规则
+    files: ["src/components/SegmentedTabs.vue", "src/views/TreasureView.vue"],
+    rules: {
+      "vue/no-deprecated-slot-attribute": "off",
+    },
+  },
   prettier,
 ];

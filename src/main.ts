@@ -5,6 +5,8 @@ import router from "./router";
 // 字体声明必须先于主题令牌引入：theme.css 只声明字体栈，字形由 fonts.css 提供
 import "@/tokens/fonts.css";
 import "@/tokens/theme.css";
+// @m3e/web 原生组件按需注册（连通按钮组 / 连通列表）
+import "@/m3e";
 
 // 全局全局错误处理：将 Vue 渲染错误、window JS 错误、未捕获 Promise 异常
 // 写入 lumiluna_login_debug.log（与 wenku8 登录日志共享同一文件），

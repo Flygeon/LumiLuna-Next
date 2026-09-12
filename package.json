@@ -18,6 +18,7 @@
     "format:check": "prettier --check \"src/**/*.{ts,vue,css,json}\" \"shared/**/*.{ts,json}\""
   },
   "dependencies": {
+    "@m3e/web": "^2.7.12",
     "@material/material-color-utilities": "^0.3.0",
     "@material/web": "^2.2.0",
     "@tauri-apps/api": "^2.2.0",

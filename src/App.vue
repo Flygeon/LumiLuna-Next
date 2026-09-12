@@ -114,11 +114,7 @@ const navItems = computed(() => [
   { key: "treasure", path: "/treasure", icon: "inventory_2", type: null },
 ]);
 const bottomItems = [
-  { key: "favorites", path: "/favorites", icon: "favorite", label: "" },
-  { key: "history", path: "/history", icon: "history", label: "" },
-  { key: "trash", path: "/trash", icon: "delete", label: "" },
-  // shared/i18n.ts 为 WIP 文件禁改，扩展导航名走本地 fallback
-  { key: "extensions", path: "/extensions", icon: "extension", label: "扩展" },
+  // 收藏 / 历史 / 回收站 / 扩展 已统一收纳进「百宝箱」，不再单独占底部导航
   { key: "settings", path: "/settings", icon: "settings", label: "" },
 ];
 

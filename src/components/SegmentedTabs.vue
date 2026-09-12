@@ -1,23 +1,17 @@
 <script setup lang="ts">
 /**
- * 子选项卡（分段控件）—— 全站统一样式 + 平移动画。
+ * 子选项卡 —— M3 Expressive 连通按钮组（Connected Button Group）。
  *
- * 视觉（M3 Expressive segmented buttons）：
- * 每段是**独立胶囊**（间隙 8px，无共享轨道底色）——未选中用 secondary-container
- * 实心、选中用 primary 实心（on-primary 文字/图标）；每段可带 Material Symbols
- * 图标。颜色全部取自动态取色令牌，随种子色/皮肤联动。
+ * 使用 @m3e/web 原生 m3e-button-group(m3e-button) 实现，圆角缝隙由组件令牌控制，
+ * 不手写圆角 CSS。选中项 Filled(primary)、未选中 Tonal(secondaryContainer)，
+ * 颜色全走动态取色令牌（--md-sys-color-*），随种子色 / 皮肤联动。
  *
- * 动画（沿用原实现，未改动效果）：
- * - 指示器是一个绝对定位的胶囊，按目标按钮实测的 offsetLeft/offsetWidth
- *   用 transform 平移过去（不是给每个按钮改背景），切 tab 时是"滑动"而非"闪现"。
- * - 内容用方向感知的 Transition 平移：向右切时旧内容左移淡出、新内容从右滑入，
- *   反向相反。两个面板用 grid-area 叠在同一格，动画期间容器高度不塌陷。
+ * 每个按钮自带 M3 状态层、涟漪点击反馈；hover 轻微缩放使用 MotionScheme.expressive
+ * 弹簧。图标 24dp、图标-文字间距 8dp、按钮高 56dp、文字 title-medium。
  *
- * 层级（关键）：轨道 isolation:isolate 建立层叠上下文后，
- *   各段底色(z-auto) < 指示器(z:1) < 文字与图标(z:2)。
- * 这样指示器滑动时能从其它段底色的**上方**划过，且所有文字始终可读。
+ * 内容方向感知滑动过渡沿用原实现（向右切旧内容左移淡出、新内容从右滑入，反向相反）。
  */
-import { nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { ref, watch } from "vue";
 
 const props = defineProps<{
   modelValue: string;
@@ -26,20 +20,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{ "update:modelValue": [value: string] }>();
 
-const trackRef = ref<HTMLElement | null>(null);
-/** 指示器几何：由目标按钮实测得出 */
-const indicator = ref({ x: 0, w: 0, ready: false });
-/** 切换方向：决定内容从哪一侧滑入 */
 const dir = ref<"next" | "prev">("next");
-
 const indexOf = (value: string) => props.tabs.findIndex((t) => t.value === value);
-
-async function syncIndicator() {
-  await nextTick();
-  const btn = trackRef.value?.querySelectorAll<HTMLElement>(".seg")[indexOf(props.modelValue)];
-  if (!btn) return;
-  indicator.value = { x: btn.offsetLeft, w: btn.offsetWidth, ready: true };
-}
 
 function select(value: string) {
   if (value === props.modelValue) return;
@@ -47,118 +29,76 @@ function select(value: string) {
   emit("update:modelValue", value);
 }
 
-watch(() => props.modelValue, syncIndicator);
-
-let ro: ResizeObserver | null = null;
-onMounted(() => {
-  void syncIndicator();
-  ro = new ResizeObserver(() => void syncIndicator());
-  if (trackRef.value) ro.observe(trackRef.value);
-});
-onBeforeUnmount(() => ro?.disconnect());
+watch(
+  () => props.modelValue,
+  (nv, ov) => {
+    dir.value = indexOf(nv) >= indexOf(ov) ? "next" : "prev";
+  },
+);
 </script>
 
 <template>
-  <div v-if="tabs.length" ref="trackRef" class="online-tabs">
-    <span
-      class="online-tabs-indicator"
-      :class="{ ready: indicator.ready }"
-      :style="{ transform: `translateX(${indicator.x}px)`, width: `${indicator.w}px` }"
-    />
-    <button
-      v-for="tab in tabs"
-      :key="tab.value"
-      class="seg"
-      :class="{ active: tab.value === modelValue }"
-      type="button"
-      @click="select(tab.value)"
-    >
-      <span class="seg-label">
-        <span v-if="tab.icon" class="material-symbols-outlined seg-icon">{{ tab.icon }}</span>
+  <div class="seg-wrap">
+    <m3e-button-group class="online-tabs" variant="connected" size="medium">
+      <m3e-button
+        v-for="tab in tabs"
+        :key="tab.value"
+        class="seg"
+        :class="{ active: tab.value === modelValue }"
+        shape="round"
+        size="medium"
+        :variant="tab.value === modelValue ? 'filled' : 'tonal'"
+        type="button"
+        @click="select(tab.value)"
+      >
+        <span v-if="tab.icon" slot="icon" class="material-symbols-outlined seg-icon">{{
+          tab.icon
+        }}</span>
         <span class="seg-text">{{ tab.label }}</span>
-      </span>
-    </button>
-  </div>
+      </m3e-button>
+    </m3e-button-group>
 
-  <div class="tabs-panels">
-    <Transition :name="`tabs-${dir}`">
-      <div :key="modelValue" class="tabs-panel">
-        <slot />
-      </div>
-    </Transition>
+    <div class="tabs-panels">
+      <Transition :name="`tabs-${dir}`">
+        <div :key="modelValue" class="tabs-panel">
+          <slot />
+        </div>
+      </Transition>
+    </div>
   </div>
 </template>
 
 <style scoped>
 .online-tabs {
-  position: relative;
-  isolation: isolate;
+  /* 连通按钮组令牌：间距 3dp、内侧圆角 8dp、按钮高 56dp、图标 24dp、图标-文字 8dp */
+  --m3e-connected-button-group-spacing: 3px;
+  --m3e-connected-button-group-medium-inner-shape: 8px;
+  --m3e-connected-button-group-medium-inner-pressed-shape: 8px;
+  --m3e-button-medium-container-height: 56px;
+  --m3e-button-medium-label-text-font-size: var(--md-sys-typescale-title-medium-size);
+  --m3e-button-medium-label-text-font-weight: 500;
+  --m3e-button-medium-label-text-line-height: var(--md-sys-typescale-title-medium-line-height);
+  --m3e-button-icon-size: 24px;
+  --m3e-button-icon-label-space: 8px;
   display: inline-flex;
-  gap: 8px;
-  padding: 0;
   margin-bottom: 14px;
 }
-.online-tabs-indicator {
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 1;
-  height: 100%;
-  border-radius: var(--lm-shape-button);
-  background: var(--md-sys-color-primary);
-  pointer-events: none;
-  transition:
-    transform 320ms var(--md-sys-motion-spring-soft),
-    width 320ms var(--md-sys-motion-spring-soft);
+/* hover 轻微缩放弹簧（M3 Expressive） */
+.online-tabs :deep(m3e-button) {
+  transition: transform 220ms var(--md-sys-motion-spring-spatial);
 }
-/* 首次渲染直接就位，别从 x=0 滑过来 */
-.online-tabs-indicator:not(.ready) {
-  transition: none;
+.online-tabs :deep(m3e-button:hover) {
+  transform: scale(1.02);
 }
-.online-tabs .seg {
-  position: relative;
-  border: none;
-  background: var(--md-sys-color-secondary-container);
-  padding: 10px 20px;
-  border-radius: var(--lm-shape-button);
-  cursor: pointer;
-  font-family: inherit;
-  font-size: var(--md-sys-typescale-label-large-size);
-  font-weight: var(--md-sys-typescale-label-large-weight);
-  color: var(--md-sys-color-on-secondary-container);
-  transition:
-    background var(--md-sys-motion-duration-short) var(--md-sys-motion-spring-effects-fast),
-    color var(--md-sys-motion-duration-short) var(--md-sys-motion-spring-effects-fast);
-}
-.online-tabs .seg:hover {
-  background: color-mix(
-    in srgb,
-    var(--md-sys-color-on-secondary-container) 8%,
-    var(--md-sys-color-secondary-container)
-  );
-}
-/* 选中段交给滑动指示器上色，自身底色透明，避免两层圆角边缘重叠 */
-.online-tabs .seg.active {
-  background: transparent;
-  color: var(--md-sys-color-on-primary);
-}
-.online-tabs .seg-label {
-  position: relative;
-  z-index: 2;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-.online-tabs .seg-icon {
-  font-size: 18px;
+.seg-icon {
+  font-size: 24px;
   line-height: 1;
 }
-.online-tabs .seg-icon.filled,
-.online-tabs .seg.active .seg-icon {
+.seg.active .seg-icon {
   font-variation-settings: "FILL" 1;
 }
 
-/* 两个面板叠在同一格：动画期间容器高度取较高者，不会塌陷跳动 */
+/* 内容方向感知滑动过渡（沿用原实现） */
 .tabs-panels {
   display: grid;
 }
@@ -166,7 +106,6 @@ onBeforeUnmount(() => ro?.disconnect());
   grid-area: 1 / 1;
   min-width: 0;
 }
-
 .tabs-next-enter-active,
 .tabs-next-leave-active,
 .tabs-prev-enter-active,
@@ -193,7 +132,7 @@ onBeforeUnmount(() => ro?.disconnect());
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .online-tabs-indicator,
+  .online-tabs :deep(m3e-button),
   .tabs-next-enter-active,
   .tabs-next-leave-active,
   .tabs-prev-enter-active,
