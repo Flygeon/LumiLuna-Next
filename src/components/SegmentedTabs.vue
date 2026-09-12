@@ -6,12 +6,12 @@
  * 不手写圆角 CSS。选中项 Filled(primary)、未选中 Tonal(secondaryContainer)，
  * 颜色全走动态取色令牌（--md-sys-color-*），随种子色 / 皮肤联动。
  *
- * 每个按钮自带 M3 状态层、涟漪点击反馈；hover 轻微缩放使用 MotionScheme.expressive
- * 弹簧。图标 24dp、图标-文字间距 8dp、按钮高 56dp、文字 title-medium。
+ * 尺寸对齐改造前的原分段控件（约 36dp：按钮内边距 8dp、文字 label-large），
+ * 不沿用 56dp 的 medium 默认值。图标 18dp、图标-文字间距 8dp。
  *
  * 内容方向感知滑动过渡沿用原实现（向右切旧内容左移淡出、新内容从右滑入，反向相反）。
  */
-import { ref, watch } from "vue";
+import { ref, watch, nextTick } from "vue";
 
 const props = defineProps<{
   modelValue: string;
@@ -22,6 +22,7 @@ const emit = defineEmits<{ "update:modelValue": [value: string] }>();
 
 const dir = ref<"next" | "prev">("next");
 const indexOf = (value: string) => props.tabs.findIndex((t) => t.value === value);
+const groupRef = ref<HTMLElement | null>(null);
 
 function select(value: string) {
   if (value === props.modelValue) return;
@@ -33,13 +34,19 @@ watch(
   () => props.modelValue,
   (nv, ov) => {
     dir.value = indexOf(nv) >= indexOf(ov) ? "next" : "prev";
+    // 防御：Tauri/WebView2 下自定义元素升级时序偶发导致连通圆角状态未重算，
+    // 在切换后强制重派发 slotchange，让 m3e-button-group 重新应用 --first/--last/--connected。
+    void nextTick().then(() => {
+      const slot = groupRef.value?.shadowRoot?.querySelector("slot");
+      if (slot) slot.dispatchEvent(new Event("slotchange"));
+    });
   },
 );
 </script>
 
 <template>
   <div class="seg-wrap">
-    <m3e-button-group class="online-tabs" variant="connected" size="medium">
+    <m3e-button-group ref="groupRef" class="online-tabs" variant="connected" size="medium">
       <m3e-button
         v-for="tab in tabs"
         :key="tab.value"
@@ -70,28 +77,21 @@ watch(
 
 <style scoped>
 .online-tabs {
-  /* 连通按钮组令牌：间距 3dp、内侧圆角 8dp、按钮高 56dp、图标 24dp、图标-文字 8dp */
+  /* 连通按钮组令牌：间距 3dp、内侧圆角 8dp、按钮高约 36dp（对齐原分段控件）、图标 18dp、图标-文字 8dp */
   --m3e-connected-button-group-spacing: 3px;
   --m3e-connected-button-group-medium-inner-shape: 8px;
   --m3e-connected-button-group-medium-inner-pressed-shape: 8px;
-  --m3e-button-medium-container-height: 56px;
-  --m3e-button-medium-label-text-font-size: var(--md-sys-typescale-title-medium-size);
+  --m3e-button-medium-container-height: 36px;
+  --m3e-button-medium-label-text-font-size: var(--md-sys-typescale-label-large-size);
   --m3e-button-medium-label-text-font-weight: 500;
-  --m3e-button-medium-label-text-line-height: var(--md-sys-typescale-title-medium-line-height);
-  --m3e-button-icon-size: 24px;
+  --m3e-button-medium-label-text-line-height: var(--md-sys-typescale-label-large-line-height);
+  --m3e-button-icon-size: 18px;
   --m3e-button-icon-label-space: 8px;
   display: inline-flex;
   margin-bottom: 14px;
 }
-/* hover 轻微缩放弹簧（M3 Expressive） */
-.online-tabs :deep(m3e-button) {
-  transition: transform 220ms var(--md-sys-motion-spring-spatial);
-}
-.online-tabs :deep(m3e-button:hover) {
-  transform: scale(1.02);
-}
 .seg-icon {
-  font-size: 24px;
+  font-size: 18px;
   line-height: 1;
 }
 .seg.active .seg-icon {
@@ -132,7 +132,6 @@ watch(
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .online-tabs :deep(m3e-button),
   .tabs-next-enter-active,
   .tabs-next-leave-active,
   .tabs-prev-enter-active,

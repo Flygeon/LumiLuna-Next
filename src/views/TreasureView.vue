@@ -68,7 +68,7 @@ function open(to: string) {
       </button>
 
       <button class="t-card" @click="router.push('/treasure/market')">
-        <span class="t-icon material-symbols-outlined">music_note</span>
+        <span class="t-icon material-symbols-outlined">storefront</span>
         <div class="t-body">
           <div class="t-name">{{ t("settings.treasure.market") }}</div>
           <div class="t-desc">{{ t("settings.treasure.marketHint") }}</div>
