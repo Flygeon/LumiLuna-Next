@@ -11,7 +11,7 @@
  *
  * 内容方向感知滑动过渡沿用原实现（向右切旧内容左移淡出、新内容从右滑入，反向相反）。
  */
-import { ref, watch, nextTick, onMounted } from "vue";
+import { ref, watch, nextTick, onMounted, onActivated } from "vue";
 
 const props = defineProps<{
   modelValue: string;
@@ -34,40 +34,53 @@ function select(value: string) {
   emit("update:modelValue", value);
 }
 
+/** 等待下一帧 */
+const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
 /**
- * m3e-button-group 的连通圆角（--connected/--first/--last）由库在 connectedCallback
- * 与 slotchange 时「异步」计算：updateButtons 对每个子按钮 await waitForUpgrade +
- * waitForUpdate 后才写入自定义态。在 WebView2/Tauri 下自定义元素升级较慢，首次重算时
- * 子按钮尚未真正升级，custom state 静默失效且之后不再触发 slotchange —— 连通效果永久
- * 丢失（全部退回独立圆角）。这里强制：等子按钮真实升级后，多时机向内部 <slot> 重派发
- * slotchange，让库重新计算并写入连通态。
+ * 强制 m3e-button-group 重算连通圆角（--connected/--first/--last）。
+ *
+ * 连通态由库在 connectedCallback / slotchange 时「异步」计算：updateButtons 对每个
+ * 子按钮 await waitForUpgrade + waitForUpdate 后才写入自定义态。WebView2/Tauri 下自定义
+ * 元素升级较慢，首次重算时子按钮尚未真正升级 → custom state 静默失效，且此后不再触发
+ * slotchange → 连通永久丢失（全部退化为独立圆角，即「每个都是单独的胶囊」）。
+ *
+ * 触发时机必须覆盖全部路径：
+ *  - onMounted：首次挂载；
+ *  - onActivated：keep-alive 重新激活 —— 页面被缓存后再次进入不会重新挂载，onMounted
+ *    不再触发；且 DOM 移入/移出缓存容器会让自定义元素 disconnect/reconnect，重连时的
+ *    slotchange 又会撞上升级竞态，所以这里是「切页面回来丢样式」的关键触发点；
+ *  - watch(modelValue)：切换子选项卡；
+ *  - watch(tabs)：按钮列表变化（在线开关切换、数据加载完成）。
+ * 每次都在「确认 shadowRoot 与内部 <slot> 就绪」后，多时机重派发 slotchange。
  */
 async function syncConnected() {
   const group = groupRef.value as M3eGroup | null;
-  if (!group || !group.shadowRoot) return;
-  if (!customElements.get("m3e-button")) {
-    await customElements.whenDefined("m3e-button");
+  if (!group) return;
+  if (!customElements.get("m3e-button-group")) {
+    await customElements.whenDefined("m3e-button-group").catch(() => undefined);
   }
-  // 确保连通前提：variant 为 connected（极端情况下曾被重置为 standard 时纠正回来）
-  group.setAttribute("variant", "connected");
-  // 等 group 自身完成渲染，内部 slot 已存在
-  try {
-    await group.updateComplete;
-  } catch {
-    /* 非 Lit 实例或已就绪，忽略 */
+  // 连通前提（极端情况下曾被重置为 standard 时纠正回来）
+  if (group.getAttribute("variant") !== "connected") group.setAttribute("variant", "connected");
+  // 等 shadowRoot 与内部 <slot> 就绪：逐帧轮询而非直接放弃，避免升级竞态下漏掉
+  for (let i = 0; i < 60 && !group.shadowRoot?.querySelector("slot"); i++) {
+    await nextFrame();
   }
   const fire = () => {
     const slot = group.shadowRoot?.querySelector("slot");
     if (slot) slot.dispatchEvent(new Event("slotchange"));
   };
-  // 多时机重派发，覆盖升级竞态（rAF / 120ms / 400ms 三档兜底）
+  // 多时机重派发，覆盖升级竞态
+  fire();
   requestAnimationFrame(fire);
   requestAnimationFrame(() => requestAnimationFrame(fire));
-  setTimeout(fire, 120);
-  setTimeout(fire, 400);
+  window.setTimeout(fire, 120);
+  window.setTimeout(fire, 350);
+  window.setTimeout(fire, 700);
 }
 
-onMounted(syncConnected);
+onMounted(() => void syncConnected());
+onActivated(() => void syncConnected());
 watch(
   () => props.modelValue,
   (nv, ov) => {
@@ -75,6 +88,10 @@ watch(
     // 切换后强制重算连通圆角（防御重挂载/升级竞态）
     void nextTick(syncConnected);
   },
+);
+watch(
+  () => props.tabs.map((t) => t.value).join("|"),
+  () => void nextTick(syncConnected),
 );
 </script>
 
