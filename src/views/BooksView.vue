@@ -6,6 +6,7 @@ import LibraryToolbar from "@/components/LibraryToolbar.vue";
 import MediaGrid from "@/components/MediaGrid.vue";
 import BookReader from "@/components/BookReader.vue";
 import NovelOnlineView from "@/components/NovelOnlineView.vue";
+import NovelBqgView from "@/components/NovelBqgView.vue";
 import EmptyState from "@/components/EmptyState.vue";
 import SegmentedTabs from "@/components/SegmentedTabs.vue";
 import { useLibraryStore } from "@/stores/library";
@@ -22,13 +23,22 @@ const items = computed(() => library.entries("book"));
 const hasScanDirs = computed(() => settings.scanDirs.length > 0);
 /** 正在阅读的书；null 表示未打开阅读器 */
 const reading = ref<MediaEntry | null>(null);
-/** 本地 / 在线 分段（在线开关开启时显示） */
-const bookTab = ref<"local" | "online">("local");
-/** 在线小说未启用时不传 tab，组件只渲染内容、不显示分段条 */
-const bookTabs = computed(() => [
-  { value: "local", label: t("books.local"), icon: "menu_book" },
-  { value: "online", label: t("books.online"), icon: "public" },
-]);
+/** 本地 / 在线(轻小说) / 网络小说(笔趣阁) 分段 */
+const bookTab = ref<"local" | "online" | "bqg">("local");
+/** 分段标签：在线(轻小说) 与 网络小说(笔趣阁) 各自按开关显示；
+ *  两者都关时只剩本地，分段条不显示。 */
+const bookTabs = computed(() => {
+  const tabs: { value: string; label: string; icon: string }[] = [
+    { value: "local", label: t("books.local"), icon: "menu_book" },
+  ];
+  if (settings.onlineNovelEnabled) {
+    tabs.push({ value: "online", label: "轻小说", icon: "public" });
+  }
+  if (settings.bqgNovelEnabled) {
+    tabs.push({ value: "bqg", label: "网络小说", icon: "auto_stories" });
+  }
+  return tabs;
+});
 
 /** 应用内可阅读的格式，其余仍交系统程序 */
 const READABLE = ["epub", "pdf"];
@@ -64,10 +74,10 @@ function clearSearch() {
   <div class="view">
     <PageHeader :title="t('nav.books')" :description="t('navDesc.books')" />
 
-    <!-- 本地 / 在线 分段 -->
-    <SegmentedTabs v-model="bookTab" :tabs="settings.onlineNovelEnabled ? bookTabs : []">
+    <!-- 本地 / 在线(轻小说) / 网络小说(笔趣阁) 分段 -->
+    <SegmentedTabs v-model="bookTab" :tabs="bookTabs.length > 1 ? bookTabs : []">
       <!-- 本地书籍 -->
-      <template v-if="bookTab === 'local' || !settings.onlineNovelEnabled">
+      <template v-if="bookTab === 'local' || (bookTabs.length <= 1)">
         <LibraryToolbar :count="items.length" @changed="load" />
 
         <MediaGrid
@@ -106,8 +116,11 @@ function clearSearch() {
         />
       </template>
 
-      <!-- 在线小说 -->
-      <NovelOnlineView v-else />
+      <!-- 在线小说（文库8 → 轻小说） -->
+      <NovelOnlineView v-else-if="bookTab === 'online'" />
+
+      <!-- 网络小说（笔趣阁） -->
+      <NovelBqgView v-else-if="bookTab === 'bqg'" />
     </SegmentedTabs>
 
     <BookReader v-if="reading" :item="reading" @close="reading = null" />

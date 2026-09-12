@@ -990,6 +990,10 @@ function selectSection(id: string) {
         <span class="row-label">{{ t("settings.onlineNovelEnable") }}</span>
         <input v-model="settings.onlineNovelEnabled" type="checkbox" />
       </label>
+      <label class="row switch-row">
+        <span class="row-label">是否启用笔趣阁小说阅读</span>
+        <input v-model="settings.bqgNovelEnabled" type="checkbox" />
+      </label>
       <div v-if="settings.onlineNovelEnabled" class="row">
         <div class="row-label">
           <span>{{ t("settings.wenku8Node") }}</span>

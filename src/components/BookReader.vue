@@ -57,6 +57,8 @@ const props = defineProps<{
     title: string;
     initialCid?: string;
     initialChapterTitle?: string;
+    /** 文本来源：文库8（默认）走 node/charset 直连；笔趣阁走隐藏 WebView */
+    source?: "wenku8" | "bqg";
   };
 }>();
 const emit = defineEmits<{ (e: "close"): void }>();
@@ -88,6 +90,8 @@ const kind = computed(() => {
   if (props.item?.ext.toLowerCase() === "pdf") return "pdf" as const;
   return "epub" as const;
 });
+/** 文本来源是否为笔趣阁（走隐藏 WebView 取正文/目录，而非文库8 node/charset） */
+const isBqgSource = computed(() => props.novelSource?.source === "bqg");
 const mode = computed(() => settings.pdfReadMode);
 /** 双页模式一次前进两页 */
 const step = computed(() => (mode.value === "dual" ? 2 : 1));
@@ -443,13 +447,17 @@ async function loadTextChapter(index: number) {
   loading.value = true;
   error.value = "";
   try {
-    textContent.value = await capabilities.novelContent(
-      settings.wenku8Node,
-      settings.novelCharset,
-      props.novelSource!.aid,
-      ch.cid,
-      ch.title,
-    );
+    if (isBqgSource.value) {
+      textContent.value = await capabilities.bqgContent(props.novelSource!.aid, ch.cid);
+    } else {
+      textContent.value = await capabilities.novelContent(
+        settings.wenku8Node,
+        settings.novelCharset,
+        props.novelSource!.aid,
+        ch.cid,
+        ch.title,
+      );
+    }
     beginTextSession();
     void capabilities.novelProgressSet(props.novelSource!.aid, ch.cid, ch.title, 0);
   } catch (e) {
@@ -569,11 +577,15 @@ async function initText() {
   loading.value = true;
   error.value = "";
   try {
-    textVolumes.value = await capabilities.novelCatalogue(
-      settings.wenku8Node,
-      settings.novelCharset,
-      props.novelSource!.aid,
-    );
+    if (isBqgSource.value) {
+      textVolumes.value = await capabilities.bqgCatalogue(props.novelSource!.aid);
+    } else {
+      textVolumes.value = await capabilities.novelCatalogue(
+        settings.wenku8Node,
+        settings.novelCharset,
+        props.novelSource!.aid,
+      );
+    }
     textChapters.value = flattenTextChapters(textVolumes.value);
     let start = 0;
     const progress = await capabilities.novelProgressGet(props.novelSource!.aid);

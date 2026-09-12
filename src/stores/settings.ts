@@ -114,6 +114,8 @@ const DEFAULTS = {
   neteaseEnabled: false,
   /** 实验性：在线小说（Wenku8 抓取） */
   onlineNovelEnabled: false,
+  /** 实验性：笔趣阁网络小说（m.bqglll.cc，JS 验证门，走隐藏 WebView） */
+  bqgNovelEnabled: false,
   /** 实验性：在线番剧（Kazumi 规则采集，仅桌面端） */
   onlineAnimeEnabled: false,
   /** 实验性：在线图片（Pixiv，移植自 Pixez） */
@@ -210,6 +212,7 @@ export const useSettingsStore = defineStore("settings", () => {
   const webdavPass = ref(DEFAULTS.webdavPass);
   const neteaseEnabled = ref(DEFAULTS.neteaseEnabled);
   const onlineNovelEnabled = ref(DEFAULTS.onlineNovelEnabled);
+  const bqgNovelEnabled = ref(DEFAULTS.bqgNovelEnabled);
   const onlineAnimeEnabled = ref(DEFAULTS.onlineAnimeEnabled);
   const onlinePixivEnabled = ref(DEFAULTS.onlinePixivEnabled);
   const pixivRefreshToken = ref(DEFAULTS.pixivRefreshToken);
@@ -285,6 +288,7 @@ export const useSettingsStore = defineStore("settings", () => {
     webdavPass,
     neteaseEnabled,
     onlineNovelEnabled,
+    bqgNovelEnabled,
     onlineAnimeEnabled,
     onlinePixivEnabled,
     pixivRefreshToken,

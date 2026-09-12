@@ -5,6 +5,7 @@ pub mod media;
 pub mod netease;
 pub mod novel;
 pub mod novel_auth;
+pub mod novel_bqg;
 pub mod pixiv;
 pub mod tray;
 pub mod webdav;
@@ -223,6 +224,11 @@ pub fn run() {
             novel::novel_stats_list,
             novel::novel_source_breakdown,
             novel::novel_top_books,
+            novel_bqg::bqg_home,
+            novel_bqg::bqg_detail,
+            novel_bqg::bqg_search,
+            novel_bqg::bqg_catalogue,
+            novel_bqg::bqg_content,
             novel_auth::wenku8_login_submit,
             novel_auth::wenku8_login_status,
             novel_auth::wenku8_logout,

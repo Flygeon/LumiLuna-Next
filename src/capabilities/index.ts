@@ -113,6 +113,37 @@ async function loggedNovelInvoke<T>(
   }
 }
 
+/** 笔趣阁链路带日志调用：与 loggedNovelInvoke 同款，但前缀 [bqg-call]。
+ *  用于在「点击书籍 / 翻章无反应」时定位是命令未触发还是隐藏 WebView 超时。 */
+async function loggedBqgInvoke<T>(
+  cmd: string,
+  args: Record<string, unknown>,
+  tag: string,
+  aid: string,
+  cid?: string,
+): Promise<T> {
+  const label = `[bqg-call] ${tag} aid=${aid}${cid ? ` cid=${cid}` : ""}`;
+  void safeInvoke("app_log", { msg: `${label} -> invoke ${cmd}` }).catch(() => {});
+  try {
+    const r = await safeInvoke<T>(cmd, args);
+    const len = r && typeof r === "object" ? JSON.stringify(r).length : String(r ?? "").length;
+    void safeInvoke("app_log", { msg: `${label} OK len=${len}` }).catch(() => {});
+    if (tag === "content" && r && typeof r === "object") {
+      const c = r as { text?: string };
+      const preview = (c.text ?? "").slice(0, 120);
+      void safeInvoke("app_log", {
+        msg: `${label} textPreview=[${preview.replace(/\n/g, "\\n")}]`,
+      }).catch(() => {});
+    }
+    return r;
+  } catch (e) {
+    void safeInvoke("app_log", {
+      msg: `${label} ERR: ${(e as Error)?.message ?? String(e)}`,
+    }).catch(() => {});
+    throw e;
+  }
+}
+
 export const capabilities = {
   // ---- 扫描 ----
   scanStart(config: ScanConfig): Promise<{ jobId: string }> {
@@ -488,6 +519,23 @@ export const capabilities = {
   /** 前端（注入脚本/窗口监听）上报诊断日志到 Rust 侧日志文件 */
   wenku8LoginLog(msg: string): Promise<void> {
     return safeInvoke("wenku8_login_log", { msg });
+  },
+
+  // ---- 在线小说：笔趣阁（m.bqglll.cc，JS 验证门，搜索/目录/正文走隐藏 WebView）----
+  bqgHome(): Promise<NovelCover[]> {
+    return safeInvoke("bqg_home", {});
+  },
+  bqgDetail(aid: string): Promise<NovelDetail> {
+    return loggedBqgInvoke<NovelDetail>("bqg_detail", { aid }, "detail", aid);
+  },
+  bqgSearch(query: string): Promise<NovelCover[]> {
+    return loggedBqgInvoke<NovelCover[]>("bqg_search", { query }, "search", query);
+  },
+  bqgCatalogue(aid: string): Promise<NovelVolume[]> {
+    return loggedBqgInvoke<NovelVolume[]>("bqg_catalogue", { aid }, "catalogue", aid);
+  },
+  bqgContent(aid: string, cid: string): Promise<NovelContent> {
+    return loggedBqgInvoke<NovelContent>("bqg_content", { aid, cid }, "content", aid, cid);
   },
 
   // ---- 在线番剧（Kazumi 规则采集）----
