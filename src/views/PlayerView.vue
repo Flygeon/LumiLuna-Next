@@ -370,6 +370,7 @@ onBeforeUnmount(() => {
   overflow: hidden;
   background: #000;
   color: #fff;
+  font-family: var(--lm-player-font);
 }
 .player-topbar {
   position: absolute;

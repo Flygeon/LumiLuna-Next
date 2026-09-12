@@ -97,6 +97,7 @@ function seek(e: MouseEvent) {
   height: var(--lm-miniplayer-height);
   z-index: 50;
   border-top: 1px solid var(--lm-hairline);
+  font-family: var(--lm-player-font);
   animation: slide-up 320ms var(--md-sys-motion-spring-spatial);
 }
 @keyframes slide-up {

@@ -28,6 +28,11 @@
 :root {
   color-scheme: light;
 
+  /* 播放器独立字体：与全局 UI（Roboto）解耦，默认更纱黑体 Sarasa Gothic SC */
+  --lm-player-font:
+    "SarasaGothicSC-Regular", "SFPro-Regular", "Helvetica Neue", "Microsoft YaHei", system-ui,
+    sans-serif;
+
   /* ---- M3 Color Tokens (Light) ---- */
   --md-sys-color-primary: #1a5c9e;
   --md-sys-color-on-primary: #ffffff;

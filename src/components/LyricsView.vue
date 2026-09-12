@@ -29,7 +29,8 @@ const lineRefs = ref<HTMLDivElement[]>([]);
 
 /** 歌词字体栈（与阅读器字体一致） */
 const LYRIC_FONTS: Record<LyricFontKey, string> = {
-  system: "inherit",
+  system:
+    '"SarasaGothicSC-Regular","SFPro-Regular","Helvetica Neue","Microsoft YaHei",system-ui,sans-serif',
   sans: '"Helvetica Neue","Microsoft YaHei","Hiragino Sans GB",sans-serif',
   serif: 'Georgia,"Songti SC","SimSun",serif',
   kai: '"KaiTi","STKaiti","Kai",cursive',
