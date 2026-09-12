@@ -485,10 +485,7 @@ async fn build_fallback_catalogue(app: &tauri::AppHandle, aid: &str) -> Vec<Nove
                                 Some((cid, title))
                             })
                             .collect();
-                        total = v
-                            .get("total")
-                            .and_then(|t| t.as_u64())
-                            .unwrap_or(0) as u32;
+                        total = v.get("total").and_then(|t| t.as_u64()).unwrap_or(0) as u32;
                         break;
                     }
                 }
