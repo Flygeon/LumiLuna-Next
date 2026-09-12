@@ -5,7 +5,7 @@ import NovelCard from "@/components/NovelCard.vue";
 import BookReader from "@/components/BookReader.vue";
 import type { NovelCover, NovelDetail, NovelVolume } from "@shared/types";
 
-const BASE = "https://m.bqglll.cc";
+const BASE = "https://www.bqg413.cc";
 
 const view = ref<"home" | "detail" | "reader">("home");
 const selected = ref<{ aid: string; title: string }>({ aid: "", title: "" });

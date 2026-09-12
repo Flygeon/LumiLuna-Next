@@ -114,7 +114,7 @@ async function loggedNovelInvoke<T>(
 }
 
 /** 笔趣阁链路带日志调用：与 loggedNovelInvoke 同款，但前缀 [bqg-call]。
- *  用于在「点击书籍 / 翻章无反应」时定位是命令未触发还是隐藏 WebView 超时。 */
+ *  用于在「点击书籍 / 翻章无反应」时定位是命令未触发还是接口失败（Rust 侧纯 HTTP 直连）。 */
 async function loggedBqgInvoke<T>(
   cmd: string,
   args: Record<string, unknown>,
@@ -521,7 +521,7 @@ export const capabilities = {
     return safeInvoke("wenku8_login_log", { msg });
   },
 
-  // ---- 在线小说：笔趣阁（m.bqglll.cc，JS 验证门，搜索/目录/正文走隐藏 WebView）----
+  // ---- 在线小说：笔趣阁（www.bqg413.cc，公开 JSON 接口 + AES token，纯 Rust 直连）----
   bqgHome(): Promise<NovelCover[]> {
     return safeInvoke("bqg_home", {});
   },

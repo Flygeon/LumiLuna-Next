@@ -1,564 +1,309 @@
-//! 在线小说模块：笔趣阁（m.bqglll.cc）抓取。
+//! 在线小说模块：笔趣阁（https://www.bqg413.cc）。
 //!
-//! 与文库8（Wenku8）不同，笔趣阁是 JS 验证门 / 反爬站点：章节页与搜索结果
-//! 服务端只返回「加载中……」壳，需真实浏览器执行 JS 过验证门后才能拿到正文。
-//! 因此：
-//! - 主页 / 详情页：服务端正常渲染 → Rust 直连 HTTP + scraper（UTF-8，无需 GBK 解码）。
-//! - 搜索 / 目录 / 正文：走隐藏 WebView（复用 anime_webview_resolve 同款思路）
-//!   加载页面、过验证门、注入脚本抽 DOM。
+//! 该站是 hash 路由 SPA（书籍 `/#/book/{id}/`、章节 `/#/book/{id}/{n}.html`），
+//! 页面 HTML 只是空壳，数据全部由 `/api/*` 提供。**不需要也不应该**用 WebView 加载：
+//! 站点脚本里带 `GoUrl()` 域名劫持（探测 sr700.org 等镜像 favicon，加载成功即跳广告页）。
+//!
+//! 接口分两类：
+//! - 明文 GET：`/api/index?sort=index`（首页）、`/api/search?q=`（搜索）、`/api/sort?sort=`（分类）
+//! - 加密 GET：`/api/book`（详情）、`/api/booklist`（目录）、`/api/chapter`（正文）
+//!   参数 JSON 经 AES-128-CBC/PKCS7 加密 → base64 → percent-encode 后放在 `?token=`。
+//!   密钥推导（原站 `enaes()`）：`code = MD5("book@token.html")` 的 32 位 hex 串，
+//!   `iv = code[0..16]`、`key = code[16..32]`，均按 UTF-8 取字节。
+//!
+//! 目录接口返回的是**纯章节名数组**，章节号即数组下标 +1（与原站 `{n}.html` 一一对应）。
 //!
 //! 数据结构复用 `crate::novel` 的 Novel* 类型，前端无需新增类型。
 
 use crate::novel::{NovelChapter, NovelContent, NovelCover, NovelDetail, NovelVolume};
-use scraper::{Html, Selector};
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
-use tauri::{Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
-use tokio::sync::oneshot;
+use aes::Aes128;
+use base64::Engine;
+use cbc::cipher::{block_padding::Pkcs7, BlockEncryptMut, KeyIvInit};
+use md5::{Digest, Md5};
+use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
+use serde_json::Value;
+use std::collections::HashSet;
 
-const BASE: &str = "https://m.bqglll.cc";
-const UA: &str =
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36 Edg/135.0.0.0";
-
-const BQG_WEBVIEW: &str = "bqg_resolve";
-const BQG_TIMEOUT: Duration = Duration::from_secs(30);
+/// 站点主域：页面、明文接口、封面图都在这里（加密接口亦可直连，见 `get_api_json`）
+const SITE: &str = "https://www.bqg413.cc";
+/// 加密接口备用域名池（原站 `site[]`，主域失败时依次回退）
+const API_FALLBACKS: [&str; 3] = ["https://apibi.cc", "https://apiqu.cc", "https://apige.cc"];
+const UA: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36 Edg/135.0.0.0";
+/// 加密 token 的密钥种子（原站 `enaes()` 中 MD5 的输入）
+const TOKEN_SEED: &str = "book@token.html";
+/// 单次请求超时（秒）
+const TIMEOUT_SECS: u64 = 20;
 
 // ----------------------------------------------------------------------------
-// HTTP 工具（主页 / 详情直连，这两类服务端正常渲染）
+// HTTP 基础
 // ----------------------------------------------------------------------------
 
-fn client() -> reqwest::blocking::Client {
-    reqwest::blocking::Client::builder()
+fn client() -> Result<reqwest::Client, String> {
+    reqwest::Client::builder()
         .no_proxy()
+        .timeout(std::time::Duration::from_secs(TIMEOUT_SECS))
         .user_agent(UA)
         .build()
-        .expect("bqg http client")
+        .map_err(|e| format!("初始化 HTTP 客户端失败：{e}"))
 }
 
-fn fetch(url: &str) -> Result<String, String> {
-    let resp = client()
+/// GET 一个 JSON 接口；带 `Referer` 以通过站点的来源校验。
+async fn get_json(url: &str, referer: &str) -> Result<Value, String> {
+    let resp = client()?
         .get(url)
+        .header(reqwest::header::REFERER, referer)
+        .header(
+            reqwest::header::ACCEPT,
+            "application/json, text/javascript, */*; q=0.01",
+        )
         .send()
+        .await
         .map_err(|e| format!("网络请求失败：{e}"))?;
     let status = resp.status();
     if !status.is_success() {
-        return Err(format!(
-            "笔趣阁返回 HTTP {}，可能被站点拦截，可稍后再试",
-            status.as_u16()
-        ));
+        return Err(format!("笔趣阁返回 HTTP {}，可稍后重试", status.as_u16()));
     }
-    resp.text().map_err(|e| format!("读取响应失败：{e}"))
-}
-
-fn regex_capture(hay: &str, pat: &str) -> Option<String> {
-    let re = regex::Regex::new(pat).ok()?;
-    re.captures(hay)
-        .and_then(|c| c.get(1))
-        .map(|m| m.as_str().to_string())
+    let body = resp
+        .text()
+        .await
+        .map_err(|e| format!("读取响应失败：{e}"))?;
+    serde_json::from_str(&body)
+        .map_err(|_| "笔趣阁返回了非 JSON 内容（可能被站点拦截）".to_string())
 }
 
 // ----------------------------------------------------------------------------
-// 解析：主页热书
+// 加密 token（原站 enaes：AES-128-CBC/PKCS7，key/iv 由 MD5 hex 串切分而来）
 // ----------------------------------------------------------------------------
 
-fn parse_home(html: &str) -> Vec<NovelCover> {
-    let doc = Html::parse_document(html);
-    let item_sel = match Selector::parse(".hot .item") {
-        Ok(s) => s,
-        Err(_) => return vec![],
-    };
-    let mut out = Vec::new();
-    let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
-
-    for item in doc.select(&item_sel) {
-        let a = item
-            .select(&Selector::parse("a[href*=\"/look/\"]").unwrap())
-            .next();
-        let href = match a {
-            Some(a) => a.value().attr("href").unwrap_or("").to_string(),
-            None => continue,
-        };
-        let aid = match regex_capture(&href, r"/look/(\d+)/") {
-            Some(a) => a,
-            None => continue,
-        };
-        if !seen.insert(aid.clone()) {
-            continue;
-        }
-        let image_url = item
-            .select(&Selector::parse("img").unwrap())
-            .next()
-            .and_then(|e| e.value().attr("src"))
-            .unwrap_or("")
-            .to_string();
-        let dt = item.select(&Selector::parse("dt").unwrap()).next();
-        let (title, author) = if let Some(dt) = dt {
-            let title = dt
-                .select(&Selector::parse("a").unwrap())
-                .next()
-                .map(|a| a.text().collect::<Vec<_>>().join("").trim().to_string())
-                .filter(|s| !s.is_empty())
-                .unwrap_or_else(|| dt.text().collect::<Vec<_>>().join("").trim().to_string());
-            let author = dt
-                .select(&Selector::parse("span").unwrap())
-                .next()
-                .map(|s| s.text().collect::<Vec<_>>().join("").trim().to_string())
-                .unwrap_or_default();
-            (title, author)
-        } else {
-            (String::new(), String::new())
-        };
-        if title.is_empty() {
-            continue;
-        }
-        out.push(NovelCover {
-            aid,
-            title,
-            image_url,
-            author: if author.is_empty() {
-                None
-            } else {
-                Some(author)
-            },
-        });
+fn to_hex(bytes: &[u8]) -> String {
+    let mut s = String::with_capacity(bytes.len() * 2);
+    for b in bytes {
+        s.push_str(&format!("{b:02x}"));
     }
-    out
+    s
 }
 
-// ----------------------------------------------------------------------------
-// 解析：详情
-// ----------------------------------------------------------------------------
+/// 生成 `?token=` 的值：base64(AES-128-CBC(PKCS7, params_json)) 再做 percent-encode。
+fn encrypt_token(plain: &str) -> Result<String, String> {
+    type Aes128CbcEnc = cbc::Encryptor<Aes128>;
 
-fn parse_detail(html: &str, aid: &str) -> NovelDetail {
-    let doc = Html::parse_document(html);
-    let title = doc
-        .select(&Selector::parse("dt.name").unwrap())
-        .next()
-        .map(|e| e.text().collect::<Vec<_>>().join("").trim().to_string())
-        .unwrap_or_default();
-    let img_url = doc
-        .select(&Selector::parse("div.cover img").unwrap())
-        .next()
-        .and_then(|e| e.value().attr("src"))
-        .unwrap_or("")
-        .to_string();
+    let code = to_hex(&Md5::digest(TOKEN_SEED.as_bytes()));
+    let (iv_s, key_s) = code.split_at(16);
+    let iv: [u8; 16] = iv_s
+        .as_bytes()
+        .try_into()
+        .map_err(|_| "token IV 长度异常".to_string())?;
+    let key: [u8; 16] = key_s
+        .as_bytes()
+        .try_into()
+        .map_err(|_| "token KEY 长度异常".to_string())?;
 
-    let mut author = String::new();
-    let mut status = String::new();
-    let mut fin_update = String::new();
-    let mut tags: Vec<String> = vec![];
-    if let Ok(box_sel) = Selector::parse("dd.dd_box") {
-        for dd in doc.select(&box_sel) {
-            for span in dd.select(&Selector::parse("span").unwrap()) {
-                let t = span.text().collect::<Vec<_>>().join("").trim().to_string();
-                if let Some(v) = t.strip_prefix("作者：") {
-                    author = v.to_string();
-                } else if let Some(v) = t.strip_prefix("状态：") {
-                    status = v.to_string();
-                } else if let Some(v) = t.strip_prefix("更新：") {
-                    fin_update = v.to_string();
-                } else if let Some(v) = t.strip_prefix("分类：") {
-                    tags.push(v.to_string());
-                }
-            }
+    let msg = plain.as_bytes();
+    // encrypt_padded_mut 是就地接口：buf 前 msg.len() 字节必须先拷入明文
+    let mut buf = vec![0u8; msg.len() + 16];
+    buf[..msg.len()].copy_from_slice(msg);
+    let ct = Aes128CbcEnc::new((&key).into(), (&iv).into())
+        .encrypt_padded_mut::<Pkcs7>(&mut buf, msg.len())
+        .map_err(|e| format!("AES 加密失败：{e:?}"))?;
+    let b64 = base64::engine::general_purpose::STANDARD.encode(ct);
+    Ok(utf8_percent_encode(&b64, NON_ALPHANUMERIC).to_string())
+}
+
+/// 调用加密接口；主域失败时依次回退到备用域名池。
+///
+/// `params_json` 用手工拼好的 JSON 字符串而非 `serde_json::json!`：后者在未开
+/// `preserve_order` 时按字典序输出（`{"chapterid":..,"id":..}`），手拼可保证与浏览器
+/// `JSON.stringify` 的字节序完全一致，密文因此与浏览器等价。
+async fn get_api_json(path: &str, params_json: &str) -> Result<Value, String> {
+    let token = encrypt_token(params_json)?;
+    let referer = format!("{SITE}/");
+    let mut last_err = "笔趣阁接口暂不可用".to_string();
+    for host in std::iter::once(SITE).chain(API_FALLBACKS.iter().copied()) {
+        let url = format!("{host}/api/{path}?token={token}");
+        match get_json(&url, &referer).await {
+            Ok(v) => return Ok(v),
+            Err(e) => last_err = e,
         }
     }
-
-    let introduce = doc
-        .select(&Selector::parse("div.book_about dd").unwrap())
-        .next()
-        .map(|e| e.text().collect::<Vec<_>>().join("").trim().to_string())
-        .unwrap_or_default();
-
-    // 用 og:novel:latest_chapter_url 里的章节号推断总章节数（兜底目录用）
-    let mut heat = String::new();
-    if let Ok(meta_sel) = Selector::parse("meta[property=\"og:novel:latest_chapter_url\"]") {
-        if let Some(m) = doc.select(&meta_sel).next() {
-            if let Some(c) = m.value().attr("content") {
-                if let Some(n) = regex_capture(c, r"/(\d+)\.html") {
-                    heat = n;
-                }
-            }
-        }
-    }
-
-    NovelDetail {
-        aid: aid.to_string(),
-        title,
-        author,
-        status,
-        fin_update,
-        img_url,
-        introduce,
-        tags,
-        heat,
-        trending: String::new(),
-    }
+    Err(last_err)
 }
 
 // ----------------------------------------------------------------------------
-// 隐藏 WebView 工具（搜索 / 目录 / 正文）
+// 解析工具
 // ----------------------------------------------------------------------------
 
-fn ensure_bqg_webview(app: &tauri::AppHandle) -> Result<WebviewWindow, String> {
-    if let Some(w) = app.get_webview_window(BQG_WEBVIEW) {
-        return Ok(w);
+/// 取 JSON 字段为字符串：数字与字符串都接。
+fn value_str(v: Option<&Value>) -> String {
+    match v {
+        Some(Value::String(s)) => s.trim().to_string(),
+        Some(Value::Number(n)) => n.to_string(),
+        _ => String::new(),
     }
-    WebviewWindowBuilder::new(
-        app,
-        BQG_WEBVIEW,
-        WebviewUrl::External("about:blank".parse().unwrap()),
-    )
-    .visible(false)
-    .build()
-    .map_err(|e| e.to_string())
 }
 
-/// 在 webview 里求值并把返回值（JSON 字符串）取回。
-/// 回调是 `Fn` 非 `FnOnce`，故用 `Arc<Mutex<Option<Sender>>>` + take()。
-async fn eval_json(webview: &WebviewWindow, script: &str) -> Option<String> {
-    let (tx, rx) = oneshot::channel::<String>();
-    let slot: Arc<Mutex<Option<oneshot::Sender<String>>>> = Arc::new(Mutex::new(Some(tx)));
-    if webview
-        .eval_with_callback(script, move |res: String| {
-            let taken = slot.lock().ok().and_then(|mut g| g.take());
-            if let Some(tx) = taken {
-                let _ = tx.send(res);
-            }
-        })
-        .is_err()
-    {
+/// 书籍 / 章节编号一律是正整数，接口期望 JSON 里是数字（不是字符串）
+fn parse_id(s: &str) -> Result<i64, String> {
+    s.trim()
+        .parse::<i64>()
+        .map_err(|_| format!("非法的小说编号：{s}"))
+}
+
+/// 封面：`{SITE}/bookimg/{id/1000}/{id}.jpg`（原站 url_img）
+fn cover_url(id: &str) -> String {
+    match id.parse::<i64>() {
+        Ok(n) => format!("{SITE}/bookimg/{}/{}.jpg", n / 1000, id),
+        Err(_) => String::new(),
+    }
+}
+
+fn cover_from(it: &Value) -> Option<NovelCover> {
+    let aid = value_str(it.get("id"));
+    if aid.is_empty() {
         return None;
     }
-    match tokio::time::timeout(Duration::from_secs(3), rx).await {
-        Ok(Ok(s)) => Some(s),
-        _ => None,
-    }
+    let author = value_str(it.get("author"));
+    Some(NovelCover {
+        image_url: cover_url(&aid),
+        aid,
+        title: value_str(it.get("title")),
+        author: if author.is_empty() {
+            None
+        } else {
+            Some(author)
+        },
+    })
 }
 
-/// 取数结束后停掉隐藏页并清空，避免后台继续加载。
-fn stop_webview(webview: &WebviewWindow) {
-    let _ = webview.eval("try{window.stop();}catch(e){}");
-    let _ = webview.navigate(url::Url::parse("about:blank").unwrap());
+/// 原站正文用单个 `\n` 分段，而阅读器按 `\n\n` 切段落，这里统一成空行分段。
+fn normalize_text(txt: &str) -> String {
+    txt.split('\n')
+        .map(|l| l.trim_end())
+        .filter(|l| !l.trim().is_empty())
+        .collect::<Vec<_>>()
+        .join("\n\n")
 }
 
-const SEARCH_SCRIPT: &str = r#"(function(){
-  try {
-    var items = [];
-    var nodes = document.querySelectorAll('.hot .item');
-    for (var i = 0; i < nodes.length; i++) {
-      var n = nodes[i];
-      var a = n.querySelector('a[href*="/look/"]');
-      if (!a) continue;
-      var m = (a.getAttribute('href') || '').match(/\/look\/(\d+)\//);
-      if (!m) continue;
-      var img = n.querySelector('img');
-      var dt = n.querySelector('dt');
-      var title = dt
-        ? (dt.querySelector('a') ? dt.querySelector('a').textContent.trim() : dt.textContent.trim())
-        : (a.getAttribute('title') || a.textContent.trim());
-      var span = dt ? dt.querySelector('span') : null;
-      var author = span ? span.textContent.trim() : '';
-      items.push({ aid: m[1], title: title, imageUrl: img ? (img.getAttribute('src') || '') : '', author: author });
-    }
-    return JSON.stringify(items);
-  } catch (e) { return JSON.stringify({ error: String(e) }); }
-})()"#;
-
-const CATALOGUE_SCRIPT: &str = r#"(function(){
-  try {
-    var items = [];
-    var links = document.querySelectorAll('a[href*="/look/"]');
-    for (var i = 0; i < links.length; i++) {
-      var a = links[i];
-      var m = (a.getAttribute('href') || '').match(/\/look\/\d+\/(\d+)\.html/);
-      if (!m) continue;
-      items.push({ cid: m[1], title: a.textContent.trim() });
-    }
-    var seen = {}, out = [];
-    for (var j = 0; j < items.length; j++) {
-      if (!seen[items[j].cid]) { seen[items[j].cid] = 1; out.push(items[j]); }
-    }
-    return JSON.stringify(out);
-  } catch (e) { return JSON.stringify({ error: String(e) }); }
-})()"#;
-
-/// 正文抽取：优先常见内容容器，否则回退 body；剔除导航/广告/评论等噪声。
-/// 注意：笔趣阁过验证门后的真实正文容器选择器需本机实测微调（见 README 备注）。
-const CONTENT_SCRIPT: &str = r#"(function(){
-  try {
-    var sel = ['#content', '.content', '#chaptercontent', 'div[class*="content"]'];
-    var el = null;
-    for (var i = 0; i < sel.length && !el; i++) {
-      el = document.querySelector(sel[i]);
-    }
-    if (!el) el = document.body;
-    var clone = el.cloneNode(true);
-    var noise = ['script','style','nav','header','footer','.comment','.search','.footer','.link','.book_last','.readlink','.book_about','.book_info','.clear','.header','.nav','.book_more'];
-    for (var k = 0; k < noise.length; k++) {
-      var bad = clone.querySelectorAll(noise[k]);
-      for (var b = 0; b < bad.length; b++) {
-        if (bad[b].parentNode) bad[b].parentNode.removeChild(bad[b]);
-      }
-    }
-    var text = (clone.innerText || clone.textContent || '').replace(/\s+\n/g, '\n').trim();
-    var h1 = document.querySelector('h1');
-    var title = h1 ? h1.innerText.trim() : (document.title || '').trim();
-    return JSON.stringify({ title: title, text: text });
-  } catch (e) { return JSON.stringify({ error: String(e) }); }
-})()"#;
-
-const FALLBACK_SCRIPT: &str = r#"(function(){
-  try {
-    var ch = [];
-    var links = document.querySelectorAll('.book_last a[href*="/look/"]');
-    for (var i = 0; i < links.length; i++) {
-      var a = links[i];
-      var m = (a.getAttribute('href') || '').match(/\/look\/\d+\/(\d+)\.html/);
-      if (!m) continue;
-      ch.push({ cid: m[1], title: a.textContent.trim() });
-    }
-    var total = 0;
-    var meta = document.querySelector('meta[property="og:novel:latest_chapter_url"]');
-    if (meta) {
-      var mm = (meta.getAttribute('content') || '').match(/\/(\d+)\.html/);
-      if (mm) total = parseInt(mm[1], 10);
-    }
-    return JSON.stringify({ chapters: ch, total: total });
-  } catch (e) { return JSON.stringify({ error: String(e) }); }
-})()"#;
-
 // ----------------------------------------------------------------------------
-// 命令：主页 / 详情（直连 HTTP）
+// 命令
 // ----------------------------------------------------------------------------
 
+/// 首页书目：合并 hotlist / toplist / sort1..6（按书号去重）。
 #[tauri::command]
 pub async fn bqg_home() -> Result<Vec<NovelCover>, String> {
-    let html = tokio::task::spawn_blocking(|| fetch(&format!("{}/", BASE)))
-        .await
-        .map_err(|e| e.to_string())??;
-    Ok(parse_home(&html))
+    let url = format!("{SITE}/api/index?sort=index");
+    let v = get_json(&url, &format!("{SITE}/")).await?;
+    let mut out: Vec<NovelCover> = Vec::new();
+    let mut seen: HashSet<String> = HashSet::new();
+    for key in [
+        "hotlist", "toplist", "sort1", "sort2", "sort3", "sort4", "sort5", "sort6",
+    ] {
+        let Some(arr) = v.get(key).and_then(|x| x.as_array()) else {
+            continue;
+        };
+        for it in arr {
+            if let Some(c) = cover_from(it) {
+                if seen.insert(c.aid.clone()) {
+                    out.push(c);
+                }
+            }
+        }
+    }
+    Ok(out)
 }
 
+/// 书籍详情。
 #[tauri::command]
 pub async fn bqg_detail(aid: String) -> Result<NovelDetail, String> {
-    let url = format!("{}/look/{}/", BASE, aid);
-    let html = tokio::task::spawn_blocking(move || fetch(&url))
-        .await
-        .map_err(|e| e.to_string())??;
-    Ok(parse_detail(&html, &aid))
+    let id = parse_id(&aid)?;
+    let v = get_api_json("book", &format!(r#"{{"id":{id}}}"#)).await?;
+    Ok(NovelDetail {
+        img_url: cover_url(&aid),
+        aid,
+        title: value_str(v.get("title")),
+        author: value_str(v.get("author")),
+        status: value_str(v.get("full")),
+        fin_update: value_str(v.get("lastupdate")),
+        introduce: value_str(v.get("intro")),
+        tags: {
+            let sort = value_str(v.get("sortname"));
+            if sort.is_empty() {
+                Vec::new()
+            } else {
+                vec![sort]
+            }
+        },
+        heat: value_str(v.get("lastchapterid")),
+        trending: value_str(v.get("lastchapter")),
+    })
 }
 
-// ----------------------------------------------------------------------------
-// 命令：搜索（WebView）
-// ----------------------------------------------------------------------------
-
+/// 搜索（关键字为空时直接返回空，避免各站热门混入造成「点 A 看 B」）。
 #[tauri::command]
-pub async fn bqg_search(app: tauri::AppHandle, query: String) -> Result<Vec<NovelCover>, String> {
-    let q = url::form_urlencoded::byte_serialize(query.as_bytes()).collect::<String>();
-    let url = format!("{}/s?q={}", BASE, q);
-    let parsed = url::Url::parse(&url).map_err(|e| e.to_string())?;
-    let webview = ensure_bqg_webview(&app)?;
-    webview
-        .navigate(parsed)
-        .map_err(|e| format!("导航搜索页失败：{e}"))?;
-
-    let deadline = Instant::now() + BQG_TIMEOUT;
-    while Instant::now() < deadline {
-        tokio::time::sleep(Duration::from_millis(400)).await;
-        if let Some(json) = eval_json(&webview, SEARCH_SCRIPT).await {
-            if let Ok(v) = serde_json::from_str::<serde_json::Value>(&json) {
-                if let Some(arr) = v.as_array() {
-                    let covers: Vec<NovelCover> = arr
-                        .iter()
-                        .filter_map(|x| {
-                            let aid = x.get("aid")?.as_str()?.to_string();
-                            let title = x.get("title")?.as_str()?.to_string();
-                            let image_url = x
-                                .get("imageUrl")
-                                .and_then(|s| s.as_str())
-                                .unwrap_or("")
-                                .to_string();
-                            let author = x
-                                .get("author")
-                                .and_then(|s| s.as_str())
-                                .map(|s| s.to_string());
-                            if title.is_empty() {
-                                None
-                            } else {
-                                Some(NovelCover {
-                                    aid,
-                                    title,
-                                    image_url,
-                                    author,
-                                })
-                            }
-                        })
-                        .collect();
-                    if !covers.is_empty() {
-                        stop_webview(&webview);
-                        return Ok(covers);
-                    }
-                }
-            }
-        }
+pub async fn bqg_search(query: String) -> Result<Vec<NovelCover>, String> {
+    let q = query.trim();
+    if q.is_empty() {
+        return Ok(Vec::new());
     }
-    stop_webview(&webview);
-    Ok(vec![]) // 超时 / 被验证门拦截：返回空结果，前端显示无结果
+    let qs = utf8_percent_encode(q, NON_ALPHANUMERIC).to_string();
+    let url = format!("{SITE}/api/search?q={qs}");
+    let v = get_json(&url, &format!("{SITE}/")).await?;
+    Ok(v.get("data")
+        .and_then(|d| d.as_array())
+        .map(|arr| arr.iter().filter_map(cover_from).collect())
+        .unwrap_or_default())
 }
 
-// ----------------------------------------------------------------------------
-// 命令：目录（WebView；失败回退到详情页最近章节 + 连续生成）
-// ----------------------------------------------------------------------------
-
+/// 目录：接口返回纯章节名数组，章节号 = 下标 + 1（对应原站 `{n}.html`）。
 #[tauri::command]
-pub async fn bqg_catalogue(app: tauri::AppHandle, aid: String) -> Result<Vec<NovelVolume>, String> {
-    let url = format!("{}/look/{}/list.html", BASE, aid);
-    let parsed = url::Url::parse(&url).map_err(|e| e.to_string())?;
-    let webview = ensure_bqg_webview(&app)?;
-    webview
-        .navigate(parsed)
-        .map_err(|e| format!("导航目录页失败：{e}"))?;
-
-    let deadline = Instant::now() + BQG_TIMEOUT;
-    while Instant::now() < deadline {
-        tokio::time::sleep(Duration::from_millis(400)).await;
-        if let Some(json) = eval_json(&webview, CATALOGUE_SCRIPT).await {
-            if let Ok(v) = serde_json::from_str::<serde_json::Value>(&json) {
-                if let Some(arr) = v.as_array() {
-                    let chapters: Vec<NovelChapter> = arr
-                        .iter()
-                        .filter_map(|x| {
-                            let cid = x.get("cid")?.as_str()?.to_string();
-                            let title = x.get("title")?.as_str()?.to_string();
-                            if title.is_empty() {
-                                None
-                            } else {
-                                Some(NovelChapter { cid, title })
-                            }
-                        })
-                        .collect();
-                    if !chapters.is_empty() {
-                        stop_webview(&webview);
-                        return Ok(vec![NovelVolume {
-                            title: "目录".to_string(),
-                            chapters,
-                        }]);
-                    }
-                }
+pub async fn bqg_catalogue(aid: String) -> Result<Vec<NovelVolume>, String> {
+    let id = parse_id(&aid)?;
+    let v = get_api_json("booklist", &format!(r#"{{"id":{id}}}"#)).await?;
+    let list = v
+        .get("list")
+        .and_then(|x| x.as_array())
+        .cloned()
+        .unwrap_or_default();
+    if list.is_empty() {
+        return Err("笔趣阁未返回目录，可稍后重试".to_string());
+    }
+    // 不能过滤空条目：章节号必须严格等于原数组下标 +1，否则会与 {n}.html 错位
+    let chapters: Vec<NovelChapter> = list
+        .iter()
+        .enumerate()
+        .map(|(i, n)| {
+            let title = value_str(Some(n));
+            NovelChapter {
+                cid: (i + 1).to_string(),
+                title: if title.is_empty() {
+                    format!("第{}章", i + 1)
+                } else {
+                    title
+                },
             }
-        }
-    }
-    stop_webview(&webview);
-    Ok(build_fallback_catalogue(&app, &aid).await)
-}
-
-/// 兜底：目录页没拿到时，从详情页 `.book_last` 取最近章节标题，并据 og 元信息
-/// 的总章节数连续生成 1..N（中间章节用「第 N 章」占位）。
-async fn build_fallback_catalogue(app: &tauri::AppHandle, aid: &str) -> Vec<NovelVolume> {
-    let url = format!("{}/look/{}/", BASE, aid);
-    let parsed = match url::Url::parse(&url) {
-        Ok(u) => u,
-        Err(_) => return vec![],
-    };
-    let webview = match ensure_bqg_webview(app) {
-        Ok(w) => w,
-        Err(_) => return vec![],
-    };
-    let _ = webview.navigate(parsed);
-
-    let deadline = Instant::now() + Duration::from_secs(20);
-    let mut known: Vec<(String, String)> = vec![];
-    let mut total: u32 = 0;
-    while Instant::now() < deadline {
-        tokio::time::sleep(Duration::from_millis(400)).await;
-        if let Some(json) = eval_json(&webview, FALLBACK_SCRIPT).await {
-            if let Ok(v) = serde_json::from_str::<serde_json::Value>(&json) {
-                if let Some(arr) = v.get("chapters").and_then(|c| c.as_array()) {
-                    if !arr.is_empty() {
-                        known = arr
-                            .iter()
-                            .filter_map(|x| {
-                                let cid = x.get("cid")?.as_str()?.to_string();
-                                let title = x.get("title")?.as_str()?.to_string();
-                                Some((cid, title))
-                            })
-                            .collect();
-                        total = v.get("total").and_then(|t| t.as_u64()).unwrap_or(0) as u32;
-                        break;
-                    }
-                }
-            }
-        }
-    }
-    stop_webview(&webview);
-
-    if known.is_empty() && total == 0 {
-        return vec![];
-    }
-    let total = if total > 0 {
-        total
-    } else {
-        known
-            .first()
-            .and_then(|(c, _)| c.parse::<u32>().ok())
-            .unwrap_or(0)
-    };
-    if total == 0 {
-        return vec![];
-    }
-    let known_map: HashMap<String, String> = known.into_iter().collect();
-    let mut chapters = Vec::new();
-    for i in 1..=total {
-        let cid = i.to_string();
-        let title = known_map
-            .get(&cid)
-            .cloned()
-            .unwrap_or_else(|| format!("第{}章", i));
-        chapters.push(NovelChapter { cid, title });
-    }
-    vec![NovelVolume {
-        title: "目录".to_string(),
+        })
+        .collect();
+    Ok(vec![NovelVolume {
+        title: "正文".to_string(),
         chapters,
-    }]
+    }])
 }
 
-// ----------------------------------------------------------------------------
-// 命令：正文（WebView）
-// ----------------------------------------------------------------------------
-
+/// 章节正文。
 #[tauri::command]
-pub async fn bqg_content(
-    app: tauri::AppHandle,
-    aid: String,
-    cid: String,
-) -> Result<NovelContent, String> {
-    let url = format!("{}/look/{}/{}.html", BASE, aid, cid);
-    let parsed = url::Url::parse(&url).map_err(|e| e.to_string())?;
-    let webview = ensure_bqg_webview(&app)?;
-    webview
-        .navigate(parsed)
-        .map_err(|e| format!("导航章节页失败：{e}"))?;
-
-    let deadline = Instant::now() + BQG_TIMEOUT;
-    while Instant::now() < deadline {
-        tokio::time::sleep(Duration::from_millis(400)).await;
-        if let Some(json) = eval_json(&webview, CONTENT_SCRIPT).await {
-            if let Ok(v) = serde_json::from_str::<serde_json::Value>(&json) {
-                if let Some(txt) = v.get("text").and_then(|x| x.as_str()) {
-                    // 验证门未过时正文很短（壳页只有「加载中」），需等真实正文渲染
-                    if txt.trim().len() > 50 {
-                        stop_webview(&webview);
-                        return Ok(NovelContent {
-                            text: txt.trim().to_string(),
-                            images: vec![],
-                        });
-                    }
-                }
-            }
-        }
+pub async fn bqg_content(aid: String, cid: String) -> Result<NovelContent, String> {
+    let id = parse_id(&aid)?;
+    let chapterid = parse_id(&cid)?;
+    let v = get_api_json(
+        "chapter",
+        &format!(r#"{{"id":{id},"chapterid":{chapterid}}}"#),
+    )
+    .await?;
+    let text = normalize_text(&value_str(v.get("txt")));
+    if text.is_empty() {
+        return Err("笔趣阁返回的章节正文为空，可稍后重试".to_string());
     }
-    stop_webview(&webview);
-    Err("笔趣阁正文加载超时（可能触发了站点验证或网络异常），可重试".into())
+    Ok(NovelContent {
+        text,
+        images: Vec::new(),
+    })
 }
