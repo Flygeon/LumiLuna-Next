@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import PageHeader from "@/components/PageHeader.vue";
 import {
@@ -83,14 +83,6 @@ onMounted(async () => {
   } else {
     ffmpeg.value = await capabilities.ffmpegStatus();
   }
-  // 左栏高亮随内容滚动联动（设置页可能滚在内部容器上，用捕获阶段）
-  window.addEventListener("scroll", onViewportScroll, true);
-  syncActiveSection();
-});
-
-onBeforeUnmount(() => {
-  window.removeEventListener("scroll", onViewportScroll, true);
-  window.clearTimeout(syncTimer);
 });
 
 async function recheckFfmpeg() {
@@ -302,7 +294,7 @@ function resetDesktopLyricsBounds() {
   settings.desktopLyricsBounds = { width: 420, height: 120 };
 }
 
-/** 左侧分类导航：按内容顺序分组，点谁滚到谁。 */
+/** 左侧分类导航：一次只显示一个分类，点谁切谁。 */
 const settingNav = [
   { title: "通用", items: [{ id: "settings-appearance", label: "外观", icon: "palette" }] },
   {
@@ -322,43 +314,14 @@ const settingNav = [
   { title: "系统", items: [{ id: "settings-other", label: "关于", icon: "info" }] },
 ];
 
-const settingSectionIds = settingNav.flatMap((group) => group.items.map((item) => item.id));
-const activeSection = ref(settingSectionIds[0]);
+const activeSection = ref(settingNav[0].items[0].id);
 
-let navLockUntil = 0;
-let syncTimer = 0;
-
-function focusSettingSection(id: string) {
+/** 切换分类：右栏只渲染该分类的卡片，并把内容带回顶部。 */
+function selectSection(id: string) {
+  if (activeSection.value === id) return;
   activeSection.value = id;
-  // 平滑滚动期间锁住联动，否则高亮会被滚动中途经过的分类截走
-  navLockUntil = Date.now() + 1200;
-  document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
-}
-
-/** 滚动联动：滚停后才回写高亮，避免平滑滚动中途来回闪。 */
-function onViewportScroll(ev: Event) {
-  if (Date.now() < navLockUntil) return;
-  window.clearTimeout(syncTimer);
-  const scrollTarget = ev.target;
-  syncTimer = window.setTimeout(() => syncActiveSection(scrollTarget), 120);
-}
-
-function syncActiveSection(scrollTarget?: EventTarget | null) {
-  let current = settingSectionIds[0];
-  for (const id of settingSectionIds) {
-    const el = document.getElementById(id);
-    if (el && el.getBoundingClientRect().top <= 140) current = id;
-  }
-  // 触底时点亮最后一个分类，否则末项永远高亮不到
-  const scroller = scrollTarget instanceof Element ? scrollTarget : document.scrollingElement;
-  if (
-    scroller &&
-    scroller.scrollHeight > scroller.clientHeight + 8 &&
-    scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 8
-  ) {
-    current = settingSectionIds[settingSectionIds.length - 1];
-  }
-  activeSection.value = current;
+  // 不同分类高度差很大，不回到顶部会让短分类停在上一屏的滚动位置
+  document.querySelector(".settings-view")?.scrollIntoView({ block: "start" });
 }
 </script>
 
@@ -374,7 +337,7 @@ function syncActiveSection(scrollTarget?: EventTarget | null) {
           class="settings-nav-item"
           :class="{ active: activeSection === item.id }"
           type="button"
-          @click="focusSettingSection(item.id)"
+          @click="selectSection(item.id)"
         >
           <span class="material-symbols-outlined">{{ item.icon }}</span>
           <span class="settings-nav-label">{{ item.label }}</span>
@@ -382,7 +345,7 @@ function syncActiveSection(scrollTarget?: EventTarget | null) {
       </template>
     </aside>
     <!-- 外观 -->
-    <section id="settings-appearance" class="card">
+    <section v-if="activeSection === 'settings-appearance'" id="settings-appearance" class="card">
       <h3>{{ t("settings.appearance") }}</h3>
 
       <div class="row">
@@ -578,7 +541,7 @@ function syncActiveSection(scrollTarget?: EventTarget | null) {
     </section>
 
     <!-- 扫描目录 -->
-    <section id="settings-library" class="card">
+    <section v-if="activeSection === 'settings-library'" id="settings-library" class="card">
       <h3>{{ t("settings.scanDirs") }}</h3>
       <p class="hint">{{ t("settings.scanDirsHint") }}</p>
 
@@ -605,7 +568,7 @@ function syncActiveSection(scrollTarget?: EventTarget | null) {
     </section>
 
     <!-- 体积过滤 -->
-    <section class="card">
+    <section v-if="activeSection === 'settings-library'" class="card">
       <h3>{{ t("settings.minSize") }}</h3>
       <p class="hint">{{ t("settings.minSizeHint") }}</p>
       <div class="row">
@@ -635,7 +598,7 @@ function syncActiveSection(scrollTarget?: EventTarget | null) {
     </section>
 
     <!-- 阅读 -->
-    <section class="card">
+    <section v-if="activeSection === 'settings-library'" class="card">
       <h3>{{ t("settings.reading") }}</h3>
       <p class="hint">{{ t("settings.pdfModeHint") }}</p>
       <div class="row">
@@ -657,7 +620,7 @@ function syncActiveSection(scrollTarget?: EventTarget | null) {
     </section>
 
     <!-- FFmpeg -->
-    <section id="settings-playback" class="card">
+    <section v-if="activeSection === 'settings-playback'" id="settings-playback" class="card">
       <h3>{{ t("settings.ffmpeg") }}</h3>
       <p class="hint">{{ t("settings.ffmpegHint") }}</p>
 
@@ -710,7 +673,7 @@ function syncActiveSection(scrollTarget?: EventTarget | null) {
     </section>
 
     <!-- 歌词 -->
-    <section class="card">
+    <section v-if="activeSection === 'settings-playback'" class="card">
       <h3>{{ t("settings.lyrics") }}</h3>
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.wordLyrics") }}</span>
@@ -798,7 +761,7 @@ function syncActiveSection(scrollTarget?: EventTarget | null) {
       </div>
     </section>
     <!-- 桌面歌词 -->
-    <section class="card">
+    <section v-if="activeSection === 'settings-playback'" class="card">
       <h3>{{ t("settings.desktopLyrics") }}</h3>
       <p class="hint">{{ t("settings.desktopLyricsHint") }}</p>
 
@@ -919,7 +882,7 @@ function syncActiveSection(scrollTarget?: EventTarget | null) {
     </section>
 
     <!-- 播放器 -->
-    <section class="card">
+    <section v-if="activeSection === 'settings-playback'" class="card">
       <h3>{{ t("settings.playback") }}</h3>
       <p class="hint">{{ t("settings.playerBgHint") }}</p>
       <div class="row">
@@ -962,7 +925,7 @@ function syncActiveSection(scrollTarget?: EventTarget | null) {
     </section>
 
     <!-- 音效 -->
-    <section class="card">
+    <section v-if="activeSection === 'settings-playback'" class="card">
       <h3>{{ t("settings.audioEffects") }}</h3>
       <p class="hint">{{ t("settings.audioEffectsHint") }}</p>
       <div class="row">
@@ -986,7 +949,7 @@ function syncActiveSection(scrollTarget?: EventTarget | null) {
     </section>
 
     <!-- 实验性：在线音乐 -->
-    <section id="settings-online" class="card">
+    <section v-if="activeSection === 'settings-online'" id="settings-online" class="card">
       <h3>{{ t("settings.online") }}</h3>
       <p class="hint">{{ t("settings.onlineHint") }}</p>
       <label class="row switch-row">
@@ -1017,7 +980,7 @@ function syncActiveSection(scrollTarget?: EventTarget | null) {
     </section>
 
     <!-- 在线小说 -->
-    <section class="card">
+    <section v-if="activeSection === 'settings-online'" class="card">
       <h3>{{ t("settings.onlineNovel") }}</h3>
       <p class="hint">{{ t("settings.onlineNovelHint") }}</p>
       <label class="row switch-row">
@@ -1059,7 +1022,7 @@ function syncActiveSection(scrollTarget?: EventTarget | null) {
     </section>
 
     <!-- 在线番剧 -->
-    <section class="card">
+    <section v-if="activeSection === 'settings-online'" class="card">
       <h3>{{ t("settings.onlineAnime") }}</h3>
       <p class="hint">{{ t("settings.onlineAnimeHint") }}</p>
       <label class="row switch-row">
@@ -1117,7 +1080,7 @@ function syncActiveSection(scrollTarget?: EventTarget | null) {
     </section>
 
     <!-- 在线 Pixiv -->
-    <section class="card">
+    <section v-if="activeSection === 'settings-online'" class="card">
       <h3>{{ t("settings.onlinePixivEnabled") }}</h3>
       <p class="hint">{{ t("settings.onlinePixivHint") }}</p>
       <label class="row switch-row">
@@ -1157,7 +1120,7 @@ function syncActiveSection(scrollTarget?: EventTarget | null) {
     </section>
 
     <!-- DanDanPlay 弹幕 -->
-    <section v-if="settings.onlineAnimeEnabled" class="card">
+    <section v-if="activeSection === 'settings-online' && settings.onlineAnimeEnabled" class="card">
       <h3>{{ t("settings.danmaku") }}</h3>
       <p class="hint">{{ t("settings.danmakuHint") }}</p>
       <label class="row switch-row">
@@ -1236,7 +1199,7 @@ function syncActiveSection(scrollTarget?: EventTarget | null) {
     </section>
 
     <!-- WebDAV -->
-    <section id="settings-sync" class="card">
+    <section v-if="activeSection === 'settings-sync'" id="settings-sync" class="card">
       <h3>{{ t("settings.webdav") }}</h3>
       <p class="hint">{{ t("settings.webdavHint") }}</p>
 
@@ -1314,7 +1277,7 @@ function syncActiveSection(scrollTarget?: EventTarget | null) {
     </section>
 
     <!-- 关于 -->
-    <section id="settings-other" class="card">
+    <section v-if="activeSection === 'settings-other'" id="settings-other" class="card">
       <h3>{{ t("settings.about") }}</h3>
       <div class="row">
         <span class="row-label">{{ t("settings.version") }}</span>
@@ -1360,11 +1323,11 @@ function syncActiveSection(scrollTarget?: EventTarget | null) {
   top: 12px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 4px 0;
+  gap: 1px;
+  padding: 2px 0;
 }
 .settings-nav-group {
-  padding: 12px 12px 4px;
+  padding: 8px 12px 2px;
   color: var(--md-sys-color-on-surface-variant);
   font-size: 12px;
   font-weight: 600;
@@ -1374,8 +1337,8 @@ function syncActiveSection(scrollTarget?: EventTarget | null) {
 .settings-nav-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-height: 40px;
+  gap: 8px;
+  min-height: 32px;
   padding: 0 12px;
   border: none;
   border-radius: var(--md-sys-shape-corner-full);
@@ -1890,7 +1853,6 @@ function syncActiveSection(scrollTarget?: EventTarget | null) {
   }
   .settings-nav-item {
     flex: 0 0 auto;
-    min-height: 36px;
     white-space: nowrap;
   }
   .card {
