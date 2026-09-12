@@ -147,12 +147,12 @@ onMounted(loadHome);
 
       <template v-else-if="detail">
         <div class="detail-head">
-          <img class="cover" :src="coverUrl(detail.img_url)" :alt="detail.title" />
+          <img class="cover" :src="coverUrl(detail.imgUrl)" :alt="detail.title" />
           <div class="meta">
             <h3 class="title">{{ detail.title }}</h3>
             <p v-if="detail.author" class="line">作者：{{ detail.author }}</p>
             <p v-if="detail.status" class="line">状态：{{ detail.status }}</p>
-            <p v-if="detail.fin_update" class="line">更新：{{ detail.fin_update }}</p>
+            <p v-if="detail.finUpdate" class="line">更新：{{ detail.finUpdate }}</p>
             <p v-if="detail.tags.length" class="line">分类：{{ detail.tags.join(" / ") }}</p>
           </div>
         </div>
