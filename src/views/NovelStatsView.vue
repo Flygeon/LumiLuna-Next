@@ -53,7 +53,9 @@ onMounted(load);
 <template>
   <div class="view">
     <PageHeader :title="t('novelStats.title')" :description="t('novelStats.subtitle')" />
-    <div v-if="loading" class="state">{{ t("novelStats.loading") }}</div>
+    <div v-if="loading" class="state">
+      <m3e-circular-progress-indicator />
+    </div>
 
     <template v-else>
       <div class="overview">
@@ -125,9 +127,9 @@ onMounted(load);
       </section>
 
       <div class="actions">
-        <button class="lm-btn lm-btn--outlined" @click="router.push('/treasure')">
+        <m3e-button variant="outlined" @click="router.push('/treasure')">
           {{ t("actions.cancel") }}
-        </button>
+        </m3e-button>
       </div>
     </template>
   </div>

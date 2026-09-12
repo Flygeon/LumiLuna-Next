@@ -85,21 +85,26 @@ async function open(item: MediaEntry) {
         <div v-if="loading" class="tree-loading">
           <div v-for="n in 8" :key="n" class="lm-skeleton tree-skeleton"></div>
         </div>
-        <button
-          v-for="f in folders"
-          v-else
-          :key="f.path"
-          class="tree-item"
-          :class="{ active: selected === f.path }"
-          :title="f.path"
-          @click="pick(f.path)"
-        >
-          <span class="material-symbols-outlined" :class="{ filled: selected === f.path }">
-            folder
-          </span>
-          <span class="tree-name">{{ f.name }}</span>
-          <span class="tree-count tabular-nums">{{ f.count }}</span>
-        </button>
+        <m3e-list v-else class="tree-list">
+          <m3e-list-item
+            v-for="f in folders"
+            :key="f.path"
+            class="tree-item"
+            :class="{ active: selected === f.path }"
+            :title="f.path"
+            @click="pick(f.path)"
+          >
+            <span
+              slot="leading"
+              class="material-symbols-outlined"
+              :class="{ filled: selected === f.path }"
+            >
+              folder
+            </span>
+            <span class="tree-name">{{ f.name }}</span>
+            <span slot="trailing" class="tree-count tabular-nums">{{ f.count }}</span>
+          </m3e-list-item>
+        </m3e-list>
 
         <div v-if="!loading && !folders.length" class="tree-empty">暂无已索引目录</div>
       </aside>
@@ -162,32 +167,23 @@ async function open(item: MediaEntry) {
   text-transform: uppercase;
   color: var(--md-sys-color-on-surface-variant);
 }
-.tree-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 12px;
-  border: none;
-  border-radius: var(--md-sys-shape-corner-extra-large);
-  background: transparent;
-  color: var(--md-sys-color-on-surface-variant);
-  font-family: inherit;
-  font-size: var(--md-sys-typescale-body-medium-size);
-  text-align: left;
-  cursor: pointer;
-  transition: background var(--md-sys-motion-duration-short);
+.tree-list {
+  --m3e-list-item-leading-space: 12px;
+  --m3e-list-item-trailing-space: 12px;
 }
-.tree-item:hover {
-  background: var(--md-sys-color-surface-container);
+.tree-item {
+  --m3e-list-item-leading-icon-color: var(--md-sys-color-on-surface-variant);
 }
 .tree-item.active {
-  background: var(--md-sys-color-secondary-container);
-  color: var(--md-sys-color-on-secondary-container);
-  font-weight: 500;
+  --m3e-list-item-container-color: var(--md-sys-color-secondary-container);
+  --m3e-list-item-leading-icon-color: var(--md-sys-color-on-secondary-container);
 }
 .tree-item .material-symbols-outlined {
   font-size: 20px;
   flex: none;
+}
+.tree-item .material-symbols-outlined.filled {
+  font-variation-settings: "FILL" 1;
 }
 .tree-name {
   flex: 1;
@@ -195,10 +191,11 @@ async function open(item: MediaEntry) {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: var(--md-sys-color-on-surface);
 }
 .tree-count {
   font-size: var(--md-sys-typescale-body-small-size);
-  opacity: 0.7;
+  color: var(--md-sys-color-on-surface-variant);
 }
 .tree-skeleton {
   height: 38px;

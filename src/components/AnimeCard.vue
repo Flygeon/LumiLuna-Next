@@ -6,8 +6,14 @@ defineEmits<{ (e: "open", ev: MouseEvent): void }>();
 </script>
 
 <template>
-  <button class="anime-card" :data-anime-id="item.src" @click="$emit('open', $event)">
-    <div class="cover">
+  <m3e-card
+    class="anime-card"
+    variant="elevated"
+    actionable
+    :data-anime-id="item.src"
+    @click="$emit('open', $event)"
+  >
+    <div slot="header" class="cover">
       <img
         v-if="item.cover"
         :src="item.cover"
@@ -22,27 +28,12 @@ defineEmits<{ (e: "open", ev: MouseEvent): void }>();
       <div class="title" :title="item.title">{{ item.title }}</div>
       <div v-if="subtitle" class="sub" :title="subtitle">{{ subtitle }}</div>
     </div>
-  </button>
+  </m3e-card>
 </template>
 
 <style scoped>
 .anime-card {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: inherit;
-  font-family: inherit;
-  text-align: left;
   cursor: pointer;
-  outline: none;
-}
-.anime-card:focus-visible {
-  outline: 2px solid var(--md-sys-color-primary);
-  outline-offset: 4px;
-  border-radius: var(--lm-shape-card);
 }
 .cover {
   display: flex;
@@ -50,23 +41,9 @@ defineEmits<{ (e: "open", ev: MouseEvent): void }>();
   justify-content: center;
   width: 100%;
   aspect-ratio: 3 / 4;
-  border-radius: var(--lm-shape-card);
   overflow: hidden;
   background: var(--md-sys-color-surface-container);
-  box-shadow: inset 0 0 0 1px var(--lm-hairline);
   color: var(--md-sys-color-outline);
-  transition:
-    transform 220ms var(--md-sys-motion-spring-soft),
-    box-shadow 220ms var(--md-sys-motion-spring-effects-fast);
-}
-.anime-card:hover .cover {
-  transform: translateY(-4px) scale(1.015);
-  box-shadow:
-    var(--md-elevation-3),
-    inset 0 0 0 1px var(--lm-hairline);
-}
-.anime-card:active .cover {
-  transform: translateY(-1px) scale(0.995);
 }
 .cover img {
   width: 100%;
@@ -82,6 +59,7 @@ defineEmits<{ (e: "open", ev: MouseEvent): void }>();
 .title {
   font-size: var(--md-sys-typescale-body-medium-size);
   font-weight: 500;
+  color: var(--md-sys-color-on-surface);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

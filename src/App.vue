@@ -11,6 +11,7 @@ import MiniPlayer from "@/components/MiniPlayer.vue";
 import ContextMenu from "@/components/ContextMenu.vue";
 import TextPrompt from "@/components/TextPrompt.vue";
 import WindowTitleBar from "@/components/WindowTitleBar.vue";
+import CustomBackground from "@/components/CustomBackground.vue";
 import { useDesktopChrome } from "@/composables/useDesktopChrome";
 import { activeSkinDoc, skinBgActive, skinSafeMode } from "@/utils/skinRuntime";
 import { translate } from "@shared/i18n";
@@ -229,6 +230,9 @@ router.afterEach((to) => {
       aria-hidden="true"
     ></div>
 
+    <!-- 自定义应用背景层（用户自选图片/视频/纯色/流体） -->
+    <CustomBackground v-if="!isPlayerPage && !isDesktopLyricsPage && !isExtensionHostPage" />
+
     <!-- Windows 自定义标题栏（仅 Tauri 桌面版，播放页/桌面歌词页/扩展宿主页隐藏） -->
     <WindowTitleBar
       v-if="isTauri && !isPlayerPage && !isDesktopLyricsPage && !isExtensionHostPage"
@@ -347,12 +351,12 @@ router.afterEach((to) => {
             <li v-for="r in skins.pendingRemote.refs" :key="r" :title="r">{{ r }}</li>
           </ul>
           <div class="skin-modal-actions">
-            <button class="lm-btn lm-btn--text" @click="skins.cancelRemoteImport()">
+            <m3e-button variant="text" @click="skins.cancelRemoteImport()">
               {{ t("settings.skinCancel") }}
-            </button>
-            <button class="lm-btn lm-btn--filled" @click="skins.confirmRemoteImport()">
+            </m3e-button>
+            <m3e-button variant="filled" @click="skins.confirmRemoteImport()">
               {{ t("settings.skinStillImport") }}
-            </button>
+            </m3e-button>
           </div>
         </div>
       </div>

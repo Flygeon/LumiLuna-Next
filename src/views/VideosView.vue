@@ -80,10 +80,10 @@ function clearSearch() {
             <strong>未检测到 FFmpeg</strong>
             <span>视频缩略图、时长与分辨率需要 FFmpeg 支持。可在设置中指定其安装目录。</span>
           </div>
-          <button class="lm-btn lm-btn--text" @click="router.push('/settings')">前往设置</button>
-          <button class="lm-icon-btn" @click="bannerDismissed = true">
+          <m3e-button variant="text" @click="router.push('/settings')">前往设置</m3e-button>
+          <m3e-icon-button @click="bannerDismissed = true">
             <span class="material-symbols-outlined">close</span>
-          </button>
+          </m3e-icon-button>
         </div>
 
         <MediaGrid

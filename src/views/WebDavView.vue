@@ -257,16 +257,16 @@ function typeOf(entry: WebDavEntry) {
           <span v-if="i === 0" class="material-symbols-outlined">home</span>
           {{ c.label }}
         </button>
-        <button class="lm-icon-btn small refresh" title="刷新" @click="refresh">
+        <m3e-icon-button class="refresh" variant="standard" title="刷新" @click="refresh">
           <span class="material-symbols-outlined">refresh</span>
-        </button>
+        </m3e-icon-button>
       </div>
 
       <!-- 错误 -->
       <div v-if="error" class="dav-error">
         <span class="material-symbols-outlined">error</span>
         <span class="err-text">{{ error }}</span>
-        <button class="lm-btn lm-btn--text" @click="load(path)">{{ t("webdav.retry") }}</button>
+        <m3e-button variant="text" @click="load(path)">{{ t("webdav.retry") }}</m3e-button>
       </div>
 
       <!-- 加载骨架 -->
@@ -393,6 +393,8 @@ function typeOf(entry: WebDavEntry) {
   opacity: 0.45;
 }
 .crumbs .refresh {
+  --m3e-icon-button-container-height: 32px;
+  --m3e-icon-button-icon-size: 18px;
   margin-left: 6px;
 }
 

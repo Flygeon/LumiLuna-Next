@@ -89,9 +89,13 @@ onActivated(load);
   <div class="view">
     <PageHeader title="扩展" description="为 LumiLuna 安装独立分发的功能扩展包" />
     <div class="toolbar">
-      <button :disabled="busy !== ''" @click="install('zip')">安装 zip 包</button>
-      <button :disabled="busy !== ''" @click="install('folder')">从文件夹安装</button>
-      <button :disabled="loading" @click="load">刷新</button>
+      <m3e-button variant="tonal" :disabled="busy !== ''" @click="install('zip')">
+        安装 zip 包
+      </m3e-button>
+      <m3e-button variant="tonal" :disabled="busy !== ''" @click="install('folder')">
+        从文件夹安装
+      </m3e-button>
+      <m3e-button variant="outlined" :disabled="loading" @click="load"> 刷新 </m3e-button>
     </div>
     <p v-if="toast" class="toast">{{ toast }}</p>
 
@@ -100,9 +104,9 @@ onActivated(load);
       把扩展 zip（如 miaohui-extension-*.zip）放进来即可启用离线内容检索。
     </div>
 
-    <div v-for="ext in list" :key="ext.id" class="ext-card">
+    <m3e-card v-for="ext in list" :key="ext.id" class="ext-card">
       <div class="head">
-        <div>
+        <div class="info">
           <div class="name">{{ ext.name }}</div>
           <div class="sub">
             id: {{ ext.id }} · v{{ ext.version || "?" }}
@@ -112,54 +116,48 @@ onActivated(load);
           </div>
         </div>
         <div class="ops">
-          <button :disabled="busy === ext.id" @click="toggle(ext)">
-            {{ ext.enabled ? "禁用" : "启用" }}
-          </button>
-          <button class="danger" :disabled="busy === ext.id" @click="uninstall(ext)">卸载</button>
+          <m3e-switch
+            :checked="ext.enabled"
+            :disabled="busy === ext.id"
+            :aria-label="ext.enabled ? '禁用' : '启用'"
+            @change="toggle(ext)"
+          ></m3e-switch>
+          <m3e-button
+            class="danger"
+            variant="outlined"
+            :disabled="busy === ext.id"
+            @click="uninstall(ext)"
+          >
+            卸载
+          </m3e-button>
         </div>
       </div>
-    </div>
+    </m3e-card>
   </div>
 </template>
 
 <style scoped>
 .view {
   padding: 0 20px 40px;
+  max-width: 760px;
 }
 .toolbar {
   display: flex;
   gap: 10px;
   margin: 12px 0;
 }
-.toolbar button {
-  padding: 6px 14px;
-  border-radius: 8px;
-  cursor: pointer;
-  border: 1px solid var(--border, #ccc);
-  background: transparent;
-}
-.toolbar button:hover:not(:disabled) {
-  background: rgba(128, 128, 128, 0.1);
-}
-.toolbar button:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
 .toast {
-  color: #4a90d9;
-  font-size: 13px;
+  color: var(--md-sys-color-primary);
+  font-size: var(--md-sys-typescale-body-small-size);
   margin: 4px 0;
 }
 .empty {
-  color: rgba(128, 128, 128, 0.8);
+  color: var(--md-sys-color-on-surface-variant);
   text-align: center;
   padding: 60px 0;
   line-height: 2;
 }
 .ext-card {
-  border: 1px solid var(--border, #ccc);
-  border-radius: 10px;
-  padding: 12px 16px;
   margin-bottom: 12px;
 }
 .head {
@@ -167,13 +165,17 @@ onActivated(load);
   justify-content: space-between;
   align-items: center;
   gap: 12px;
+  padding: 4px;
+}
+.info {
+  min-width: 0;
 }
 .name {
   font-weight: 500;
 }
 .sub {
   font-size: 12px;
-  color: rgba(128, 128, 128, 0.9);
+  color: var(--md-sys-color-on-surface-variant);
   margin-top: 2px;
 }
 .state {
@@ -183,26 +185,20 @@ onActivated(load);
   font-size: 11px;
 }
 .state.on {
-  background: rgba(74, 144, 217, 0.15);
-  color: #4a90d9;
+  background: color-mix(in srgb, var(--md-sys-color-primary) 15%, transparent);
+  color: var(--md-sys-color-primary);
 }
 .state.off {
-  background: rgba(128, 128, 128, 0.15);
-  color: rgba(128, 128, 128, 0.9);
+  background: var(--md-sys-color-surface-container-highest);
+  color: var(--md-sys-color-on-surface-variant);
 }
 .ops {
   display: flex;
+  align-items: center;
   gap: 8px;
 }
-.ops button {
-  padding: 5px 12px;
-  border-radius: 8px;
-  cursor: pointer;
-  border: 1px solid var(--border, #ccc);
-  background: transparent;
-}
-.ops .danger:hover {
-  background: rgba(220, 80, 80, 0.12);
-  border-color: rgba(220, 80, 80, 0.5);
+.ops .danger {
+  --m3e-button-outline-color: var(--md-sys-color-error);
+  --m3e-button-label-text-color: var(--md-sys-color-error);
 }
 </style>

@@ -215,20 +215,22 @@ onMounted(() => {
       <div v-if="!loginStatus.loggedIn" class="login-bar login-bar--off">
         <span class="material-symbols-outlined">account_circle</span>
         <span class="login-text">{{ t("novel.loginHint") }}</span>
-        <button class="lm-btn lm-btn--filled" :disabled="loggingIn" @click="doLogin">
-          <span v-if="loggingIn" class="material-symbols-outlined spin">progress_activity</span>
-          <span v-else class="material-symbols-outlined">login</span>
+        <m3e-button variant="filled" :disabled="loggingIn" @click="doLogin">
+          <span v-if="loggingIn" slot="icon" class="material-symbols-outlined spin"
+            >progress_activity</span
+          >
+          <span v-else slot="icon" class="material-symbols-outlined">login</span>
           {{ loggingIn ? t("novel.loggingIn") : t("novel.login") }}
-        </button>
+        </m3e-button>
       </div>
       <p v-if="loginBanner" class="login-banner">{{ loginBanner }}</p>
       <div v-if="reloginRequested" class="login-bar login-bar--off">
         <span class="material-symbols-outlined">error</span>
         <span class="login-text">{{ t("novel.reloginHint") }}</span>
-        <button class="lm-btn lm-btn--filled" :disabled="loggingIn" @click="doLogin">
-          <span class="material-symbols-outlined">login</span>
+        <m3e-button variant="filled" :disabled="loggingIn" @click="doLogin">
+          <span slot="icon" class="material-symbols-outlined">login</span>
           {{ t("novel.relogin") }}
-        </button>
+        </m3e-button>
       </div>
 
       <!-- 书架（置顶） -->
@@ -252,18 +254,18 @@ onMounted(() => {
           :placeholder="t('novel.searchPlaceholder')"
           @keyup.enter="doSearch"
         />
-        <button class="lm-btn lm-btn--tonal" @click="doSearch">
-          <span class="material-symbols-outlined">search</span>
+        <m3e-button variant="tonal" @click="doSearch">
+          <span slot="icon" class="material-symbols-outlined">search</span>
           {{ t("novel.search") }}
-        </button>
+        </m3e-button>
       </div>
       <p v-if="searchError" class="error">{{ searchError }}</p>
       <div v-if="homeError" class="home-error">
         <span>{{ homeError }}</span>
-        <button class="lm-btn lm-btn--text" @click="loadHome">
-          <span class="material-symbols-outlined">refresh</span>
+        <m3e-button variant="text" @click="loadHome">
+          <span slot="icon" class="material-symbols-outlined">refresh</span>
           {{ t("novel.retry") }}
-        </button>
+        </m3e-button>
       </div>
       <div v-if="searchResults.length" class="search-results">
         <h3 class="section-title">{{ t("novel.searchResults") }}</h3>
@@ -277,18 +279,21 @@ onMounted(() => {
         <div class="section-head">
           <h3 class="section-title">{{ t("novel.rank") }}</h3>
           <div class="rank-tabs">
-            <button
-              v-for="s in ['allvisit', 'postdate', 'goodnum'] as const"
-              :key="s"
-              class="chip"
-              :class="{ active: rankSort === s }"
-              @click="pickRank(s)"
-            >
-              {{ t("novel.rank_" + s) }}
-            </button>
+            <m3e-chip-set>
+              <m3e-filter-chip
+                v-for="s in ['allvisit', 'postdate', 'goodnum'] as const"
+                :key="s"
+                :selected="rankSort === s"
+                @click="pickRank(s)"
+              >
+                {{ t("novel.rank_" + s) }}
+              </m3e-filter-chip>
+            </m3e-chip-set>
           </div>
         </div>
-        <div v-if="rankLoading" class="state">{{ t("novel.loading") }}</div>
+        <div v-if="rankLoading" class="state">
+          <m3e-circular-progress-indicator />
+        </div>
         <div v-else class="novel-grid">
           <NovelCard v-for="n in rankResults" :key="n.aid" :item="n" @open="openNovel(n)" />
         </div>
@@ -420,22 +425,6 @@ onMounted(() => {
 .rank-tabs {
   display: flex;
   gap: 6px;
-}
-.chip {
-  height: 30px;
-  padding: 0 12px;
-  border: 1px solid var(--md-sys-color-outline-variant);
-  border-radius: var(--md-sys-shape-corner-full);
-  background: transparent;
-  color: var(--md-sys-color-on-surface-variant);
-  font-family: inherit;
-  font-size: var(--md-sys-typescale-label-small-size);
-  cursor: pointer;
-}
-.chip.active {
-  background: var(--md-sys-color-secondary-container);
-  color: var(--md-sys-color-on-secondary-container);
-  border-color: transparent;
 }
 .novel-grid {
   display: grid;

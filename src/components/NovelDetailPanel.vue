@@ -69,18 +69,20 @@ async function toggleShelf() {
 
 <template>
   <div class="novel-detail">
-    <div v-if="loading" class="state">{{ t("novel.loading") }}</div>
+    <div v-if="loading" class="state">
+      <m3e-circular-progress-indicator />
+    </div>
     <p v-else-if="error" class="state error">{{ error }}</p>
     <template v-else-if="detail">
       <div class="head">
-        <button class="back" @click="emit('back')">
-          <span class="material-symbols-outlined">arrow_back</span>
+        <m3e-button variant="text" @click="emit('back')">
+          <span slot="icon" class="material-symbols-outlined">arrow_back</span>
           {{ t("novel.back") }}
-        </button>
+        </m3e-button>
         <div class="head-actions">
-          <button
+          <m3e-button
             v-if="volumes.length && volumes[0].chapters.length"
-            class="lm-btn lm-btn--filled"
+            variant="filled"
             @click="
               void capabilities.appLog(
                 `[detail-panel] 立即阅读点击 aid=${props.aid} cid=${volumes[0].chapters[0].cid} title=${volumes[0].chapters[0].title}`,
@@ -88,15 +90,15 @@ async function toggleShelf() {
               emit('read', volumes[0].chapters[0].cid, volumes[0].chapters[0].title);
             "
           >
-            <span class="material-symbols-outlined">menu_book</span>
+            <span slot="icon" class="material-symbols-outlined">menu_book</span>
             {{ t("novel.readNow") }}
-          </button>
-          <button class="lm-btn lm-btn--tonal" :disabled="shelfBusy" @click="toggleShelf">
-            <span class="material-symbols-outlined">{{
+          </m3e-button>
+          <m3e-button variant="tonal" :disabled="shelfBusy" @click="toggleShelf">
+            <span slot="icon" class="material-symbols-outlined">{{
               inShelf ? "bookmark_remove" : "bookmark_add"
             }}</span>
             {{ inShelf ? t("novel.removeShelf") : t("novel.addShelf") }}
-          </button>
+          </m3e-button>
         </div>
       </div>
 
@@ -125,15 +127,17 @@ async function toggleShelf() {
         <div v-if="volumes.length === 0" class="state">{{ t("novel.emptyCatalogue") }}</div>
         <template v-for="(vol, vi) in volumes" :key="vi">
           <h4 class="volume-title">{{ vol.title || `Vol.${vi + 1}` }}</h4>
-          <button
-            v-for="ch in vol.chapters"
-            :key="ch.cid"
-            class="chapter-row"
-            @click="emit('read', ch.cid, ch.title)"
-          >
-            <span class="material-symbols-outlined">description</span>
-            <span class="chapter-name" :title="ch.title">{{ ch.title }}</span>
-          </button>
+          <m3e-list>
+            <m3e-list-item
+              v-for="ch in vol.chapters"
+              :key="ch.cid"
+              class="chapter-row"
+              @click="emit('read', ch.cid, ch.title)"
+            >
+              <span slot="leading" class="material-symbols-outlined">description</span>
+              <span class="chapter-name" :title="ch.title">{{ ch.title }}</span>
+            </m3e-list-item>
+          </m3e-list>
         </template>
       </div>
     </template>
@@ -166,22 +170,6 @@ async function toggleShelf() {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-.back {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 10px;
-  border: none;
-  border-radius: var(--md-sys-shape-corner-medium);
-  background: transparent;
-  color: var(--md-sys-color-on-surface);
-  font-family: inherit;
-  font-size: var(--md-sys-typescale-body-medium-size);
-  cursor: pointer;
-}
-.back:hover {
-  background: var(--md-sys-color-surface-container);
 }
 .hero {
   display: flex;
@@ -259,28 +247,9 @@ async function toggleShelf() {
   color: var(--md-sys-color-on-surface-variant);
 }
 .chapter-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border: none;
-  border-radius: var(--md-sys-shape-corner-medium);
-  background: transparent;
-  color: var(--md-sys-color-on-surface);
-  font-family: inherit;
-  font-size: var(--md-sys-typescale-body-medium-size);
-  text-align: left;
   cursor: pointer;
 }
-.chapter-row:hover {
-  background: var(--md-sys-color-surface-container);
-}
-.chapter-row .material-symbols-outlined {
-  font-size: 18px;
-  color: var(--md-sys-color-primary);
-}
 .chapter-name {
-  flex: 1;
   min-width: 0;
   white-space: nowrap;
   overflow: hidden;

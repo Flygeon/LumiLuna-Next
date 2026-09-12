@@ -1,7 +1,7 @@
-/** * M3 文本输入对话框：标题 + 单行输入 + 取消/确认。 * 打开时自动聚焦并全选，Enter 确认，Esc /
-点击遮罩取消。 */
+/** * M3 文本输入对话框：m3e-dialog + 单行输入 + 取消/确认。 * 打开时自动聚焦并全选，Enter 确认，Esc
+/ 点击遮罩取消。 */
 <script setup lang="ts">
-import { nextTick, onMounted, ref, watch } from "vue";
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useSettingsStore } from "@/stores/settings";
 import { resolvePrompt, useTextPrompt } from "@/composables/useTextPrompt";
 import { translate } from "@shared/i18n";
@@ -37,87 +37,55 @@ function cancel() {
   resolvePrompt(null);
 }
 
+function onKey(e: KeyboardEvent) {
+  if (!prompt.visible) return;
+  if (e.key === "Escape") cancel();
+}
+
 onMounted(() => {
-  const onKey = (e: KeyboardEvent) => {
-    if (!prompt.visible) return;
-    if (e.key === "Escape") cancel();
-  };
   window.addEventListener("keydown", onKey);
-  // 无 onBeforeUnmount 清理：组件常驻（挂载在 App.vue）
+});
+onBeforeUnmount(() => {
+  window.removeEventListener("keydown", onKey);
 });
 </script>
 
 <template>
-  <Teleport to="body">
-    <div v-if="prompt.visible" class="backdrop" @click.self="cancel">
-      <div class="dlg">
-        <h3 class="dlg-title">{{ prompt.title }}</h3>
-        <input
-          ref="inputRef"
-          v-model="value"
-          class="dlg-input"
-          maxlength="64"
-          @keydown.enter="confirm"
-        />
-        <div class="dlg-actions">
-          <button class="lm-btn lm-btn--text" @click="cancel">
-            {{ t("actions.cancel") }}
-          </button>
-          <button class="lm-btn lm-btn--tonal" :disabled="!value.trim()" @click="confirm">
-            {{ t("actions.confirm") }}
-          </button>
-        </div>
-      </div>
-    </div>
-  </Teleport>
+  <m3e-dialog :open="prompt.visible" class="text-prompt" @cancel.prevent="cancel">
+    <span slot="header" class="dlg-title">{{ prompt.title }}</span>
+    <m3e-form-field class="dlg-field" float-label="outside">
+      <input
+        ref="inputRef"
+        v-model="value"
+        class="dlg-input"
+        maxlength="64"
+        @keydown.enter="confirm"
+      />
+    </m3e-form-field>
+    <span slot="actions">
+      <m3e-button variant="text" @click="cancel">
+        {{ t("actions.cancel") }}
+      </m3e-button>
+      <m3e-button variant="tonal" :disabled="!value.trim()" @click="confirm">
+        {{ t("actions.confirm") }}
+      </m3e-button>
+    </span>
+  </m3e-dialog>
 </template>
 
 <style scoped>
-.backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 2000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.4);
-  animation: fade-in 150ms var(--md-sys-motion-spring-effects-fast);
-}
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-.dlg {
+.text-prompt {
   width: min(360px, calc(100vw - 48px));
-  padding: 24px;
-  background: var(--md-sys-color-surface-container-high);
-  border-radius: var(--md-sys-shape-corner-extra-large);
-  box-shadow: var(--md-elevation-3);
-  animation: dlg-rise 220ms var(--md-sys-motion-spring-spatial);
 }
-@keyframes dlg-rise {
-  from {
-    opacity: 0;
-    transform: scale(0.94) translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
 .dlg-title {
-  margin: 0 0 18px;
   font-size: var(--md-sys-typescale-title-medium-size);
   font-weight: var(--md-sys-typescale-title-medium-weight);
   color: var(--md-sys-color-on-surface);
 }
-
+.dlg-field {
+  width: 100%;
+  margin-top: 18px;
+}
 .dlg-input {
   width: 100%;
   padding: 10px 14px;
@@ -132,12 +100,5 @@ onMounted(() => {
 .dlg-input:focus {
   border-color: var(--md-sys-color-primary);
   box-shadow: 0 0 0 1px var(--md-sys-color-primary);
-}
-
-.dlg-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 20px;
 }
 </style>

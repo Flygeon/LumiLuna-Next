@@ -26,18 +26,18 @@ const roadIndex = ref(0);
 <template>
   <div class="anime-episodes">
     <div class="head">
-      <button class="back" @click="emit('back')">
-        <span class="material-symbols-outlined">arrow_back</span>
+      <m3e-button variant="text" @click="emit('back')">
+        <span slot="icon" class="material-symbols-outlined">arrow_back</span>
         {{ t("anime.back") }}
-      </button>
+      </m3e-button>
       <div class="head-right">
         <span class="src-name" :title="anime.selectedSourceName">
           {{ anime.selectedSourceName }}
         </span>
-        <button class="chip" @click="emit('changeSource')">
-          <span class="material-symbols-outlined">swap_horiz</span>
+        <m3e-button variant="outlined" size="small" @click="emit('changeSource')">
+          <span slot="icon" class="material-symbols-outlined">swap_horiz</span>
           {{ t("anime.changeSource") }}
-        </button>
+        </m3e-button>
       </div>
     </div>
 
@@ -46,36 +46,39 @@ const roadIndex = ref(0);
     <div v-if="anime.episodesLoading" class="state">{{ t("anime.loadingEpisodes") }}</div>
     <div v-else-if="anime.episodesError && !anime.selectedRoads.length" class="state error">
       {{ anime.episodesError }}
-      <button class="lm-btn lm-btn--tonal retry" @click="emit('changeSource')">
-        <span class="material-symbols-outlined">swap_horiz</span>
-        {{ t("anime.changeSource") }}
-      </button>
+      <div>
+        <m3e-button variant="tonal" @click="emit('changeSource')">
+          <span slot="icon" class="material-symbols-outlined">swap_horiz</span>
+          {{ t("anime.changeSource") }}
+        </m3e-button>
+      </div>
     </div>
 
     <template v-else>
       <div v-if="!anime.selectedRoads.length" class="state">{{ t("anime.noEpisodes") }}</div>
       <template v-else>
-        <div class="roads">
-          <button
+        <m3e-chip-set class="roads">
+          <m3e-filter-chip
             v-for="(r, ri) in anime.selectedRoads"
             :key="ri"
-            class="road-chip"
-            :class="{ active: roadIndex === ri }"
+            :selected="roadIndex === ri"
             @click="roadIndex = ri"
           >
             {{ r.name }}
-          </button>
-        </div>
+          </m3e-filter-chip>
+        </m3e-chip-set>
         <div class="ep-grid">
-          <button
+          <m3e-button
             v-for="(ep, ei) in anime.selectedRoads[roadIndex].episodes"
             :key="ei"
             class="ep"
+            variant="tonal"
+            size="small"
             @click="emit('play', roadIndex, ei)"
           >
-            <span class="material-symbols-outlined">play_arrow</span>
+            <span slot="icon" class="material-symbols-outlined">play_arrow</span>
             <span class="ep-name">{{ ep.name }}</span>
-          </button>
+          </m3e-button>
         </div>
       </template>
     </template>
@@ -95,22 +98,6 @@ const roadIndex = ref(0);
   justify-content: space-between;
   gap: 10px;
 }
-.back {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 10px;
-  border: none;
-  border-radius: var(--md-sys-shape-corner-medium);
-  background: transparent;
-  color: var(--md-sys-color-on-surface);
-  font-family: inherit;
-  font-size: var(--md-sys-typescale-body-medium-size);
-  cursor: pointer;
-}
-.back:hover {
-  background: var(--md-sys-color-surface-container);
-}
 .head-right {
   display: flex;
   align-items: center;
@@ -124,27 +111,6 @@ const roadIndex = ref(0);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  height: 30px;
-  padding: 0 12px;
-  border: 1px solid var(--md-sys-color-outline-variant);
-  border-radius: var(--md-sys-shape-corner-full);
-  background: transparent;
-  color: var(--md-sys-color-on-surface-variant);
-  font-family: inherit;
-  font-size: var(--md-sys-typescale-label-small-size);
-  cursor: pointer;
-}
-.chip:hover {
-  color: var(--md-sys-color-primary);
-  border-color: var(--md-sys-color-primary);
-}
-.chip .material-symbols-outlined {
-  font-size: 16px;
 }
 .title {
   margin: 0;
@@ -162,32 +128,10 @@ const roadIndex = ref(0);
   white-space: pre-line;
   line-height: 1.6;
 }
-.retry {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 12px;
-}
 .roads {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-}
-.road-chip {
-  height: 30px;
-  padding: 0 12px;
-  border: 1px solid var(--md-sys-color-outline-variant);
-  border-radius: var(--md-sys-shape-corner-full);
-  background: transparent;
-  color: var(--md-sys-color-on-surface-variant);
-  font-family: inherit;
-  font-size: var(--md-sys-typescale-label-small-size);
-  cursor: pointer;
-}
-.road-chip.active {
-  background: var(--md-sys-color-secondary-container);
-  color: var(--md-sys-color-on-secondary-container);
-  border-color: transparent;
 }
 .ep-grid {
   display: grid;
@@ -195,32 +139,9 @@ const roadIndex = ref(0);
   gap: 8px;
 }
 .ep {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-width: 0;
-  padding: 8px 10px;
-  border: none;
-  border-radius: var(--md-sys-shape-corner-medium);
-  background: var(--md-sys-color-surface-container);
-  color: var(--md-sys-color-on-surface);
-  font-family: inherit;
-  font-size: var(--md-sys-typescale-body-small-size);
-  text-align: left;
-  cursor: pointer;
-  transition: background var(--md-sys-motion-duration-short)
-    var(--md-sys-motion-spring-effects-fast);
-}
-.ep:hover {
-  background: var(--md-sys-color-surface-container-high);
-}
-.ep .material-symbols-outlined {
-  font-size: 15px;
-  color: var(--md-sys-color-primary);
-  flex: none;
+  justify-content: flex-start;
 }
 .ep-name {
-  flex: 1;
   min-width: 0;
   white-space: nowrap;
   overflow: hidden;

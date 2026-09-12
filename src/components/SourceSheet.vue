@@ -136,9 +136,14 @@ const aliasList = computed(() => props.subject?.alias?.slice(0, 12) ?? []);
       <div class="sheet">
         <div class="sheet-head">
           <span class="sheet-title">{{ t("anime.sourceSheetTitle") }}</span>
-          <button class="close" :title="t('anime.exit')" @click="emit('close')">
+          <m3e-icon-button
+            class="close"
+            variant="standard"
+            :title="t('anime.exit')"
+            @click="emit('close')"
+          >
             <span class="material-symbols-outlined">close</span>
-          </button>
+          </m3e-icon-button>
         </div>
 
         <div class="kw-row">
@@ -147,16 +152,12 @@ const aliasList = computed(() => props.subject?.alias?.slice(0, 12) ?? []);
             :placeholder="t('anime.manualSearch')"
             @keyup.enter="doRequeryAll"
           />
-          <button
-            class="lm-btn lm-btn--tonal"
-            :disabled="anime.sourceSearching"
-            @click="doRequeryAll"
-          >
+          <m3e-button variant="tonal" :disabled="anime.sourceSearching" @click="doRequeryAll">
             <span v-if="anime.sourceSearching" class="material-symbols-outlined spin"
               >progress_activity</span
             >
             <span v-else class="material-symbols-outlined">search</span>
-          </button>
+          </m3e-button>
         </div>
 
         <p v-if="anime.sourceSearchError" class="state error">
@@ -202,25 +203,38 @@ const aliasList = computed(() => props.subject?.alias?.slice(0, 12) ?? []);
 
             <!-- 更多操作 -->
             <div v-show="isExpanded(result.pluginName)" class="more-area">
-              <button class="more-toggle" @click="toggleMore(result.pluginName)">
+              <m3e-icon-button
+                class="more-toggle"
+                variant="standard"
+                @click="toggleMore(result.pluginName)"
+              >
                 <span class="material-symbols-outlined">more_vert</span>
-              </button>
+              </m3e-icon-button>
 
               <div v-if="moreOpen.has(result.pluginName)" class="more-panel">
                 <div class="more-actions">
-                  <button
+                  <m3e-button
                     v-if="aliasList.length"
-                    class="act"
+                    variant="outlined"
+                    size="small"
                     @click="doAliasSearch(result.pluginName, aliasList[0])"
                   >
                     {{ t("anime.aliasSearch") }}
-                  </button>
-                  <button class="act" @click="doManualSearch(result.pluginName)">
+                  </m3e-button>
+                  <m3e-button
+                    variant="outlined"
+                    size="small"
+                    @click="doManualSearch(result.pluginName)"
+                  >
                     {{ t("anime.manualSearch") }}
-                  </button>
-                  <button class="act" @click="openInBrowser(result.pluginName)">
+                  </m3e-button>
+                  <m3e-button
+                    variant="outlined"
+                    size="small"
+                    @click="openInBrowser(result.pluginName)"
+                  >
                     {{ t("anime.openInBrowser") }}
-                  </button>
+                  </m3e-button>
                 </div>
                 <div v-if="aliasList.length" class="alias-row">
                   <span
@@ -237,9 +251,9 @@ const aliasList = computed(() => props.subject?.alias?.slice(0, 12) ?? []);
                     :placeholder="t('anime.manualSearch')"
                     @keyup.enter="doManualSearch(result.pluginName)"
                   />
-                  <button class="lm-btn lm-btn--tonal" @click="doManualSearch(result.pluginName)">
+                  <m3e-button variant="tonal" @click="doManualSearch(result.pluginName)">
                     <span class="material-symbols-outlined">search</span>
-                  </button>
+                  </m3e-button>
                 </div>
               </div>
             </div>
@@ -284,18 +298,9 @@ const aliasList = computed(() => props.subject?.alias?.slice(0, 12) ?? []);
   font-weight: 500;
 }
 .close {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border: none;
-  border-radius: var(--md-sys-shape-corner-full);
-  background: transparent;
+  --m3e-icon-button-container-height: 34px;
+  --m3e-icon-button-icon-size: 20px;
   color: var(--md-sys-color-on-surface-variant);
-  cursor: pointer;
-}
-.close:hover {
-  background: var(--md-sys-color-surface-container);
 }
 .state {
   padding: 32px 0;
@@ -425,19 +430,10 @@ const aliasList = computed(() => props.subject?.alias?.slice(0, 12) ?? []);
   padding: 6px 8px;
 }
 .more-toggle {
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
+  --m3e-icon-button-container-height: 30px;
+  --m3e-icon-button-icon-size: 20px;
   margin-left: auto;
-  border: none;
-  border-radius: var(--md-sys-shape-corner-full);
-  background: transparent;
   color: var(--md-sys-color-on-surface-variant);
-  cursor: pointer;
-}
-.more-toggle:hover {
-  background: var(--md-sys-color-surface-container-high);
 }
 .more-panel {
   display: flex;

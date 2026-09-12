@@ -138,19 +138,21 @@ function backToHome() {
     <div v-if="!pixiv.loginStatus.loggedIn" class="login-bar login-bar--off">
       <span class="material-symbols-outlined">account_circle</span>
       <span class="login-text">{{ t("pixiv.loginHint") }}</span>
-      <button class="lm-btn lm-btn--filled" :disabled="loggingIn" @click="doLogin">
-        <span v-if="loggingIn" class="material-symbols-outlined spin">progress_activity</span>
-        <span v-else class="material-symbols-outlined">login</span>
+      <m3e-button variant="filled" :disabled="loggingIn" @click="doLogin">
+        <span v-if="loggingIn" slot="icon" class="material-symbols-outlined spin"
+          >progress_activity</span
+        >
+        <span v-else slot="icon" class="material-symbols-outlined">login</span>
         {{ loggingIn ? t("pixiv.loggingIn") : t("pixiv.login") }}
-      </button>
+      </m3e-button>
     </div>
     <div v-else class="login-bar login-bar--on">
       <span class="material-symbols-outlined">check_circle</span>
       <span class="login-text">{{ t("pixiv.loggedInAs").replace("{name}", loginUserName) }}</span>
-      <button class="lm-btn lm-btn--tonal" @click="doLogout">
-        <span class="material-symbols-outlined">logout</span>
+      <m3e-button variant="tonal" @click="doLogout">
+        <span slot="icon" class="material-symbols-outlined">logout</span>
         {{ t("pixiv.logout") }}
-      </button>
+      </m3e-button>
     </div>
     <p v-if="loginError" class="login-banner">{{ loginError }}</p>
 
@@ -170,10 +172,10 @@ function backToHome() {
     <!-- 我的收藏 -->
     <template v-else-if="pixiv.view === 'bookmarks'">
       <div class="search-head">
-        <button class="back" @click="backToHome">
-          <span class="material-symbols-outlined">arrow_back</span>
+        <m3e-button variant="text" class="back" @click="backToHome">
+          <span slot="icon" class="material-symbols-outlined">arrow_back</span>
           {{ t("pixiv.back") }}
-        </button>
+        </m3e-button>
         <h2 class="page-title">{{ t("pixiv.myBookmarks") }}</h2>
       </div>
       <div v-if="pixiv.loading && !pixiv.bookmarkItems.length" class="state">
@@ -181,9 +183,9 @@ function backToHome() {
       </div>
       <div v-else-if="pixiv.error && !pixiv.bookmarkItems.length" class="state list-error">
         {{ pixiv.error }}
-        <button class="lm-btn lm-btn--text" @click="pixiv.fetchBookmarks()">
-          <span class="material-symbols-outlined">refresh</span>{{ t("pixiv.retry") }}
-        </button>
+        <m3e-button variant="text" @click="pixiv.fetchBookmarks()">
+          <span slot="icon" class="material-symbols-outlined">refresh</span>{{ t("pixiv.retry") }}
+        </m3e-button>
       </div>
       <div v-else-if="pixiv.bookmarkItems.length" class="pixiv-grid">
         <PixivCard
@@ -195,25 +197,23 @@ function backToHome() {
       </div>
       <div v-else class="state">{{ t("pixiv.empty") }}</div>
       <div v-if="pixiv.bookmarkNext" class="load-more">
-        <button
-          class="lm-btn lm-btn--tonal"
-          :disabled="pixiv.loading"
-          @click="pixiv.fetchBookmarksMore()"
-        >
-          <span v-if="pixiv.loading" class="material-symbols-outlined spin">progress_activity</span>
-          <span v-else class="material-symbols-outlined">expand_more</span>
+        <m3e-button variant="tonal" :disabled="pixiv.loading" @click="pixiv.fetchBookmarksMore()">
+          <span v-if="pixiv.loading" slot="icon" class="material-symbols-outlined spin"
+            >progress_activity</span
+          >
+          <span v-else slot="icon" class="material-symbols-outlined">expand_more</span>
           {{ t("pixiv.loadMore") }}
-        </button>
+        </m3e-button>
       </div>
     </template>
 
     <!-- 关注流 -->
     <template v-else-if="pixiv.view === 'follow'">
       <div class="search-head">
-        <button class="back" @click="backToHome">
-          <span class="material-symbols-outlined">arrow_back</span>
+        <m3e-button variant="text" class="back" @click="backToHome">
+          <span slot="icon" class="material-symbols-outlined">arrow_back</span>
           {{ t("pixiv.back") }}
-        </button>
+        </m3e-button>
         <h2 class="page-title">{{ t("pixiv.followFeed") }}</h2>
       </div>
       <div v-if="pixiv.loading && !pixiv.followItems.length" class="state">
@@ -221,9 +221,9 @@ function backToHome() {
       </div>
       <div v-else-if="pixiv.error && !pixiv.followItems.length" class="state list-error">
         {{ pixiv.error }}
-        <button class="lm-btn lm-btn--text" @click="pixiv.fetchFollow()">
-          <span class="material-symbols-outlined">refresh</span>{{ t("pixiv.retry") }}
-        </button>
+        <m3e-button variant="text" @click="pixiv.fetchFollow()">
+          <span slot="icon" class="material-symbols-outlined">refresh</span>{{ t("pixiv.retry") }}
+        </m3e-button>
       </div>
       <div v-else-if="pixiv.followItems.length" class="pixiv-grid">
         <PixivCard
@@ -235,25 +235,23 @@ function backToHome() {
       </div>
       <div v-else class="state">{{ t("pixiv.empty") }}</div>
       <div v-if="pixiv.followNext" class="load-more">
-        <button
-          class="lm-btn lm-btn--tonal"
-          :disabled="pixiv.loading"
-          @click="pixiv.fetchFollowMore()"
-        >
-          <span v-if="pixiv.loading" class="material-symbols-outlined spin">progress_activity</span>
-          <span v-else class="material-symbols-outlined">expand_more</span>
+        <m3e-button variant="tonal" :disabled="pixiv.loading" @click="pixiv.fetchFollowMore()">
+          <span v-if="pixiv.loading" slot="icon" class="material-symbols-outlined spin"
+            >progress_activity</span
+          >
+          <span v-else slot="icon" class="material-symbols-outlined">expand_more</span>
           {{ t("pixiv.loadMore") }}
-        </button>
+        </m3e-button>
       </div>
     </template>
 
     <!-- 作者页 -->
     <template v-else-if="pixiv.view === 'user'">
       <div class="search-head">
-        <button class="back" @click="backToHome">
-          <span class="material-symbols-outlined">arrow_back</span>
+        <m3e-button variant="text" class="back" @click="backToHome">
+          <span slot="icon" class="material-symbols-outlined">arrow_back</span>
           {{ t("pixiv.back") }}
-        </button>
+        </m3e-button>
         <h2 class="page-title">{{ pixiv.userDetail?.user.name || "" }}</h2>
       </div>
 
@@ -271,16 +269,15 @@ function backToHome() {
               {{ pixiv.userDetail.following }} {{ t("pixiv.followFeed") }}
             </span>
           </div>
-          <button
-            class="lm-btn"
-            :class="pixiv.followingAuthor ? 'lm-btn--tonal' : 'lm-btn--filled'"
+          <m3e-button
+            :variant="pixiv.followingAuthor ? 'tonal' : 'filled'"
             @click="pixiv.toggleFollowAuthor(pixiv.userDetail.user.id)"
           >
-            <span class="material-symbols-outlined">{{
+            <span slot="icon" class="material-symbols-outlined">{{
               pixiv.followingAuthor ? "person_remove" : "person_add"
             }}</span>
             {{ pixiv.followingAuthor ? t("pixiv.unfollow") : t("pixiv.follow") }}
-          </button>
+          </m3e-button>
         </div>
 
         <div v-if="pixiv.userIllusts.length" class="pixiv-grid">
@@ -293,17 +290,17 @@ function backToHome() {
         </div>
         <div v-else class="state">{{ t("pixiv.empty") }}</div>
         <div v-if="pixiv.userNext" class="load-more">
-          <button
-            class="lm-btn lm-btn--tonal"
+          <m3e-button
+            variant="tonal"
             :disabled="pixiv.loading"
             @click="pixiv.fetchUserIllustsMore()"
           >
-            <span v-if="pixiv.loading" class="material-symbols-outlined spin"
+            <span v-if="pixiv.loading" slot="icon" class="material-symbols-outlined spin"
               >progress_activity</span
             >
-            <span v-else class="material-symbols-outlined">expand_more</span>
+            <span v-else slot="icon" class="material-symbols-outlined">expand_more</span>
             {{ t("pixiv.loadMore") }}
-          </button>
+          </m3e-button>
         </div>
       </template>
     </template>
@@ -311,10 +308,10 @@ function backToHome() {
     <!-- 搜索结果 -->
     <template v-else-if="pixiv.view === 'search'">
       <div class="search-head">
-        <button class="back" @click="backToHome">
-          <span class="material-symbols-outlined">arrow_back</span>
+        <m3e-button variant="text" class="back" @click="backToHome">
+          <span slot="icon" class="material-symbols-outlined">arrow_back</span>
           {{ t("pixiv.back") }}
-        </button>
+        </m3e-button>
         <h2 class="page-title">{{ t("pixiv.search") }}</h2>
       </div>
 
@@ -324,36 +321,38 @@ function backToHome() {
           :placeholder="t('pixiv.searchPlaceholder')"
           @keyup.enter="doSearch"
         />
-        <button class="lm-btn lm-btn--filled" :disabled="pixiv.loading" @click="doSearch">
-          <span v-if="pixiv.loading" class="material-symbols-outlined spin">progress_activity</span>
-          <span v-else class="material-symbols-outlined">search</span>
+        <m3e-button variant="filled" :disabled="pixiv.loading" @click="doSearch">
+          <span v-if="pixiv.loading" slot="icon" class="material-symbols-outlined spin"
+            >progress_activity</span
+          >
+          <span v-else slot="icon" class="material-symbols-outlined">search</span>
           {{ t("pixiv.search") }}
-        </button>
+        </m3e-button>
       </div>
 
       <!-- 联想词 -->
-      <div v-if="searchWord.trim() && pixiv.suggestions.length" class="suggest-row">
-        <button
+      <m3e-chip-set v-if="searchWord.trim() && pixiv.suggestions.length" class="suggest-row">
+        <m3e-suggestion-chip
           v-for="s in pixiv.suggestions.slice(0, 12)"
           :key="s"
-          class="chip"
           @click="searchTag(s)"
         >
           {{ s }}
-        </button>
-      </div>
+        </m3e-suggestion-chip>
+      </m3e-chip-set>
 
       <div class="sort-row">
         <span class="sort-label">{{ t("pixiv.rank") }}</span>
-        <button
-          v-for="s in SEARCH_SORTS"
-          :key="s.value"
-          class="chip"
-          :class="{ active: searchSort === s.value }"
-          @click="changeSort(s.value)"
-        >
-          {{ s.label() }}
-        </button>
+        <m3e-chip-set>
+          <m3e-filter-chip
+            v-for="s in SEARCH_SORTS"
+            :key="s.value"
+            :selected="searchSort === s.value"
+            @click="changeSort(s.value)"
+          >
+            {{ s.label() }}
+          </m3e-filter-chip>
+        </m3e-chip-set>
       </div>
 
       <div v-if="pixiv.loading && !pixiv.searchItems.length" class="state">
@@ -373,29 +372,27 @@ function backToHome() {
       <div v-else class="state">{{ t("pixiv.empty") }}</div>
 
       <div v-if="pixiv.searchNext" class="load-more">
-        <button
-          class="lm-btn lm-btn--tonal"
-          :disabled="pixiv.loading"
-          @click="pixiv.fetchSearchMore()"
-        >
-          <span v-if="pixiv.loading" class="material-symbols-outlined spin">progress_activity</span>
-          <span v-else class="material-symbols-outlined">expand_more</span>
+        <m3e-button variant="tonal" :disabled="pixiv.loading" @click="pixiv.fetchSearchMore()">
+          <span v-if="pixiv.loading" slot="icon" class="material-symbols-outlined spin"
+            >progress_activity</span
+          >
+          <span v-else slot="icon" class="material-symbols-outlined">expand_more</span>
           {{ t("pixiv.loadMore") }}
-        </button>
+        </m3e-button>
       </div>
     </template>
 
     <!-- 主页 -->
     <template v-else>
       <div v-if="pixiv.loginStatus.loggedIn" class="home-toolbar">
-        <button class="lm-btn lm-btn--tonal" @click="goBookmarks">
-          <span class="material-symbols-outlined">bookmarks</span>
+        <m3e-button variant="tonal" @click="goBookmarks">
+          <span slot="icon" class="material-symbols-outlined">bookmarks</span>
           {{ t("pixiv.myBookmarks") }}
-        </button>
-        <button class="lm-btn lm-btn--tonal" @click="goFollow">
-          <span class="material-symbols-outlined">favorite</span>
+        </m3e-button>
+        <m3e-button variant="tonal" @click="goFollow">
+          <span slot="icon" class="material-symbols-outlined">favorite</span>
           {{ t("pixiv.followFeed") }}
-        </button>
+        </m3e-button>
       </div>
 
       <div class="search-bar">
@@ -404,27 +401,28 @@ function backToHome() {
           :placeholder="t('pixiv.searchPlaceholder')"
           @keyup.enter="doSearch"
         />
-        <button class="lm-btn lm-btn--tonal" :disabled="pixiv.loading" @click="doSearch">
-          <span v-if="pixiv.loading" class="material-symbols-outlined spin">progress_activity</span>
-          <span v-else class="material-symbols-outlined">search</span>
+        <m3e-button variant="tonal" :disabled="pixiv.loading" @click="doSearch">
+          <span v-if="pixiv.loading" slot="icon" class="material-symbols-outlined spin"
+            >progress_activity</span
+          >
+          <span v-else slot="icon" class="material-symbols-outlined">search</span>
           {{ t("pixiv.search") }}
-        </button>
+        </m3e-button>
       </div>
 
       <!-- 热门标签 -->
       <div v-if="pixiv.trendTags.length" class="trend-row">
         <span class="sort-label">{{ t("pixiv.hotTags") }}</span>
-        <div class="trend-chips">
-          <button
+        <m3e-chip-set class="trend-chips">
+          <m3e-suggestion-chip
             v-for="tag in pixiv.trendTags.slice(0, 10)"
             :key="tag.name"
-            class="chip"
             :title="tag.translatedName || tag.name"
             @click="searchTag(tag)"
           >
             # {{ tag.translatedName || tag.name }}
-          </button>
-        </div>
+          </m3e-suggestion-chip>
+        </m3e-chip-set>
       </div>
 
       <!-- 推荐 -->
@@ -438,9 +436,9 @@ function backToHome() {
         </div>
         <div v-else-if="pixiv.error && !pixiv.recommended.length" class="state list-error">
           {{ pixiv.error }}
-          <button class="lm-btn lm-btn--text" @click="pixiv.fetchRecommended()">
-            <span class="material-symbols-outlined">refresh</span>{{ t("pixiv.retry") }}
-          </button>
+          <m3e-button variant="text" @click="pixiv.fetchRecommended()">
+            <span slot="icon" class="material-symbols-outlined">refresh</span>{{ t("pixiv.retry") }}
+          </m3e-button>
         </div>
         <div v-else-if="pixiv.recommended.length" class="pixiv-grid">
           <PixivCard
@@ -452,17 +450,17 @@ function backToHome() {
         </div>
         <div v-else class="state">{{ t("pixiv.empty") }}</div>
         <div v-if="pixiv.recommendedNext" class="load-more">
-          <button
-            class="lm-btn lm-btn--tonal"
+          <m3e-button
+            variant="tonal"
             :disabled="pixiv.loading"
             @click="pixiv.fetchRecommendedMore()"
           >
-            <span v-if="pixiv.loading" class="material-symbols-outlined spin"
+            <span v-if="pixiv.loading" slot="icon" class="material-symbols-outlined spin"
               >progress_activity</span
             >
-            <span v-else class="material-symbols-outlined">expand_more</span>
+            <span v-else slot="icon" class="material-symbols-outlined">expand_more</span>
             {{ t("pixiv.loadMore") }}
-          </button>
+          </m3e-button>
         </div>
       </section>
 
@@ -473,17 +471,16 @@ function backToHome() {
             <span class="material-symbols-outlined">leaderboard</span>
             {{ t("pixiv.rank") }}
           </h3>
-          <div class="rank-tabs">
-            <button
+          <m3e-chip-set class="rank-tabs">
+            <m3e-filter-chip
               v-for="m in RANK_MODES"
               :key="m.value"
-              class="chip"
-              :class="{ active: rankMode === m.value }"
+              :selected="rankMode === m.value"
               @click="pickRank(m.value)"
             >
               {{ m.label() }}
-            </button>
-          </div>
+            </m3e-filter-chip>
+          </m3e-chip-set>
         </div>
         <div v-if="pixiv.loading && !pixiv.ranking.length" class="state">
           {{ t("pixiv.loading") }}
@@ -498,17 +495,13 @@ function backToHome() {
         </div>
         <div v-else class="state">{{ t("pixiv.empty") }}</div>
         <div v-if="pixiv.rankingNext" class="load-more">
-          <button
-            class="lm-btn lm-btn--tonal"
-            :disabled="pixiv.loading"
-            @click="pixiv.fetchRankingMore()"
-          >
-            <span v-if="pixiv.loading" class="material-symbols-outlined spin"
+          <m3e-button variant="tonal" :disabled="pixiv.loading" @click="pixiv.fetchRankingMore()">
+            <span v-if="pixiv.loading" slot="icon" class="material-symbols-outlined spin"
               >progress_activity</span
             >
-            <span v-else class="material-symbols-outlined">expand_more</span>
+            <span v-else slot="icon" class="material-symbols-outlined">expand_more</span>
             {{ t("pixiv.loadMore") }}
-          </button>
+          </m3e-button>
         </div>
       </section>
     </template>
@@ -531,22 +524,6 @@ function backToHome() {
   display: flex;
   align-items: center;
   gap: 10px;
-}
-.back {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 10px;
-  border: none;
-  border-radius: var(--md-sys-shape-corner-medium);
-  background: transparent;
-  color: var(--md-sys-color-on-surface);
-  font-family: inherit;
-  font-size: var(--md-sys-typescale-body-medium-size);
-  cursor: pointer;
-}
-.back:hover {
-  background: var(--md-sys-color-surface-container);
 }
 .page-title {
   margin: 0;
@@ -606,28 +583,6 @@ function backToHome() {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
-}
-.chip {
-  display: inline-flex;
-  align-items: center;
-  height: 28px;
-  padding: 0 12px;
-  border: 1px solid var(--md-sys-color-outline-variant);
-  border-radius: var(--md-sys-shape-corner-full);
-  background: transparent;
-  color: var(--md-sys-color-on-surface-variant);
-  font-family: inherit;
-  font-size: var(--md-sys-typescale-label-small-size);
-  cursor: pointer;
-}
-.chip:hover {
-  color: var(--md-sys-color-primary);
-  border-color: var(--md-sys-color-primary);
-}
-.chip.active {
-  background: var(--md-sys-color-primary-container);
-  color: var(--md-sys-color-on-primary-container);
-  border-color: transparent;
 }
 .section {
   display: flex;

@@ -204,9 +204,10 @@ onBeforeUnmount(() => {
 
         <div class="controls">
           <div class="ctrl-group left">
-            <button
+            <m3e-icon-button
               class="side-btn"
-              :class="{ active: player.repeatMode !== 'off' }"
+              toggle
+              :selected="player.repeatMode !== 'off'"
               :title="t('player.repeat')"
               @click="player.cycleRepeat()"
             >
@@ -215,45 +216,49 @@ onBeforeUnmount(() => {
                 :class="{ filled: player.repeatMode !== 'off' }"
                 >{{ player.repeatMode === "one" ? "repeat_one" : "repeat" }}</span
               >
-            </button>
-            <button
+            </m3e-icon-button>
+            <m3e-icon-button
               class="side-btn"
-              :class="{ active: player.shuffleMode }"
+              toggle
+              :selected="player.shuffleMode"
               :title="t('player.shuffle')"
               @click="player.toggleShuffle()"
             >
               <span class="material-symbols-outlined" :class="{ filled: player.shuffleMode }"
                 >shuffle</span
               >
-            </button>
+            </m3e-icon-button>
           </div>
           <div class="ctrl-group center">
-            <button class="side-btn" :title="t('player.prev')" @click="player.previous()">
+            <m3e-icon-button class="side-btn" :title="t('player.prev')" @click="player.previous()">
               <span class="material-symbols-outlined filled">skip_previous</span>
-            </button>
-            <button
+            </m3e-icon-button>
+            <m3e-fab
               class="main-btn"
+              variant="primary"
+              size="medium"
               :title="player.playing ? t('player.pause') : t('player.play')"
               @click="player.togglePlay()"
             >
               <PlayerControlIcon :name="player.playing ? 'pause' : 'play'" />
-            </button>
-            <button class="side-btn" :title="t('player.next')" @click="player.next()">
+            </m3e-fab>
+            <m3e-icon-button class="side-btn" :title="t('player.next')" @click="player.next()">
               <span class="material-symbols-outlined filled">skip_next</span>
-            </button>
+            </m3e-icon-button>
           </div>
           <div class="ctrl-group right">
             <!-- 功能面板：向上悬浮展开歌词 / 队列 / 音效 + 逐字方案 + 翻译 -->
             <div ref="panelAnchor" class="panel-anchor" @pointerdown.stop>
-              <button
+              <m3e-icon-button
                 class="side-btn panel-toggle"
-                :class="{ active: panelOpen }"
+                toggle
+                :selected="panelOpen"
                 :title="t('player.tools')"
                 :aria-label="t('player.tools')"
                 @click="panelOpen = !panelOpen"
               >
                 <span class="material-symbols-outlined">tune</span>
-              </button>
+              </m3e-icon-button>
 
               <Transition name="panel-pop">
                 <div v-if="panelOpen" class="tools-panel">
@@ -317,7 +322,7 @@ onBeforeUnmount(() => {
                 </div>
               </Transition>
             </div>
-            <button class="side-btn speed" @click="cycleSpeed">{{ speed }}x</button>
+            <m3e-button class="speed" variant="text" @click="cycleSpeed">{{ speed }}x</m3e-button>
           </div>
         </div>
       </div>
@@ -411,10 +416,6 @@ onBeforeUnmount(() => {
 }
 .panel-toggle:hover {
   opacity: 1;
-}
-.panel-toggle.active {
-  opacity: 1;
-  color: #fff;
 }
 .panel-toggle .material-symbols-outlined {
   font-size: 21px;
@@ -614,46 +615,27 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 10px;
 }
+/* 主播放按钮：m3e-fab(primary)，64dp 圆形，主色底/主色上图标 */
 .main-btn {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  border: 1px solid color-mix(in srgb, var(--md-sys-color-primary) 70%, transparent);
-  background: var(--md-sys-color-primary);
-  color: var(--md-sys-color-on-primary);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: var(--md-elevation-2);
-  transition:
-    transform 200ms var(--md-sys-motion-spring),
-    box-shadow 200ms var(--md-sys-motion-spring-effects-fast);
+  --m3e-fab-medium-container-height: 64px;
+  --m3e-fab-medium-container-width: 64px;
+  --m3e-fab-medium-shape: 50%;
+  --m3e-fab-icon-size: 34px;
 }
 .main-btn .player-control-icon {
   width: 34px;
   height: 30px;
   filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.2));
 }
-.main-btn:hover {
-  transform: scale(1.04);
-  box-shadow: var(--md-elevation-3);
-}
-.main-btn:active {
-  transform: scale(0.8);
-}
+
+/* 侧边传输图标按钮：m3e-icon-button(standard)，44dp 圆形、浅色图标、投影 */
 .side-btn {
-  width: 44px;
-  height: 44px;
-  border: 1px solid color-mix(in srgb, var(--md-sys-color-on-surface) 22%, transparent);
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--md-sys-color-surface-container-high) 72%, transparent);
-  color: var(--md-sys-color-on-surface);
-  opacity: 0.9;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  --m3e-icon-button-medium-container-height: 44px;
+  --m3e-icon-button-medium-container-width: 44px;
+  --m3e-icon-button-medium-shape-round: 50%;
+  --m3e-icon-button-medium-icon-size: 21px;
+  --m3e-icon-button-icon-color: var(--md-sys-color-on-surface);
+  --m3e-icon-button-hover-icon-color: var(--md-sys-color-on-surface);
   filter: drop-shadow(0 0 8px rgba(0, 0, 0, 0.25));
 }
 .side-btn .material-symbols-outlined {
@@ -664,18 +646,16 @@ onBeforeUnmount(() => {
     "GRAD" 0,
     "opsz" 24;
 }
-.side-btn.active {
-  opacity: 1;
-  color: var(--md-sys-color-primary);
-  border-color: var(--md-sys-color-primary);
-  background: color-mix(in srgb, var(--md-sys-color-primary-container) 72%, transparent);
-}
-.side-btn:active {
-  transform: scale(0.8);
+/* 选中态（重复/随机/工具面板）：图标转主色 */
+.side-btn[selected] {
+  --m3e-icon-button-icon-color: var(--md-sys-color-primary);
+  --m3e-icon-button-hover-icon-color: var(--md-sys-color-primary);
 }
 .speed {
-  font-size: 13px;
-  width: 44px;
+  width: 48px;
+  min-width: 48px;
+  --m3e-button-text-label-text-font-size: 13px;
+  --m3e-button-label-text-color: var(--md-sys-color-on-surface);
 }
 .segment {
   display: flex;

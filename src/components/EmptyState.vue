@@ -57,12 +57,12 @@ const isAlert = computed(() => props.variant === "error" || props.variant === "o
     <h3 class="title">{{ title }}</h3>
     <p v-if="description" class="description">{{ description }}</p>
     <div v-if="actionLabel || secondaryLabel" class="actions">
-      <button v-if="actionLabel" class="lm-btn lm-btn--filled" @click="emit('action')">
+      <m3e-button v-if="actionLabel" variant="filled" @click="emit('action')">
         {{ actionLabel }}
-      </button>
-      <button v-if="secondaryLabel" class="lm-btn lm-btn--text" @click="emit('secondary')">
+      </m3e-button>
+      <m3e-button v-if="secondaryLabel" variant="text" @click="emit('secondary')">
         {{ secondaryLabel }}
-      </button>
+      </m3e-button>
     </div>
   </div>
 </template>

@@ -180,16 +180,15 @@ const infoRows = computed(() => {
   <div class="viewer" @click.self="emit('close')">
     <!-- 顶栏 -->
     <header class="bar top">
-      <button class="vbtn" title="关闭 (Esc)" @click="emit('close')">
+      <m3e-icon-button title="关闭 (Esc)" @click="emit('close')">
         <span class="material-symbols-outlined">close</span>
-      </button>
+      </m3e-icon-button>
       <div class="titles">
         <span class="name">{{ current?.title || current?.name }}</span>
         <span class="counter tabular-nums">{{ index + 1 }} / {{ items.length }}</span>
       </div>
       <div class="tools">
-        <button
-          class="vbtn"
+        <m3e-icon-button
           :class="{ on: current?.favorite }"
           title="收藏 (F)"
           @click="current && emit('favorite', current)"
@@ -197,23 +196,37 @@ const infoRows = computed(() => {
           <span class="material-symbols-outlined" :class="{ filled: current?.favorite }"
             >favorite</span
           >
-        </button>
-        <button class="vbtn" title="信息 (I)" @click="showInfo = !showInfo">
+        </m3e-icon-button>
+        <m3e-icon-button title="信息 (I)" @click="showInfo = !showInfo">
           <span class="material-symbols-outlined">info</span>
-        </button>
-        <button class="vbtn" title="用系统应用打开" @click="openExternally">
+        </m3e-icon-button>
+        <m3e-icon-button title="用系统应用打开" @click="openExternally">
           <span class="material-symbols-outlined">open_in_new</span>
-        </button>
+        </m3e-icon-button>
       </div>
     </header>
 
     <!-- 左右切换 -->
-    <button v-if="index > 0" class="nav prev" title="上一个 (←)" @click.stop="prev">
+    <m3e-icon-button
+      v-if="index > 0"
+      variant="filled"
+      size="large"
+      class="nav prev"
+      title="上一个 (←)"
+      @click.stop="prev"
+    >
       <span class="material-symbols-outlined">chevron_left</span>
-    </button>
-    <button v-if="index < items.length - 1" class="nav next" title="下一个 (→)" @click.stop="next">
+    </m3e-icon-button>
+    <m3e-icon-button
+      v-if="index < items.length - 1"
+      variant="filled"
+      size="large"
+      class="nav next"
+      title="下一个 (→)"
+      @click.stop="next"
+    >
       <span class="material-symbols-outlined">chevron_right</span>
-    </button>
+    </m3e-icon-button>
 
     <!-- 主体 -->
     <div
@@ -253,7 +266,7 @@ const infoRows = computed(() => {
       <div v-else class="fallback" @click.stop>
         <span class="material-symbols-outlined">menu_book</span>
         <p>{{ current?.name }}</p>
-        <button class="lm-btn lm-btn--filled" @click="openExternally">用系统应用打开</button>
+        <m3e-button variant="filled" @click="openExternally">用系统应用打开</m3e-button>
       </div>
 
       <div v-if="loadingImage && current?.type === 'image'" class="spinner"></div>
@@ -327,29 +340,18 @@ const infoRows = computed(() => {
   gap: 4px;
 }
 
-.vbtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border: none;
-  border-radius: 50%;
-  background: transparent;
-  color: #fff;
-  cursor: pointer;
-  transition:
-    background 160ms var(--md-sys-motion-spring-effects-fast),
-    transform 140ms var(--md-sys-motion-spring);
+/* 顶栏图标按钮：m3e-icon-button（standard），深色查看器里强制白色图标 */
+.bar m3e-icon-button {
+  --m3e-standard-icon-button-icon-color: #fff;
+  --m3e-standard-icon-button-hover-icon-color: #fff;
+  --m3e-standard-icon-button-hover-state-layer-color: #fff;
+  --m3e-standard-icon-button-hover-state-layer-opacity: 0.14;
+  --m3e-standard-icon-button-pressed-state-layer-color: #fff;
+  --m3e-standard-icon-button-pressed-state-layer-opacity: 0.2;
 }
-.vbtn:hover {
-  background: rgba(255, 255, 255, 0.14);
-}
-.vbtn:active {
-  transform: scale(0.92);
-}
-.vbtn.on {
-  color: #ff6b81;
+.bar m3e-icon-button.on {
+  --m3e-standard-icon-button-icon-color: #ff6b81;
+  --m3e-standard-icon-button-hover-icon-color: #ff6b81;
 }
 
 .stage {
@@ -393,27 +395,20 @@ const infoRows = computed(() => {
   }
 }
 
+/* 左右切换：m3e-icon-button（filled），半透明白底圆钮 */
 .nav {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
+  z-index: 3;
+  --m3e-filled-icon-button-container-color: rgba(255, 255, 255, 0.1);
+  --m3e-filled-icon-button-icon-color: #fff;
+  --m3e-filled-icon-button-hover-container-color: rgba(255, 255, 255, 0.22);
+  --m3e-filled-icon-button-hover-icon-color: #fff;
+  --m3e-icon-button-large-container-height: 52px;
+  --m3e-icon-button-large-icon-size: 30px;
   width: 52px;
   height: 52px;
-  border: none;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
-  cursor: pointer;
-  z-index: 3;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition:
-    background 160ms var(--md-sys-motion-spring-effects-fast),
-    transform 160ms;
-}
-.nav:hover {
-  background: rgba(255, 255, 255, 0.22);
 }
 .nav .material-symbols-outlined {
   font-size: 30px;

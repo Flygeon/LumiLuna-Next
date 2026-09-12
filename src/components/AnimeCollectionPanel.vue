@@ -105,25 +105,27 @@ async function disconnect() {
 <template>
   <div class="bangumi-collect">
     <div class="head">
-      <button class="back" @click="emit('back')">
-        <span class="material-symbols-outlined">arrow_back</span>
+      <m3e-button variant="text" @click="emit('back')">
+        <span slot="icon" class="material-symbols-outlined">arrow_back</span>
         {{ t("anime.back") }}
-      </button>
+      </m3e-button>
       <h2 class="page-title">
         <span class="material-symbols-outlined">subscriptions</span>
         {{ t("anime.myCollection") }}
       </h2>
-      <button
+      <m3e-button
         v-if="collect.authorized"
-        class="lm-btn lm-btn--tonal"
+        variant="tonal"
         :disabled="collect.listLoading"
         @click="collect.pull()"
       >
-        <span class="material-symbols-outlined" :class="{ spin: collect.listLoading }">sync</span>
+        <span slot="icon" class="material-symbols-outlined" :class="{ spin: collect.listLoading }"
+          >sync</span
+        >
         {{
           collect.listLoading && collect.syncProgress ? collect.syncProgress : t("anime.syncNow")
         }}
-      </button>
+      </m3e-button>
     </div>
 
     <!-- 未连接：授权卡片（有离线缓存时仍可先逛列表） -->
@@ -134,9 +136,9 @@ async function disconnect() {
       </h3>
       <p class="auth-hint">
         {{ t("anime.bangumiTokenHint") }}
-        <button class="link-btn" @click="openTokenPage">
+        <m3e-button variant="text" size="small" @click="openTokenPage">
           {{ t("anime.bangumiTokenGuide") }}
-        </button>
+        </m3e-button>
         {{ t("anime.bangumiTokenSuffix") }}
       </p>
       <div class="token-row">
@@ -148,15 +150,13 @@ async function disconnect() {
           :placeholder="t('anime.bangumiTokenPlaceholder')"
           @keyup.enter="connect"
         />
-        <button
-          class="lm-btn lm-btn--filled"
-          :disabled="connecting || !tokenDraft.trim()"
-          @click="connect"
-        >
-          <span v-if="connecting" class="material-symbols-outlined spin">progress_activity</span>
-          <span v-else class="material-symbols-outlined">login</span>
+        <m3e-button variant="filled" :disabled="connecting || !tokenDraft.trim()" @click="connect">
+          <span v-if="connecting" slot="icon" class="material-symbols-outlined spin"
+            >progress_activity</span
+          >
+          <span v-else slot="icon" class="material-symbols-outlined">login</span>
           {{ t("anime.bangumiConnectBtn") }}
-        </button>
+        </m3e-button>
       </div>
       <p v-if="collect.authError" class="auth-error">{{ collect.authError }}</p>
       <p v-else-if="collect.authState === 'checking'" class="auth-pending">
@@ -174,24 +174,24 @@ async function disconnect() {
           {{ collect.user?.nickname || settings.bangumiUsername || t("anime.offlineCache") }}
         </span>
         <span class="sync-at">{{ collect.listLoading ? collect.syncProgress : syncedLabel }}</span>
-        <button v-if="collect.authorized" class="lm-btn lm-btn--text" @click="disconnect">
+        <m3e-button v-if="collect.authorized" variant="text" size="small" @click="disconnect">
           {{ t("anime.bangumiDisconnect") }}
-        </button>
+        </m3e-button>
       </div>
 
-      <div class="tabs">
-        <button
+      <m3e-segmented-button class="tabs">
+        <m3e-button-segment
           v-for="tabItem in TABS"
           :key="tabItem.key"
-          class="tab"
-          :class="{ active: tab === tabItem.key }"
+          :value="tabItem.key"
+          :selected="tab === tabItem.key"
           @click="tab = tabItem.key"
         >
-          <span class="material-symbols-outlined">{{ tabItem.icon }}</span>
+          <span slot="icon" class="material-symbols-outlined">{{ tabItem.icon }}</span>
           {{ tabLabel(tabItem.key) }}
           <span class="cnt">{{ counts[tabItem.key] ?? 0 }}</span>
-        </button>
-      </div>
+        </m3e-button-segment>
+      </m3e-segmented-button>
 
       <div v-if="visible.length" class="anime-grid">
         <AnimeCard
@@ -235,22 +235,6 @@ async function disconnect() {
   font-size: 24px;
   color: var(--md-sys-color-primary);
 }
-.back {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 10px;
-  border: none;
-  border-radius: var(--md-sys-shape-corner-medium);
-  background: transparent;
-  color: var(--md-sys-color-on-surface);
-  font-family: inherit;
-  font-size: var(--md-sys-typescale-body-medium-size);
-  cursor: pointer;
-}
-.back:hover {
-  background: var(--md-sys-color-surface-container);
-}
 .spin {
   animation: lm-spin 1s linear infinite;
 }
@@ -283,16 +267,6 @@ async function disconnect() {
   font-size: var(--md-sys-typescale-body-small-size);
   line-height: 1.6;
   opacity: 0.92;
-}
-.link-btn {
-  border: none;
-  background: transparent;
-  color: inherit;
-  font-family: inherit;
-  font-size: inherit;
-  text-decoration: underline;
-  cursor: pointer;
-  padding: 0;
 }
 .token-row {
   display: flex;
@@ -357,38 +331,8 @@ async function disconnect() {
 }
 
 .tabs {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-  padding: 3px;
   width: fit-content;
-  border-radius: var(--md-sys-shape-corner-full);
-  background: var(--md-sys-color-surface-container);
-}
-.tab {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 6px 14px;
-  border: none;
-  border-radius: var(--md-sys-shape-corner-full);
-  background: transparent;
-  color: var(--md-sys-color-on-surface-variant);
-  font-family: inherit;
-  font-size: var(--md-sys-typescale-label-large-size);
-  cursor: pointer;
-  transition: background var(--md-sys-motion-duration-short)
-    var(--md-sys-motion-spring-effects-fast);
-}
-.tab .material-symbols-outlined {
-  font-size: 16px;
-}
-.tab:hover {
-  background: var(--md-sys-color-surface-container-high);
-}
-.tab.active {
-  background: var(--md-sys-color-primary-container);
-  color: var(--md-sys-color-on-primary-container);
+  max-width: 100%;
 }
 .cnt {
   font-size: var(--md-sys-typescale-label-small-size);

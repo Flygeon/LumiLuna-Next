@@ -99,7 +99,7 @@ onMounted(loadAll);
     <p v-else-if="status === 'error'" class="feed-error">
       <span class="material-symbols-outlined">error</span>
       {{ error }}
-      <button class="lm-btn lm-btn--text" @click="loadAll">{{ t("actions.retry") }}</button>
+      <m3e-button variant="text" @click="loadAll">{{ t("actions.retry") }}</m3e-button>
     </p>
 
     <template v-else>

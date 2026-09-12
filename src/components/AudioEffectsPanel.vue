@@ -181,6 +181,14 @@ function importPreset() {
 }
 
 const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k` : String(hz));
+
+/** m3e-slider / m3e-switch 事件读取：custom element 上的最新值 */
+function sliderValue(e: Event): number {
+  return Number((e.target as HTMLElement & { value: number | string }).value);
+}
+function switchSelected(e: Event): boolean {
+  return Boolean((e.target as HTMLElement & { selected: boolean }).selected);
+}
 </script>
 
 <template>
@@ -188,10 +196,9 @@ const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k
     <label class="enable-row">
       <span class="material-symbols-outlined">graphic_eq</span>
       <span class="enable-label">{{ t("player.effectsEnable") }}</span>
-      <input
-        type="checkbox"
-        :checked="effects.config.enabled"
-        @change="effects.setEnabled(($event.target as HTMLInputElement).checked)"
+      <m3e-switch
+        :selected="effects.config.enabled"
+        @change="effects.setEnabled(switchSelected($event))"
       />
     </label>
 
@@ -200,38 +207,37 @@ const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k
       <section class="ef-section">
         <h4 class="ef-title">{{ t("player.effectsPresets") }}</h4>
         <div class="preset-list">
-          <button
+          <m3e-filter-chip
             v-for="p in effects.builtinPresets"
             :key="p.id"
-            class="chip"
-            :class="{ active: isActive(p.id) }"
+            :selected="isActive(p.id)"
             @click="applyPreset(p.id)"
           >
             {{ p.name }}
-          </button>
+          </m3e-filter-chip>
           <span
             v-for="p in effects.userPresets"
             :key="p.id"
             class="user-preset"
             :class="{ active: isActive(p.id) }"
           >
-            <button class="chip user" @click="applyPreset(p.id)">
+            <m3e-filter-chip :selected="isActive(p.id)" @click="applyPreset(p.id)">
               {{ p.name }}
-            </button>
-            <button
+            </m3e-filter-chip>
+            <m3e-icon-button
               class="preset-action"
               :title="t('player.effectsShare')"
               @click="showSharePopup(p.id)"
             >
               <span class="material-symbols-outlined">ios_share</span>
-            </button>
-            <button
+            </m3e-icon-button>
+            <m3e-icon-button
               class="preset-action preset-delete"
               :title="t('player.effectsDelete')"
               @click="deletePreset(p.id)"
             >
               <span class="material-symbols-outlined">close</span>
-            </button>
+            </m3e-icon-button>
           </span>
         </div>
         <div class="save-preset">
@@ -240,10 +246,10 @@ const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k
             :placeholder="t('player.effectsSaveName')"
             @keyup.enter="savePreset"
           />
-          <button class="lm-btn lm-btn--tonal" @click="savePreset">
-            <span class="material-symbols-outlined">save</span>
+          <m3e-button variant="tonal" @click="savePreset">
+            <span slot="icon" class="material-symbols-outlined">save</span>
             {{ t("player.effectsSave") }}
-          </button>
+          </m3e-button>
         </div>
         <div class="import-preset">
           <input
@@ -251,10 +257,10 @@ const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k
             :placeholder="t('player.effectsImportCode')"
             @keyup.enter="importPreset"
           />
-          <button class="lm-btn lm-btn--tonal" @click="importPreset">
-            <span class="material-symbols-outlined">input</span>
+          <m3e-button variant="tonal" @click="importPreset">
+            <span slot="icon" class="material-symbols-outlined">input</span>
             {{ t("player.effectsImport") }}
-          </button>
+          </m3e-button>
         </div>
         <p v-if="shareStatus" class="share-status" :class="shareStatus">
           {{ t(`player.effectsShare${shareStatus[0].toUpperCase()}${shareStatus.slice(1)}`) }}
@@ -267,13 +273,15 @@ const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k
         <div class="eq-grid">
           <label v-for="(band, i) in effects.config.eqBands" :key="band.frequency" class="eq-band">
             <span class="eq-freq">{{ frequencyLabel(band.frequency) }}</span>
-            <input
-              type="range"
-              min="-12"
-              max="12"
-              step="1"
+            <m3e-slider
+              class="eq-slider"
+              orientation="vertical"
+              :min="-12"
+              :max="12"
+              :step="1"
               :value="band.gain"
-              @input="effects.setEqBand(i, Number(($event.target as HTMLInputElement).value))"
+              :disabled="!effects.config.enabled"
+              @input="effects.setEqBand(i, sliderValue($event))"
             />
             <span class="eq-value tabular-nums">{{
               band.gain > 0 ? `+${band.gain}` : band.gain
@@ -290,13 +298,14 @@ const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k
             <span class="material-symbols-outlined">sensors</span>
             {{ t("player.effectsBass") }}
           </span>
-          <input
-            type="range"
-            min="-12"
-            max="12"
-            step="1"
+          <m3e-slider
+            class="env-slider"
+            :min="-12"
+            :max="12"
+            :step="1"
             :value="effects.config.bassBoost"
-            @input="effects.setBassBoost(Number(($event.target as HTMLInputElement).value))"
+            :disabled="!effects.config.enabled"
+            @input="effects.setBassBoost(sliderValue($event))"
           />
           <span class="slider-value tabular-nums">{{ effects.config.bassBoost }}</span>
         </label>
@@ -305,13 +314,14 @@ const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k
             <span class="material-symbols-outlined">surround_sound</span>
             {{ t("player.effectsReverb") }}
           </span>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            step="1"
+          <m3e-slider
+            class="env-slider"
+            :min="0"
+            :max="100"
+            :step="1"
             :value="effects.config.reverb"
-            @input="effects.setReverb(Number(($event.target as HTMLInputElement).value))"
+            :disabled="!effects.config.enabled"
+            @input="effects.setReverb(sliderValue($event))"
           />
           <span class="slider-value tabular-nums">{{ effects.config.reverb }}</span>
         </label>
@@ -320,22 +330,23 @@ const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k
             <span class="material-symbols-outlined">swap_horiz</span>
             {{ t("player.effectsStereo") }}
           </span>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            step="1"
+          <m3e-slider
+            class="env-slider"
+            :min="0"
+            :max="100"
+            :step="1"
             :value="effects.config.stereoWidth"
-            @input="effects.setStereoWidth(Number(($event.target as HTMLInputElement).value))"
+            :disabled="!effects.config.enabled"
+            @input="effects.setStereoWidth(sliderValue($event))"
           />
           <span class="slider-value tabular-nums">{{ effects.config.stereoWidth }}</span>
         </label>
       </section>
 
-      <button class="lm-btn lm-btn--text reset" @click="effects.resetToFlat()">
-        <span class="material-symbols-outlined">restart_alt</span>
+      <m3e-button class="reset" variant="text" @click="effects.resetToFlat()">
+        <span slot="icon" class="material-symbols-outlined">restart_alt</span>
         {{ t("player.effectsReset") }}
-      </button>
+      </m3e-button>
     </fieldset>
 
     <!-- 分享选择弹窗 -->
@@ -353,9 +364,9 @@ const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k
               <span class="popup-opt-label">{{ t("player.effectsShareUpload") }}</span>
             </button>
           </div>
-          <button class="popup-close" @click="closeSharePopup">
+          <m3e-icon-button class="popup-close" @click="closeSharePopup">
             <span class="material-symbols-outlined">close</span>
-          </button>
+          </m3e-icon-button>
         </div>
       </div>
     </Teleport>
@@ -391,29 +402,32 @@ const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k
           </div>
 
           <div class="upload-actions">
-            <button
-              class="lm-btn lm-btn--filled"
+            <m3e-button
+              variant="filled"
               :disabled="uploadStatus === 'saving' || uploadStatus === 'saved'"
               @click="saveUploadJson"
             >
-              <span v-if="uploadStatus === 'saving'" class="material-symbols-outlined spinning"
+              <span
+                v-if="uploadStatus === 'saving'"
+                slot="icon"
+                class="material-symbols-outlined spinning"
                 >sync</span
               >
-              <span v-else class="material-symbols-outlined">save</span>
+              <span v-else slot="icon" class="material-symbols-outlined">save</span>
               {{
                 uploadStatus === "saved"
                   ? t("player.effectsUploadSaved")
                   : t("player.effectsUploadSave")
               }}
-            </button>
-            <button class="lm-btn lm-btn--text" @click="closeSharePopup">
+            </m3e-button>
+            <m3e-button variant="text" @click="closeSharePopup">
               {{ t("actions.cancel") }}
-            </button>
+            </m3e-button>
           </div>
 
-          <button class="popup-close" @click="closeSharePopup">
+          <m3e-icon-button class="popup-close" @click="closeSharePopup">
             <span class="material-symbols-outlined">close</span>
-          </button>
+          </m3e-icon-button>
         </div>
       </div>
     </Teleport>
@@ -451,10 +465,6 @@ const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k
   font-size: var(--md-sys-typescale-body-medium-size);
   font-weight: 500;
 }
-/* 开关视觉统一在 src/tokens/theme.css 的「M3 Switch」全局样式里 */
-.enable-row input[type="checkbox"] {
-  cursor: pointer;
-}
 
 .effects-body {
   display: flex;
@@ -487,60 +497,25 @@ const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k
   flex-wrap: wrap;
   gap: 6px;
 }
-.chip {
-  height: 30px;
-  padding: 0 14px;
-  border: 1px solid var(--md-sys-color-outline-variant);
-  border-radius: var(--md-sys-shape-corner-small);
-  background: transparent;
-  color: var(--md-sys-color-on-surface-variant);
-  font-family: inherit;
-  font-size: var(--md-sys-typescale-label-large-size);
-  cursor: pointer;
-  transition: all var(--md-sys-motion-duration-short) var(--md-sys-motion-spring-effects-fast);
-}
-.chip:hover {
-  background: var(--md-sys-color-surface-container-high);
-}
-.chip.active {
-  background: var(--md-sys-color-secondary-container);
-  color: var(--md-sys-color-on-secondary-container);
-  border-color: transparent;
-  font-weight: 500;
-}
 .user-preset {
   display: inline-flex;
   align-items: center;
   gap: 2px;
 }
+/* 行内小图标按钮（分享/删除预设）：紧凑 28dp */
 .preset-action {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border: none;
-  border-radius: 50%;
-  background: transparent;
-  color: var(--md-sys-color-on-surface-variant);
-  cursor: pointer;
+  --m3e-icon-button-medium-container-height: 28px;
+  --m3e-icon-button-medium-container-width: 28px;
+  --m3e-icon-button-medium-icon-size: 14px;
+  --m3e-icon-button-icon-size: 14px;
   opacity: 0.65;
-  transition:
-    background var(--md-sys-motion-duration-short),
-    color var(--md-sys-motion-duration-short);
 }
 .preset-action:hover {
-  background: var(--md-sys-color-secondary-container);
-  color: var(--md-sys-color-on-secondary-container);
   opacity: 1;
 }
 .preset-delete:hover {
-  background: var(--md-sys-color-error-container);
-  color: var(--md-sys-color-error);
-  opacity: 1;
-}
-.preset-action .material-symbols-outlined {
-  font-size: 14px;
+  --m3e-icon-button-icon-color: var(--md-sys-color-error);
+  --m3e-icon-button-hover-icon-color: var(--md-sys-color-error);
 }
 
 .save-preset {
@@ -567,12 +542,9 @@ const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k
 .import-preset input:focus {
   border-color: var(--md-sys-color-primary);
 }
-.import-preset .lm-btn {
-  height: 36px;
-  padding: 0 14px;
-}
-.import-preset .lm-btn .material-symbols-outlined {
-  font-size: 17px;
+.import-preset m3e-button {
+  --m3e-button-medium-container-height: 36px;
+  --m3e-button-icon-size: 17px;
 }
 .share-status {
   margin: -2px 0 0;
@@ -598,12 +570,9 @@ const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k
 .save-preset input:focus {
   border-color: var(--md-sys-color-primary);
 }
-.save-preset .lm-btn {
-  height: 36px;
-  padding: 0 14px;
-}
-.save-preset .lm-btn .material-symbols-outlined {
-  font-size: 17px;
+.save-preset m3e-button {
+  --m3e-button-medium-container-height: 36px;
+  --m3e-button-icon-size: 17px;
 }
 
 .eq-grid {
@@ -624,12 +593,11 @@ const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k
   font-size: 11px;
   color: var(--md-sys-color-on-surface-variant);
 }
-.eq-band input[type="range"] {
+/* EQ 竖滑块：占满列宽、轨道长约 90px */
+.eq-slider {
   width: 100%;
-  accent-color: var(--md-sys-color-primary);
-  writing-mode: vertical-lr;
-  direction: rtl;
   height: 90px;
+  --m3e-slider-medium-height: 90px;
 }
 .eq-value {
   font-size: 11px;
@@ -654,9 +622,9 @@ const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k
   font-size: 18px;
   color: var(--md-sys-color-primary);
 }
-.slider-row input[type="range"] {
+.env-slider {
   flex: 1;
-  accent-color: var(--md-sys-color-primary);
+  min-width: 0;
 }
 .slider-value {
   width: 36px;
@@ -751,21 +719,13 @@ const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k
 }
 .popup-close {
   position: absolute;
-  top: 12px;
-  right: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border: none;
-  border-radius: 50%;
-  background: transparent;
-  color: var(--md-sys-color-on-surface-variant);
-  cursor: pointer;
-}
-.popup-close:hover {
-  background: var(--md-sys-color-surface-container-highest);
+  top: 10px;
+  right: 10px;
+  --m3e-icon-button-medium-container-height: 30px;
+  --m3e-icon-button-medium-container-width: 30px;
+  --m3e-icon-button-medium-icon-size: 18px;
+  --m3e-icon-button-icon-color: var(--md-sys-color-on-surface-variant);
+  --m3e-icon-button-hover-icon-color: var(--md-sys-color-on-surface);
 }
 
 /* ---- 上传弹窗 ---- */

@@ -468,39 +468,45 @@ onBeforeUnmount(() => {
       <div ref="container" class="art-container" />
 
       <!-- 关闭按钮：Teleport overlay 浮在最上层，全屏时也始终可达 -->
-      <button class="overlay-close" :title="t('anime.exit')" @click="emit('close')">
+      <m3e-icon-button
+        class="overlay-close"
+        variant="standard"
+        :title="t('anime.exit')"
+        @click="emit('close')"
+      >
         <span class="material-symbols-outlined">close</span>
-      </button>
+      </m3e-icon-button>
 
       <!-- 选集抽屉 -->
       <div v-if="drawerOpen" class="drawer">
         <template v-for="(road, ri) in anime.selectedRoads" :key="ri">
           <div class="road-name">{{ road.name }}</div>
           <div class="ep-grid">
-            <button
+            <m3e-button
               v-for="(ep, ei) in road.episodes"
               :key="ei"
               class="ep"
-              :class="{ active: ri === props.roadIndex && ei === props.episodeIndex }"
+              :variant="ri === props.roadIndex && ei === props.episodeIndex ? 'filled' : 'tonal'"
+              size="small"
               @click="emit('switch', ri, ei)"
             >
               {{ ep.name }}
-            </button>
+            </m3e-button>
           </div>
         </template>
       </div>
 
       <!-- 取流状态 / 失败 -->
       <div v-if="anime.resolving" class="overlay state">
-        <span class="material-symbols-outlined spin">progress_activity</span>
+        <m3e-circular-progress-indicator />
         <span>{{ t("anime.streamResolving") }}</span>
       </div>
       <div v-else-if="anime.streamError" class="overlay state error">
         <span>{{ anime.streamError }}</span>
-        <button class="lm-btn lm-btn--filled" @click="retry">
-          <span class="material-symbols-outlined">refresh</span>
+        <m3e-button variant="filled" @click="retry">
+          <span slot="icon" class="material-symbols-outlined">refresh</span>
           {{ t("anime.retry") }}
-        </button>
+        </m3e-button>
       </div>
 
       <!-- 弹幕状态指示（左下角；DanDanPlay 无凭证 / 无匹配时显示原因）-->
@@ -553,18 +559,10 @@ onBeforeUnmount(() => {
   top: 12px;
   left: 12px;
   z-index: 6;
-  display: grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  border: none;
-  border-radius: var(--md-sys-shape-corner-full);
-  background: rgba(0, 0, 0, 0.55);
+  --md-icon-button-container-color: rgba(0, 0, 0, 0.55);
+  --md-icon-button-selected-container-color: rgba(0, 0, 0, 0.55);
+  --md-sys-color-on-surface: #fff;
   color: #fff;
-  cursor: pointer;
-}
-.overlay-close:hover {
-  background: rgba(0, 0, 0, 0.75);
 }
 .overlay-close .material-symbols-outlined {
   font-size: 24px;
@@ -597,25 +595,7 @@ onBeforeUnmount(() => {
   gap: 6px;
 }
 .ep {
-  height: 32px;
-  border: none;
-  border-radius: var(--md-sys-shape-corner-small);
-  background: var(--md-sys-color-surface-container);
-  color: var(--md-sys-color-on-surface-variant);
-  font-family: inherit;
-  font-size: var(--md-sys-typescale-label-small-size);
-  cursor: pointer;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.ep:hover {
-  background: var(--md-sys-color-surface-container-highest);
-}
-.ep.active {
-  background: var(--md-sys-color-primary);
-  color: var(--md-sys-color-on-primary);
-  font-weight: 500;
+  width: 100%;
 }
 
 /* 状态层 */
@@ -634,14 +614,6 @@ onBeforeUnmount(() => {
 }
 .overlay .material-symbols-outlined {
   font-size: 34px;
-}
-.spin {
-  animation: lm-spin 1s linear infinite;
-}
-@keyframes lm-spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 @keyframes lm-fade-in {
   from {

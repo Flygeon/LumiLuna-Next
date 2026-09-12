@@ -100,26 +100,31 @@ onBeforeUnmount(() => {
 
 <template>
   <Teleport to="body">
-    <div v-if="menu.visible" ref="menuRef" class="ctx-menu" :style="menuStyle">
-      <button
+    <m3e-list
+      v-if="menu.visible"
+      ref="menuRef"
+      class="ctx-menu"
+      variant="standard"
+      :style="menuStyle"
+    >
+      <m3e-list-item
         v-for="(item, i) in menu.items"
         :key="item.id"
         class="ctx-item"
         :class="{
           danger: item.danger,
-          disabled: item.disabled,
           active: i === activeIndex,
+          disabled: item.disabled,
         }"
-        :disabled="item.disabled"
-        @click="select(item.id)"
+        @click="!item.disabled && select(item.id)"
         @mouseenter="activeIndex = i"
       >
-        <span v-if="item.icon" class="material-symbols-outlined ctx-icon">
+        <span v-if="item.icon" slot="leading" class="material-symbols-outlined ctx-icon">
           {{ item.icon }}
         </span>
         <span class="ctx-label">{{ item.label }}</span>
-      </button>
-    </div>
+      </m3e-list-item>
+    </m3e-list>
   </Teleport>
 </template>
 
@@ -148,47 +153,28 @@ onBeforeUnmount(() => {
   }
 }
 
+/* 菜单项：M3E 连通项样式覆写，对齐原右键菜单观感 */
 .ctx-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
+  --m3e-list-item-leading-space: 16px;
+  --m3e-list-item-trailing-space: 16px;
   height: 40px;
-  padding: 0 16px;
-  border: none;
-  border-radius: var(--md-sys-shape-corner-medium);
-  background: transparent;
-  color: var(--md-sys-color-on-surface);
-  font-family: inherit;
-  font-size: var(--md-sys-typescale-body-medium-size);
-  text-align: left;
-  cursor: pointer;
-  transition: background var(--md-sys-motion-duration-short)
-    var(--md-sys-motion-spring-effects-fast);
-}
-.ctx-item:hover,
-.ctx-item.active {
-  background: var(--md-sys-color-surface-container-high);
 }
 .ctx-icon {
   font-size: 20px;
   color: var(--md-sys-color-on-surface-variant);
-  flex: none;
 }
 .ctx-label {
-  flex: 1;
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  color: var(--md-sys-color-on-surface);
 }
-.ctx-item.danger,
+.ctx-item.active {
+  --m3e-list-item-container-color: var(--md-sys-color-surface-container-high);
+}
+.ctx-item.danger .ctx-label,
 .ctx-item.danger .ctx-icon {
   color: var(--md-sys-color-error);
 }
 .ctx-item.disabled {
   opacity: 0.4;
-  cursor: default;
   pointer-events: none;
 }
 </style>

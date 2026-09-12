@@ -774,9 +774,9 @@ const PDF_MODES = [
     }"
   >
     <header class="bar">
-      <button class="rbtn" title="关闭 (Esc)" @click="emit('close')">
+      <m3e-icon-button class="rbtn" title="关闭 (Esc)" @click="emit('close')">
         <span class="material-symbols-outlined">close</span>
-      </button>
+      </m3e-icon-button>
       <div class="title" :title="item?.path">
         {{ novelSource?.title || item?.title || item?.name }}
       </div>
@@ -799,7 +799,7 @@ const PDF_MODES = [
       </div>
       <div class="tools">
         <!-- 目录侧边栏（EPUB / 在线文本） -->
-        <button
+        <m3e-icon-button
           v-if="kind === 'epub' || kind === 'text'"
           class="rbtn"
           :class="{ active: sidebarOpen }"
@@ -807,20 +807,18 @@ const PDF_MODES = [
           @click="sidebarOpen = !sidebarOpen"
         >
           <span class="material-symbols-outlined">toc</span>
-        </button>
+        </m3e-icon-button>
         <!-- PDF 阅读模式切换 -->
-        <div v-if="kind === 'pdf'" class="modes">
-          <button
+        <m3e-segmented-button v-if="kind === 'pdf'" class="modes">
+          <m3e-button-segment
             v-for="m in PDF_MODES"
             :key="m.key"
-            class="mode-btn"
-            :class="{ active: mode === m.key }"
-            :title="m.label"
+            :selected="mode === m.key"
             @click="settings.pdfReadMode = m.key"
           >
             <span class="material-symbols-outlined">{{ m.icon }}</span>
-          </button>
-        </div>
+          </m3e-button-segment>
+        </m3e-segmented-button>
         <!-- 背景颜色切换：直接展示在顶栏 -->
         <div class="swatches" title="背景颜色">
           <button
@@ -833,24 +831,24 @@ const PDF_MODES = [
             @click="settings.readerTheme = k"
           ></button>
         </div>
-        <button class="rbtn" title="缩小" @click="setZoom(-0.2)">
+        <m3e-icon-button class="rbtn" title="缩小" @click="setZoom(-0.2)">
           <span class="material-symbols-outlined">zoom_out</span>
-        </button>
-        <button class="rbtn" title="放大" @click="setZoom(0.2)">
+        </m3e-icon-button>
+        <m3e-icon-button class="rbtn" title="放大" @click="setZoom(0.2)">
           <span class="material-symbols-outlined">zoom_in</span>
-        </button>
+        </m3e-icon-button>
         <!-- 更多设置二级菜单（字号/字体/行距/段间距） -->
-        <button
+        <m3e-icon-button
           class="rbtn"
           :class="{ active: menuOpen }"
           title="阅读设置"
           @click="menuOpen = !menuOpen"
         >
           <span class="material-symbols-outlined">tune</span>
-        </button>
-        <button v-if="item" class="rbtn" title="用系统应用打开" @click="openExternally">
+        </m3e-icon-button>
+        <m3e-icon-button v-if="item" class="rbtn" title="用系统应用打开" @click="openExternally">
           <span class="material-symbols-outlined">open_in_new</span>
-        </button>
+        </m3e-icon-button>
       </div>
     </header>
 
@@ -862,42 +860,53 @@ const PDF_MODES = [
       <div v-if="menuOpen" class="reader-settings" @click.stop>
         <div class="set-row">
           <span class="set-label">字号</span>
-          <input v-model.number="settings.readerFontPct" type="range" min="60" max="220" step="5" />
+          <m3e-slider
+            class="set-slider"
+            :value="settings.readerFontPct"
+            min="60"
+            max="220"
+            step="5"
+            discrete
+            @input="settings.readerFontPct = Number(($event.target as HTMLInputElement).value)"
+          />
           <span class="set-value tabular-nums">{{ settings.readerFontPct }}%</span>
         </div>
         <div class="set-row">
           <span class="set-label">字体</span>
           <div class="set-chips">
-            <button
-              v-for="k in READER_FONT_KEYS"
-              :key="k"
-              class="chip"
-              :class="{ active: settings.readerFont === k }"
-              @click="settings.readerFont = k"
-            >
-              {{ READER_FONTS[k].label }}
-            </button>
+            <m3e-chip-set>
+              <m3e-filter-chip
+                v-for="k in READER_FONT_KEYS"
+                :key="k"
+                :selected="settings.readerFont === k"
+                @click="settings.readerFont = k"
+              >
+                {{ READER_FONTS[k].label }}
+              </m3e-filter-chip>
+            </m3e-chip-set>
           </div>
         </div>
         <div class="set-row">
           <span class="set-label">行距</span>
-          <input
-            v-model.number="settings.readerLineHeight"
-            type="range"
+          <m3e-slider
+            class="set-slider"
+            :value="settings.readerLineHeight"
             min="1"
             max="2.6"
             step="0.1"
+            @input="settings.readerLineHeight = Number(($event.target as HTMLInputElement).value)"
           />
           <span class="set-value tabular-nums">{{ settings.readerLineHeight.toFixed(1) }}</span>
         </div>
         <div class="set-row">
           <span class="set-label">段间距</span>
-          <input
-            v-model.number="settings.readerParaSpacing"
-            type="range"
+          <m3e-slider
+            class="set-slider"
+            :value="settings.readerParaSpacing"
             min="0"
             max="24"
             step="2"
+            @input="settings.readerParaSpacing = Number(($event.target as HTMLInputElement).value)"
           />
           <span class="set-value tabular-nums">{{
             settings.readerParaSpacing === 0 ? "原书" : settings.readerParaSpacing + "px"
@@ -927,33 +936,34 @@ const PDF_MODES = [
         </div>
         <div class="toc-list">
           <!-- EPUB 目录 -->
-          <template v-if="kind === 'epub'">
-            <button
+          <m3e-list v-if="kind === 'epub'">
+            <m3e-list-item
               v-for="(item, i) in toc"
               :key="item.href + i"
               class="toc-item"
-              :class="{ active: isTocActive(item), sub: item.depth > 0 }"
+              :class="{ sub: item.depth > 0 }"
+              :selected="isTocActive(item)"
               :style="{ paddingLeft: 14 + item.depth * 18 + 'px' }"
               @click="goToChapter(item)"
             >
               {{ item.label }}
-            </button>
-          </template>
+            </m3e-list-item>
+          </m3e-list>
           <!-- 在线文本目录 -->
-          <template v-if="kind === 'text'">
-            <button
+          <m3e-list v-if="kind === 'text'">
+            <m3e-list-item
               v-for="(ch, i) in textChapters"
               :key="ch.cid"
               class="toc-item"
-              :class="{ active: i === textCurrentIndex }"
+              :selected="i === textCurrentIndex"
               @click="
                 sidebarOpen = false;
                 loadTextChapter(i);
               "
             >
               {{ ch.title }}
-            </button>
-          </template>
+            </m3e-list-item>
+          </m3e-list>
           <p v-if="kind === 'epub' && !toc.length" class="toc-empty">本书无目录</p>
           <p v-if="kind === 'text' && !textChapters.length" class="toc-empty">暂无目录</p>
         </div>
@@ -962,16 +972,16 @@ const PDF_MODES = [
 
     <div class="stage">
       <div v-if="loading" class="state">
-        <div class="spinner"></div>
+        <m3e-circular-progress-indicator />
         <p>正在打开…</p>
       </div>
 
       <div v-else-if="error" class="state">
         <span class="material-symbols-outlined big">error</span>
         <p>{{ error }}</p>
-        <button v-if="item" class="lm-btn lm-btn--filled" @click="openExternally">
+        <m3e-button v-if="item" variant="filled" @click="openExternally">
           用系统应用打开
-        </button>
+        </m3e-button>
       </div>
 
       <!-- PDF：单页/双页居中，滚动模式纵向排列 -->
@@ -1028,12 +1038,12 @@ const PDF_MODES = [
       <button v-if="canNav" class="tapzone left" @click="onTapZone('prev')"></button>
       <button v-if="canNav" class="tapzone right" @click="onTapZone('next')"></button>
 
-      <button v-if="canNav" class="nav prev" title="上一页 (←)" @click="prevPage">
+      <m3e-icon-button v-if="canNav" class="nav prev" title="上一页 (←)" @click="prevPage">
         <span class="material-symbols-outlined">chevron_left</span>
-      </button>
-      <button v-if="canNav" class="nav next" title="下一页 (→)" @click="nextPage">
+      </m3e-icon-button>
+      <m3e-icon-button v-if="canNav" class="nav next" title="下一页 (→)" @click="nextPage">
         <span class="material-symbols-outlined">chevron_right</span>
-      </button>
+      </m3e-icon-button>
     </div>
   </div>
 </template>
@@ -1086,28 +1096,18 @@ const PDF_MODES = [
   gap: 2px;
 }
 .rbtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border: none;
-  border-radius: 50%;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-  transition: background 160ms var(--md-sys-motion-spring-effects-fast);
-}
-.rbtn:hover {
-  background: color-mix(in srgb, var(--reader-fg) 14%, transparent);
-}
-.rbtn.active {
-  position: relative;
-  z-index: 25;
-  background: color-mix(in srgb, var(--reader-fg) 18%, transparent);
+  --md-icon-button-container-color: transparent;
+  --md-icon-button-selected-container-color: transparent;
+  --md-icon-button-hover-container-color: color-mix(in srgb, var(--reader-fg) 14%, transparent);
+  --md-icon-button-pressed-container-color: color-mix(in srgb, var(--reader-fg) 14%, transparent);
+  color: var(--reader-fg);
 }
 .rbtn .material-symbols-outlined {
   font-size: 20px;
+}
+.rbtn.active {
+  --md-icon-button-container-color: color-mix(in srgb, var(--reader-fg) 18%, transparent);
+  --md-icon-button-selected-container-color: color-mix(in srgb, var(--reader-fg) 18%, transparent);
 }
 
 /* 顶栏背景色切换：一行色板 */
@@ -1168,9 +1168,11 @@ const PDF_MODES = [
   font-size: 13px;
   color: color-mix(in srgb, var(--reader-fg) 80%, transparent);
 }
-.set-row input[type="range"] {
+.set-slider {
   flex: 1;
-  accent-color: var(--reader-fg);
+  --m3e-slider-active-track-color: var(--reader-fg);
+  --m3e-slider-inactive-track-color: color-mix(in srgb, var(--reader-fg) 24%, transparent);
+  --m3e-slider-handle-color: var(--reader-fg);
 }
 .set-value {
   flex: none;
@@ -1178,6 +1180,7 @@ const PDF_MODES = [
   text-align: right;
   font-size: 12px;
   opacity: 0.7;
+  color: var(--reader-fg);
 }
 .set-chips {
   flex: 1;
@@ -1185,26 +1188,9 @@ const PDF_MODES = [
   flex-wrap: wrap;
   gap: 6px;
 }
-.set-chips .chip {
-  height: 28px;
-  padding: 0 12px;
-  border-radius: 14px;
-  border: 1px solid color-mix(in srgb, var(--reader-fg) 24%, transparent);
-  background: transparent;
+.set-chips .m3e-chip,
+.set-chips :deep(m3e-filter-chip) {
   color: var(--reader-fg);
-  font-family: inherit;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 160ms var(--md-sys-motion-spring-effects-fast);
-}
-.set-chips .chip:hover {
-  background: color-mix(in srgb, var(--reader-fg) 10%, transparent);
-}
-.set-chips .chip.active {
-  background: var(--reader-fg);
-  color: var(--reader-bg);
-  border-color: transparent;
-  font-weight: 500;
 }
 .pop-enter-active,
 .pop-leave-active {
@@ -1267,29 +1253,8 @@ const PDF_MODES = [
   padding: 8px;
 }
 .toc-item {
-  display: block;
-  width: 100%;
-  padding: 9px 12px;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: color-mix(in srgb, var(--reader-fg) 78%, transparent);
-  font-family: inherit;
-  font-size: 13px;
-  text-align: left;
   cursor: pointer;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  transition: background 140ms var(--md-sys-motion-spring-effects-fast);
-}
-.toc-item:hover {
-  background: color-mix(in srgb, var(--reader-fg) 12%, transparent);
-}
-.toc-item.active {
-  background: color-mix(in srgb, var(--reader-fg) 18%, transparent);
-  color: var(--reader-fg);
-  font-weight: 500;
+  color: color-mix(in srgb, var(--reader-fg) 78%, transparent);
 }
 .toc-item.sub {
   font-size: 12px;
@@ -1351,36 +1316,7 @@ const PDF_MODES = [
 }
 
 .modes {
-  display: flex;
-  gap: 2px;
-  padding: 2px;
   margin-right: 4px;
-  border-radius: 18px;
-  background: color-mix(in srgb, var(--reader-fg) 10%, transparent);
-}
-.mode-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: none;
-  border-radius: 50%;
-  background: transparent;
-  color: color-mix(in srgb, var(--reader-fg) 65%, transparent);
-  cursor: pointer;
-  transition: all 160ms var(--md-sys-motion-spring-effects-fast);
-}
-.mode-btn:hover {
-  color: var(--reader-fg);
-  background: color-mix(in srgb, var(--reader-fg) 14%, transparent);
-}
-.mode-btn.active {
-  background: var(--reader-fg);
-  color: var(--reader-bg);
-}
-.mode-btn .material-symbols-outlined {
-  font-size: 18px;
 }
 
 .epub-host {
@@ -1455,19 +1391,6 @@ const PDF_MODES = [
   font-size: 56px;
   opacity: 0.5;
 }
-.spinner {
-  width: 34px;
-  height: 34px;
-  border: 3px solid color-mix(in srgb, var(--reader-fg) 25%, transparent);
-  border-top-color: var(--reader-fg);
-  border-radius: 50%;
-  animation: spin 700ms linear infinite;
-}
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
 
 /* 左/右点击翻页热区：覆盖两侧，中间留空不挡内容 */
 .tapzone {
@@ -1493,29 +1416,17 @@ const PDF_MODES = [
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  width: 44px;
-  height: 44px;
-  border: none;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--reader-fg) 12%, transparent);
+  --md-icon-button-container-color: color-mix(in srgb, var(--reader-fg) 12%, transparent);
+  --md-icon-button-hover-container-color: color-mix(in srgb, var(--reader-fg) 24%, transparent);
+  --md-icon-button-pressed-container-color: color-mix(in srgb, var(--reader-fg) 24%, transparent);
+  --md-icon-button-icon-size: 26px;
   color: var(--reader-fg);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 160ms var(--md-sys-motion-spring-effects-fast);
   z-index: 2;
-}
-.nav:hover {
-  background: color-mix(in srgb, var(--reader-fg) 24%, transparent);
 }
 .prev {
   left: 8px;
 }
 .next {
   right: 8px;
-}
-.nav .material-symbols-outlined {
-  font-size: 26px;
 }
 </style>

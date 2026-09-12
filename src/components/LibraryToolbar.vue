@@ -54,9 +54,9 @@ function clearSearch() {
     <div class="search">
       <span class="material-symbols-outlined">search</span>
       <input v-model="term" type="text" :placeholder="t('actions.search')" spellcheck="false" />
-      <button v-if="term" class="clear" @click="clearSearch">
+      <m3e-icon-button v-if="term" class="clear" variant="standard" @click="clearSearch">
         <span class="material-symbols-outlined">close</span>
-      </button>
+      </m3e-icon-button>
     </div>
 
     <div class="sorts">
@@ -88,14 +88,14 @@ function clearSearch() {
         ></div>
       </div>
       <span class="scan-text">{{ library.scanLabel }}</span>
-      <button class="lm-btn lm-btn--text" @click="library.cancelScan()">
+      <m3e-button variant="text" @click="library.cancelScan()">
         {{ t("actions.cancel") }}
-      </button>
+      </m3e-button>
     </div>
-    <button v-else class="lm-btn lm-btn--tonal" @click="library.startScan()">
-      <span class="material-symbols-outlined">refresh</span>
+    <m3e-button v-else variant="tonal" @click="library.startScan()">
+      <span slot="icon" class="material-symbols-outlined">refresh</span>
       {{ t("actions.rescan") }}
-    </button>
+    </m3e-button>
   </div>
 </template>
 
@@ -141,13 +141,9 @@ function clearSearch() {
   min-width: 0;
 }
 .clear {
-  display: flex;
-  border: none;
-  background: transparent;
+  --m3e-icon-button-container-height: 24px;
+  --m3e-icon-button-icon-size: 16px;
   color: inherit;
-  cursor: pointer;
-  padding: 2px;
-  border-radius: 50%;
 }
 .clear:hover {
   background: var(--md-sys-color-surface-container-highest);

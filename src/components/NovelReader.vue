@@ -264,20 +264,24 @@ onBeforeUnmount(() => {
       :data-dbg="renderLog()"
     >
       <div class="reader-topbar">
-        <button class="tool-btn" @click="close">
+        <m3e-icon-button class="tool-btn" @click="close">
           <span class="material-symbols-outlined">arrow_back</span>
-        </button>
+        </m3e-icon-button>
         <div class="reader-title" :title="currentTitle">{{ currentTitle || props.title }}</div>
         <div class="spacer"></div>
-        <button class="tool-btn" :disabled="currentIndex <= 0" @click="prev">
+        <m3e-icon-button class="tool-btn" :disabled="currentIndex <= 0" @click="prev">
           <span class="material-symbols-outlined">chevron_left</span>
-        </button>
-        <button class="tool-btn" @click="showToc = true">
+        </m3e-icon-button>
+        <m3e-icon-button class="tool-btn" @click="showToc = true">
           <span class="material-symbols-outlined">list</span>
-        </button>
-        <button class="tool-btn" :disabled="currentIndex >= chapters.length - 1" @click="next">
+        </m3e-icon-button>
+        <m3e-icon-button
+          class="tool-btn"
+          :disabled="currentIndex >= chapters.length - 1"
+          @click="next"
+        >
           <span class="material-symbols-outlined">chevron_right</span>
-        </button>
+        </m3e-icon-button>
       </div>
 
       <!-- 目录抽屉 -->
@@ -286,23 +290,25 @@ onBeforeUnmount(() => {
           <div class="toc-panel" @click.stop>
             <div class="toc-head">
               <h3>{{ t("novel.catalogue") }}</h3>
-              <button class="tool-btn" @click="showToc = false">
+              <m3e-icon-button class="tool-btn" @click="showToc = false">
                 <span class="material-symbols-outlined">close</span>
-              </button>
+              </m3e-icon-button>
             </div>
             <div class="toc-body">
-              <button
-                v-for="(ch, i) in chapters"
-                :key="ch.cid"
-                class="toc-row"
-                :class="{ active: i === currentIndex }"
-                @click="
-                  showToc = false;
-                  loadChapter(i);
-                "
-              >
-                <span class="toc-title">{{ ch.title }}</span>
-              </button>
+              <m3e-list>
+                <m3e-list-item
+                  v-for="(ch, i) in chapters"
+                  :key="ch.cid"
+                  class="toc-row"
+                  :selected="i === currentIndex"
+                  @click="
+                    showToc = false;
+                    loadChapter(i);
+                  "
+                >
+                  <span class="toc-title">{{ ch.title }}</span>
+                </m3e-list-item>
+              </m3e-list>
             </div>
           </div>
         </div>
@@ -335,10 +341,10 @@ onBeforeUnmount(() => {
       </div>
 
       <div class="reader-footer">
-        <button class="nav-btn" :disabled="currentIndex <= 0" @click="prev">上一章</button>
-        <button class="nav-btn" :disabled="currentIndex >= chapters.length - 1" @click="next">
+        <m3e-button variant="text" :disabled="currentIndex <= 0" @click="prev">上一章</m3e-button>
+        <m3e-button variant="text" :disabled="currentIndex >= chapters.length - 1" @click="next">
           下一章
-        </button>
+        </m3e-button>
       </div>
     </div>
   </Teleport>
@@ -363,19 +369,14 @@ onBeforeUnmount(() => {
   background: color-mix(in srgb, currentColor 6%, transparent);
 }
 .tool-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border: none;
-  border-radius: 50%;
-  background: transparent;
+  --md-icon-button-container-color: transparent;
+  --md-icon-button-selected-container-color: transparent;
+  --md-icon-button-hover-container-color: color-mix(in srgb, currentColor 12%, transparent);
+  --md-icon-button-pressed-container-color: color-mix(in srgb, currentColor 12%, transparent);
   color: inherit;
-  cursor: pointer;
 }
-.tool-btn:hover {
-  background: color-mix(in srgb, currentColor 12%, transparent);
+.tool-btn::part(icon) {
+  color: inherit;
 }
 .tool-btn:disabled {
   opacity: 0.35;
@@ -424,19 +425,6 @@ onBeforeUnmount(() => {
   gap: 8px;
   padding: 10px 16px 16px;
 }
-.nav-btn {
-  padding: 10px 20px;
-  border: none;
-  border-radius: var(--md-sys-shape-corner-full);
-  background: color-mix(in srgb, currentColor 12%, transparent);
-  color: inherit;
-  font-family: inherit;
-  font-size: 14px;
-  cursor: pointer;
-}
-.nav-btn:disabled {
-  opacity: 0.35;
-}
 .toc-mask {
   position: absolute;
   inset: 0;
@@ -471,24 +459,7 @@ onBeforeUnmount(() => {
   padding: 8px;
 }
 .toc-row {
-  display: block;
-  width: 100%;
-  padding: 10px 12px;
-  border: none;
-  border-radius: var(--md-sys-shape-corner-medium);
-  background: transparent;
-  color: inherit;
-  font-family: inherit;
-  font-size: 14px;
-  text-align: left;
   cursor: pointer;
-}
-.toc-row:hover {
-  background: color-mix(in srgb, currentColor 10%, transparent);
-}
-.toc-row.active {
-  background: color-mix(in srgb, currentColor 16%, transparent);
-  font-weight: 500;
 }
 .toc-title {
   white-space: nowrap;

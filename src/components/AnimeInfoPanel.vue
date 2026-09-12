@@ -88,10 +88,10 @@ const metaParts = computed(() => {
 <template>
   <div class="anime-info">
     <div class="head">
-      <button class="back" @click="emit('back')">
-        <span class="material-symbols-outlined">arrow_back</span>
+      <m3e-button variant="text" @click="emit('back')">
+        <span slot="icon" class="material-symbols-outlined">arrow_back</span>
         {{ t("anime.back") }}
-      </button>
+      </m3e-button>
     </div>
 
     <div v-if="loading && !subject" class="state">{{ t("anime.loading") }}</div>
@@ -140,22 +140,24 @@ const metaParts = computed(() => {
           {{ t("anime.myCollection") }}
         </h3>
         <template v-if="collect.authorized">
-          <div class="status-row">
-            <button
+          <m3e-chip-set class="status-row">
+            <m3e-filter-chip
               v-for="s in STATUS_BTNS"
               :key="s.cat"
-              class="status-chip"
-              :class="{ active: currentStatus === s.cat }"
+              :selected="currentStatus === s.cat"
               :disabled="saving"
               @click="pickStatus(s.cat)"
             >
-              <span v-if="saving && currentStatus === s.cat" class="material-symbols-outlined spin"
+              <span
+                v-if="saving && currentStatus === s.cat"
+                slot="icon"
+                class="material-symbols-outlined spin"
                 >progress_activity</span
               >
-              <span v-else class="material-symbols-outlined">{{ s.icon }}</span>
+              <span v-else slot="icon" class="material-symbols-outlined">{{ s.icon }}</span>
               {{ t("anime.cat" + s.cat) }}
-            </button>
-          </div>
+            </m3e-filter-chip>
+          </m3e-chip-set>
           <p class="collect-hint">
             {{
               currentStatus === 0
@@ -167,17 +169,17 @@ const metaParts = computed(() => {
         </template>
         <p v-else class="collect-hint">
           {{ t("anime.collectNeedAuth") }}
-          <button class="link-btn" @click="emit('openCollection')">
+          <m3e-button variant="text" size="small" @click="emit('openCollection')">
             {{ t("anime.goConnect") }}
-          </button>
+          </m3e-button>
         </p>
       </section>
 
       <div class="cta">
-        <button class="lm-btn lm-btn--filled start-btn" @click="emit('openSources')">
-          <span class="material-symbols-outlined">play_arrow</span>
+        <m3e-button variant="filled" class="start-btn" @click="emit('openSources')">
+          <span slot="icon" class="material-symbols-outlined">play_arrow</span>
           {{ t("anime.startWatch") }}
-        </button>
+        </m3e-button>
       </div>
     </template>
   </div>
@@ -204,22 +206,6 @@ const metaParts = computed(() => {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-}
-.back {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 10px;
-  border: none;
-  border-radius: var(--md-sys-shape-corner-medium);
-  background: transparent;
-  color: var(--md-sys-color-on-surface);
-  font-family: inherit;
-  font-size: var(--md-sys-typescale-body-medium-size);
-  cursor: pointer;
-}
-.back:hover {
-  background: var(--md-sys-color-surface-container);
 }
 .hero {
   display: flex;
@@ -325,47 +311,13 @@ const metaParts = computed(() => {
 .start-btn {
   min-width: 180px;
 }
-/* 追番状态按钮：MD3 suggestion chip，选中态走 primary 容器层 */
+/* 追番状态按钮：m3e-filter-chip，行布局 */
 .status-row {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
-.status-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 34px;
-  padding: 0 14px;
-  border: 1px solid var(--md-sys-color-outline-variant);
-  border-radius: var(--md-sys-shape-corner-small);
-  background: transparent;
-  color: var(--md-sys-color-on-surface-variant);
-  font-family: inherit;
-  font-size: var(--md-sys-typescale-label-large-size);
-  cursor: pointer;
-  transition:
-    background var(--md-sys-motion-duration-short) var(--md-sys-motion-spring-effects-fast),
-    color var(--md-sys-motion-duration-short),
-    border-color var(--md-sys-motion-duration-short);
-}
-.status-chip:hover:not(:disabled):not(.active) {
-  background: var(--md-sys-color-surface-container-high);
-  color: var(--md-sys-color-on-surface);
-}
-.status-chip.active {
-  background: var(--md-sys-color-primary-container);
-  color: var(--md-sys-color-on-primary-container);
-  border-color: transparent;
-}
-.status-chip:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-.status-chip .material-symbols-outlined {
-  font-size: 16px;
-}
-.status-chip .spin {
+.status-row .material-symbols-outlined.spin {
   animation: lm-spin 1s linear infinite;
 }
 @keyframes lm-spin {
@@ -380,15 +332,5 @@ const metaParts = computed(() => {
 }
 .collect-error {
   color: var(--md-sys-color-error);
-}
-.link-btn {
-  border: none;
-  background: transparent;
-  color: var(--md-sys-color-primary);
-  font-family: inherit;
-  font-size: inherit;
-  text-decoration: underline;
-  cursor: pointer;
-  padding: 0;
 }
 </style>

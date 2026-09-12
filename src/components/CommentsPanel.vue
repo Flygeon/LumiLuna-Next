@@ -118,9 +118,9 @@ function nicknameOf(c: NeteaseComment): string {
           <div class="comment-head">
             <div class="comment-title-row">
               <h3 class="comment-title">{{ t("netease.comments") }}</h3>
-              <button class="comment-close" @click="emit('close')">
+              <m3e-icon-button class="comment-close" variant="standard" @click="emit('close')">
                 <span class="material-symbols-outlined">close</span>
-              </button>
+              </m3e-icon-button>
             </div>
             <p v-if="title" class="comment-track">
               {{ title }}<span v-if="artist"> · {{ artist }}</span>
@@ -207,9 +207,15 @@ function nicknameOf(c: NeteaseComment): string {
             <p v-else class="comment-state">{{ t("netease.commentsEmpty") }}</p>
           </div>
 
-          <button v-if="hasMore" class="comment-more" :disabled="loadingMore" @click="loadMore">
+          <m3e-button
+            v-if="hasMore"
+            variant="tonal"
+            class="comment-more"
+            :disabled="loadingMore"
+            @click="loadMore"
+          >
             {{ loadingMore ? t("netease.commentsLoadingMore") : t("netease.commentsLoadMore") }}
-          </button>
+          </m3e-button>
         </div>
       </div>
     </Transition>
@@ -272,19 +278,9 @@ function nicknameOf(c: NeteaseComment): string {
   font-weight: 500;
 }
 .comment-close {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border: none;
-  border-radius: 50%;
-  background: transparent;
+  --m3e-icon-button-container-height: 30px;
+  --m3e-icon-button-icon-size: 20px;
   color: var(--md-sys-color-on-surface-variant);
-  cursor: pointer;
-}
-.comment-close:hover {
-  background: var(--md-sys-color-surface-container-highest);
 }
 .comment-track {
   margin: 6px 0 0;
@@ -403,20 +399,9 @@ function nicknameOf(c: NeteaseComment): string {
 }
 .comment-more {
   flex: none;
-  height: 40px;
-  border: none;
-  border-radius: var(--md-sys-shape-corner-full);
-  background: var(--md-sys-color-surface-container);
-  color: var(--md-sys-color-on-surface);
-  font-family: inherit;
-  font-size: var(--md-sys-typescale-label-large-size);
-  font-weight: 500;
-  cursor: pointer;
+  align-self: flex-start;
 }
 .comment-more:disabled {
   opacity: 0.5;
-}
-.comment-more:hover:not(:disabled) {
-  background: var(--md-sys-color-surface-container-highest);
 }
 </style>

@@ -64,9 +64,11 @@ export default [
     },
   },
   {
-    // 这两个组件向 @m3e/web 自定义元素（web components）投影内容，用的是原生 slot
-    // 属性（web components 的插槽机制），并非 Vue 2 已废弃的具名插槽语法，故关闭该规则
-    files: ["src/components/SegmentedTabs.vue", "src/views/TreasureView.vue"],
+    // 本项目大量使用 @m3e/web 原生自定义元素（web components），向其投影内容用的是
+    // HTML 标准 slot 属性（web components 插槽机制），并非 Vue 2 已废弃的具名插槽语法。
+    // vue/no-deprecated-slot-attribute 无法区分自定义元素上的合法 slot 与 Vue 组件上的
+    // 废弃写法，故对所有 .vue 文件关闭该规则。
+    files: ["**/*.vue"],
     rules: {
       "vue/no-deprecated-slot-attribute": "off",
     },

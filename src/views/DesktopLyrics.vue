@@ -227,20 +227,25 @@ onBeforeUnmount(() => {
           {{ state?.title || "—" }}<template v-if="state?.artist"> · {{ state.artist }}</template>
         </span>
         <span class="spacer"></span>
-        <button class="ctr" title="上一首" @click="prevSong">
+        <m3e-icon-button class="ctr" variant="standard" title="上一首" @click="prevSong">
           <span class="material-symbols-outlined">skip_previous</span>
-        </button>
-        <button class="ctr play" title="播放/暂停" @click="togglePlay">
+        </m3e-icon-button>
+        <m3e-icon-button class="ctr play" variant="standard" title="播放/暂停" @click="togglePlay">
           <span class="material-symbols-outlined">
             {{ state?.playing ? "pause" : "play_arrow" }}
           </span>
-        </button>
-        <button class="ctr" title="下一首" @click="nextSong">
+        </m3e-icon-button>
+        <m3e-icon-button class="ctr" variant="standard" title="下一首" @click="nextSong">
           <span class="material-symbols-outlined">skip_next</span>
-        </button>
-        <button class="ctr close" title="关闭桌面歌词" @click="closeLyrics">
+        </m3e-icon-button>
+        <m3e-icon-button
+          class="ctr close"
+          variant="standard"
+          title="关闭桌面歌词"
+          @click="closeLyrics"
+        >
           <span class="material-symbols-outlined">close</span>
-        </button>
+        </m3e-icon-button>
       </div>
     </Transition>
   </div>
@@ -367,30 +372,24 @@ html {
   flex: 1;
 }
 .control-bar .ctr {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: none;
-  border-radius: 50%;
-  background: transparent;
-  color: #fff;
-  cursor: pointer;
-}
-.control-bar .ctr:hover {
-  background: rgba(255, 255, 255, 0.18);
-}
-.control-bar .ctr.play {
-  background: rgba(255, 255, 255, 0.92);
-  color: #000;
-}
-.control-bar .ctr.close:hover {
-  background: rgba(255, 80, 80, 0.85);
+  --m3e-icon-button-container-height: 28px;
+  --m3e-icon-button-icon-size: 17px;
+  --m3e-icon-button-icon-color: #fff;
+  --m3e-icon-button-hover-icon-color: #fff;
+  --m3e-icon-button-hover-state-layer-color: rgba(255, 255, 255, 0.18);
 }
 .control-bar .ctr .material-symbols-outlined {
   font-size: 17px;
+  line-height: 1;
   font-variation-settings: "FILL" 1;
+}
+.control-bar .ctr.play {
+  --m3e-icon-button-container-color: rgba(255, 255, 255, 0.92);
+  --m3e-icon-button-icon-color: #000;
+  --m3e-icon-button-hover-icon-color: #000;
+}
+.control-bar .ctr.close {
+  --m3e-icon-button-hover-state-layer-color: rgba(255, 80, 80, 0.85);
 }
 
 /* 歌词切换动画：淡入 */

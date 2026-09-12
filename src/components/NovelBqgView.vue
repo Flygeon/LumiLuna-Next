@@ -137,13 +137,15 @@ onMounted(loadHome);
 
     <!-- 详情 -->
     <div v-else-if="view === 'detail'" class="detail">
-      <button class="lm-btn lm-btn--text back" @click="onDetailBack">
-        <span class="material-symbols-outlined">arrow_back</span>
+      <m3e-button variant="text" class="back" @click="onDetailBack">
+        <span slot="icon" class="material-symbols-outlined">arrow_back</span>
         返回
-      </button>
+      </m3e-button>
 
       <p v-if="detailError" class="error">{{ detailError }}</p>
-      <div v-else-if="detailLoading" class="state">加载中……</div>
+      <div v-else-if="detailLoading" class="state">
+        <m3e-circular-progress-indicator />
+      </div>
 
       <template v-else-if="detail">
         <div class="detail-head">
@@ -162,14 +164,16 @@ onMounted(loadHome);
         <section class="section">
           <h4 class="section-title">目录（{{ chapters.length }}）</h4>
           <div v-if="chapters.length" class="chapter-list">
-            <button
+            <m3e-button
               v-for="ch in chapters"
               :key="ch.cid"
               class="chapter"
+              variant="tonal"
+              size="small"
               @click="openReader(ch.cid, ch.title)"
             >
               {{ ch.title }}
-            </button>
+            </m3e-button>
           </div>
           <p v-else class="state">暂无目录</p>
         </section>
@@ -180,10 +184,10 @@ onMounted(loadHome);
     <template v-else>
       <div class="search-bar">
         <input v-model="searchQuery" placeholder="搜索笔趣阁小说" @keyup.enter="doSearch" />
-        <button class="lm-btn lm-btn--tonal" :disabled="searching" @click="doSearch">
-          <span class="material-symbols-outlined">search</span>
+        <m3e-button variant="tonal" :disabled="searching" @click="doSearch">
+          <span slot="icon" class="material-symbols-outlined">search</span>
           {{ searching ? "搜索中" : "搜索" }}
-        </button>
+        </m3e-button>
       </div>
       <p v-if="searchError" class="error">{{ searchError }}</p>
 
@@ -196,7 +200,9 @@ onMounted(loadHome);
 
       <section class="section">
         <h3 class="section-title">热门小说</h3>
-        <div v-if="homeLoading" class="state">加载中……</div>
+        <div v-if="homeLoading" class="state">
+          <m3e-circular-progress-indicator />
+        </div>
         <p v-else-if="homeError" class="error">{{ homeError }}</p>
         <div v-else class="novel-grid">
           <NovelCard v-for="n in homeCovers" :key="n.aid" :item="n" @open="openNovel(n)" />
@@ -312,17 +318,6 @@ onMounted(loadHome);
   gap: 8px;
 }
 .chapter {
-  text-align: left;
-  padding: 10px 14px;
-  border: 1px solid var(--md-sys-color-outline-variant);
-  border-radius: var(--md-sys-shape-corner-medium);
-  background: var(--md-sys-color-surface-container);
-  color: var(--md-sys-color-on-surface);
-  font-family: inherit;
-  font-size: var(--md-sys-typescale-body-small-size);
-  cursor: pointer;
-}
-.chapter:hover {
-  background: var(--md-sys-color-surface-container-high);
+  width: 100%;
 }
 </style>

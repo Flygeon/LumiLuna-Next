@@ -58,31 +58,32 @@ function seek(e: MouseEvent) {
       </div>
 
       <div class="controls" @click.stop>
-        <button
+        <m3e-icon-button
           v-if="canLike"
-          class="lm-icon-btn like"
+          class="like"
           :class="{ on: liked }"
           :title="liked ? '取消喜欢' : '喜欢'"
           @click="toggleLike"
         >
           <span class="material-symbols-outlined" :class="{ filled: liked }">favorite</span>
-        </button>
-        <button class="lm-icon-btn" title="上一首" @click="player.previous()">
+        </m3e-icon-button>
+        <m3e-icon-button title="上一首" @click="player.previous()">
           <span class="material-symbols-outlined filled">skip_previous</span>
-        </button>
-        <button
-          class="lm-icon-btn play"
+        </m3e-icon-button>
+        <m3e-icon-button
+          class="play"
+          variant="tonal"
           :title="player.playing ? '暂停' : '播放'"
           @click="player.togglePlay()"
         >
           <PlayerControlIcon :name="player.playing ? 'pause' : 'play'" />
-        </button>
-        <button class="lm-icon-btn" title="下一首" @click="player.next()">
+        </m3e-icon-button>
+        <m3e-icon-button title="下一首" @click="player.next()">
           <span class="material-symbols-outlined filled">skip_next</span>
-        </button>
-        <button class="lm-icon-btn" title="展开播放器" @click="router.push('/music/player')">
+        </m3e-icon-button>
+        <m3e-icon-button title="展开播放器" @click="router.push('/music/player')">
           <span class="material-symbols-outlined">expand_less</span>
-        </button>
+        </m3e-icon-button>
       </div>
     </div>
   </div>
@@ -199,26 +200,27 @@ function seek(e: MouseEvent) {
   display: flex;
   align-items: center;
   gap: 2px;
+  /* 迷你条紧凑尺寸：icon 按钮约 38dp、图标 20dp */
+  --m3e-icon-button-medium-container-height: 38px;
+  --m3e-icon-button-medium-container-width: 38px;
+  --m3e-icon-button-medium-icon-size: 20px;
+  --m3e-icon-button-icon-size: 20px;
 }
+/* 主播放按钮原为 primaryContainer 圆形 tonal 按钮，沿用该语义色 */
 .controls .play {
-  width: 44px;
-  height: 44px;
-  background: var(--md-sys-color-primary-container);
-  color: var(--md-sys-color-on-primary-container);
-}
-.controls .play:hover {
-  filter: brightness(1.08);
+  --m3e-icon-button-tonal-container-color: var(--md-sys-color-primary-container);
+  --m3e-icon-button-tonal-icon-color: var(--md-sys-color-on-primary-container);
+  --m3e-icon-button-tonal-hover-container-color: var(--md-sys-color-primary-container);
+  --m3e-icon-button-tonal-hover-icon-color: var(--md-sys-color-on-primary-container);
 }
 .controls .play .player-control-icon {
   width: 26px;
   height: 23px;
   filter: drop-shadow(0 0 6px rgba(0, 0, 0, 0.18));
 }
-.like.on {
-  color: var(--md-sys-color-error);
-}
-.like .material-symbols-outlined {
-  font-size: 20px;
+.controls .like.on {
+  --m3e-icon-button-icon-color: var(--md-sys-color-error);
+  --m3e-icon-button-hover-icon-color: var(--md-sys-color-error);
 }
 
 @media (max-width: 720px) {

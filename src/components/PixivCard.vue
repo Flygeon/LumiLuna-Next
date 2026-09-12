@@ -26,8 +26,8 @@ onMounted(async () => {
 </script>
 
 <template>
-  <button class="pixiv-card" @click="$emit('open')">
-    <div class="cover">
+  <m3e-card class="pixiv-card" variant="elevated" actionable @click="$emit('open')">
+    <div slot="header" class="cover">
       <img v-if="src" :src="src" :alt="illust.title" loading="lazy" />
       <span v-else class="material-symbols-outlined">image</span>
     </div>
@@ -40,27 +40,12 @@ onMounted(async () => {
         <span class="author" :title="illust.user.name">{{ illust.user.name }}</span>
       </div>
     </div>
-  </button>
+  </m3e-card>
 </template>
 
 <style scoped>
 .pixiv-card {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: inherit;
-  font-family: inherit;
-  text-align: left;
   cursor: pointer;
-  outline: none;
-}
-.pixiv-card:focus-visible {
-  outline: 2px solid var(--md-sys-color-primary);
-  outline-offset: 4px;
-  border-radius: var(--lm-shape-card);
 }
 .cover {
   display: flex;
@@ -68,23 +53,9 @@ onMounted(async () => {
   justify-content: center;
   width: 100%;
   aspect-ratio: 1 / 1;
-  border-radius: var(--lm-shape-card);
   overflow: hidden;
   background: var(--md-sys-color-surface-container);
-  box-shadow: inset 0 0 0 1px var(--lm-hairline);
   color: var(--md-sys-color-outline);
-  transition:
-    transform 220ms var(--md-sys-motion-spring-soft),
-    box-shadow 220ms var(--md-sys-motion-spring-effects-fast);
-}
-.pixiv-card:hover .cover {
-  transform: translateY(-4px) scale(1.015);
-  box-shadow:
-    var(--md-elevation-3),
-    inset 0 0 0 1px var(--lm-hairline);
-}
-.pixiv-card:active .cover {
-  transform: translateY(-1px) scale(0.995);
 }
 .cover img {
   width: 100%;

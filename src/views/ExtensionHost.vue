@@ -92,7 +92,9 @@ onBeforeUnmount(() => {
   <div class="ext-host">
     <div class="bar" data-tauri-drag-region>
       <span class="title">{{ current ? `${current.ext} · ${current.route}` : "扩展" }}</span>
-      <button class="close" title="关闭" @click="closeWindow">✕</button>
+      <m3e-icon-button class="close" variant="standard" title="关闭" @click="closeWindow">
+        <span class="material-symbols-outlined">close</span>
+      </m3e-icon-button>
     </div>
     <div v-if="loadError" class="err">{{ loadError }}</div>
     <iframe
@@ -131,17 +133,11 @@ onBeforeUnmount(() => {
   color: rgba(255, 255, 255, 0.65);
 }
 .close {
-  border: none;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.55);
-  cursor: pointer;
-  font-size: 13px;
-  padding: 2px 6px;
-  border-radius: 6px;
-}
-.close:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
+  --m3e-icon-button-container-height: 26px;
+  --m3e-icon-button-icon-size: 16px;
+  --m3e-icon-button-icon-color: rgba(255, 255, 255, 0.55);
+  --m3e-icon-button-hover-icon-color: #fff;
+  --m3e-icon-button-hover-state-layer-color: rgba(255, 255, 255, 0.1);
 }
 .ext-frame {
   flex: 1;

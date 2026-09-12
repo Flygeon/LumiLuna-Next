@@ -18,6 +18,8 @@ export type ReaderFontKey = "system" | "serif" | "sans" | "kai" | "yuan";
 export type LyricFontKey = "system" | "sans" | "serif" | "kai" | "yuan";
 /** 播放器背景模式：animated 动态模糊 / image 仅图片模糊 / off 不启用 */
 export type PlayerBgMode = "animated" | "image" | "off";
+/** 应用级自定义背景类型：default 不启用（沿用皮肤/纯色背景）/ solid 纯色 / image 本地图片 / video 本地视频 / fluid 流体封面动画 */
+export type AppBgType = "default" | "solid" | "image" | "video" | "fluid";
 /** 歌词副行显示模式：翻译 / 罗马音 */
 export type LyricSubMode = "translation" | "romaji";
 /** 预设分享码偏好：仅中文 / 仅原版 / 两者同时输出 */
@@ -76,6 +78,18 @@ const DEFAULTS = {
   /** 播放器背景：动态模糊 / 仅图片模糊 / 关闭 */
   playerBg: "animated" as PlayerBgMode,
   lyricBlur: true,
+  /** 应用级自定义背景类型：default 不启用自定义背景 */
+  bgType: "default" as AppBgType,
+  /** solid 模式使用的纯色（十六进制） */
+  bgColor: "#1A5C9E",
+  /** image 模式：本地图片绝对路径（空串表示未选择） */
+  bgImagePath: "",
+  /** video 模式：本地视频绝对路径（空串表示未选择） */
+  bgVideoPath: "",
+  /** 背景模糊度（px，仅作用于 image/video/fluid） */
+  bgBlur: 10,
+  /** 暗色遮罩浓度（0-100，百分比） */
+  bgOverlay: 50,
   scanDirs: [] as string[],
   gridColumns: 6,
   /** 最小文件体积过滤（MB）；0 表示不过滤 */
@@ -192,6 +206,12 @@ export const useSettingsStore = defineStore("settings", () => {
   const detectInstrumental = ref(DEFAULTS.detectInstrumental);
   const playerBg = ref<PlayerBgMode>(DEFAULTS.playerBg);
   const lyricBlur = ref(DEFAULTS.lyricBlur);
+  const bgType = ref<AppBgType>(DEFAULTS.bgType);
+  const bgColor = ref(DEFAULTS.bgColor);
+  const bgImagePath = ref(DEFAULTS.bgImagePath);
+  const bgVideoPath = ref(DEFAULTS.bgVideoPath);
+  const bgBlur = ref(DEFAULTS.bgBlur);
+  const bgOverlay = ref(DEFAULTS.bgOverlay);
   const scanDirs = ref<string[]>([...DEFAULTS.scanDirs]);
   const gridColumns = ref(DEFAULTS.gridColumns);
   const minFileSizeMb = ref(DEFAULTS.minFileSizeMb);
@@ -268,6 +288,12 @@ export const useSettingsStore = defineStore("settings", () => {
     detectInstrumental,
     playerBg,
     lyricBlur,
+    bgType,
+    bgColor,
+    bgImagePath,
+    bgVideoPath,
+    bgBlur,
+    bgOverlay,
     scanDirs,
     gridColumns,
     minFileSizeMb,

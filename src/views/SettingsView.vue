@@ -7,6 +7,7 @@ import {
   type PdfReadMode,
   type ThemeMode,
   type PlayerBgMode,
+  type AppBgType,
   type LyricFontKey,
   type ShareCodePreference,
   type DesktopLyricsAnimation,
@@ -17,7 +18,8 @@ import { useSkinsStore } from "@/stores/skins";
 import { useBangumiCollectStore } from "@/stores/bangumiCollect";
 import { useLibraryStore } from "@/stores/library";
 import AudioEffectsPanel from "@/components/AudioEffectsPanel.vue";
-import { capabilities } from "@/capabilities";
+import { capabilities, isTauri } from "@/capabilities";
+import { open as dialogOpen } from "@tauri-apps/plugin-dialog";
 import { formatSize } from "@/utils/format";
 import { activeSkinDoc, skinModeLock, skinSafeMode } from "@/utils/skinRuntime";
 import { translate } from "@shared/i18n";
@@ -297,9 +299,75 @@ function resetDesktopLyricsBounds() {
   settings.desktopLyricsBounds = { width: 420, height: 120 };
 }
 
+// ---- 应用级自定义背景 ----
+const BG_TYPE_OPTIONS: { key: AppBgType; label: string }[] = [
+  { key: "default", label: "默认" },
+  { key: "solid", label: "纯色" },
+  { key: "image", label: "图片" },
+  { key: "video", label: "视频" },
+  { key: "fluid", label: "流体" },
+];
+
+/** 仅对应类型时显示相关参数 */
+const showBgColor = computed(() => settings.bgType === "solid");
+const showBgImage = computed(() => settings.bgType === "image");
+const showBgVideo = computed(() => settings.bgType === "video");
+/** 模糊作用于 image/video/fluid；遮罩作用于所有非 default */
+const showBgBlur = computed(
+  () => settings.bgType === "image" || settings.bgType === "video" || settings.bgType === "fluid",
+);
+const showBgOverlay = computed(() => settings.bgType !== "default");
+
+function setBgType(type: AppBgType) {
+  settings.bgType = type;
+}
+
+function onBgColorInput(event: Event) {
+  settings.bgColor = (event.target as HTMLInputElement).value;
+}
+
+async function pickBgImage() {
+  if (!isTauri) return;
+  const p = await dialogOpen({
+    multiple: false,
+    filters: [{ name: "Image", extensions: ["jpg", "jpeg", "png", "gif", "webp", "bmp"] }],
+  });
+  if (typeof p === "string") settings.bgImagePath = p;
+}
+
+async function pickBgVideo() {
+  if (!isTauri) return;
+  const p = await dialogOpen({
+    multiple: false,
+    filters: [{ name: "Video", extensions: ["mp4", "webm", "mov", "mkv", "avi", "m4v"] }],
+  });
+  if (typeof p === "string") settings.bgVideoPath = p;
+}
+
+/** m3e-slider 的值挂在 m3e-slider-thumb 上，input 事件里读 thumb.value */
+function onBgBlurInput(event: Event) {
+  const el = event.target as HTMLElement & { thumb?: { value: number } };
+  if (el.thumb && Number.isFinite(el.thumb.value)) {
+    settings.bgBlur = Math.round(el.thumb.value);
+  }
+}
+
+function onBgOverlayInput(event: Event) {
+  const el = event.target as HTMLElement & { thumb?: { value: number } };
+  if (el.thumb && Number.isFinite(el.thumb.value)) {
+    settings.bgOverlay = Math.round(el.thumb.value);
+  }
+}
+
 /** 左侧分类导航：一次只显示一个分类，点谁切谁。 */
 const settingNav = [
-  { title: "通用", items: [{ id: "settings-appearance", label: "外观", icon: "palette" }] },
+  {
+    title: "通用",
+    items: [
+      { id: "settings-appearance", label: "外观", icon: "palette" },
+      { id: "settings-background", label: "背景", icon: "wallpaper" },
+    ],
+  },
   {
     title: "媒体",
     items: [
@@ -541,6 +609,97 @@ function selectSection(id: string) {
         </div>
       </div>
       <p class="hint">{{ t("settings.closeToTrayHint") }}</p>
+    </section>
+
+    <!-- 应用级自定义背景（md3e 组件） -->
+    <section v-if="activeSection === 'settings-background'" id="settings-background" class="card">
+      <h3>背景</h3>
+      <p class="hint">
+        自定义应用级背景，叠加在现有皮肤/纯色之上。模糊与遮罩仅作用于图片/视频/流体。
+      </p>
+
+      <!-- 背景类型：m3e-segmented-button（单选） -->
+      <div class="bg-type-row">
+        <span class="row-label">类型</span>
+        <m3e-segmented-button class="bg-seg">
+          <m3e-button-segment
+            v-for="opt in BG_TYPE_OPTIONS"
+            :key="opt.key"
+            :value="opt.key"
+            :checked="settings.bgType === opt.key"
+            @click="setBgType(opt.key)"
+          >
+            {{ opt.label }}
+          </m3e-button-segment>
+        </m3e-segmented-button>
+      </div>
+
+      <!-- 纯色选择 -->
+      <m3e-list v-if="showBgColor" variant="segmented" class="bg-list">
+        <m3e-list-item>
+          <span slot="leading" class="lead-circle">
+            <span class="material-symbols-outlined">palette</span>
+          </span>
+          <span class="li-title">纯色</span>
+          <span slot="supporting-text" class="li-sub">{{ settings.bgColor }}</span>
+          <span slot="trailing" class="color-pick">
+            <input
+              type="color"
+              :value="settings.bgColor"
+              :title="settings.bgColor"
+              @input="onBgColorInput"
+            />
+          </span>
+        </m3e-list-item>
+      </m3e-list>
+
+      <!-- 本地图片选择 -->
+      <m3e-list v-if="showBgImage" variant="segmented" class="bg-list">
+        <m3e-list-item>
+          <span slot="leading" class="lead-circle">
+            <span class="material-symbols-outlined">image</span>
+          </span>
+          <span class="li-title">背景图片</span>
+          <span slot="supporting-text" class="li-sub path-text" :title="settings.bgImagePath">
+            {{ settings.bgImagePath || "未选择" }}
+          </span>
+          <span slot="trailing">
+            <m3e-button variant="tonal" @click="pickBgImage">选择图片</m3e-button>
+          </span>
+        </m3e-list-item>
+      </m3e-list>
+
+      <!-- 本地视频选择 -->
+      <m3e-list v-if="showBgVideo" variant="segmented" class="bg-list">
+        <m3e-list-item>
+          <span slot="leading" class="lead-circle">
+            <span class="material-symbols-outlined">movie</span>
+          </span>
+          <span class="li-title">背景视频</span>
+          <span slot="supporting-text" class="li-sub path-text" :title="settings.bgVideoPath">
+            {{ settings.bgVideoPath || "未选择" }}
+          </span>
+          <span slot="trailing">
+            <m3e-button variant="tonal" @click="pickBgVideo">选择视频</m3e-button>
+          </span>
+        </m3e-list-item>
+      </m3e-list>
+
+      <!-- 模糊度（image/video/fluid） -->
+      <div v-if="showBgBlur" class="bg-slider-row">
+        <span class="row-label">模糊度 · {{ settings.bgBlur }}px</span>
+        <m3e-slider min="0" max="50" step="1" labelled @input="onBgBlurInput">
+          <m3e-slider-thumb :value="settings.bgBlur"></m3e-slider-thumb>
+        </m3e-slider>
+      </div>
+
+      <!-- 遮罩浓度（所有非 default） -->
+      <div v-if="showBgOverlay" class="bg-slider-row">
+        <span class="row-label">遮罩浓度 · {{ settings.bgOverlay }}%</span>
+        <m3e-slider min="0" max="100" step="1" labelled @input="onBgOverlayInput">
+          <m3e-slider-thumb :value="settings.bgOverlay"></m3e-slider-thumb>
+        </m3e-slider>
+      </div>
     </section>
 
     <!-- 扫描目录 -->
@@ -1468,6 +1627,82 @@ function selectSection(id: string) {
 
 /* 开关视觉统一在 src/tokens/theme.css 的「M3 Switch」全局样式里，此处只管点击区域 */
 .switch-row {
+  cursor: pointer;
+}
+
+/* ---- 应用级自定义背景（md3e）---- */
+.bg-type-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  min-height: 48px;
+}
+.bg-seg {
+  flex: 1;
+  min-width: 0;
+}
+.bg-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 48px;
+}
+.bg-slider-row .row-label {
+  flex: 0 0 120px;
+}
+.bg-slider-row m3e-slider {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 连通分组列表令牌，与 TreasureView 保持一致 */
+.bg-list {
+  --m3e-segmented-list-container-shape: 28px;
+  --m3e-segmented-list-segment-gap: 3px;
+  --m3e-segmented-list-item-container-color: var(--md-sys-color-surface-container-high);
+  --m3e-segmented-list-item-container-shape: 8px;
+  --m3e-segmented-list-item-hover-container-shape: 8px;
+  --m3e-segmented-list-item-focus-container-shape: 8px;
+  --m3e-segmented-list-item-selected-container-shape: 8px;
+  --m3e-list-item-two-line-height: 72px;
+  --m3e-list-item-font-size: var(--md-sys-typescale-body-large-size);
+  --m3e-list-item-supporting-text-font-size: var(--md-sys-typescale-body-medium-size);
+  --m3e-list-item-supporting-text-color: var(--md-sys-color-on-surface-variant);
+  --m3e-list-item-leading-space: 16px;
+  --m3e-list-item-trailing-space: 16px;
+  margin-bottom: 16px;
+}
+.bg-list .lead-circle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+}
+.bg-list .lead-circle .material-symbols-outlined {
+  font-size: 24px;
+}
+.bg-list .li-title {
+  color: var(--md-sys-color-on-surface);
+}
+.bg-list .li-sub {
+  display: block;
+}
+.bg-list .path-text {
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  word-break: break-all;
+}
+.color-pick input[type="color"] {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: none;
   cursor: pointer;
 }
 

@@ -162,10 +162,10 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
 <template>
   <div class="pixiv-detail">
     <div class="search-head">
-      <button class="back" @click="emit('back')">
-        <span class="material-symbols-outlined">arrow_back</span>
+      <m3e-button variant="text" class="back" @click="emit('back')">
+        <span slot="icon" class="material-symbols-outlined">arrow_back</span>
         {{ t("pixiv.back") }}
-      </button>
+      </m3e-button>
       <h2 class="page-title">{{ illust.title }}</h2>
     </div>
 
@@ -208,17 +208,17 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
             <span class="material-symbols-outlined">visibility</span>
             {{ illust.totalView }} {{ t("pixiv.totalViews") }}
           </span>
-          <button
-            class="chip-static chip-action"
-            :class="{ bookmarked: pixiv.bookmarked }"
+          <m3e-filter-chip
+            class="bookmark-chip"
+            :selected="pixiv.bookmarked"
             :title="t('pixiv.myBookmarks')"
             @click="toggleBookmark"
           >
-            <span class="material-symbols-outlined">
+            <span slot="icon" class="material-symbols-outlined">
               {{ pixiv.bookmarked ? "bookmark" : "bookmark_border" }}
             </span>
             {{ illust.totalBookmarks }} {{ t("pixiv.totalBookmarks") }}
-          </button>
+          </m3e-filter-chip>
           <span v-if="dateText" class="chip-static">
             <span class="material-symbols-outlined">event</span>{{ dateText }}
           </span>
@@ -248,9 +248,9 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
       </div>
       <div v-else-if="pixiv.commentsError && !pixiv.comments.length" class="state list-error">
         {{ pixiv.commentsError }}
-        <button class="lm-btn lm-btn--text" @click="pixiv.fetchComments(illust.id)">
-          <span class="material-symbols-outlined">refresh</span>{{ t("pixiv.retry") }}
-        </button>
+        <m3e-button variant="text" @click="pixiv.fetchComments(illust.id)">
+          <span slot="icon" class="material-symbols-outlined">refresh</span>{{ t("pixiv.retry") }}
+        </m3e-button>
       </div>
       <div v-else-if="pixiv.comments.length" class="comments">
         <div v-for="c in pixiv.comments" :key="c.id" class="comment">
@@ -266,17 +266,17 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
         </div>
 
         <div v-if="pixiv.commentsNext != null" class="load-more">
-          <button
-            class="lm-btn lm-btn--tonal"
+          <m3e-button
+            variant="tonal"
             :disabled="pixiv.commentsLoading"
             @click="pixiv.fetchCommentsMore()"
           >
-            <span v-if="pixiv.commentsLoading" class="material-symbols-outlined spin"
+            <span v-if="pixiv.commentsLoading" slot="icon" class="material-symbols-outlined spin"
               >progress_activity</span
             >
-            <span v-else class="material-symbols-outlined">expand_more</span>
+            <span v-else slot="icon" class="material-symbols-outlined">expand_more</span>
             {{ t("pixiv.loadMore") }}
-          </button>
+          </m3e-button>
         </div>
       </div>
       <div v-else class="state">{{ t("pixiv.empty") }}</div>
@@ -300,21 +300,34 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
           <span v-if="pages.length > 1" class="lightbox-indicator">
             {{ preview.index + 1 }} / {{ pages.length }}
           </span>
-          <button class="lightbox-btn" :title="t('pixiv.back')" @click="closePreview">
+          <m3e-icon-button
+            variant="filled"
+            class="lightbox-btn"
+            :title="t('pixiv.back')"
+            @click="closePreview"
+          >
             <span class="material-symbols-outlined">close</span>
-          </button>
+          </m3e-icon-button>
         </div>
         <img v-if="previewSrc" :src="previewSrc" class="lightbox-img" @click.self="closePreview" />
         <span v-else class="material-symbols-outlined lightbox-loading spin"
           >progress_activity</span
         >
         <template v-if="pages.length > 1">
-          <button class="lightbox-btn lightbox-nav lightbox-nav--prev" @click="stepPreview(-1)">
+          <m3e-icon-button
+            variant="filled"
+            class="lightbox-btn lightbox-nav lightbox-nav--prev"
+            @click="stepPreview(-1)"
+          >
             <span class="material-symbols-outlined">chevron_left</span>
-          </button>
-          <button class="lightbox-btn lightbox-nav lightbox-nav--next" @click="stepPreview(1)">
+          </m3e-icon-button>
+          <m3e-icon-button
+            variant="filled"
+            class="lightbox-btn lightbox-nav lightbox-nav--next"
+            @click="stepPreview(1)"
+          >
             <span class="material-symbols-outlined">chevron_right</span>
-          </button>
+          </m3e-icon-button>
         </template>
       </div>
     </Teleport>
@@ -332,22 +345,6 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
   display: flex;
   align-items: center;
   gap: 10px;
-}
-.back {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 10px;
-  border: none;
-  border-radius: var(--md-sys-shape-corner-medium);
-  background: transparent;
-  color: var(--md-sys-color-on-surface);
-  font-family: inherit;
-  font-size: var(--md-sys-typescale-body-medium-size);
-  cursor: pointer;
-}
-.back:hover {
-  background: var(--md-sys-color-surface-container);
 }
 .page-title {
   margin: 0;
@@ -431,19 +428,6 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
 .author-link .chev {
   font-size: 16px;
   color: var(--md-sys-color-on-surface-variant);
-}
-.chip-action {
-  border: 1px solid transparent;
-  font-family: inherit;
-  cursor: pointer;
-}
-.chip-action:hover {
-  border-color: var(--md-sys-color-primary);
-  color: var(--md-sys-color-primary);
-}
-.chip-action.bookmarked {
-  background: var(--md-sys-color-primary-container);
-  color: var(--md-sys-color-on-primary-container);
 }
 .author-row .material-symbols-outlined {
   font-size: 20px;
@@ -612,20 +596,14 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
   font-size: var(--md-sys-typescale-label-large-size);
   font-variant-numeric: tabular-nums;
 }
+/* 大图预览灯箱按钮：m3e-icon-button（filled），半透明白底白图标 */
 .lightbox-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  --m3e-filled-icon-button-container-color: rgba(255, 255, 255, 0.12);
+  --m3e-filled-icon-button-icon-color: #fff;
+  --m3e-filled-icon-button-hover-container-color: rgba(255, 255, 255, 0.22);
+  --m3e-filled-icon-button-hover-icon-color: #fff;
   width: 40px;
   height: 40px;
-  border: none;
-  border-radius: var(--md-sys-shape-corner-full);
-  background: rgba(255, 255, 255, 0.12);
-  color: #fff;
-  cursor: pointer;
-}
-.lightbox-btn:hover {
-  background: rgba(255, 255, 255, 0.22);
 }
 .lightbox-loading {
   color: rgba(255, 255, 255, 0.8);

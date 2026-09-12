@@ -250,7 +250,8 @@ function subtitleOf(item: MediaEntry): string {
           </span>
 
           <div class="overlay" :class="{ pinned: v.item.favorite }">
-            <button
+            <m3e-icon-button
+              variant="filled"
               class="fav"
               :class="{ on: v.item.favorite }"
               :title="v.item.favorite ? '取消收藏' : '收藏'"
@@ -259,7 +260,7 @@ function subtitleOf(item: MediaEntry): string {
               <span class="material-symbols-outlined" :class="{ filled: v.item.favorite }"
                 >favorite</span
               >
-            </button>
+            </m3e-icon-button>
           </div>
         </div>
 
@@ -377,30 +378,24 @@ function subtitleOf(item: MediaEntry): string {
   background: none;
 }
 
+/* 收藏按钮：m3e-icon-button（filled），压在深色封面上——用令牌把容器改成半透明黑、图标改白 */
 .fav {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border: none;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.4);
-  color: #fff;
-  cursor: pointer;
-  transition:
-    transform 140ms var(--md-sys-motion-spring),
-    background 160ms var(--md-sys-motion-spring-effects-fast);
-}
-.fav:hover {
-  background: rgba(0, 0, 0, 0.6);
-  transform: scale(1.1);
+  --m3e-filled-icon-button-container-color: rgba(0, 0, 0, 0.4);
+  --m3e-filled-icon-button-icon-color: #fff;
+  --m3e-filled-icon-button-hover-container-color: rgba(0, 0, 0, 0.6);
+  --m3e-filled-icon-button-hover-icon-color: #fff;
+  --m3e-icon-button-small-container-height: 36px;
+  --m3e-icon-button-small-icon-size: 19px;
+  width: 36px;
+  height: 36px;
+  flex: none;
 }
 .fav .material-symbols-outlined {
   font-size: 19px;
 }
 .fav.on {
-  color: #ff6b81;
+  --m3e-filled-icon-button-icon-color: #ff6b81;
+  --m3e-filled-icon-button-hover-icon-color: #ff6b81;
 }
 
 .meta {

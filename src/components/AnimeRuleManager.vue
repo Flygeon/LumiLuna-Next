@@ -160,10 +160,10 @@ async function importFromRepo(entry: RepoEntry) {
 <template>
   <div class="anime-rules">
     <div class="head">
-      <button class="back" @click="emit('back')">
-        <span class="material-symbols-outlined">arrow_back</span>
+      <m3e-button variant="text" @click="emit('back')">
+        <span slot="icon" class="material-symbols-outlined">arrow_back</span>
         {{ t("anime.back") }}
-      </button>
+      </m3e-button>
     </div>
 
     <!-- 已装规则 -->
@@ -171,42 +171,49 @@ async function importFromRepo(entry: RepoEntry) {
       <h3 class="section-title">{{ t("anime.manageRules") }}</h3>
       <div v-if="anime.rulesLoading" class="state">{{ t("anime.loading") }}</div>
       <div v-else-if="!anime.rules.length" class="state">{{ t("anime.noSource") }}</div>
-      <div v-else class="rule-list">
-        <div
+      <m3e-list v-else class="rule-list">
+        <m3e-list-item
           v-for="r in anime.rules"
           :key="r.name"
           class="rule-row"
-          :class="{ active: anime.activeRuleName === r.name, disabled: !r.enabled }"
+          :class="{ disabled: !r.enabled }"
+          :selected="anime.activeRuleName === r.name"
           @click="pickRule(r.name)"
         >
-          <span class="material-symbols-outlined">rule</span>
+          <span slot="leading" class="material-symbols-outlined row-icon">rule</span>
           <span class="rule-name" :title="r.name">{{ r.name }}</span>
-          <span v-if="r.version" class="rule-ver tabular-nums">v{{ r.version }}</span>
-          <span v-if="!r.enabled" class="rule-badge">{{ t("anime.rule.disabled") }}</span>
-          <button
-            class="lm-icon-btn small rule-toggle"
-            :class="{ off: !r.enabled }"
-            :title="r.enabled ? t('anime.rule.disable') : t('anime.rule.enable')"
-            @click.stop="anime.setRuleEnabled(r.name, !r.enabled)"
+          <span v-if="r.version" slot="supporting-text" class="rule-ver tabular-nums"
+            >v{{ r.version }}</span
           >
-            <span class="material-symbols-outlined">{{
-              r.enabled ? "toggle_on" : "toggle_off"
-            }}</span>
-          </button>
-          <button
-            class="lm-icon-btn small danger rule-del"
-            :class="{ confirming: confirmDelete === r.name }"
-            :title="
-              confirmDelete === r.name ? t('anime.rule.deleteConfirm') : t('anime.rule.delete')
-            "
-            @click.stop="onDelete(r.name)"
-          >
-            <span class="material-symbols-outlined">
-              {{ confirmDelete === r.name ? "check" : "close" }}
-            </span>
-          </button>
-        </div>
-      </div>
+          <span v-if="!r.enabled" slot="trailing" class="rule-badge">{{
+            t("anime.rule.disabled")
+          }}</span>
+          <span slot="trailing" class="row-actions">
+            <m3e-icon-button
+              class="rule-toggle"
+              :class="{ off: !r.enabled }"
+              :title="r.enabled ? t('anime.rule.disable') : t('anime.rule.enable')"
+              @click.stop="anime.setRuleEnabled(r.name, !r.enabled)"
+            >
+              <span class="material-symbols-outlined">{{
+                r.enabled ? "toggle_on" : "toggle_off"
+              }}</span>
+            </m3e-icon-button>
+            <m3e-icon-button
+              class="rule-del"
+              :class="{ confirming: confirmDelete === r.name }"
+              :title="
+                confirmDelete === r.name ? t('anime.rule.deleteConfirm') : t('anime.rule.delete')
+              "
+              @click.stop="onDelete(r.name)"
+            >
+              <span class="material-symbols-outlined">
+                {{ confirmDelete === r.name ? "check" : "close" }}
+              </span>
+            </m3e-icon-button>
+          </span>
+        </m3e-list-item>
+      </m3e-list>
     </section>
 
     <!-- 导入 -->
@@ -220,39 +227,49 @@ async function importFromRepo(entry: RepoEntry) {
       ></textarea>
       <p v-if="saveError" class="error">{{ saveError }}</p>
       <div class="actions">
-        <button class="lm-btn lm-btn--tonal" :disabled="!json.trim()" @click="saveRule">
-          <span class="material-symbols-outlined">save</span>
+        <m3e-button variant="tonal" :disabled="!json.trim()" @click="saveRule">
+          <span slot="icon" class="material-symbols-outlined">save</span>
           {{ t("anime.rule.save") }}
-        </button>
-        <button class="lm-btn lm-btn--outlined" :disabled="repoBusy" @click="fetchRepo">
-          <span v-if="repoBusy" class="material-symbols-outlined spin">progress_activity</span>
-          <span v-else class="material-symbols-outlined">cloud_download</span>
+        </m3e-button>
+        <m3e-button variant="outlined" :disabled="repoBusy" @click="fetchRepo">
+          <span v-if="repoBusy" slot="icon" class="material-symbols-outlined spin"
+            >progress_activity</span
+          >
+          <span v-else slot="icon" class="material-symbols-outlined">cloud_download</span>
           {{ repoBusy ? t("anime.rule.fromRepoFetching") : t("anime.rule.fromRepo") }}
-        </button>
+        </m3e-button>
       </div>
       <p v-if="repoError" class="error">{{ repoError }}</p>
-      <div v-if="repoItems.length" class="repo-list">
-        <button
+      <m3e-list v-if="repoItems.length" class="repo-list">
+        <m3e-list-item
           v-for="entry in repoItems"
           :key="entry.name"
           class="repo-row"
           :disabled="importingName === entry.name"
           @click="importFromRepo(entry)"
         >
-          <span v-if="importingName === entry.name" class="material-symbols-outlined spin"
+          <span
+            v-if="importingName === entry.name"
+            slot="leading"
+            class="material-symbols-outlined spin"
             >progress_activity</span
           >
-          <span v-else-if="repoImported === entry.name" class="material-symbols-outlined ok"
+          <span
+            v-else-if="repoImported === entry.name"
+            slot="leading"
+            class="material-symbols-outlined ok"
             >check</span
           >
-          <span v-else class="material-symbols-outlined">add</span>
+          <span v-else slot="leading" class="material-symbols-outlined">add</span>
           <span class="rule-name" :title="entry.name">{{ entry.name }}</span>
-          <span v-if="entry.version" class="rule-ver tabular-nums">v{{ entry.version }}</span>
-          <span v-if="entry.antiCrawlerEnabled" class="badge">{{
+          <span v-if="entry.version" slot="supporting-text" class="rule-ver tabular-nums"
+            >v{{ entry.version }}</span
+          >
+          <span v-if="entry.antiCrawlerEnabled" slot="trailing" class="badge">{{
             t("anime.rule.antiCrawler")
           }}</span>
-        </button>
-      </div>
+        </m3e-list-item>
+      </m3e-list>
       <p v-else-if="repoBusy" class="state">{{ t("anime.rule.fromRepoFetching") }}</p>
       <p v-if="repoImported" class="hint ok-hint">
         {{ t("anime.rule.imported") }} {{ repoImported }}
@@ -276,22 +293,6 @@ async function importFromRepo(entry: RepoEntry) {
 .head {
   display: flex;
   align-items: center;
-}
-.back {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 10px;
-  border: none;
-  border-radius: var(--md-sys-shape-corner-medium);
-  background: transparent;
-  color: var(--md-sys-color-on-surface);
-  font-family: inherit;
-  font-size: var(--md-sys-typescale-body-medium-size);
-  cursor: pointer;
-}
-.back:hover {
-  background: var(--md-sys-color-surface-container);
 }
 .section {
   display: flex;
@@ -320,26 +321,8 @@ async function importFromRepo(entry: RepoEntry) {
   flex-direction: column;
   gap: 6px;
 }
-.rule-row,
-.repo-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 8px 10px 14px;
-  border: none;
-  border-radius: var(--md-sys-shape-corner-medium);
-  background: var(--md-sys-color-surface-container);
-  color: var(--md-sys-color-on-surface);
-  font-family: inherit;
-  text-align: left;
+.rule-row {
   cursor: pointer;
-}
-.rule-row:hover,
-.repo-row:hover {
-  background: var(--md-sys-color-surface-container-high);
-}
-.rule-row.active {
-  box-shadow: inset 0 0 0 2px var(--md-sys-color-primary);
 }
 .rule-row.disabled {
   opacity: 0.55;
@@ -356,21 +339,22 @@ async function importFromRepo(entry: RepoEntry) {
   color: var(--md-sys-color-on-surface-variant);
   font-size: var(--md-sys-typescale-label-small-size);
 }
+.row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.row-icon {
+  font-size: 19px;
+  color: var(--md-sys-color-primary);
+}
 .rule-toggle {
-  width: 30px;
-  height: 30px;
   color: var(--md-sys-color-primary);
 }
 .rule-toggle.off {
   color: var(--md-sys-color-outline);
 }
-.rule-row > .material-symbols-outlined,
-.repo-row > .material-symbols-outlined {
-  font-size: 19px;
-  color: var(--md-sys-color-primary);
-}
 .rule-name {
-  flex: 1;
   min-width: 0;
   font-size: var(--md-sys-typescale-body-medium-size);
   white-space: nowrap;
@@ -382,15 +366,9 @@ async function importFromRepo(entry: RepoEntry) {
   color: var(--md-sys-color-on-surface-variant);
 }
 .rule-del {
-  width: 30px;
-  height: 30px;
-  opacity: 0;
-}
-.rule-row:hover .rule-del {
-  opacity: 1;
+  color: var(--md-sys-color-on-surface-variant);
 }
 .rule-del.confirming {
-  opacity: 1;
   color: var(--md-sys-color-error);
 }
 textarea {
@@ -427,20 +405,16 @@ textarea:focus {
   }
 }
 .repo-row {
-  background: transparent;
-  box-shadow: inset 0 0 0 1px var(--lm-hairline);
-}
-.repo-row:hover {
-  background: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent);
+  cursor: pointer;
 }
 .repo-row:disabled {
   opacity: 0.6;
   cursor: wait;
 }
-.repo-row > .material-symbols-outlined.ok {
+.repo-row .ok {
   color: var(--md-sys-color-tertiary);
 }
-.repo-row > .material-symbols-outlined.spin {
+.repo-row .spin {
   color: var(--md-sys-color-on-surface-variant);
 }
 .badge {

@@ -481,10 +481,10 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
             </span>
             <span class="nickname">{{ netease.profile?.nickname ?? "" }}</span>
             <span class="spacer"></span>
-            <button class="lm-btn lm-btn--text" @click="logoutNetease">
-              <span class="material-symbols-outlined">logout</span>
+            <m3e-button variant="text" @click="logoutNetease">
+              <span slot="icon" class="material-symbols-outlined">logout</span>
               {{ t("netease.logout") }}
-            </button>
+            </m3e-button>
           </template>
           <template v-else>
             <span class="avatar placeholder">
@@ -492,10 +492,10 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
             </span>
             <span class="nickname">{{ t("netease.loginHint") }}</span>
             <span class="spacer"></span>
-            <button class="lm-btn lm-btn--tonal" @click="netease.openQr()">
-              <span class="material-symbols-outlined">qr_code</span>
+            <m3e-button variant="tonal" @click="netease.openQr()">
+              <span slot="icon" class="material-symbols-outlined">qr_code</span>
               {{ t("netease.login") }}
-            </button>
+            </m3e-button>
           </template>
         </div>
         <p class="online-hint">{{ t("online.hint") }}</p>
@@ -533,10 +533,10 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
         <div class="add-playlist">
           <input v-model="addId" :placeholder="t('online.addId')" />
           <input v-model="addName" :placeholder="t('online.addName')" />
-          <button class="lm-btn lm-btn--tonal" @click="addPlaylist">
-            <span class="material-symbols-outlined">add</span>
+          <m3e-button variant="tonal" @click="addPlaylist">
+            <span slot="icon" class="material-symbols-outlined">add</span>
             {{ t("online.addBtn") }}
-          </button>
+          </m3e-button>
         </div>
         <p v-if="settings.onlinePlaylists.length" class="online-hint">
           {{ t("online.addHint") }}
@@ -557,10 +557,10 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
             :placeholder="t('online.searchPlaceholder')"
             @keyup.enter="doSearch"
           />
-          <button class="lm-btn lm-btn--tonal" @click="doSearch">
-            <span class="material-symbols-outlined">search</span>
+          <m3e-button variant="tonal" @click="doSearch">
+            <span slot="icon" class="material-symbols-outlined">search</span>
             {{ t("online.searchBtn") }}
-          </button>
+          </m3e-button>
         </div>
         <div v-if="onlineError" class="error-bar">
           <span class="material-symbols-outlined">error</span>
@@ -573,9 +573,9 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
     <!-- 歌单 / 搜索详情 -->
     <template v-if="detail">
       <div class="detail-head">
-        <button class="lm-icon-btn" @click="detail = null">
+        <m3e-icon-button class="back-btn" @click="detail = null">
           <span class="material-symbols-outlined">arrow_back</span>
-        </button>
+        </m3e-icon-button>
         <h2>{{ detail.type === "local" ? t("online.local") : detail.title }}</h2>
         <span v-if="detail.type !== 'local'" class="count tabular-nums">
           {{ detail.songs.length }} {{ t("online.tracks") }}
@@ -695,9 +695,9 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
       <div v-if="error" class="error-bar">
         <span class="material-symbols-outlined">error</span>
         {{ error }}
-        <button class="lm-icon-btn" @click="error = ''">
+        <m3e-icon-button class="error-close" @click="error = ''">
           <span class="material-symbols-outlined">close</span>
-        </button>
+        </m3e-icon-button>
       </div>
 
       <MediaGrid
@@ -796,17 +796,17 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
               <template v-else-if="netease.qrState === 'error'">{{ netease.qrError }}</template>
             </p>
             <div class="qr-actions">
-              <button class="lm-btn lm-btn--text" @click="netease.closeQr()">
+              <m3e-button variant="text" @click="netease.closeQr()">
                 {{ t("actions.cancel") }}
-              </button>
-              <button
+              </m3e-button>
+              <m3e-button
                 v-if="netease.qrState === 'error' || netease.qrState === 'timeout'"
-                class="lm-btn lm-btn--tonal"
+                variant="tonal"
                 @click="netease.openQr()"
               >
-                <span class="material-symbols-outlined">refresh</span>
+                <span slot="icon" class="material-symbols-outlined">refresh</span>
                 {{ t("netease.login") }}
-              </button>
+              </m3e-button>
             </div>
           </template>
 
@@ -851,9 +851,9 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
                 {{ netease.phoneLogging ? "登录中…" : "登录" }}
               </button>
               <div class="phone-actions">
-                <button class="lm-btn lm-btn--text" @click="netease.closeQr()">
+                <m3e-button variant="text" @click="netease.closeQr()">
                   {{ t("actions.cancel") }}
-                </button>
+                </m3e-button>
               </div>
             </div>
           </template>
@@ -1157,14 +1157,13 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
 .error-bar > .material-symbols-outlined {
   font-size: 20px;
 }
-.error-bar .lm-icon-btn {
+.error-bar .error-close {
   margin-left: auto;
-  width: 30px;
-  height: 30px;
-  color: inherit;
-}
-.error-bar .lm-icon-btn .material-symbols-outlined {
-  font-size: 17px;
+  --m3e-icon-button-medium-container-height: 30px;
+  --m3e-icon-button-medium-container-width: 30px;
+  --m3e-icon-button-medium-icon-size: 17px;
+  --m3e-icon-button-icon-color: currentColor;
+  --m3e-icon-button-hover-icon-color: currentColor;
 }
 
 .toast {
