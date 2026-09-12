@@ -2,22 +2,26 @@
 /**
  * 子选项卡（分段控件）—— 全站统一样式 + 平移动画。
  *
- * 背景：书籍 / 图片 / 视频 / 音乐四个页面各复制了一份 `.online-tabs`，
- * 其中音乐页那套（胶囊轨道 + secondary-container 实心选中）视觉最好，
- * 其余三套是未统一过的另一版（surface-container 轨道 + 圆角 full + 阴影）。
- * 现在统一收敛到本组件。
+ * 视觉（M3 Expressive segmented buttons）：
+ * 每段是**独立胶囊**（间隙 8px，无共享轨道底色）——未选中用 secondary-container
+ * 实心、选中用 primary 实心（on-primary 文字/图标）；每段可带 Material Symbols
+ * 图标。颜色全部取自动态取色令牌，随种子色/皮肤联动。
  *
- * 动画：
+ * 动画（沿用原实现，未改动效果）：
  * - 指示器是一个绝对定位的胶囊，按目标按钮实测的 offsetLeft/offsetWidth
  *   用 transform 平移过去（不是给每个按钮改背景），切 tab 时是"滑动"而非"闪现"。
  * - 内容用方向感知的 Transition 平移：向右切时旧内容左移淡出、新内容从右滑入，
  *   反向相反。两个面板用 grid-area 叠在同一格，动画期间容器高度不塌陷。
+ *
+ * 层级（关键）：轨道 isolation:isolate 建立层叠上下文后，
+ *   各段底色(z-auto) < 指示器(z:1) < 文字与图标(z:2)。
+ * 这样指示器滑动时能从其它段底色的**上方**划过，且所有文字始终可读。
  */
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
 const props = defineProps<{
   modelValue: string;
-  tabs: { value: string; label: string }[];
+  tabs: { value: string; label: string; icon?: string }[];
 }>();
 
 const emit = defineEmits<{ "update:modelValue": [value: string] }>();
@@ -69,7 +73,10 @@ onBeforeUnmount(() => ro?.disconnect());
       type="button"
       @click="select(tab.value)"
     >
-      {{ tab.label }}
+      <span class="seg-label">
+        <span v-if="tab.icon" class="material-symbols-outlined seg-icon">{{ tab.icon }}</span>
+        <span class="seg-text">{{ tab.label }}</span>
+      </span>
     </button>
   </div>
 
@@ -85,20 +92,20 @@ onBeforeUnmount(() => ro?.disconnect());
 <style scoped>
 .online-tabs {
   position: relative;
+  isolation: isolate;
   display: inline-flex;
-  gap: 4px;
-  padding: 3px;
+  gap: 8px;
+  padding: 0;
   margin-bottom: 14px;
-  background: var(--md-sys-color-surface-container-high);
-  border-radius: var(--lm-shape-button);
 }
 .online-tabs-indicator {
   position: absolute;
-  top: 3px;
+  top: 0;
   left: 0;
-  height: calc(100% - 6px);
+  z-index: 1;
+  height: 100%;
   border-radius: var(--lm-shape-button);
-  background: var(--md-sys-color-secondary-container);
+  background: var(--md-sys-color-primary);
   pointer-events: none;
   transition:
     transform 320ms var(--md-sys-motion-spring-soft),
@@ -110,23 +117,45 @@ onBeforeUnmount(() => ro?.disconnect());
 }
 .online-tabs .seg {
   position: relative;
-  z-index: 1;
   border: none;
-  background: transparent;
-  padding: 8px 22px;
+  background: var(--md-sys-color-secondary-container);
+  padding: 10px 20px;
   border-radius: var(--lm-shape-button);
   cursor: pointer;
   font-family: inherit;
   font-size: var(--md-sys-typescale-label-large-size);
-  color: var(--md-sys-color-on-surface-variant);
-  transition: color var(--md-sys-motion-duration-short) var(--md-sys-motion-spring-effects-fast);
+  font-weight: var(--md-sys-typescale-label-large-weight);
+  color: var(--md-sys-color-on-secondary-container);
+  transition:
+    background var(--md-sys-motion-duration-short) var(--md-sys-motion-spring-effects-fast),
+    color var(--md-sys-motion-duration-short) var(--md-sys-motion-spring-effects-fast);
 }
 .online-tabs .seg:hover {
-  color: var(--md-sys-color-on-surface);
+  background: color-mix(
+    in srgb,
+    var(--md-sys-color-on-secondary-container) 8%,
+    var(--md-sys-color-secondary-container)
+  );
 }
+/* 选中段交给滑动指示器上色，自身底色透明，避免两层圆角边缘重叠 */
 .online-tabs .seg.active {
-  color: var(--md-sys-color-on-secondary-container);
-  font-weight: 500;
+  background: transparent;
+  color: var(--md-sys-color-on-primary);
+}
+.online-tabs .seg-label {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.online-tabs .seg-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+.online-tabs .seg-icon.filled,
+.online-tabs .seg.active .seg-icon {
+  font-variation-settings: "FILL" 1;
 }
 
 /* 两个面板叠在同一格：动画期间容器高度取较高者，不会塌陷跳动 */

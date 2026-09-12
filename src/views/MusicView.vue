@@ -67,9 +67,9 @@ const onlineMode = computed(() => settings.enableOnlineMusic);
 const tab = ref<"feed" | "playlists" | "search">("feed");
 /** 非在线模式（本地/详情）不传 tab，组件只渲染内容、不显示分段条 */
 const onlineTabs = computed(() => [
-  { value: "feed", label: t("homeFeed.forYou") },
-  { value: "playlists", label: t("online.playlists") },
-  { value: "search", label: t("online.search") },
+  { value: "feed", label: t("homeFeed.forYou"), icon: "star" },
+  { value: "playlists", label: t("online.playlists"), icon: "playlist_add" },
+  { value: "search", label: t("online.search"), icon: "search" },
 ]);
 
 type Detail =

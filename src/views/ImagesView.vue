@@ -24,8 +24,8 @@ const viewerIndex = ref(-1);
 const imagesTab = ref<"local" | "pixiv">("local");
 /** 在线图片未启用时不传 tab，组件只渲染内容、不显示分段条 */
 const imageTabs = computed(() => [
-  { value: "local", label: t("pixiv.local") },
-  { value: "pixiv", label: t("pixiv.online") },
+  { value: "local", label: t("pixiv.local"), icon: "photo_library" },
+  { value: "pixiv", label: t("pixiv.online"), icon: "public" },
 ]);
 
 function t(key: string) {

@@ -26,8 +26,8 @@ const reading = ref<MediaEntry | null>(null);
 const bookTab = ref<"local" | "online">("local");
 /** 在线小说未启用时不传 tab，组件只渲染内容、不显示分段条 */
 const bookTabs = computed(() => [
-  { value: "local", label: t("books.local") },
-  { value: "online", label: t("books.online") },
+  { value: "local", label: t("books.local"), icon: "menu_book" },
+  { value: "online", label: t("books.online"), icon: "public" },
 ]);
 
 /** 应用内可阅读的格式，其余仍交系统程序 */

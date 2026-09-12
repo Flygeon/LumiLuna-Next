@@ -28,8 +28,8 @@ const viewerIndex = ref(-1);
 const videosTab = ref<"local" | "anime">("local");
 /** 在线番剧未启用时不传 tab，组件会只渲染内容、不显示分段条 */
 const videoTabs = computed(() => [
-  { value: "local", label: t("videos.local") },
-  { value: "anime", label: t("videos.online") },
+  { value: "local", label: t("videos.local"), icon: "movie" },
+  { value: "anime", label: t("videos.online"), icon: "public" },
 ]);
 
 function t(key: string) {
