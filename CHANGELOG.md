@@ -1,5 +1,77 @@
 # Changelog
 
+## 1.2.1 (2026-09-12)
+
+> 本版本涵盖自 1.2.0 以来的全部 27 个提交，按功能模块归类；括号内为对应 commit。
+> 主线是**扩展框架落地**（主项目零体积增加，首个参考扩展 MiaoHui 独立分发）与**在线图片（Pixiv）**，
+> 另有设置页重构与开关视觉统一。
+
+### 新增功能
+
+#### 扩展框架（Extension Host）
+- 新增扩展主机，支持扩展的安装 / 卸载 / 启用停用 / 调用 / 打开，**主项目零体积增加**，扩展包独立分发（b5cc28f）
+- 扩展目录约定 `app_data_dir/extensions/<id>/`：`manifest.json` + `engine/`（引擎）+ `web/dist/`（界面）+ `data/`（数据）（b5cc28f）
+- 主机只暴露通用命令：`ext_list` / `ext_install` / `ext_uninstall` / `ext_set_enabled` / `ext_invoke` / `ext_open`；其中 `open` / `reveal` 由主机拦截代执行，扩展本身不持有高权限（b5cc28f）
+- `ext_invoke` 把 `POST 127.0.0.1:<port>/<method>` 路由到引擎 sidecar（b5cc28f）
+- 引擎 sidecar 以 `CREATE_NO_WINDOW` 拉起，靠 stdout 首行 `READY <port>` 完成握手；`cmd` 以 `.py` 结尾时经解释器执行（源码模式），否则补 `.exe`（PyInstaller 冻结模式）（b5cc28f）
+- 扩展 Web UI 走 **iframe + postMessage**（iframe 内无 Tauri 桥接），父组件 `ExtensionHost.vue` 用 `convertFileSrc` 生成 `asset://` 地址并代理 `extInvoke`（b5cc28f）
+- 新增扩展管理页与扩展宿主窗口（`ExtensionsView.vue` / `ExtensionHost.vue`），并注册对应路由（b5cc28f）
+- 新增 `capabilities/extension.json` 预授权窗口 label `extension`：Tauri v2 的 capability 不能运行时动态加标签，故所有扩展 UI 共用一个预授权窗口，靠 `ext:navigate` 事件 + 路由区分（b5cc28f）
+- 首个参考实现扩展 **MiaoHui（妙绘）** 独立分发：图片 / 视频索引 + OCR + ASR + 向量检索，MIT 协议，源码与打包脚本见 `miaohui-extension/`（b5cc28f）
+- 扩展迁移方案文档 `doc/miaohui-migration-plan.md`（b5cc28f）
+
+#### 在线图片（Pixiv，移植自 Pixez）
+- 移植 Pixez 在线图片功能：浏览 / 搜索 / 排行榜 + 设置开关（默认关闭）（4fa1ff6）
+- 图片经 Rust 代理命令取回并自动携带 `Referer`，前端转 Blob URL 并按 URL 内存缓存（4fa1ff6）
+- 作品评论 + 大图预览（多页翻页）+ 旧会话用户名恢复（f6f4f53）
+- 收藏 + 作者页 / 关注 + 关注流 + 全列表加载更多 + ugoira 动图 + 搜索热词与联想（cd63d54）
+- 懒刷新 token：接口返回 400 / 401 时自动用 refresh_token 恢复会话后重试（cd63d54）
+
+#### 在线番剧
+- **ArtPlayer 替换原生播放器** + DanDanPlay 弹幕接入 + FFmpeg 横幅修复（29d80c4）
+- Bangumi 追番同步 + MD3 三阶取色配色（9e53475）
+- 番剧卡片改竖版；详情页新增 hero 动画；历史记录点击进入详情页（ac69bc0）
+- hero 动画改为 overlay 飞行层实现；回滚三阶配色（1ce00a5）
+
+#### 界面与设置
+- 设置页改为**左右双栏**：左侧分类导航 + 右侧内容区（b5cc28f、9149ce2）
+- 设置页改为**一次只显示一个分类**的切换视图，不再是一条长页滚动找锚点（本次发布）
+- 播放器进度条 / 主播放按钮 / 侧边按钮改 MD3 风格，补齐 hover、active、elevation（b5cc28f）
+- 启用 / 关闭开关统一为 **MD3 Switch**（轨道 + 滑块），提为全局样式，设置页与音效面板共用，并保留 `.lm-checkbox-native` 逃生舱给原生多选框（9149ce2）
+- 引入 Google Sans 字体族（Regular / Medium / SemiBold / Bold）（b5cc28f）
+- 新增 MD3 启动加载动画（1ce00a5）
+
+### 修复
+
+#### 设置与播放器
+- 设置页双栏错位：`:deep(.page-header)` 与 PageHeader 组件实际根类名 `.page-head` 不符，选择器静默失效导致标题落进 180px 左栏、导航与卡片整体错位（9149ce2）
+- 设置页分类锚点错位：`settings-playback` 原本挂在「播放器」卡片上，点「播放」会跳过 FFmpeg / 歌词 / 桌面歌词（9149ce2）
+- 音乐播放器歌词高亮行偏移（视觉高亮落后播放时间轴一行）——已回滚，高亮行回到 `player.activeLine`（9149ce2）
+
+#### 在线图片（Pixiv）
+- 「登录成功但列表全空」：API JSON 为 snake_case 而结构体按 camelCase 反序列化，缺 `rename` 别名导致每条作品解析失败；同时补 `[pixiv]` 诊断日志，避免「列表全空且无报错」的无解现场（3da456a）
+- 补 `base64::Engine` 引入，修复 `URL_SAFE_NO_PAD.encode` 编译错误 E0599（c027b22）
+- 修 E0283：`call_api_post_blocking` 里 `.or(Ok(Value::Null))` 类型推断歧义（ad9237e）
+- `Cargo.toml` 中 `zip` 重复键导致构建失败；返回推荐列表不再反复刷新（aefe342）
+
+#### 在线番剧
+- 追番按钮遇到空响应体时解析报错（ac69bc0）
+
+#### 在线小说
+- Wenku8 登录窗口点 X 关不掉 / 登录成功后不自动关闭；移除 DevTools 自启（994f6d6）
+
+#### 扩展框架
+- 更新 Tauri v2 extension 相关 API 调用（7eb70cf）
+- 移除多余的快捷键 handler 变量（c46e9af）
+
+### 工程与 CI
+- 引入代码质量工具链：ESLint + Prettier（前端）、thiserror + anyhow（Rust 错误处理）、clippy + rustfmt，并修复随之暴露的 CI 问题（6a7fcdd、0dfdfc1、e95643f）
+- 修复 CI clippy `useless_borrows_in_formatting` 告警（854583c）
+- 清理剩余 clippy 告警（5813586）
+- 为 ESLint / Prettier 增加忽略规则，排除本地参考项目（6fc4077）
+- 移除仓库内的本地参考项目（93473ce）
+- 统一扩展 host 与设置页 / 播放器代码格式（4645b7d、1c633b1、0dba5f3）
+
 ## 1.2.0 (2026-08-30)
 
 > 本版本涵盖自 1.1.0 以来的全部 77 个提交，按功能模块归类；括号内为对应 commit。
