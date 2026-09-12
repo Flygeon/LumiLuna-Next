@@ -401,7 +401,7 @@ onBeforeUnmount(() => {
 .chapter-title {
   margin: 0 0 20px;
   font-size: 20px;
-  font-weight: 600;
+  font-weight: 500;
 }
 .para {
   margin: 0 0 1em;
@@ -463,7 +463,7 @@ onBeforeUnmount(() => {
 .toc-head h3 {
   margin: 0;
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 500;
 }
 .toc-body {
   flex: 1;
@@ -488,7 +488,7 @@ onBeforeUnmount(() => {
 }
 .toc-row.active {
   background: color-mix(in srgb, currentColor 16%, transparent);
-  font-weight: 600;
+  font-weight: 500;
 }
 .toc-title {
   white-space: nowrap;
@@ -497,7 +497,7 @@ onBeforeUnmount(() => {
 }
 .toc-fade-enter-active,
 .toc-fade-leave-active {
-  transition: opacity 160ms ease;
+  transition: opacity 160ms var(--md-sys-motion-spring-effects-fast);
 }
 .toc-fade-enter-from,
 .toc-fade-leave-to {

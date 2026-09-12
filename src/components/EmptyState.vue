@@ -79,7 +79,7 @@ const isAlert = computed(() => props.variant === "error" || props.variant === "o
   border-radius: 20px;
   background: var(--md-sys-color-surface-container-low);
   box-shadow: inset 0 0 0 1px var(--lm-hairline);
-  animation: lm-rise 420ms var(--md-sys-motion-easing-emphasized-decelerate) both;
+  animation: lm-rise 420ms var(--md-sys-motion-spring-spatial) both;
 }
 .icon {
   display: flex;
@@ -99,7 +99,7 @@ const isAlert = computed(() => props.variant === "error" || props.variant === "o
 }
 .title {
   font-size: 17px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--md-sys-color-on-surface);
   margin: 0;
 }

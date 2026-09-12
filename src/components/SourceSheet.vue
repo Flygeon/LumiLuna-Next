@@ -259,7 +259,7 @@ const aliasList = computed(() => props.subject?.alias?.slice(0, 12) ?? []);
   align-items: flex-end;
   justify-content: center;
   background: rgba(0, 0, 0, 0.42);
-  animation: lm-fade-in 180ms var(--md-sys-motion-easing-standard);
+  animation: lm-fade-in 180ms var(--md-sys-motion-spring-effects-fast);
 }
 .sheet {
   width: min(680px, 100vw);
@@ -270,7 +270,7 @@ const aliasList = computed(() => props.subject?.alias?.slice(0, 12) ?? []);
   background: var(--md-sys-color-surface-container-high);
   color: var(--md-sys-color-on-surface);
   box-shadow: var(--md-elevation-3);
-  animation: rise 240ms var(--md-sys-motion-easing-emphasized-decelerate) both;
+  animation: rise 240ms var(--md-sys-motion-spring-spatial) both;
 }
 .sheet-head {
   display: flex;
@@ -281,7 +281,7 @@ const aliasList = computed(() => props.subject?.alias?.slice(0, 12) ?? []);
 }
 .sheet-title {
   font-size: var(--md-sys-typescale-title-medium-size);
-  font-weight: 600;
+  font-weight: 500;
 }
 .close {
   display: grid;
@@ -356,7 +356,7 @@ const aliasList = computed(() => props.subject?.alias?.slice(0, 12) ?? []);
   flex: 1;
   min-width: 0;
   font-size: var(--md-sys-typescale-title-small-size);
-  font-weight: 600;
+  font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -379,7 +379,7 @@ const aliasList = computed(() => props.subject?.alias?.slice(0, 12) ?? []);
   color: var(--md-sys-color-on-surface-variant);
 }
 .card-head .chevron {
-  transition: transform 180ms var(--md-sys-motion-easing-standard);
+  transition: transform 220ms var(--md-sys-motion-spring-spatial-fast);
 }
 .spin {
   animation: lm-spin 1s linear infinite;

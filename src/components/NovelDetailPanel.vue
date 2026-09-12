@@ -145,7 +145,7 @@ async function toggleShelf() {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  animation: lm-rise 320ms var(--md-sys-motion-easing-emphasized-decelerate) both;
+  animation: lm-rise 320ms var(--md-sys-motion-spring-spatial) both;
 }
 .state {
   padding: 40px 0;
@@ -194,7 +194,7 @@ async function toggleShelf() {
   justify-content: center;
   width: 120px;
   aspect-ratio: 3 / 4;
-  border-radius: var(--md-sys-shape-corner-large);
+  border-radius: var(--lm-shape-card);
   overflow: hidden;
   background: var(--md-sys-color-surface-container);
   color: var(--md-sys-color-outline);
@@ -212,7 +212,7 @@ async function toggleShelf() {
 .title {
   margin: 0 0 8px;
   font-size: var(--md-sys-typescale-title-large-size);
-  font-weight: 600;
+  font-weight: 500;
 }
 .line {
   margin: 4px 0;
@@ -250,12 +250,12 @@ async function toggleShelf() {
 .catalogue-title {
   margin: 8px 0;
   font-size: var(--md-sys-typescale-title-medium-size);
-  font-weight: 600;
+  font-weight: 500;
 }
 .volume-title {
   margin: 12px 0 4px;
   font-size: var(--md-sys-typescale-title-small-size);
-  font-weight: 600;
+  font-weight: 500;
   color: var(--md-sys-color-on-surface-variant);
 }
 .chapter-row {

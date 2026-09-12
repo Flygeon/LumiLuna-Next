@@ -242,7 +242,7 @@ function nicknameOf(c: NeteaseComment): string {
 /* 从左侧滑入：遮罩淡入 + 面板滑动；关闭时反向播放同一动画 */
 .comment-fade-enter-active,
 .comment-fade-leave-active {
-  transition: opacity 320ms var(--md-sys-motion-easing-standard);
+  transition: opacity 320ms var(--md-sys-motion-spring-effects-fast);
 }
 .comment-fade-enter-from,
 .comment-fade-leave-to {
@@ -250,7 +250,7 @@ function nicknameOf(c: NeteaseComment): string {
 }
 .comment-fade-enter-active .comment-panel,
 .comment-fade-leave-active .comment-panel {
-  transition: transform 320ms var(--md-sys-motion-easing-emphasized-decelerate);
+  transition: transform 320ms var(--md-sys-motion-spring-spatial);
 }
 .comment-fade-enter-from .comment-panel,
 .comment-fade-leave-to .comment-panel {
@@ -269,7 +269,7 @@ function nicknameOf(c: NeteaseComment): string {
 .comment-title {
   margin: 0;
   font-size: var(--md-sys-typescale-title-medium-size);
-  font-weight: 600;
+  font-weight: 500;
 }
 .comment-close {
   display: flex;
@@ -319,7 +319,7 @@ function nicknameOf(c: NeteaseComment): string {
 .comment-section-title {
   margin: 0 0 12px;
   font-size: var(--md-sys-typescale-title-small-size);
-  font-weight: 600;
+  font-weight: 500;
   color: var(--md-sys-color-on-surface);
 }
 .comment-item {
@@ -349,7 +349,7 @@ function nicknameOf(c: NeteaseComment): string {
 }
 .comment-nick {
   font-size: var(--md-sys-typescale-body-small-size);
-  font-weight: 600;
+  font-weight: 500;
   color: var(--md-sys-color-on-surface);
   white-space: nowrap;
   overflow: hidden;
@@ -375,7 +375,7 @@ function nicknameOf(c: NeteaseComment): string {
   white-space: nowrap;
 }
 .reply-nick {
-  font-weight: 600;
+  font-weight: 500;
 }
 .comment-text {
   margin: 6px 0 0;

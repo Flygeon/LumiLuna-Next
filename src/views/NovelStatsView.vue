@@ -157,7 +157,7 @@ onMounted(load);
   align-items: center;
   gap: 6px;
   padding: 18px 12px;
-  border-radius: var(--md-sys-shape-corner-large);
+  border-radius: var(--lm-shape-card);
   background: var(--md-sys-color-surface-container);
 }
 .stat-icon {
@@ -166,7 +166,7 @@ onMounted(load);
 }
 .stat-value {
   font-size: var(--md-sys-typescale-title-large-size);
-  font-weight: 600;
+  font-weight: 500;
 }
 .stat-label {
   font-size: var(--md-sys-typescale-body-small-size);
@@ -174,7 +174,7 @@ onMounted(load);
 }
 .card {
   background: var(--md-sys-color-surface-container-low);
-  border-radius: var(--md-sys-shape-corner-large);
+  border-radius: var(--lm-shape-card);
   padding: 18px 20px;
   margin-bottom: 16px;
   box-shadow: inset 0 0 0 1px var(--lm-hairline);
@@ -182,7 +182,7 @@ onMounted(load);
 .card-title {
   margin: 0 0 14px;
   font-size: var(--md-sys-typescale-title-medium-size);
-  font-weight: 600;
+  font-weight: 500;
 }
 .trend-bars {
   display: flex;
@@ -244,7 +244,7 @@ onMounted(load);
   flex: none;
   width: 24px;
   text-align: center;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--md-sys-color-on-surface-variant);
 }
 .book-main {

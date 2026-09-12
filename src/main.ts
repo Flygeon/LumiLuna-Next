@@ -2,6 +2,8 @@ import { createApp } from "vue";
 import { createPinia } from "pinia";
 import App from "./App.vue";
 import router from "./router";
+// 字体声明必须先于主题令牌引入：theme.css 只声明字体栈，字形由 fonts.css 提供
+import "@/tokens/fonts.css";
 import "@/tokens/theme.css";
 
 // 全局全局错误处理：将 Vue 渲染错误、window JS 错误、未捕获 Promise 异常

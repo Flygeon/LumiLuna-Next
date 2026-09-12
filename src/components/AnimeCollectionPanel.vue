@@ -213,7 +213,7 @@ async function disconnect() {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  animation: lm-rise 340ms var(--md-sys-motion-easing-emphasized-decelerate) both;
+  animation: lm-rise 340ms var(--md-sys-motion-spring-spatial) both;
 }
 .head {
   display: flex;
@@ -227,7 +227,7 @@ async function disconnect() {
   gap: 8px;
   margin: 0;
   font-size: var(--md-sys-typescale-title-large-size);
-  font-weight: 600;
+  font-weight: 500;
   flex: 1;
   min-width: 0;
 }
@@ -276,7 +276,7 @@ async function disconnect() {
   gap: 8px;
   margin: 0;
   font-size: var(--md-sys-typescale-title-medium-size);
-  font-weight: 600;
+  font-weight: 500;
 }
 .auth-hint {
   margin: 0;
@@ -344,7 +344,7 @@ async function disconnect() {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--md-sys-color-on-surface);
 }
 .who .material-symbols-outlined {
@@ -377,7 +377,7 @@ async function disconnect() {
   font-family: inherit;
   font-size: var(--md-sys-typescale-label-large-size);
   cursor: pointer;
-  transition: background var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard);
+  transition: background var(--md-sys-motion-duration-short) var(--md-sys-motion-spring-effects-fast);
 }
 .tab .material-symbols-outlined {
   font-size: 16px;

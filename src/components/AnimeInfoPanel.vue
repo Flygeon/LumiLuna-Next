@@ -188,7 +188,7 @@ const metaParts = computed(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  animation: lm-rise 320ms var(--md-sys-motion-easing-emphasized-decelerate) both;
+  animation: lm-rise 320ms var(--md-sys-motion-spring-spatial) both;
 }
 .state {
   padding: 40px 0;
@@ -233,7 +233,7 @@ const metaParts = computed(() => {
   justify-content: center;
   width: 132px;
   aspect-ratio: 3 / 4;
-  border-radius: var(--md-sys-shape-corner-large);
+  border-radius: var(--lm-shape-card);
   overflow: hidden;
   background: var(--md-sys-color-surface-container);
   color: var(--md-sys-color-outline);
@@ -253,7 +253,7 @@ const metaParts = computed(() => {
 .title {
   margin: 0 0 4px;
   font-size: var(--md-sys-typescale-title-large-size);
-  font-weight: 600;
+  font-weight: 500;
 }
 .sub-name {
   margin: 0 0 10px;
@@ -293,7 +293,7 @@ const metaParts = computed(() => {
 .block-title {
   margin: 0;
   font-size: var(--md-sys-typescale-title-small-size);
-  font-weight: 600;
+  font-weight: 500;
 }
 .summary {
   margin: 0;
@@ -345,7 +345,7 @@ const metaParts = computed(() => {
   font-size: var(--md-sys-typescale-label-large-size);
   cursor: pointer;
   transition:
-    background var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard),
+    background var(--md-sys-motion-duration-short) var(--md-sys-motion-spring-effects-fast),
     color var(--md-sys-motion-duration-short),
     border-color var(--md-sys-motion-duration-short);
 }

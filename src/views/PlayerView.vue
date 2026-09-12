@@ -429,7 +429,7 @@ onBeforeUnmount(() => {
   align-items: center;
   min-width: 240px;
   padding: 14px;
-  border-radius: 18px;
+  border-radius: var(--lm-shape-dialog);
   background: rgba(28, 28, 30, 0.82);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
@@ -451,8 +451,8 @@ onBeforeUnmount(() => {
 .panel-pop-enter-active,
 .panel-pop-leave-active {
   transition:
-    opacity 200ms var(--md-sys-motion-easing-emphasized-decelerate),
-    transform 200ms var(--md-sys-motion-easing-emphasized-decelerate);
+    opacity 200ms var(--md-sys-motion-spring-spatial),
+    transform 200ms var(--md-sys-motion-spring-spatial);
 }
 .panel-pop-enter-from,
 .panel-pop-leave-to {
@@ -516,7 +516,7 @@ onBeforeUnmount(() => {
   font-size: 13px;
   font-weight: 500;
   opacity: 0;
-  transition: opacity 220ms var(--md-sys-motion-easing-standard);
+  transition: opacity 220ms var(--md-sys-motion-spring-effects-fast);
   pointer-events: none;
 }
 .cover-wrap.clickable:hover .cover-hint {
@@ -589,7 +589,7 @@ onBeforeUnmount(() => {
   background: var(--md-sys-color-primary);
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--md-sys-color-primary) 28%, transparent);
   opacity: 0;
-  transition: opacity 200ms;
+  transition: opacity 200ms var(--md-sys-motion-spring-effects-fast);
 }
 .progress-bar:hover .progress-thumb {
   opacity: 1;
@@ -627,7 +627,7 @@ onBeforeUnmount(() => {
   box-shadow: var(--md-elevation-2);
   transition:
     transform 200ms var(--md-sys-motion-spring),
-    box-shadow 200ms var(--md-sys-motion-easing-standard);
+    box-shadow 200ms var(--md-sys-motion-spring-effects-fast);
 }
 .main-btn .player-control-icon {
   width: 34px;
@@ -698,7 +698,7 @@ onBeforeUnmount(() => {
   cursor: pointer;
   background: rgba(255, 255, 255, 0.1);
   color: rgba(255, 255, 255, 0.65);
-  transition: background 180ms ease;
+  transition: background 180ms var(--md-sys-motion-spring-effects-fast);
 }
 .source-badge:hover {
   background: rgba(255, 255, 255, 0.18);
@@ -739,7 +739,7 @@ onBeforeUnmount(() => {
   border-radius: 10px;
   cursor: pointer;
   font-size: 13px;
-  transition: all 200ms;
+  transition: all 200ms var(--md-sys-motion-spring-effects-fast);
 }
 .seg-btn.active {
   background: #fff;
@@ -769,7 +769,7 @@ onBeforeUnmount(() => {
   font-family: inherit;
   text-align: left;
   cursor: pointer;
-  transition: background 180ms ease;
+  transition: background 180ms var(--md-sys-motion-spring-effects-fast);
 }
 .queue-item:hover {
   background: rgba(255, 255, 255, 0.08);

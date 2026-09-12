@@ -7,34 +7,8 @@
   font-family: "SarasaGothicSC-Regular";
   font-display: swap;
 }
-@font-face {
-  src: url("../assets/fonts/GoogleSans-400.ttf") format("truetype");
-  font-family: "Google Sans";
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-}
-@font-face {
-  src: url("../assets/fonts/GoogleSans-500.ttf") format("truetype");
-  font-family: "Google Sans";
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-}
-@font-face {
-  src: url("../assets/fonts/GoogleSans-600.ttf") format("truetype");
-  font-family: "Google Sans";
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-}
-@font-face {
-  src: url("../assets/fonts/GoogleSans-700.ttf") format("truetype");
-  font-family: "Google Sans";
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-}
+/* 正文字族的 @font-face 在 tokens/fonts.css（官方 woff2 分片，由
+   scripts/fetch-fonts.py 生成），在主入口先于本文件引入。 */
 @font-face {
   src: url("../assets/fonts/sf-pro-display_regular.woff2");
   font-family: "SFPro-Regular";
@@ -90,57 +64,124 @@
   --md-sys-color-on-background: #1a1c1e;
   --md-sys-color-background: #fcfcfc;
 
-  /* ---- M3 Shape Tokens ---- */
+  /* ---- M3 Expressive Shape Tokens ----
+     档位与 M3 官方一致（none / xs / s / m / l / l-increased / xl / xl-increased /
+     2xl / full）。产品语义映射见下方 --lm-shape-* */
   --md-sys-shape-corner-none: 0px;
   --md-sys-shape-corner-extra-small: 4px;
   --md-sys-shape-corner-small: 8px;
   --md-sys-shape-corner-medium: 12px;
   --md-sys-shape-corner-large: 16px;
+  --md-sys-shape-corner-large-increased: 20px;
   --md-sys-shape-corner-extra-large: 28px;
+  --md-sys-shape-corner-extra-large-increased: 32px;
+  --md-sys-shape-corner-extra-extra-large: 48px;
   --md-sys-shape-corner-full: 999px;
 
-  /* ---- M3 Type Scale ---- */
+  /* 产品语义圆角（M3 Expressive 默认值）：
+     按钮=胶囊、卡片=20dp、对话框/浮层=28dp */
+  --lm-shape-button: var(--md-sys-shape-corner-full);
+  --lm-shape-card: var(--md-sys-shape-corner-large-increased);
+  --lm-shape-card-inner: var(--md-sys-shape-corner-medium);
+  --lm-shape-dialog: var(--md-sys-shape-corner-extra-large);
+
+  /* ---- M3 Type Scale（标准 Typography 角色 + 标准字重 400/500/700）----
+     字重只有三档：display/headline/body = 400，title/label = 500，强调用 700。
+     tracking 为 M3 规范字距，缺失会让大字号显得松散。 */
   --md-sys-typescale-display-size: 57px;
   --md-sys-typescale-display-weight: 400;
   --md-sys-typescale-display-line-height: 64px;
+  --md-sys-typescale-display-tracking: -0.25px;
   --md-sys-typescale-headline-size: 32px;
-  --md-sys-typescale-headline-weight: 600;
+  --md-sys-typescale-headline-weight: 400;
   --md-sys-typescale-headline-line-height: 40px;
+  --md-sys-typescale-headline-tracking: 0px;
   --md-sys-typescale-title-large-size: 22px;
   --md-sys-typescale-title-large-weight: 500;
   --md-sys-typescale-title-large-line-height: 28px;
+  --md-sys-typescale-title-large-tracking: 0px;
   --md-sys-typescale-title-medium-size: 16px;
   --md-sys-typescale-title-medium-weight: 500;
   --md-sys-typescale-title-medium-line-height: 24px;
+  --md-sys-typescale-title-medium-tracking: 0.15px;
   --md-sys-typescale-title-small-size: 14px;
   --md-sys-typescale-title-small-weight: 500;
   --md-sys-typescale-title-small-line-height: 20px;
+  --md-sys-typescale-title-small-tracking: 0.1px;
   --md-sys-typescale-body-large-size: 16px;
   --md-sys-typescale-body-large-weight: 400;
   --md-sys-typescale-body-large-line-height: 24px;
+  --md-sys-typescale-body-large-tracking: 0.5px;
   --md-sys-typescale-body-medium-size: 14px;
   --md-sys-typescale-body-medium-weight: 400;
   --md-sys-typescale-body-medium-line-height: 20px;
+  --md-sys-typescale-body-medium-tracking: 0.25px;
   --md-sys-typescale-body-small-size: 12px;
   --md-sys-typescale-body-small-weight: 400;
   --md-sys-typescale-body-small-line-height: 16px;
+  --md-sys-typescale-body-small-tracking: 0.4px;
   --md-sys-typescale-label-large-size: 14px;
   --md-sys-typescale-label-large-weight: 500;
   --md-sys-typescale-label-large-line-height: 20px;
+  --md-sys-typescale-label-large-tracking: 0.1px;
+  --md-sys-typescale-label-medium-size: 12px;
+  --md-sys-typescale-label-medium-weight: 500;
+  --md-sys-typescale-label-medium-line-height: 16px;
+  --md-sys-typescale-label-medium-tracking: 0.5px;
   --md-sys-typescale-label-small-size: 11px;
   --md-sys-typescale-label-small-weight: 500;
   --md-sys-typescale-label-small-line-height: 16px;
+  --md-sys-typescale-label-small-tracking: 0.5px;
 
-  /* ---- M3 Motion Tokens ---- */
+  /* ---- M3 Expressive Motion Tokens ----
+     对应 Compose 的 MotionScheme.expressive()：位置/尺寸用带轻微回弹的
+     spatial 弹簧，颜色/透明度用临界阻尼（不回弹）的 effects 弹簧。
+     由 scripts/gen-spring-easings.py 生成；末点归一到 1，可安全压缩时长播放。 */
   --md-sys-motion-duration-short: 200ms;
   --md-sys-motion-duration-medium: 300ms;
   --md-sys-motion-duration-long: 500ms;
   --md-sys-motion-easing-standard: cubic-bezier(0.2, 0, 0, 1);
   --md-sys-motion-easing-emphasized: cubic-bezier(0.2, 0, 0, 1);
   --md-sys-motion-easing-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
-  /* M3 Expressive 弹簧曲线：取代机械的匀速减速感 */
-  --md-sys-motion-spring: cubic-bezier(0.3, 1.4, 0.5, 1);
-  --md-sys-motion-spring-soft: cubic-bezier(0.34, 1.2, 0.64, 1);
+  --md-sys-motion-easing-emphasized-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
+
+  /* 弹簧稳定时长（spatial/effects 各自的原生周期，用于屏幕级过渡） */
+  --md-sys-motion-duration-spring-spatial: 420ms;
+  --md-sys-motion-duration-spring-spatial-fast: 220ms;
+  --md-sys-motion-duration-spring-effects: 460ms;
+  --md-sys-motion-duration-spring-effects-fast: 240ms;
+
+  /* 位移/尺寸：默认空间弹簧，轻微回弹（阻尼 0.8 / 刚度 400，峰值 1.0152） */
+  /* prettier-ignore */
+  --md-sys-motion-spring-spatial: linear(
+    0, 0.0323, 0.1114, 0.216, 0.3308, 0.4452, 0.5524, 0.6486, 0.7318, 0.8017, 0.8588, 0.9041,
+    0.9392, 0.9655, 0.9845, 0.9977, 1.0064, 1.0116, 1.0143, 1.0152, 1.0148, 1.0137, 1.0121, 1.0104,
+    1.0087, 1.007, 1.0055, 1.0042, 1.0031, 1.0023, 1.0015, 1
+  );
+  /* 位移/尺寸：快速空间弹簧，用于小幅交互反馈（阻尼 0.8 / 刚度 1500） */
+  /* prettier-ignore */
+  --md-sys-motion-spring-spatial-fast: linear(
+    0, 0.0326, 0.1124, 0.2177, 0.333, 0.4478, 0.5553, 0.6516, 0.7348, 0.8045, 0.8612, 0.9062,
+    0.9409, 0.9668, 0.9856, 0.9985, 1.0069, 1.0119, 1.0144, 1.0152, 1.0147, 1.0135, 1.0119, 1.0102,
+    1.0085, 1.0068, 1.0054, 1.0041, 1.003, 1.0021, 1.0015, 1
+  );
+  /* 颜色/透明度/阴影：临界阻尼，不回弹（阻尼 1.0 / 刚度 400） */
+  /* prettier-ignore */
+  --md-sys-motion-spring-effects: linear(
+    0, 0.0365, 0.1206, 0.2254, 0.3346, 0.4389, 0.5337, 0.6169, 0.6882, 0.7482, 0.7979, 0.8388, 0.872,
+    0.8988, 0.9203, 0.9374, 0.951, 0.9618, 0.9702, 0.9769, 0.9821, 0.9861, 0.9893, 0.9917, 0.9936,
+    0.9951, 0.9962, 0.9971, 0.9978, 0.9983, 0.9987, 1
+  );
+  /* 颜色/透明度：快速档（阻尼 1.0 / 刚度 1500） */
+  /* prettier-ignore */
+  --md-sys-motion-spring-effects-fast: linear(
+    0, 0.0369, 0.1218, 0.2273, 0.3371, 0.4419, 0.5369, 0.6201, 0.6913, 0.7511, 0.8006, 0.8412,
+    0.8741, 0.9007, 0.9219, 0.9388, 0.9522, 0.9627, 0.971, 0.9775, 0.9826, 0.9866, 0.9896, 0.992,
+    0.9939, 0.9953, 0.9964, 0.9972, 0.9979, 0.9984, 0.9988, 1
+  );
+  /* 兼容旧命名：spring = 空间弹簧（位移），spring-soft = 快速空间弹簧（更利落） */
+  --md-sys-motion-spring: var(--md-sys-motion-spring-spatial);
+  --md-sys-motion-spring-soft: var(--md-sys-motion-spring-spatial-fast);
 
   /* ---- 应用级令牌 ---- */
   --md-elevation-1: 0 1px 3px rgba(0, 0, 0, 0.2);
@@ -205,6 +246,17 @@
   --lm-hairline: rgba(255, 255, 255, 0.09);
 }
 
+/* 旧内核兜底：不支持 CSS `linear()` 弹簧时退回等效的单段过冲曲线
+   （WebView2 / Chromium 113 起支持 linear()，此处只为保险）。 */
+@supports not (animation-timing-function: linear(0, 1)) {
+  :root {
+    --md-sys-motion-spring-spatial: cubic-bezier(0.3, 1.4, 0.5, 1);
+    --md-sys-motion-spring-spatial-fast: cubic-bezier(0.34, 1.2, 0.64, 1);
+    --md-sys-motion-spring-effects: cubic-bezier(0.2, 0, 0, 1);
+    --md-sys-motion-spring-effects-fast: cubic-bezier(0.2, 0, 0, 1);
+  }
+}
+
 /* 暗色模式 Grade 轴微调：减细笔画提升夜间阅读舒适度 */
 [data-theme="dark"] body {
   font-variation-settings: "GRAD" -25;
@@ -224,13 +276,15 @@ body,
 }
 
 body {
+  /* M3 正文字族：Roboto（拉丁/西里尔/希腊）→ Sarasa Gothic SC（中日韩）→ 系统兜底 */
   font-family:
-    "Google Sans", "SarasaGothicSC-Regular", "SFPro-Regular", "Helvetica Neue", "Microsoft YaHei",
+    "Roboto", "SarasaGothicSC-Regular", "SFPro-Regular", "Helvetica Neue", "Microsoft YaHei",
     system-ui, sans-serif;
   background: var(--md-sys-color-background);
   color: var(--md-sys-color-on-background);
   font-size: var(--md-sys-typescale-body-medium-size);
   line-height: var(--md-sys-typescale-body-medium-line-height);
+  letter-spacing: var(--md-sys-typescale-body-medium-tracking);
   overflow: hidden;
   -webkit-user-select: none;
   user-select: none;
@@ -314,14 +368,14 @@ body {
   height: 40px;
   padding: 0 20px;
   border: none;
-  border-radius: var(--md-sys-shape-corner-extra-large);
+  border-radius: var(--lm-shape-button);
   font-size: var(--md-sys-typescale-label-large-size);
   font-weight: var(--md-sys-typescale-label-large-weight);
   font-family: inherit;
   cursor: pointer;
   white-space: nowrap;
   transition:
-    background var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard),
+    background var(--md-sys-motion-duration-short) var(--md-sys-motion-spring-effects-fast),
     transform 120ms var(--md-sys-motion-spring),
     box-shadow var(--md-sys-motion-duration-short);
 }
@@ -446,8 +500,8 @@ input[type="checkbox"] {
   background: var(--md-sys-color-surface-container-highest);
   cursor: pointer;
   transition:
-    background-color 200ms var(--md-sys-motion-easing-standard),
-    border-color 200ms var(--md-sys-motion-easing-standard);
+    background-color 200ms var(--md-sys-motion-spring-effects-fast),
+    border-color 200ms var(--md-sys-motion-spring-effects-fast);
 }
 input[type="checkbox"]::before {
   content: "";
@@ -463,8 +517,8 @@ input[type="checkbox"]::before {
     left 220ms var(--md-sys-motion-spring-soft),
     width 220ms var(--md-sys-motion-spring-soft),
     height 220ms var(--md-sys-motion-spring-soft),
-    background-color 200ms var(--md-sys-motion-easing-standard),
-    box-shadow 200ms var(--md-sys-motion-easing-standard);
+    background-color 200ms var(--md-sys-motion-spring-effects-fast),
+    box-shadow 200ms var(--md-sys-motion-spring-effects-fast);
 }
 input[type="checkbox"]:checked {
   border-color: var(--md-sys-color-primary);

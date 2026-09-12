@@ -483,7 +483,7 @@ router.afterEach((to) => {
   height: 32px;
   border-radius: 16px;
   transition:
-    background var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard),
+    background var(--md-sys-motion-duration-short) var(--md-sys-motion-spring-effects-fast),
     transform 200ms var(--md-sys-motion-spring);
 }
 .nav-item:hover .indicator {
@@ -514,7 +514,7 @@ router.afterEach((to) => {
   background: var(--md-sys-color-primary);
   color: var(--md-sys-color-on-primary);
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1;
 }
 
@@ -525,7 +525,7 @@ router.afterEach((to) => {
 }
 .nav-item.active .label {
   color: var(--md-sys-color-on-surface);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 /* ---- 内容区 ---- */
@@ -551,12 +551,15 @@ router.afterEach((to) => {
   padding-bottom: calc(var(--lm-miniplayer-height) + var(--lm-content-pad));
 }
 
-/* 路由切换：淡入上浮 */
+/* 路由切换（屏幕过渡）：位移走带轻微回弹的空间弹簧，透明度走不回弹的
+   效果弹簧——对应 M3 Expressive 的 MotionScheme.expressive()。
+   时长取各自弹簧的自然稳定时间，让回弹完整播放而不被截断。 */
 .page-enter-active,
 .page-leave-active {
   transition:
-    opacity 180ms var(--md-sys-motion-easing-standard),
-    transform 180ms var(--md-sys-motion-easing-emphasized-decelerate);
+    transform var(--md-sys-motion-duration-spring-spatial) var(--md-sys-motion-spring-spatial),
+    opacity var(--md-sys-motion-duration-spring-effects-fast)
+      var(--md-sys-motion-spring-effects-fast);
 }
 .page-enter-from {
   opacity: 0;
@@ -571,8 +574,8 @@ router.afterEach((to) => {
 .player-enter-active,
 .player-leave-active {
   transition:
-    transform 340ms var(--md-sys-motion-easing-emphasized-decelerate),
-    opacity 260ms var(--md-sys-motion-easing-standard);
+    transform var(--md-sys-motion-duration-spring-spatial) var(--md-sys-motion-spring-spatial),
+    opacity var(--md-sys-motion-duration-spring-effects) var(--md-sys-motion-spring-effects);
 }
 .player-enter-from,
 .player-leave-to {
@@ -604,7 +607,7 @@ router.afterEach((to) => {
 }
 .lyric-toast-enter-active,
 .lyric-toast-leave-active {
-  transition: all 240ms var(--md-sys-motion-easing-emphasized-decelerate);
+  transition: all 240ms var(--md-sys-motion-spring-spatial);
 }
 .lyric-toast-enter-from,
 .lyric-toast-leave-to {
@@ -622,7 +625,7 @@ router.afterEach((to) => {
 
 .skin-fade-enter-active,
 .skin-fade-leave-active {
-  transition: opacity 160ms var(--md-sys-motion-easing-standard);
+  transition: opacity 160ms var(--md-sys-motion-spring-effects-fast);
 }
 .skin-fade-enter-from,
 .skin-fade-leave-to {
@@ -648,7 +651,7 @@ router.afterEach((to) => {
   background: var(--md-sys-color-surface-container-high);
   color: var(--md-sys-color-primary);
   font-size: var(--md-sys-typescale-title-medium-size);
-  font-weight: 600;
+  font-weight: 500;
 }
 .skin-drop-card .material-symbols-outlined {
   font-size: 26px;

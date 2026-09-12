@@ -699,8 +699,8 @@ function piePath(cx: number, cy: number, r: number, startAngle: number, endAngle
   font-weight: 500;
   cursor: pointer;
   transition:
-    background 0.15s,
-    color 0.15s;
+    background 0.15s var(--md-sys-motion-spring-effects-fast),
+    color 0.15s var(--md-sys-motion-spring-effects-fast);
 }
 .period-tab.active {
   background: var(--md-sys-color-surface-container);
@@ -800,7 +800,7 @@ function piePath(cx: number, cy: number, r: number, startAngle: number, endAngle
 }
 .hero-unit {
   font-size: 28px;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: -0.035em;
   color: var(--md-sys-color-on-surface);
   opacity: 0.8;
@@ -812,7 +812,7 @@ function piePath(cx: number, cy: number, r: number, startAngle: number, endAngle
   color: var(--md-sys-color-on-surface-variant);
 }
 .hero-sub .num {
-  font-weight: 600;
+  font-weight: 500;
   color: var(--md-sys-color-on-surface);
 }
 .hero-sub .sep {
@@ -826,7 +826,7 @@ function piePath(cx: number, cy: number, r: number, startAngle: number, endAngle
 }
 .section-label {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--md-sys-color-on-surface-variant);
   margin: 0 0 10px 4px;
   text-transform: uppercase;
@@ -907,7 +907,7 @@ function piePath(cx: number, cy: number, r: number, startAngle: number, endAngle
 }
 .chart-title {
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 500;
   margin: 0 0 10px;
   color: var(--md-sys-color-on-surface);
 }
@@ -998,7 +998,7 @@ function piePath(cx: number, cy: number, r: number, startAngle: number, endAngle
   white-space: nowrap;
 }
 .legend-pct {
-  font-weight: 600;
+  font-weight: 500;
   color: var(--md-sys-color-on-surface);
 }
 .legend-sep {
@@ -1109,7 +1109,7 @@ function piePath(cx: number, cy: number, r: number, startAngle: number, endAngle
   padding: 8px 10px;
   border-radius: 14px;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.15s var(--md-sys-motion-spring-effects-fast);
 }
 .track-row:hover {
   background: var(--md-sys-color-surface-container-highest);
@@ -1171,7 +1171,7 @@ function piePath(cx: number, cy: number, r: number, startAngle: number, endAngle
 }
 .track-plays {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--md-sys-color-on-surface);
   white-space: nowrap;
   flex-shrink: 0;

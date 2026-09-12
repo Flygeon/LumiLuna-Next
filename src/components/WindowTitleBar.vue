@@ -153,7 +153,7 @@ onBeforeUnmount(() => {
 
 .tb-brand-name {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: -0.01em;
   color: var(--md-sys-color-on-surface);
   white-space: nowrap;
@@ -179,9 +179,9 @@ onBeforeUnmount(() => {
   color: var(--md-sys-color-on-surface-variant);
   cursor: pointer;
   transition:
-    background 120ms ease,
-    color 120ms ease,
-    transform 120ms ease;
+    background 120ms var(--md-sys-motion-spring-effects-fast),
+    color 120ms var(--md-sys-motion-spring-effects-fast),
+    transform 220ms var(--md-sys-motion-spring-spatial-fast);
   outline: none;
 }
 .tb-icon-btn:hover {
@@ -231,7 +231,7 @@ onBeforeUnmount(() => {
   font-size: var(--md-sys-typescale-body-medium-size);
   cursor: pointer;
   text-align: left;
-  transition: background 120ms ease;
+  transition: background 120ms var(--md-sys-motion-spring-effects-fast);
 }
 .tb-theme-option:hover {
   background: var(--md-sys-color-surface-container-high);
@@ -252,8 +252,8 @@ onBeforeUnmount(() => {
 .tb-menu-enter-active,
 .tb-menu-leave-active {
   transition:
-    opacity 120ms ease,
-    transform 120ms ease;
+    opacity 120ms var(--md-sys-motion-spring-effects-fast),
+    transform 220ms var(--md-sys-motion-spring-spatial-fast);
 }
 .tb-menu-enter-from,
 .tb-menu-leave-to {

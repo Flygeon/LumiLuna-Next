@@ -90,14 +90,14 @@ onBeforeUnmount(() => ro?.disconnect());
   padding: 3px;
   margin-bottom: 14px;
   background: var(--md-sys-color-surface-container-high);
-  border-radius: var(--md-sys-shape-corner-extra-large);
+  border-radius: var(--lm-shape-button);
 }
 .online-tabs-indicator {
   position: absolute;
   top: 3px;
   left: 0;
   height: calc(100% - 6px);
-  border-radius: var(--md-sys-shape-corner-extra-large);
+  border-radius: var(--lm-shape-button);
   background: var(--md-sys-color-secondary-container);
   pointer-events: none;
   transition:
@@ -114,19 +114,19 @@ onBeforeUnmount(() => ro?.disconnect());
   border: none;
   background: transparent;
   padding: 8px 22px;
-  border-radius: var(--md-sys-shape-corner-extra-large);
+  border-radius: var(--lm-shape-button);
   cursor: pointer;
   font-family: inherit;
   font-size: var(--md-sys-typescale-label-large-size);
   color: var(--md-sys-color-on-surface-variant);
-  transition: color var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard);
+  transition: color var(--md-sys-motion-duration-short) var(--md-sys-motion-spring-effects-fast);
 }
 .online-tabs .seg:hover {
   color: var(--md-sys-color-on-surface);
 }
 .online-tabs .seg.active {
   color: var(--md-sys-color-on-secondary-container);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 /* 两个面板叠在同一格：动画期间容器高度取较高者，不会塌陷跳动 */
@@ -143,8 +143,8 @@ onBeforeUnmount(() => ro?.disconnect());
 .tabs-prev-enter-active,
 .tabs-prev-leave-active {
   transition:
-    transform 260ms var(--md-sys-motion-easing-emphasized-decelerate),
-    opacity 260ms var(--md-sys-motion-easing-standard);
+    transform 260ms var(--md-sys-motion-spring-spatial),
+    opacity 260ms var(--md-sys-motion-spring-effects-fast);
 }
 .tabs-next-enter-from {
   transform: translateX(28px);

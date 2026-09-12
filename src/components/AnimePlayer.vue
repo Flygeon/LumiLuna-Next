@@ -517,7 +517,7 @@ onBeforeUnmount(() => {
   inset: 0;
   z-index: 200;
   background: #000;
-  animation: lm-fade-in 200ms var(--md-sys-motion-easing-standard);
+  animation: lm-fade-in 200ms var(--md-sys-motion-spring-effects-fast);
 }
 .art-container {
   position: absolute;
@@ -579,7 +579,7 @@ onBeforeUnmount(() => {
   max-height: 60vh;
   overflow-y: auto;
   padding: 14px;
-  border-radius: var(--md-sys-shape-corner-large);
+  border-radius: var(--lm-shape-dialog);
   background: var(--md-sys-color-surface-container-high);
   color: var(--md-sys-color-on-surface);
   box-shadow: var(--md-elevation-3);
@@ -588,7 +588,7 @@ onBeforeUnmount(() => {
 .road-name {
   margin: 8px 0 6px;
   font-size: var(--md-sys-typescale-label-large-size);
-  font-weight: 600;
+  font-weight: 500;
   color: var(--md-sys-color-primary);
 }
 .ep-grid {
@@ -615,7 +615,7 @@ onBeforeUnmount(() => {
 .ep.active {
   background: var(--md-sys-color-primary);
   color: var(--md-sys-color-on-primary);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 /* 状态层 */

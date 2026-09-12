@@ -271,7 +271,7 @@ async function importFromRepo(entry: RepoEntry) {
   flex-direction: column;
   gap: 20px;
   max-width: 760px;
-  animation: lm-rise 320ms var(--md-sys-motion-easing-emphasized-decelerate) both;
+  animation: lm-rise 320ms var(--md-sys-motion-spring-spatial) both;
 }
 .head {
   display: flex;
@@ -301,7 +301,7 @@ async function importFromRepo(entry: RepoEntry) {
 .section-title {
   margin: 0;
   font-size: var(--md-sys-typescale-title-medium-size);
-  font-weight: 600;
+  font-weight: 500;
 }
 .state {
   padding: 20px 0;
@@ -474,7 +474,7 @@ textarea:focus {
 }
 .toast-enter-active,
 .toast-leave-active {
-  transition: all 240ms var(--md-sys-motion-easing-emphasized-decelerate);
+  transition: all 240ms var(--md-sys-motion-spring-spatial);
 }
 .toast-enter-from,
 .toast-leave-to {

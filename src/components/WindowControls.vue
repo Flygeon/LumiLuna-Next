@@ -44,8 +44,8 @@ defineProps<{
   color: var(--md-sys-color-on-surface-variant);
   cursor: pointer;
   transition:
-    background 120ms ease,
-    color 120ms ease;
+    background 120ms var(--md-sys-motion-spring-effects-fast),
+    color 120ms var(--md-sys-motion-spring-effects-fast);
   outline: none;
 }
 .wc-btn:hover {

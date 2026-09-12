@@ -919,7 +919,7 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
   opacity: 0;
   transition:
     opacity var(--md-sys-motion-duration-short),
-    background 160ms;
+    background 160ms var(--md-sys-motion-spring-effects-fast);
 }
 .song-card:hover .p-remove {
   opacity: 1;
@@ -988,13 +988,13 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
   justify-content: center;
   width: 100%;
   aspect-ratio: 1;
-  border-radius: var(--md-sys-shape-corner-large);
+  border-radius: var(--lm-shape-card);
   overflow: hidden;
   background: var(--md-sys-color-surface-container);
   box-shadow: inset 0 0 0 1px var(--lm-hairline);
   transition:
     transform 220ms var(--md-sys-motion-spring-soft),
-    box-shadow 220ms var(--md-sys-motion-easing-standard);
+    box-shadow 220ms var(--md-sys-motion-spring-effects-fast);
 }
 .song-card .thumb img {
   width: 100%;
@@ -1120,7 +1120,7 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
   gap: 2px;
   flex: none;
   padding: 3px;
-  border-radius: var(--md-sys-shape-corner-large);
+  border-radius: var(--lm-shape-button);
   background: var(--md-sys-color-surface-container);
 }
 .view-toggle .seg {
@@ -1182,7 +1182,7 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
 }
 .toast-enter-active,
 .toast-leave-active {
-  transition: all 240ms var(--md-sys-motion-easing-emphasized-decelerate);
+  transition: all 240ms var(--md-sys-motion-spring-spatial);
 }
 .toast-enter-from,
 .toast-leave-to {
@@ -1251,7 +1251,7 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
   background: var(--md-sys-color-surface-container-high);
   border-radius: var(--md-sys-shape-corner-extra-large);
   box-shadow: var(--md-elevation-3);
-  animation: lm-rise 260ms var(--md-sys-motion-easing-emphasized-decelerate) both;
+  animation: lm-rise 260ms var(--md-sys-motion-spring-spatial) both;
 }
 .qr-card h3 {
   font-size: var(--md-sys-typescale-title-medium-size);
@@ -1316,7 +1316,7 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
   font-family: inherit;
   font-size: var(--md-sys-typescale-label-small-size);
   cursor: pointer;
-  transition: all var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard);
+  transition: all var(--md-sys-motion-duration-short) var(--md-sys-motion-spring-effects-fast);
 }
 .phone-tab.active {
   background: var(--md-sys-color-surface-container-high);
@@ -1344,7 +1344,7 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
   font-size: var(--md-sys-typescale-body-small-size);
   outline: none;
   box-sizing: border-box;
-  transition: border-color var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard);
+  transition: border-color var(--md-sys-motion-duration-short) var(--md-sys-motion-spring-effects-fast);
 }
 .phone-input:focus {
   border-color: var(--md-sys-color-primary);
@@ -1370,7 +1370,7 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
-  transition: all var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard);
+  transition: all var(--md-sys-motion-duration-short) var(--md-sys-motion-spring-effects-fast);
 }
 .sms-btn:disabled {
   opacity: 0.5;
@@ -1396,7 +1396,7 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
   font-size: var(--md-sys-typescale-label-large-size);
   font-weight: 500;
   cursor: pointer;
-  transition: all var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard);
+  transition: all var(--md-sys-motion-duration-short) var(--md-sys-motion-spring-effects-fast);
 }
 .phone-login-btn:disabled {
   opacity: 0.5;
@@ -1412,7 +1412,7 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
 
 .qr-fade-enter-active,
 .qr-fade-leave-active {
-  transition: opacity 200ms var(--md-sys-motion-easing-standard);
+  transition: opacity 200ms var(--md-sys-motion-spring-effects-fast);
 }
 .qr-fade-enter-from,
 .qr-fade-leave-to {
@@ -1431,7 +1431,7 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
   font-family: inherit;
   font-size: var(--md-sys-typescale-label-large-size);
   cursor: pointer;
-  transition: all var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard);
+  transition: all var(--md-sys-motion-duration-short) var(--md-sys-motion-spring-effects-fast);
 }
 .load-more:hover {
   background: var(--md-sys-color-surface-container-high);

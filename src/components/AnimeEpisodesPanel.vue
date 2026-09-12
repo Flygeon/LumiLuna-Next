@@ -87,7 +87,7 @@ const roadIndex = ref(0);
   display: flex;
   flex-direction: column;
   gap: 14px;
-  animation: lm-rise 320ms var(--md-sys-motion-easing-emphasized-decelerate) both;
+  animation: lm-rise 320ms var(--md-sys-motion-spring-spatial) both;
 }
 .head {
   display: flex;
@@ -149,7 +149,7 @@ const roadIndex = ref(0);
 .title {
   margin: 0;
   font-size: var(--md-sys-typescale-title-large-size);
-  font-weight: 600;
+  font-weight: 500;
 }
 .state {
   padding: 40px 0;
@@ -208,7 +208,7 @@ const roadIndex = ref(0);
   font-size: var(--md-sys-typescale-body-small-size);
   text-align: left;
   cursor: pointer;
-  transition: background var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard);
+  transition: background var(--md-sys-motion-duration-short) var(--md-sys-motion-spring-effects-fast);
 }
 .ep:hover {
   background: var(--md-sys-color-surface-container-high);

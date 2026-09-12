@@ -1333,7 +1333,7 @@ function selectSection(id: string) {
   padding: 8px 12px 2px;
   color: var(--md-sys-color-on-surface-variant);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: 0.4px;
   opacity: 0.8;
 }
@@ -1352,8 +1352,8 @@ function selectSection(id: string) {
   text-align: left;
   cursor: pointer;
   transition:
-    background-color 160ms var(--md-sys-motion-easing-standard),
-    color 160ms var(--md-sys-motion-easing-standard);
+    background-color 160ms var(--md-sys-motion-spring-effects-fast),
+    color 160ms var(--md-sys-motion-spring-effects-fast);
 }
 .settings-nav-item .material-symbols-outlined {
   font-size: 20px;
@@ -1370,18 +1370,18 @@ function selectSection(id: string) {
 .settings-nav-item.active {
   background: var(--md-sys-color-secondary-container);
   color: var(--md-sys-color-on-secondary-container);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .card {
   grid-column: 2;
   scroll-margin-top: 18px;
   background: var(--md-sys-color-surface-container-low);
-  border-radius: var(--md-sys-shape-corner-large);
+  border-radius: var(--lm-shape-card);
   padding: 20px 22px;
   margin-bottom: 16px;
   box-shadow: inset 0 0 0 1px var(--lm-hairline);
-  animation: lm-rise 340ms var(--md-sys-motion-easing-emphasized-decelerate) both;
+  animation: lm-rise 340ms var(--md-sys-motion-spring-spatial) both;
 }
 .card h3 {
   margin-bottom: 6px;
@@ -1472,18 +1472,18 @@ function selectSection(id: string) {
   padding: 3px;
   gap: 2px;
   background: var(--md-sys-color-surface-container-high);
-  border-radius: var(--md-sys-shape-corner-extra-large);
+  border-radius: var(--lm-shape-button);
 }
 .seg {
   border: none;
   background: transparent;
   padding: 7px 16px;
-  border-radius: var(--md-sys-shape-corner-extra-large);
+  border-radius: var(--lm-shape-button);
   cursor: pointer;
   font-family: inherit;
   font-size: var(--md-sys-typescale-label-large-size);
   color: var(--md-sys-color-on-surface-variant);
-  transition: all var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard);
+  transition: all var(--md-sys-motion-duration-short) var(--md-sys-motion-spring-effects-fast);
 }
 .seg:hover {
   color: var(--md-sys-color-on-surface);
@@ -1491,7 +1491,7 @@ function selectSection(id: string) {
 .seg.active {
   background: var(--md-sys-color-secondary-container);
   color: var(--md-sys-color-on-secondary-container);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 /* 配色方案色板 */
@@ -1516,7 +1516,7 @@ function selectSection(id: string) {
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
   transition:
     transform 160ms var(--md-sys-motion-spring),
-    box-shadow 160ms var(--md-sys-motion-easing-standard);
+    box-shadow 160ms var(--md-sys-motion-spring-effects-fast);
 }
 .swatch:hover {
   transform: scale(1.12);
@@ -1530,7 +1530,7 @@ function selectSection(id: string) {
   transform: scale(0.4);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
   transition:
-    opacity 160ms var(--md-sys-motion-easing-standard),
+    opacity 160ms var(--md-sys-motion-spring-effects-fast),
     transform 160ms var(--md-sys-motion-spring);
 }
 .swatch.active {
@@ -1589,9 +1589,9 @@ function selectSection(id: string) {
   font-family: inherit;
   cursor: pointer;
   transition:
-    background var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard),
+    background var(--md-sys-motion-duration-short) var(--md-sys-motion-spring-effects-fast),
     transform 160ms var(--md-sys-motion-spring),
-    box-shadow 160ms var(--md-sys-motion-easing-standard);
+    box-shadow 160ms var(--md-sys-motion-spring-effects-fast);
 }
 .skin-card:hover {
   background: var(--md-sys-color-surface-container-high);
@@ -1804,7 +1804,7 @@ function selectSection(id: string) {
   font-family: inherit;
   font-size: var(--md-sys-typescale-label-large-size);
   cursor: pointer;
-  transition: all var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard);
+  transition: all var(--md-sys-motion-duration-short) var(--md-sys-motion-spring-effects-fast);
 }
 .presets .chip:hover {
   background: var(--md-sys-color-surface-container-high);
@@ -1813,7 +1813,7 @@ function selectSection(id: string) {
   background: var(--md-sys-color-secondary-container);
   color: var(--md-sys-color-on-secondary-container);
   border-color: transparent;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .toast {
@@ -1831,7 +1831,7 @@ function selectSection(id: string) {
 }
 .toast-enter-active,
 .toast-leave-active {
-  transition: all 240ms var(--md-sys-motion-easing-emphasized-decelerate);
+  transition: all 240ms var(--md-sys-motion-spring-spatial);
 }
 .toast-enter-from,
 .toast-leave-to {

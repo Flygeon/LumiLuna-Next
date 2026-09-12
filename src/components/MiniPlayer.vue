@@ -97,7 +97,7 @@ function seek(e: MouseEvent) {
   height: var(--lm-miniplayer-height);
   z-index: 50;
   border-top: 1px solid var(--lm-hairline);
-  animation: slide-up 320ms var(--md-sys-motion-easing-emphasized-decelerate);
+  animation: slide-up 320ms var(--md-sys-motion-spring-spatial);
 }
 @keyframes slide-up {
   from {
@@ -175,7 +175,7 @@ function seek(e: MouseEvent) {
 }
 .title {
   font-size: var(--md-sys-typescale-body-medium-size);
-  font-weight: 600;
+  font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

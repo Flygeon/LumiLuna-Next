@@ -169,7 +169,7 @@ onActivated(load);
   gap: 12px;
 }
 .name {
-  font-weight: 600;
+  font-weight: 500;
 }
 .sub {
   font-size: 12px;

@@ -42,7 +42,7 @@ defineEmits<{ (e: "open", ev: MouseEvent): void }>();
 .anime-card:focus-visible {
   outline: 2px solid var(--md-sys-color-primary);
   outline-offset: 4px;
-  border-radius: var(--md-sys-shape-corner-large);
+  border-radius: var(--lm-shape-card);
 }
 .cover {
   display: flex;
@@ -50,14 +50,14 @@ defineEmits<{ (e: "open", ev: MouseEvent): void }>();
   justify-content: center;
   width: 100%;
   aspect-ratio: 3 / 4;
-  border-radius: var(--md-sys-shape-corner-large);
+  border-radius: var(--lm-shape-card);
   overflow: hidden;
   background: var(--md-sys-color-surface-container);
   box-shadow: inset 0 0 0 1px var(--lm-hairline);
   color: var(--md-sys-color-outline);
   transition:
     transform 220ms var(--md-sys-motion-spring-soft),
-    box-shadow 220ms var(--md-sys-motion-easing-standard);
+    box-shadow 220ms var(--md-sys-motion-spring-effects-fast);
 }
 .anime-card:hover .cover {
   transform: translateY(-4px) scale(1.015);

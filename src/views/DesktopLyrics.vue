@@ -269,7 +269,7 @@ html {
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55);
   -webkit-app-region: no-drag;
   overflow: hidden;
-  transition: box-shadow 200ms ease;
+  transition: box-shadow 200ms var(--md-sys-motion-spring-effects-fast);
 }
 .desktop-lyrics.toolbar-visible {
   box-shadow:
@@ -299,7 +299,7 @@ html {
   align-items: center;
   gap: 2px;
   max-width: 100%;
-  transition: padding-top 180ms ease;
+  transition: padding-top 180ms var(--md-sys-motion-spring-effects-fast);
   position: relative;
   z-index: 1;
 }
@@ -396,7 +396,7 @@ html {
 /* 歌词切换动画：淡入 */
 .dl-fade-enter-active,
 .dl-fade-leave-active {
-  transition: opacity 300ms ease;
+  transition: opacity 300ms var(--md-sys-motion-spring-effects-fast);
 }
 .dl-fade-enter-from,
 .dl-fade-leave-to {
@@ -407,7 +407,7 @@ html {
 .dl-slide-enter-active,
 .dl-slide-leave-active {
   transition:
-    opacity 320ms ease,
+    opacity 320ms var(--md-sys-motion-spring-effects-fast),
     transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 .dl-slide-enter-from {
@@ -423,7 +423,7 @@ html {
 .dl-scale-enter-active,
 .dl-scale-leave-active {
   transition:
-    opacity 280ms ease,
+    opacity 280ms var(--md-sys-motion-spring-effects-fast),
     transform 280ms cubic-bezier(0.34, 1.4, 0.64, 1);
 }
 .dl-scale-enter-from {
@@ -439,8 +439,8 @@ html {
 .dl-glow-enter-active,
 .dl-glow-leave-active {
   transition:
-    opacity 360ms ease,
-    filter 360ms ease,
+    opacity 360ms var(--md-sys-motion-spring-effects-fast),
+    filter 360ms var(--md-sys-motion-spring-effects-fast),
     transform 360ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 .dl-glow-enter-from {
@@ -457,8 +457,8 @@ html {
 .dl-bar-enter-active,
 .dl-bar-leave-active {
   transition:
-    opacity 200ms ease,
-    transform 200ms ease;
+    opacity 200ms var(--md-sys-motion-spring-effects-fast),
+    transform 220ms var(--md-sys-motion-spring-spatial-fast);
 }
 .dl-bar-enter-from,
 .dl-bar-leave-to {

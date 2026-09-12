@@ -135,7 +135,7 @@ onBeforeUnmount(() => {
     var(--md-elevation-2),
     inset 0 0 0 1px var(--lm-hairline);
   transform-origin: top left;
-  animation: ctx-pop 150ms var(--md-sys-motion-easing-emphasized-decelerate);
+  animation: ctx-pop 220ms var(--md-sys-motion-spring-spatial);
 }
 @keyframes ctx-pop {
   from {
@@ -163,7 +163,7 @@ onBeforeUnmount(() => {
   font-size: var(--md-sys-typescale-body-medium-size);
   text-align: left;
   cursor: pointer;
-  transition: background var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard);
+  transition: background var(--md-sys-motion-duration-short) var(--md-sys-motion-spring-effects-fast);
 }
 .ctx-item:hover,
 .ctx-item.active {

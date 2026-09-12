@@ -178,7 +178,7 @@ onMounted(loadAll);
   display: flex;
   flex-direction: column;
   gap: 24px;
-  animation: lm-rise 340ms var(--md-sys-motion-easing-emphasized-decelerate) both;
+  animation: lm-rise 340ms var(--md-sys-motion-spring-spatial) both;
 }
 .feed-loading,
 .feed-error,
@@ -221,7 +221,7 @@ onMounted(loadAll);
   text-align: left;
   cursor: pointer;
   transition:
-    transform 180ms var(--md-sys-motion-easing-standard),
+    transform 220ms var(--md-sys-motion-spring-spatial-fast),
     box-shadow 180ms;
 }
 .feed-hero:hover {
@@ -250,7 +250,7 @@ onMounted(loadAll);
 .hero-title {
   margin: 0;
   font-size: var(--md-sys-typescale-title-medium-size);
-  font-weight: 600;
+  font-weight: 500;
 }
 .hero-desc {
   margin: 4px 0 0;
@@ -283,7 +283,7 @@ onMounted(loadAll);
 .feed-section-title {
   margin: 0;
   font-size: var(--md-sys-typescale-title-medium-size);
-  font-weight: 600;
+  font-weight: 500;
 }
 .feed-section-sub {
   font-size: var(--md-sys-typescale-body-small-size);
@@ -313,14 +313,14 @@ onMounted(loadAll);
   justify-content: center;
   width: 100%;
   aspect-ratio: 1;
-  border-radius: var(--md-sys-shape-corner-large);
+  border-radius: var(--lm-shape-card);
   overflow: hidden;
   background: var(--md-sys-color-surface-container);
   box-shadow: inset 0 0 0 1px var(--lm-hairline);
   color: var(--md-sys-color-outline);
   transition:
     transform 220ms var(--md-sys-motion-spring-soft),
-    box-shadow 220ms var(--md-sys-motion-easing-standard);
+    box-shadow 220ms var(--md-sys-motion-spring-effects-fast);
 }
 .playlist-card:hover .playlist-cover {
   transform: translateY(-4px) scale(1.015);

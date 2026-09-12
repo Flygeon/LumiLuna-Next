@@ -284,7 +284,7 @@ const infoRows = computed(() => {
   color: #fff;
   display: flex;
   flex-direction: column;
-  animation: fade 180ms ease;
+  animation: fade 180ms var(--md-sys-motion-spring-effects-fast);
 }
 @keyframes fade {
   from {
@@ -339,7 +339,7 @@ const infoRows = computed(() => {
   color: #fff;
   cursor: pointer;
   transition:
-    background 160ms,
+    background 160ms var(--md-sys-motion-spring-effects-fast),
     transform 140ms var(--md-sys-motion-spring);
 }
 .vbtn:hover {
@@ -366,7 +366,7 @@ const infoRows = computed(() => {
   max-height: 94%;
   object-fit: contain;
   user-select: none;
-  transition: transform 180ms var(--md-sys-motion-easing-standard);
+  transition: transform 220ms var(--md-sys-motion-spring-spatial-fast);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
   border-radius: 4px;
 }
@@ -409,7 +409,7 @@ const infoRows = computed(() => {
   align-items: center;
   justify-content: center;
   transition:
-    background 160ms,
+    background 160ms var(--md-sys-motion-spring-effects-fast),
     transform 160ms;
 }
 .nav:hover {
@@ -471,7 +471,7 @@ const infoRows = computed(() => {
 
 .slide-enter-active,
 .slide-leave-active {
-  transition: transform 240ms var(--md-sys-motion-easing-emphasized-decelerate);
+  transition: transform 240ms var(--md-sys-motion-spring-spatial);
 }
 .slide-enter-from,
 .slide-leave-to {

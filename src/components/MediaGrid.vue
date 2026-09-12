@@ -297,7 +297,7 @@ function subtitleOf(item: MediaEntry): string {
   flex-direction: column;
   gap: 10px;
   cursor: pointer;
-  border-radius: var(--md-sys-shape-corner-large);
+  border-radius: var(--lm-shape-card);
   outline: none;
 }
 .cell:focus-visible {
@@ -311,12 +311,12 @@ function subtitleOf(item: MediaEntry): string {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  border-radius: var(--md-sys-shape-corner-large);
+  border-radius: var(--lm-shape-card);
   background: var(--md-sys-color-surface-container);
   box-shadow: inset 0 0 0 1px var(--lm-hairline);
   transition:
     transform 220ms var(--md-sys-motion-spring-soft),
-    box-shadow 220ms var(--md-sys-motion-easing-standard);
+    box-shadow 220ms var(--md-sys-motion-spring-effects-fast);
 }
 .cell:hover .thumb {
   transform: translateY(-4px) scale(1.015);
@@ -390,7 +390,7 @@ function subtitleOf(item: MediaEntry): string {
   cursor: pointer;
   transition:
     transform 140ms var(--md-sys-motion-spring),
-    background 160ms;
+    background 160ms var(--md-sys-motion-spring-effects-fast);
 }
 .fav:hover {
   background: rgba(0, 0, 0, 0.6);

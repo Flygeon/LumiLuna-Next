@@ -250,7 +250,7 @@ function onRowContext(e: MouseEvent, item: MediaEntry, index: number) {
   align-items: center;
   gap: 2px;
   opacity: 0;
-  transition: opacity var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard);
+  transition: opacity var(--md-sys-motion-duration-short) var(--md-sys-motion-spring-effects-fast);
 }
 .track-row:hover .r-actions,
 .track-row:focus-visible .r-actions {

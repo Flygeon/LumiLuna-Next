@@ -520,7 +520,7 @@ function backToHome() {
   display: flex;
   flex-direction: column;
   gap: 20px;
-  animation: lm-rise 340ms var(--md-sys-motion-easing-emphasized-decelerate) both;
+  animation: lm-rise 340ms var(--md-sys-motion-spring-spatial) both;
 }
 .home-toolbar {
   display: flex;
@@ -551,7 +551,7 @@ function backToHome() {
 .page-title {
   margin: 0;
   font-size: var(--md-sys-typescale-title-large-size);
-  font-weight: 600;
+  font-weight: 500;
   flex: 1;
   min-width: 0;
   white-space: nowrap;
@@ -647,7 +647,7 @@ function backToHome() {
   gap: 6px;
   margin: 0;
   font-size: var(--md-sys-typescale-title-medium-size);
-  font-weight: 600;
+  font-weight: 500;
 }
 .section-title .material-symbols-outlined {
   font-size: 18px;
@@ -685,7 +685,7 @@ function backToHome() {
 }
 .user-name {
   font-size: var(--md-sys-typescale-title-medium-size);
-  font-weight: 600;
+  font-weight: 500;
 }
 .user-stats {
   font-size: var(--md-sys-typescale-body-small-size);

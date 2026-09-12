@@ -382,7 +382,7 @@ function typeOf(entry: WebDavEntry) {
 }
 .crumb.current {
   color: var(--md-sys-color-on-surface);
-  font-weight: 600;
+  font-weight: 500;
 }
 .crumb .material-symbols-outlined {
   font-size: 16px;
@@ -425,7 +425,7 @@ function typeOf(entry: WebDavEntry) {
 }
 .section-title {
   font-size: var(--md-sys-typescale-label-large-size);
-  font-weight: 600;
+  font-weight: 500;
   color: var(--md-sys-color-on-surface-variant);
   letter-spacing: 0.4px;
   text-transform: uppercase;
@@ -524,7 +524,7 @@ function typeOf(entry: WebDavEntry) {
 }
 .toast-enter-active,
 .toast-leave-active {
-  transition: all 240ms var(--md-sys-motion-easing-emphasized-decelerate);
+  transition: all 240ms var(--md-sys-motion-spring-spatial);
 }
 .toast-enter-from,
 .toast-leave-to {

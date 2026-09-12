@@ -91,7 +91,7 @@ function t(key: string) {
   gap: 16px;
   padding: 20px 22px;
   border: none;
-  border-radius: var(--md-sys-shape-corner-large);
+  border-radius: var(--lm-shape-card);
   background: var(--md-sys-color-surface-container-low);
   box-shadow: inset 0 0 0 1px var(--lm-hairline);
   color: var(--md-sys-color-on-surface);
@@ -100,7 +100,7 @@ function t(key: string) {
   cursor: pointer;
   transition:
     transform 200ms var(--md-sys-motion-spring-soft),
-    box-shadow 200ms var(--md-sys-motion-easing-standard);
+    box-shadow 200ms var(--md-sys-motion-spring-effects-fast);
 }
 .t-card:hover {
   transform: translateY(-2px);
@@ -122,7 +122,7 @@ function t(key: string) {
 }
 .t-name {
   font-size: var(--md-sys-typescale-title-medium-size);
-  font-weight: 600;
+  font-weight: 500;
 }
 .t-desc {
   margin-top: 4px;

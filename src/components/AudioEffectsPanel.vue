@@ -476,7 +476,7 @@ const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k
 }
 .ef-title {
   font-size: var(--md-sys-typescale-label-large-size);
-  font-weight: 600;
+  font-weight: 500;
   color: var(--md-sys-color-on-surface-variant);
   letter-spacing: 0.4px;
   text-transform: uppercase;
@@ -491,13 +491,13 @@ const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k
   height: 30px;
   padding: 0 14px;
   border: 1px solid var(--md-sys-color-outline-variant);
-  border-radius: var(--md-sys-shape-corner-extra-large);
+  border-radius: var(--md-sys-shape-corner-small);
   background: transparent;
   color: var(--md-sys-color-on-surface-variant);
   font-family: inherit;
   font-size: var(--md-sys-typescale-label-large-size);
   cursor: pointer;
-  transition: all var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard);
+  transition: all var(--md-sys-motion-duration-short) var(--md-sys-motion-spring-effects-fast);
 }
 .chip:hover {
   background: var(--md-sys-color-surface-container-high);
@@ -506,7 +506,7 @@ const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k
   background: var(--md-sys-color-secondary-container);
   color: var(--md-sys-color-on-secondary-container);
   border-color: transparent;
-  font-weight: 600;
+  font-weight: 500;
 }
 .user-preset {
   display: inline-flex;
@@ -679,7 +679,7 @@ const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k
   justify-content: center;
   background: rgba(0, 0, 0, 0.48);
   backdrop-filter: blur(2px);
-  animation: popup-fade 180ms var(--md-sys-motion-easing-standard);
+  animation: popup-fade 180ms var(--md-sys-motion-spring-effects-fast);
 }
 @keyframes popup-fade {
   from {
@@ -699,10 +699,10 @@ const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k
   max-height: 80vh;
   overflow-y: auto;
   padding: 24px 28px 20px;
-  border-radius: 20px;
+  border-radius: var(--lm-shape-dialog);
   background: var(--md-sys-color-surface-container-high);
   box-shadow: var(--md-elevation-3);
-  animation: popup-scale 200ms var(--md-sys-motion-easing-emphasized-decelerate);
+  animation: popup-scale 220ms var(--md-sys-motion-spring-spatial);
 }
 @keyframes popup-scale {
   from {
@@ -717,7 +717,7 @@ const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k
 .popup-title {
   margin: 0;
   font-size: var(--md-sys-typescale-title-medium-size);
-  font-weight: 600;
+  font-weight: 500;
 }
 .popup-actions {
   display: flex;
@@ -737,7 +737,7 @@ const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k
   font-size: var(--md-sys-typescale-body-medium-size);
   cursor: pointer;
   text-align: left;
-  transition: background 120ms;
+  transition: background 120ms var(--md-sys-motion-spring-effects-fast);
 }
 .popup-opt:hover {
   background: var(--md-sys-color-surface-container-highest);
@@ -795,7 +795,7 @@ const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k
   font-family: inherit;
   font-size: var(--md-sys-typescale-body-medium-size);
   outline: none;
-  transition: border-color 120ms;
+  transition: border-color 120ms var(--md-sys-motion-spring-effects-fast);
 }
 .upload-field input:focus,
 .upload-field textarea:focus {

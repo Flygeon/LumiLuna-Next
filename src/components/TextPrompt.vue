@@ -81,7 +81,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   background: rgba(0, 0, 0, 0.4);
-  animation: fade-in 150ms var(--md-sys-motion-easing-standard);
+  animation: fade-in 150ms var(--md-sys-motion-spring-effects-fast);
 }
 @keyframes fade-in {
   from {
@@ -98,7 +98,7 @@ onMounted(() => {
   background: var(--md-sys-color-surface-container-high);
   border-radius: var(--md-sys-shape-corner-extra-large);
   box-shadow: var(--md-elevation-3);
-  animation: dlg-rise 200ms var(--md-sys-motion-easing-emphasized-decelerate);
+  animation: dlg-rise 220ms var(--md-sys-motion-spring-spatial);
 }
 @keyframes dlg-rise {
   from {

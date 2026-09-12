@@ -524,7 +524,7 @@ async function splitTextIntoPages() {
   const paraHTML = (p: string) =>
     `<p style="margin:0 0 ${paraMB};white-space:pre-wrap;word-break:break-word;">${p}</p>`;
   const titleHTML = () =>
-    `<h2 style="margin:0 0 16px;font-size:18px;font-weight:600;text-align:center;break-inside:avoid;">${textCurrentTitle.value}</h2>`;
+    `<h2 style="margin:0 0 16px;font-size:18px;font-weight:500;text-align:center;break-inside:avoid;">${textCurrentTitle.value}</h2>`;
 
   const pages: string[][] = [];
   let cur: string[] = [];
@@ -1035,7 +1035,7 @@ const PDF_MODES = [
   flex-direction: column;
   background: var(--reader-bg);
   color: var(--reader-fg);
-  animation: fade 180ms ease;
+  animation: fade 180ms var(--md-sys-motion-spring-effects-fast);
 }
 @keyframes fade {
   from {
@@ -1084,7 +1084,7 @@ const PDF_MODES = [
   background: transparent;
   color: inherit;
   cursor: pointer;
-  transition: background 160ms;
+  transition: background 160ms var(--md-sys-motion-spring-effects-fast);
 }
 .rbtn:hover {
   background: color-mix(in srgb, var(--reader-fg) 14%, transparent);
@@ -1138,7 +1138,7 @@ const PDF_MODES = [
   display: flex;
   flex-direction: column;
   gap: 14px;
-  border-radius: var(--md-sys-shape-corner-large);
+  border-radius: var(--lm-shape-dialog);
   background: color-mix(in srgb, var(--reader-bg) 90%, transparent);
   backdrop-filter: blur(24px) saturate(1.6);
   -webkit-backdrop-filter: blur(24px) saturate(1.6);
@@ -1183,7 +1183,7 @@ const PDF_MODES = [
   font-family: inherit;
   font-size: 12px;
   cursor: pointer;
-  transition: all 160ms var(--md-sys-motion-easing-standard);
+  transition: all 160ms var(--md-sys-motion-spring-effects-fast);
 }
 .set-chips .chip:hover {
   background: color-mix(in srgb, var(--reader-fg) 10%, transparent);
@@ -1192,13 +1192,13 @@ const PDF_MODES = [
   background: var(--reader-fg);
   color: var(--reader-bg);
   border-color: transparent;
-  font-weight: 600;
+  font-weight: 500;
 }
 .pop-enter-active,
 .pop-leave-active {
   transition:
-    opacity 160ms var(--md-sys-motion-easing-standard),
-    transform 160ms var(--md-sys-motion-easing-emphasized-decelerate);
+    opacity 160ms var(--md-sys-motion-spring-effects-fast),
+    transform 160ms var(--md-sys-motion-spring-spatial);
 }
 .pop-enter-from,
 .pop-leave-to {
@@ -1236,7 +1236,7 @@ const PDF_MODES = [
   padding: 16px;
   border-bottom: 1px solid color-mix(in srgb, var(--reader-fg) 12%, transparent);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
 }
 .toc-head .material-symbols-outlined {
   font-size: 20px;
@@ -1269,7 +1269,7 @@ const PDF_MODES = [
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  transition: background 140ms;
+  transition: background 140ms var(--md-sys-motion-spring-effects-fast);
 }
 .toc-item:hover {
   background: color-mix(in srgb, var(--reader-fg) 12%, transparent);
@@ -1277,7 +1277,7 @@ const PDF_MODES = [
 .toc-item.active {
   background: color-mix(in srgb, var(--reader-fg) 18%, transparent);
   color: var(--reader-fg);
-  font-weight: 600;
+  font-weight: 500;
 }
 .toc-item.sub {
   font-size: 12px;
@@ -1291,7 +1291,7 @@ const PDF_MODES = [
 }
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 160ms ease;
+  transition: opacity 160ms var(--md-sys-motion-spring-effects-fast);
 }
 .fade-enter-from,
 .fade-leave-to {
@@ -1299,7 +1299,7 @@ const PDF_MODES = [
 }
 .slide-enter-active,
 .slide-leave-active {
-  transition: transform 240ms var(--md-sys-motion-easing-emphasized-decelerate);
+  transition: transform 240ms var(--md-sys-motion-spring-spatial);
 }
 .slide-enter-from,
 .slide-leave-to {
@@ -1357,7 +1357,7 @@ const PDF_MODES = [
   background: transparent;
   color: color-mix(in srgb, var(--reader-fg) 65%, transparent);
   cursor: pointer;
-  transition: all 160ms ease;
+  transition: all 160ms var(--md-sys-motion-spring-effects-fast);
 }
 .mode-btn:hover {
   color: var(--reader-fg);
@@ -1411,7 +1411,7 @@ const PDF_MODES = [
 .text-chapter-title {
   margin: 0 0 16px;
   font-size: 18px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--reader-fg);
   text-align: center;
   break-inside: avoid;
@@ -1491,7 +1491,7 @@ const PDF_MODES = [
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 160ms;
+  transition: background 160ms var(--md-sys-motion-spring-effects-fast);
   z-index: 2;
 }
 .nav:hover {

@@ -114,7 +114,10 @@ const LENGTH_TOKENS = new Set([
   "--md-sys-shape-corner-small",
   "--md-sys-shape-corner-medium",
   "--md-sys-shape-corner-large",
+  "--md-sys-shape-corner-large-increased",
   "--md-sys-shape-corner-extra-large",
+  "--md-sys-shape-corner-extra-large-increased",
+  "--md-sys-shape-corner-extra-extra-large",
 ]);
 
 const DURATION_TOKENS = new Set([
@@ -123,12 +126,19 @@ const DURATION_TOKENS = new Set([
   "--md-sys-motion-duration-long",
 ]);
 
+/* 弹簧令牌默认是展开成几十个采样点的 linear()（超 64 字符上限），皮肤若要用
+   自定义节奏，请给 cubic-bezier 近似值——覆盖后直接生效，无需改令牌层。 */
 const EASING_TOKENS = new Set([
   "--md-sys-motion-easing-standard",
   "--md-sys-motion-easing-emphasized",
   "--md-sys-motion-easing-emphasized-decelerate",
+  "--md-sys-motion-easing-emphasized-accelerate",
   "--md-sys-motion-spring",
   "--md-sys-motion-spring-soft",
+  "--md-sys-motion-spring-spatial",
+  "--md-sys-motion-spring-spatial-fast",
+  "--md-sys-motion-spring-effects",
+  "--md-sys-motion-spring-effects-fast",
 ]);
 
 const ELEVATION_TOKENS = new Set(["--md-elevation-1", "--md-elevation-2", "--md-elevation-3"]);

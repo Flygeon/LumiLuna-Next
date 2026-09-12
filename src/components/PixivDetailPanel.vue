@@ -326,7 +326,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
   display: flex;
   flex-direction: column;
   gap: 18px;
-  animation: lm-rise 340ms var(--md-sys-motion-easing-emphasized-decelerate) both;
+  animation: lm-rise 340ms var(--md-sys-motion-spring-spatial) both;
 }
 .search-head {
   display: flex;
@@ -352,7 +352,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
 .page-title {
   margin: 0;
   font-size: var(--md-sys-typescale-title-large-size);
-  font-weight: 600;
+  font-weight: 500;
   flex: 1;
   min-width: 0;
   white-space: nowrap;
@@ -367,7 +367,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
 }
 .cover-wrap {
   position: relative;
-  border-radius: var(--md-sys-shape-corner-large);
+  border-radius: var(--lm-shape-card);
   overflow: hidden;
   background: var(--md-sys-color-surface-container);
   box-shadow: var(--md-elevation-2);
@@ -382,7 +382,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
   height: 100%;
   object-fit: cover;
   cursor: zoom-in;
-  transition: filter 160ms var(--md-sys-motion-easing-standard);
+  transition: filter 160ms var(--md-sys-motion-spring-effects-fast);
 }
 .cover-img:hover {
   filter: brightness(1.08);
@@ -412,7 +412,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
   align-items: center;
   gap: 6px;
   font-size: var(--md-sys-typescale-title-medium-size);
-  font-weight: 600;
+  font-weight: 500;
 }
 .author-link {
   padding: 4px 8px;
@@ -502,7 +502,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
   gap: 6px;
   margin: 0;
   font-size: var(--md-sys-typescale-title-medium-size);
-  font-weight: 600;
+  font-weight: 500;
 }
 .section-title .material-symbols-outlined {
   font-size: 18px;
@@ -538,7 +538,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
 }
 .comment-author {
   font-size: var(--md-sys-typescale-label-large-size);
-  font-weight: 600;
+  font-weight: 500;
   color: var(--md-sys-color-primary);
 }
 .comment-date {
@@ -562,7 +562,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
 .parent-author {
   display: block;
   font-size: var(--md-sys-typescale-label-small-size);
-  font-weight: 600;
+  font-weight: 500;
   color: var(--md-sys-color-on-surface-variant);
   margin-bottom: 2px;
 }
@@ -585,7 +585,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
   align-items: center;
   justify-content: center;
   background: rgba(0, 0, 0, 0.88);
-  animation: lm-fade 160ms ease both;
+  animation: lm-fade 160ms var(--md-sys-motion-spring-effects-fast) both;
 }
 .lightbox-img {
   max-width: 94vw;

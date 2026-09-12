@@ -170,7 +170,7 @@ function clearSearch() {
   font-family: inherit;
   font-size: var(--md-sys-typescale-label-large-size);
   cursor: pointer;
-  transition: all var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard);
+  transition: all var(--md-sys-motion-duration-short) var(--md-sys-motion-spring-effects-fast);
 }
 .chip:hover {
   background: var(--md-sys-color-surface-container-high);
@@ -209,7 +209,7 @@ function clearSearch() {
   height: 100%;
   border-radius: 2px;
   background: var(--md-sys-color-primary);
-  transition: width 200ms var(--md-sys-motion-easing-standard);
+  transition: width 200ms var(--md-sys-motion-spring-effects-fast);
 }
 /* 枚举阶段总数未知，用来回滑动表示忙碌 */
 .fill.indeterminate {
