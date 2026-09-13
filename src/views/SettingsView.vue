@@ -423,17 +423,18 @@ function selectSection(id: string) {
     <aside class="settings-nav" aria-label="设置分类">
       <template v-for="group in settingNav" :key="group.title">
         <div class="settings-nav-group">{{ group.title }}</div>
-        <button
-          v-for="item in group.items"
-          :key="item.id"
-          class="settings-nav-item"
-          :class="{ active: activeSection === item.id }"
-          type="button"
-          @click="selectSection(item.id)"
-        >
-          <span class="material-symbols-outlined">{{ item.icon }}</span>
-          <span class="settings-nav-label">{{ item.label }}</span>
-        </button>
+        <m3e-list variant="segmented" class="settings-nav-list">
+          <m3e-list-item
+            v-for="item in group.items"
+            :key="item.id"
+            class="settings-nav-item"
+            :selected="activeSection === item.id"
+            @click="selectSection(item.id)"
+          >
+            <span slot="leading" class="material-symbols-outlined">{{ item.icon }}</span>
+            <span class="settings-nav-label">{{ item.label }}</span>
+          </m3e-list-item>
+        </m3e-list>
       </template>
     </aside>
     <!-- 外观 -->
@@ -1607,23 +1608,16 @@ function selectSection(id: string) {
   letter-spacing: 0.4px;
   opacity: 0.8;
 }
+.settings-nav-list {
+  width: 100%;
+}
 .settings-nav-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 32px;
-  padding: 0 12px;
-  border: none;
-  border-radius: var(--md-sys-shape-corner-full);
-  background: transparent;
-  color: var(--md-sys-color-on-surface-variant);
-  font: inherit;
-  font-size: var(--md-sys-typescale-label-large-size);
-  text-align: left;
+  --m3e-segmented-list-item-selected-container-shape: 999px;
+  --m3e-list-item-container-shape: 999px;
+  --m3e-list-item-one-line-height: 40px;
+  --m3e-list-item-font-size: var(--md-sys-typescale-label-large-size);
+  --m3e-list-item-font-weight: 500;
   cursor: pointer;
-  transition:
-    background-color 160ms var(--md-sys-motion-spring-effects-fast),
-    color 160ms var(--md-sys-motion-spring-effects-fast);
 }
 .settings-nav-item .material-symbols-outlined {
   font-size: 20px;
@@ -1632,15 +1626,6 @@ function selectSection(id: string) {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-}
-.settings-nav-item:hover {
-  background: var(--md-sys-color-surface-container-high);
-  color: var(--md-sys-color-on-surface);
-}
-.settings-nav-item.active {
-  background: var(--md-sys-color-secondary-container);
-  color: var(--md-sys-color-on-secondary-container);
-  font-weight: 500;
 }
 
 .card {

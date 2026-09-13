@@ -59,20 +59,22 @@ function clearSearch() {
       </m3e-icon-button>
     </div>
 
-    <div class="sorts">
-      <button
+    <m3e-filter-chip-set class="sorts">
+      <m3e-filter-chip
         v-for="s in SORTS"
         :key="s.key"
-        class="chip"
-        :class="{ active: library.sortBy === s.key }"
+        :selected="library.sortBy === s.key"
         @click="pickSort(s.key)"
       >
         {{ s.label }}
-        <span v-if="library.sortBy === s.key" class="material-symbols-outlined arrow">{{
-          library.sortDesc ? "arrow_downward" : "arrow_upward"
-        }}</span>
-      </button>
-    </div>
+        <span
+          v-if="library.sortBy === s.key"
+          slot="trailing-icon"
+          class="material-symbols-outlined arrow"
+          >{{ library.sortDesc ? "arrow_downward" : "arrow_upward" }}</span
+        >
+      </m3e-filter-chip>
+    </m3e-filter-chip-set>
 
     <span class="count tabular-nums">{{ props.count }} 项</span>
 
@@ -153,30 +155,7 @@ function clearSearch() {
   display: flex;
   gap: 6px;
 }
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  height: 32px;
-  padding: 0 12px;
-  border: 1px solid var(--md-sys-color-outline-variant);
-  border-radius: var(--md-sys-shape-corner-small);
-  background: transparent;
-  color: var(--md-sys-color-on-surface-variant);
-  font-family: inherit;
-  font-size: var(--md-sys-typescale-label-large-size);
-  cursor: pointer;
-  transition: all var(--md-sys-motion-duration-short) var(--md-sys-motion-spring-effects-fast);
-}
-.chip:hover {
-  background: var(--md-sys-color-surface-container-high);
-}
-.chip.active {
-  background: var(--md-sys-color-secondary-container);
-  color: var(--md-sys-color-on-secondary-container);
-  border-color: transparent;
-}
-.chip .arrow {
+.sorts .arrow {
   font-size: 15px;
 }
 

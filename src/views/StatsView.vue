@@ -345,15 +345,16 @@ function piePath(cx: number, cy: number, r: number, startAngle: number, endAngle
     <header class="page-head">
       <h2>{{ t("nav.stats") }}</h2>
       <div v-if="isTauri" class="period-tabs">
-        <button
-          v-for="p in PERIODS"
-          :key="p.id"
-          class="period-tab"
-          :class="{ active: period === p.id }"
-          @click="period = p.id"
-        >
-          {{ t(p.label) }}
-        </button>
+        <m3e-segmented-button>
+          <m3e-button-segment
+            v-for="p in PERIODS"
+            :key="p.id"
+            :checked="period === p.id"
+            @click="period = p.id"
+          >
+            {{ t(p.label) }}
+          </m3e-button-segment>
+        </m3e-segmented-button>
       </div>
     </header>
 
@@ -684,31 +685,6 @@ function piePath(cx: number, cy: number, r: number, startAngle: number, endAngle
 /* 时段分段 */
 .period-tabs {
   display: inline-flex;
-  gap: 2px;
-  padding: 3px;
-  border-radius: 999px;
-  background: var(--md-sys-color-surface-container-high);
-}
-.period-tab {
-  padding: 6px 14px;
-  border: none;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--md-sys-color-on-surface-variant);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition:
-    background 0.15s var(--md-sys-motion-spring-effects-fast),
-    color 0.15s var(--md-sys-motion-spring-effects-fast);
-}
-.period-tab.active {
-  background: var(--md-sys-color-surface-container);
-  color: var(--md-sys-color-on-surface);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-}
-.period-tab:hover {
-  color: var(--md-sys-color-on-surface);
 }
 
 /* 自定义日期 */

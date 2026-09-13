@@ -247,16 +247,17 @@ function typeOf(entry: WebDavEntry) {
     <template v-else>
       <!-- 面包屑 + 刷新 -->
       <div class="crumbs">
-        <button
+        <m3e-button
           v-for="(c, i) in crumbs"
           :key="c.target"
           class="crumb"
           :class="{ current: i === crumbs.length - 1 }"
+          variant="text"
           @click="i < crumbs.length - 1 && load(c.target)"
         >
-          <span v-if="i === 0" class="material-symbols-outlined">home</span>
+          <span v-if="i === 0" slot="icon" class="material-symbols-outlined">home</span>
           {{ c.label }}
-        </button>
+        </m3e-button>
         <m3e-icon-button class="refresh" variant="standard" title="刷新" @click="refresh">
           <span class="material-symbols-outlined">refresh</span>
         </m3e-icon-button>
@@ -309,28 +310,35 @@ function typeOf(entry: WebDavEntry) {
             {{ t("nav.webdav") }} · {{ files.length }} {{ t("webdav.items") }}
           </h4>
           <div class="dav-grid">
-            <button
+            <m3e-card
               v-for="f in files"
               :key="f.path"
               class="tile file-tile"
+              variant="elevated"
+              actionable
               @click="open(f)"
               @dblclick="open(f)"
             >
               <img
                 v-if="typeOf(f) === 'image'"
+                slot="header"
                 class="tile-thumb"
                 :src="thumbSrc(f)"
                 loading="lazy"
                 alt=""
               />
-              <span v-else class="material-symbols-outlined tile-icon" :class="typeOf(f)">{{
-                TYPE_ICONS[typeOf(f)] ?? "description"
-              }}</span>
-              <span class="tile-name" :title="f.name">{{ f.name }}</span>
-              <span v-if="!typeOf(f).startsWith('image')" class="tile-size tabular-nums">
-                {{ f.size > 0 ? formatSize(f.size) : "" }}
-              </span>
-            </button>
+              <div v-else slot="content" class="file-tile-head">
+                <span class="material-symbols-outlined tile-icon" :class="typeOf(f)">{{
+                  TYPE_ICONS[typeOf(f)] ?? "description"
+                }}</span>
+              </div>
+              <div slot="content" class="file-tile-body">
+                <span class="tile-name" :title="f.name">{{ f.name }}</span>
+                <span v-if="!typeOf(f).startsWith('image')" class="tile-size tabular-nums">
+                  {{ f.size > 0 ? formatSize(f.size) : "" }}
+                </span>
+              </div>
+            </m3e-card>
           </div>
         </section>
       </template>
@@ -369,29 +377,19 @@ function typeOf(entry: WebDavEntry) {
   gap: 2px;
 }
 .crumb {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+  --m3e-text-button-label-text-color: var(--md-sys-color-on-surface-variant);
+  --m3e-text-button-icon-color: var(--md-sys-color-on-surface-variant);
   max-width: 240px;
-  padding: 6px 10px;
-  border: none;
-  border-radius: var(--md-sys-shape-corner-extra-large);
-  background: transparent;
-  color: var(--md-sys-color-on-surface-variant);
-  font-family: inherit;
-  font-size: var(--md-sys-typescale-label-large-size);
-  cursor: pointer;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  transition: background var(--md-sys-motion-duration-short);
 }
 .crumb:hover {
-  background: var(--md-sys-color-surface-container);
+  --m3e-text-button-label-text-color: var(--md-sys-color-on-surface);
+  --m3e-text-button-hover-label-text-color: var(--md-sys-color-on-surface);
 }
 .crumb.current {
-  color: var(--md-sys-color-on-surface);
-  font-weight: 500;
+  --m3e-text-button-label-text-color: var(--md-sys-color-on-surface);
 }
 .crumb .material-symbols-outlined {
   font-size: 16px;
@@ -447,26 +445,10 @@ function typeOf(entry: WebDavEntry) {
   gap: 10px;
 }
 .tile {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
   min-width: 0;
-  padding: 14px 10px 12px;
-  border: none;
-  border-radius: var(--md-sys-shape-corner-extra-large);
-  background: var(--md-sys-color-surface-container-low);
-  box-shadow: inset 0 0 0 1px var(--lm-hairline);
-  color: var(--md-sys-color-on-surface);
-  font-family: inherit;
-  cursor: pointer;
-  transition:
-    transform 160ms var(--md-sys-motion-spring),
-    background var(--md-sys-motion-duration-short),
-    box-shadow var(--md-sys-motion-duration-short);
+  --m3e-card-shape: var(--md-sys-shape-corner-extra-large);
 }
 .tile:hover {
-  background: var(--md-sys-color-surface-container-high);
   transform: translateY(-2px);
 }
 .tile:active {
@@ -488,6 +470,7 @@ function typeOf(entry: WebDavEntry) {
   flex-direction: column;
   align-items: center;
   gap: 8px;
+  padding: 14px 10px 12px;
 }
 .dir-tile-icon {
   font-size: 34px;
@@ -513,11 +496,27 @@ function typeOf(entry: WebDavEntry) {
 .tile-icon.book {
   color: #7d9a5a;
 }
+.file-tile {
+  cursor: pointer;
+  --m3e-card-shape: var(--md-sys-shape-corner-extra-large);
+}
+.file-tile-head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 10px 0;
+}
+.file-tile-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 0 10px 12px;
+}
 .tile-thumb {
   width: 100%;
   aspect-ratio: 1;
   object-fit: cover;
-  border-radius: var(--md-sys-shape-corner-medium);
   background: var(--md-sys-color-surface-container-high);
 }
 .tile-name {

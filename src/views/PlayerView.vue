@@ -340,25 +340,25 @@ onBeforeUnmount(() => {
           <LyricsView v-if="rightTab === 'lyrics'" />
           <AudioEffectsPanel v-else-if="rightTab === 'effects'" />
           <div v-else-if="player.queue.length" class="queue-list">
-            <button
-              v-for="(item, i) in player.queue"
-              :key="player.queueTitle(item) + (isWebDavItem(item) ? item.path : item.id)"
-              class="queue-item"
-              :class="{ current: i === player.currentIndex }"
-              @click="player.playFromQueue(i)"
-            >
-              <span class="q-index tabular-nums">
-                <span v-if="i !== player.currentIndex">{{ i + 1 }}</span>
-                <span v-else class="material-symbols-outlined">equalizer</span>
-              </span>
-              <span class="q-names">
+            <m3e-list class="queue-list-inner">
+              <m3e-list-item
+                v-for="(item, i) in player.queue"
+                :key="player.queueTitle(item) + (isWebDavItem(item) ? item.path : item.id)"
+                class="queue-item"
+                :class="{ current: i === player.currentIndex }"
+                @click="player.playFromQueue(i)"
+              >
+                <span slot="leading" class="q-index tabular-nums">
+                  <span v-if="i !== player.currentIndex">{{ i + 1 }}</span>
+                  <span v-else class="material-symbols-outlined">equalizer</span>
+                </span>
                 <span class="q-title">{{ player.queueTitle(item) }}</span>
-                <span class="q-artist">{{ player.queueArtist(item) }}</span>
-              </span>
-              <span class="q-time tabular-nums">
-                {{ formatDuration(player.queueDuration(item)) }}
-              </span>
-            </button>
+                <span slot="supporting-text" class="q-artist">{{ player.queueArtist(item) }}</span>
+                <span slot="trailing" class="q-time tabular-nums">
+                  {{ formatDuration(player.queueDuration(item)) }}
+                </span>
+              </m3e-list-item>
+            </m3e-list>
           </div>
           <div v-else class="queue-empty">{{ t("actions.queue") }}</div>
         </div>
@@ -720,34 +720,31 @@ onBeforeUnmount(() => {
   overflow: hidden;
 }
 .queue-list {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  overflow-y: auto;
   height: 100%;
+  overflow-y: auto;
+}
+.queue-list-inner {
+  --m3e-list-item-container-shape: 10px;
+  --m3e-list-item-one-line-height: 56px;
+  --m3e-list-item-two-line-height: 64px;
+  --m3e-list-item-container-color: transparent;
+  --m3e-list-item-label-text-color: rgba(255, 255, 255, 0.75);
+  --m3e-list-item-supporting-text-color: rgba(255, 255, 255, 0.45);
+  --m3e-list-item-trailing-color: rgba(255, 255, 255, 0.45);
+  --m3e-list-item-hover-container-color: rgba(255, 255, 255, 0.08);
+  --m3e-list-item-focus-container-color: rgba(255, 255, 255, 0.1);
 }
 .queue-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 9px 12px;
-  border: none;
-  border-radius: 10px;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.75);
-  font-family: inherit;
-  text-align: left;
   cursor: pointer;
-  transition: background 180ms var(--md-sys-motion-spring-effects-fast);
-}
-.queue-item:hover {
-  background: rgba(255, 255, 255, 0.08);
 }
 .queue-item.current {
-  background: rgba(255, 255, 255, 0.14);
-  color: #fff;
+  --m3e-list-item-container-color: rgba(255, 255, 255, 0.14);
+  --m3e-list-item-label-text-color: #fff;
 }
 .q-index {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 22px;
   text-align: center;
   font-size: 12px;
@@ -756,12 +753,6 @@ onBeforeUnmount(() => {
 .q-index .material-symbols-outlined {
   font-size: 16px;
   opacity: 1;
-}
-.q-names {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-width: 0;
 }
 .q-title {
   font-size: 14px;

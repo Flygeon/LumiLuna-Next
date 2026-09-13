@@ -500,35 +500,44 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
         </div>
         <p class="online-hint">{{ t("online.hint") }}</p>
         <div class="online-grid">
-          <button
+          <m3e-card
             v-for="c in playlistCards"
             :key="c.key"
             class="song-card"
+            variant="elevated"
+            actionable
             @click="openPlaylist(c)"
             @contextmenu="onPlaylistContext($event, c)"
           >
-            <m3e-icon-button
-              v-if="c.key.startsWith('user:')"
-              class="p-remove"
-              size="extra-small"
-              :title="t('online.removePlaylist')"
-              @click.stop="removePlaylist(c.id!)"
-            >
-              <span class="material-symbols-outlined">close</span>
-            </m3e-icon-button>
-            <div class="thumb">
-              <CachedCover v-if="coverOf(c)" :url="coverOf(c)" :alt="c.name" />
-              <span v-else class="placeholder material-symbols-outlined">
-                {{
-                  c.key === "local" ? "library_music" : c.key === "cloud" ? "cloud" : "queue_music"
-                }}
-              </span>
+            <div slot="content" class="song-card-inner">
+              <m3e-icon-button
+                v-if="c.key.startsWith('user:')"
+                class="p-remove"
+                size="extra-small"
+                variant="filled"
+                :title="t('online.removePlaylist')"
+                @click.stop="removePlaylist(c.id!)"
+              >
+                <span class="material-symbols-outlined">close</span>
+              </m3e-icon-button>
+              <div class="thumb">
+                <CachedCover v-if="coverOf(c)" :url="coverOf(c)" :alt="c.name" />
+                <span v-else class="placeholder material-symbols-outlined">
+                  {{
+                    c.key === "local"
+                      ? "library_music"
+                      : c.key === "cloud"
+                        ? "cloud"
+                        : "queue_music"
+                  }}
+                </span>
+              </div>
+              <div class="s-meta">
+                <div class="s-title" :title="c.name">{{ c.name }}</div>
+                <div class="s-artist">{{ subtitleOf(c) }}</div>
+              </div>
             </div>
-            <div class="s-meta">
-              <div class="s-title" :title="c.name">{{ c.name }}</div>
-              <div class="s-artist">{{ subtitleOf(c) }}</div>
-            </div>
-          </button>
+          </m3e-card>
         </div>
 
         <div class="add-playlist">
@@ -607,22 +616,26 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
         "
         class="online-grid"
       >
-        <button
+        <m3e-card
           v-for="(song, i) in detail.songs"
           :key="song.id"
           class="song-card"
+          variant="elevated"
+          actionable
           @click="playOnlineSongs(detail.songs, i)"
           @contextmenu="onSongContext($event, song)"
         >
-          <div class="thumb">
-            <CachedCover v-if="song.pic" :url="song.pic" :alt="song.name" />
-            <span v-else class="placeholder material-symbols-outlined">music_note</span>
+          <div slot="content" class="song-card-inner">
+            <div class="thumb">
+              <CachedCover v-if="song.pic" :url="song.pic" :alt="song.name" />
+              <span v-else class="placeholder material-symbols-outlined">music_note</span>
+            </div>
+            <div class="s-meta">
+              <div class="s-title" :title="song.name">{{ song.name }}</div>
+              <div class="s-artist" :title="song.artist">{{ song.artist }}</div>
+            </div>
           </div>
-          <div class="s-meta">
-            <div class="s-title" :title="song.name">{{ song.name }}</div>
-            <div class="s-artist" :title="song.artist">{{ song.artist }}</div>
-          </div>
-        </button>
+        </m3e-card>
       </div>
 
       <div
@@ -631,22 +644,24 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
         "
         class="online-list"
       >
-        <button
-          v-for="(song, i) in detail.songs"
-          :key="song.id"
-          class="online-row"
-          @click="playOnlineSongs(detail.songs, i)"
-          @contextmenu="onSongContext($event, song)"
-        >
-          <div class="o-thumb">
-            <CachedCover v-if="song.pic" :url="song.pic" :alt="song.name" />
-            <span v-else class="material-symbols-outlined">music_note</span>
-          </div>
-          <div class="o-main">
-            <div class="o-title" :title="song.name">{{ song.name }}</div>
-            <div class="o-artist" :title="song.artist">{{ song.artist || "—" }}</div>
-          </div>
-        </button>
+        <m3e-list class="online-list-inner">
+          <m3e-list-item
+            v-for="(song, i) in detail.songs"
+            :key="song.id"
+            class="online-row"
+            @click="playOnlineSongs(detail.songs, i)"
+            @contextmenu="onSongContext($event, song)"
+          >
+            <span slot="leading" class="o-thumb">
+              <CachedCover v-if="song.pic" :url="song.pic" :alt="song.name" />
+              <span v-else class="material-symbols-outlined">music_note</span>
+            </span>
+            <span class="o-title" :title="song.name">{{ song.name }}</span>
+            <span slot="supporting-text" class="o-artist" :title="song.artist">{{
+              song.artist || "—"
+            }}</span>
+          </m3e-list-item>
+        </m3e-list>
       </div>
       <div v-else-if="onlineLoading" class="loading">{{ t("online.loading") }}</div>
 
@@ -917,17 +932,9 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
   --m3e-icon-button-extra-small-icon-size: 15px;
   --m3e-icon-button-icon-color: #fff;
   --m3e-icon-button-hover-icon-color: #fff;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.45);
-  transition:
-    opacity var(--md-sys-motion-duration-short),
-    background 160ms var(--md-sys-motion-spring-effects-fast);
-}
-.song-card:hover .p-remove {
-  opacity: 1;
-}
-.p-remove:hover {
-  background: var(--md-sys-color-error);
+  --m3e-icon-button-filled-container-color: rgba(0, 0, 0, 0.45);
+  --m3e-icon-button-hover-container-color: var(--md-sys-color-error);
+  transition: opacity var(--md-sys-motion-duration-short);
 }
 
 .search-bar {
@@ -969,16 +976,16 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
 }
 .song-card {
   position: relative;
+  --m3e-card-shape: var(--lm-shape-card);
+  --m3e-card-container-color: transparent;
+  background: transparent;
+}
+.song-card-inner {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: inherit;
-  font-family: inherit;
-  text-align: left;
-  cursor: pointer;
+  padding: 4px;
 }
 .song-card .thumb {
   position: relative;
@@ -987,7 +994,7 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
   justify-content: center;
   width: 100%;
   aspect-ratio: 1;
-  border-radius: var(--lm-shape-card);
+  border-radius: calc(var(--lm-shape-card) - 4px);
   overflow: hidden;
   background: var(--md-sys-color-surface-container);
   box-shadow: inset 0 0 0 1px var(--lm-hairline);
@@ -1013,6 +1020,12 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
 }
 .song-card:active .thumb {
   transform: translateY(-1px) scale(0.995);
+}
+.song-card .p-remove {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
 }
 .s-meta {
   padding: 0 2px;
@@ -1040,23 +1053,17 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
   flex-direction: column;
   gap: 2px;
 }
+.online-list-inner {
+  --m3e-list-item-container-shape: var(--md-sys-shape-corner-medium);
+  --m3e-list-item-one-line-height: 56px;
+  --m3e-list-item-two-line-height: 64px;
+  --m3e-list-item-leading-space: 8px;
+  --m3e-list-item-trailing-space: 8px;
+}
 .online-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 4px 10px;
-  border: none;
-  border-radius: var(--md-sys-shape-corner-medium);
-  background: transparent;
-  color: inherit;
-  font-family: inherit;
-  text-align: left;
   cursor: pointer;
 }
-.online-row:hover {
-  background: var(--md-sys-color-surface-container);
-}
-.o-thumb {
+.online-row .o-thumb {
   flex: none;
   display: flex;
   align-items: center;
@@ -1076,10 +1083,6 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
 .o-thumb .material-symbols-outlined {
   font-size: 20px;
 }
-.o-main {
-  flex: 1;
-  min-width: 0;
-}
 .o-title {
   font-size: var(--md-sys-typescale-body-medium-size);
   font-weight: 500;
@@ -1088,7 +1091,6 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
   text-overflow: ellipsis;
 }
 .o-artist {
-  margin-top: 2px;
   font-size: var(--md-sys-typescale-body-small-size);
   color: var(--md-sys-color-on-surface-variant);
   white-space: nowrap;

@@ -193,16 +193,17 @@ const aliasList = computed(() => props.subject?.alias?.slice(0, 12) ?? []);
             </m3e-list-item>
 
             <!-- 命中条目 -->
-            <button
-              v-for="(item, i) in result.items.slice(0, 12)"
-              v-show="isExpanded(result.pluginName)"
-              :key="i"
-              class="result-row"
-              @click="pick(result.pluginName, item)"
-            >
-              <span class="row-name">{{ item.name }}</span>
-              <span class="material-symbols-outlined">play_arrow</span>
-            </button>
+            <m3e-list v-show="isExpanded(result.pluginName)" class="result-list">
+              <m3e-list-item
+                v-for="(item, i) in result.items.slice(0, 12)"
+                :key="i"
+                class="result-row"
+                @click="pick(result.pluginName, item)"
+              >
+                <span class="row-name">{{ item.name }}</span>
+                <span slot="trailing" class="material-symbols-outlined">play_arrow</span>
+              </m3e-list-item>
+            </m3e-list>
 
             <!-- 更多操作 -->
             <div v-show="isExpanded(result.pluginName)" class="more-area">
@@ -377,22 +378,14 @@ const aliasList = computed(() => props.subject?.alias?.slice(0, 12) ?? []);
     transform: rotate(360deg);
   }
 }
-.result-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 12px 16px;
-  border: none;
-  border-top: 1px solid var(--lm-hairline);
-  background: transparent;
-  color: var(--md-sys-color-on-surface);
-  font-family: inherit;
-  text-align: left;
-  cursor: pointer;
+.result-list {
+  --m3e-list-item-container-shape: 0px;
+  --m3e-list-item-one-line-height: 44px;
 }
-.result-row:hover {
-  background: var(--md-sys-color-surface-container-high);
+.result-row {
+  width: 100%;
+  border-top: 1px solid var(--lm-hairline);
+  cursor: pointer;
 }
 .row-name {
   flex: 1;
@@ -403,7 +396,6 @@ const aliasList = computed(() => props.subject?.alias?.slice(0, 12) ?? []);
   text-overflow: ellipsis;
 }
 .result-row .material-symbols-outlined {
-  flex: none;
   font-size: 18px;
   color: var(--md-sys-color-primary);
 }
