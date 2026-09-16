@@ -83,14 +83,14 @@ loadPresets();
 <template>
   <div class="preset-market">
     <div class="market-head">
-      <button class="lm-icon-btn" @click="router.back()">
+      <m3e-icon-button size="small" @click="router.back()">
         <span class="material-symbols-outlined">arrow_back</span>
-      </button>
+      </m3e-icon-button>
       <h2 class="page-title">{{ t("settings.market.title") }}</h2>
-      <button class="lm-btn lm-btn--tonal" :disabled="loading" @click="loadPresets">
-        <span class="material-symbols-outlined">refresh</span>
+      <m3e-button variant="tonal" size="small" :disabled="loading" @click="loadPresets">
+        <span slot="icon" class="material-symbols-outlined">refresh</span>
         {{ t("settings.market.refresh") }}
-      </button>
+      </m3e-button>
     </div>
 
     <div v-if="loading" class="loading">{{ t("online.loading") }}</div>
@@ -98,9 +98,9 @@ loadPresets();
     <div v-else-if="error" class="error-bar">
       <span class="material-symbols-outlined">error</span>
       {{ error }}
-      <button class="lm-btn lm-btn--text" @click="loadPresets">
+      <m3e-button variant="text" size="small" @click="loadPresets">
         {{ t("settings.market.refresh") }}
-      </button>
+      </m3e-button>
     </div>
 
     <div v-else-if="!presets.length" class="empty">
@@ -117,14 +117,16 @@ loadPresets();
           <div class="p-name">{{ item.name }}</div>
           <div class="p-desc">{{ item.description }}</div>
         </div>
-        <button
-          class="lm-btn lm-btn--tonal p-import"
+        <m3e-button
+          class="p-import"
+          variant="tonal"
+          size="small"
           :disabled="importing === item.file"
           @click="importPreset(item)"
         >
-          <span class="material-symbols-outlined">download</span>
+          <span slot="icon" class="material-symbols-outlined">download</span>
           {{ t("settings.market.import") }}
-        </button>
+        </m3e-button>
       </div>
     </div>
   </div>
@@ -223,10 +225,9 @@ loadPresets();
 }
 .p-import {
   flex: none;
-  height: 34px;
-  padding: 0 14px;
-}
-.p-import .material-symbols-outlined {
-  font-size: 17px;
+  --m3e-button-small-container-height: 34px;
+  --m3e-button-small-leading-space: 14px;
+  --m3e-button-small-trailing-space: 14px;
+  --m3e-button-small-icon-size: 17px;
 }
 </style>

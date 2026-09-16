@@ -174,10 +174,10 @@ const metaParts = computed(() => {
       </section>
 
       <div class="cta">
-        <button class="lm-btn lm-btn--filled start-btn" @click="emit('openSources')">
-          <span class="material-symbols-outlined">play_arrow</span>
+        <m3e-button class="start-btn" variant="filled" size="small" @click="emit('openSources')">
+          <span slot="icon" class="material-symbols-outlined">play_arrow</span>
           {{ t("anime.startWatch") }}
-        </button>
+        </m3e-button>
       </div>
     </template>
   </div>

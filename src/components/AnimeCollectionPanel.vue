@@ -113,17 +113,20 @@ async function disconnect() {
         <span class="material-symbols-outlined">subscriptions</span>
         {{ t("anime.myCollection") }}
       </h2>
-      <button
+      <m3e-button
         v-if="collect.authorized"
-        class="lm-btn lm-btn--tonal"
+        variant="tonal"
+        size="small"
         :disabled="collect.listLoading"
         @click="collect.pull()"
       >
-        <span class="material-symbols-outlined" :class="{ spin: collect.listLoading }">sync</span>
+        <span slot="icon" class="material-symbols-outlined" :class="{ spin: collect.listLoading }"
+          >sync</span
+        >
         {{
           collect.listLoading && collect.syncProgress ? collect.syncProgress : t("anime.syncNow")
         }}
-      </button>
+      </m3e-button>
     </div>
 
     <!-- 未连接：授权卡片（有离线缓存时仍可先逛列表） -->
@@ -148,15 +151,18 @@ async function disconnect() {
           :placeholder="t('anime.bangumiTokenPlaceholder')"
           @keyup.enter="connect"
         />
-        <button
-          class="lm-btn lm-btn--filled"
+        <m3e-button
+          variant="filled"
+          size="small"
           :disabled="connecting || !tokenDraft.trim()"
           @click="connect"
         >
-          <span v-if="connecting" class="material-symbols-outlined spin">progress_activity</span>
-          <span v-else class="material-symbols-outlined">login</span>
+          <span v-if="connecting" slot="icon" class="material-symbols-outlined spin"
+            >progress_activity</span
+          >
+          <span v-else slot="icon" class="material-symbols-outlined">login</span>
           {{ t("anime.bangumiConnectBtn") }}
-        </button>
+        </m3e-button>
       </div>
       <p v-if="collect.authError" class="auth-error">{{ collect.authError }}</p>
       <p v-else-if="collect.authState === 'checking'" class="auth-pending">
@@ -174,9 +180,9 @@ async function disconnect() {
           {{ collect.user?.nickname || settings.bangumiUsername || t("anime.offlineCache") }}
         </span>
         <span class="sync-at">{{ collect.listLoading ? collect.syncProgress : syncedLabel }}</span>
-        <button v-if="collect.authorized" class="lm-btn lm-btn--text" @click="disconnect">
+        <m3e-button v-if="collect.authorized" variant="text" size="small" @click="disconnect">
           {{ t("anime.bangumiDisconnect") }}
-        </button>
+        </m3e-button>
       </div>
 
       <div class="tabs">

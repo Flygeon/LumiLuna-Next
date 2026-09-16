@@ -364,92 +364,47 @@ body {
     "opsz" 24;
 }
 
-/* M3 按钮基元 */
-.lm-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  height: 40px;
-  padding: 0 20px;
-  border: none;
-  border-radius: var(--lm-shape-button);
-  font-size: var(--md-sys-typescale-label-large-size);
-  font-weight: var(--md-sys-typescale-label-large-weight);
-  font-family: inherit;
-  cursor: pointer;
-  white-space: nowrap;
-  transition:
-    background var(--md-sys-motion-duration-short) var(--md-sys-motion-spring-effects-fast),
-    transform 120ms var(--md-sys-motion-spring),
-    box-shadow var(--md-sys-motion-duration-short);
-}
-.lm-btn:active {
-  transform: scale(0.96);
-}
-.lm-btn:focus-visible {
-  outline: 2px solid var(--md-sys-color-primary);
-  outline-offset: 2px;
-}
-.lm-btn--filled {
-  background: var(--md-sys-color-primary);
-  color: var(--md-sys-color-on-primary);
-}
-.lm-btn--filled:hover {
-  box-shadow: var(--md-elevation-1);
-  filter: brightness(1.08);
-}
-.lm-btn--tonal {
-  background: var(--md-sys-color-secondary-container);
-  color: var(--md-sys-color-on-secondary-container);
-}
-.lm-btn--tonal:hover {
-  filter: brightness(1.05);
-}
-.lm-btn--text {
-  background: transparent;
-  color: var(--md-sys-color-primary);
-  padding: 0 12px;
-}
-.lm-btn--text:hover {
-  background: color-mix(in srgb, var(--md-sys-color-primary) 10%, transparent);
-}
-.lm-btn--outlined {
-  background: transparent;
-  color: var(--md-sys-color-on-surface);
-  border: 1px solid var(--md-sys-color-outline-variant);
-}
-.lm-btn--outlined:hover {
-  background: var(--md-sys-color-surface-container-high);
-}
-.lm-btn:disabled {
-  opacity: 0.38;
-  cursor: not-allowed;
-  transform: none;
+/* ---- m3e 按钮体系（原手写的 .lm-btn / .lm-icon-btn 基元已由 @m3e/web 组件取代）----
+ * m3e-button / m3e-icon-button 在 size=small 时即：容器高 40px、左右内边距 20px（space250）、
+ * 图标与标签间距 8px（space100）——与迁移前 .lm-btn { height:40px; padding:0 20px; gap:8px }
+ * 和 .lm-icon-btn { 40×40、24px 图标 } 完全一致，因此不必再手写基元样式。
+ * 下面只覆盖「与旧观感不同」的那几项令牌；hover / pressed / focus 态与涟漪交给组件。
+ */
+m3e-button[size="small"],
+m3e-icon-button[size="small"] {
+  /* 图标尺寸沿用迁移前的 24px（旧 .lm-btn 未限定图标字号，实际走 .material-symbols-outlined
+     的全局 24px）。若要改用 M3 规范的小尺寸按钮 20px 图标，删掉这两条即可。 */
+  --m3e-button-icon-size: 24px;
+  --m3e-icon-button-icon-size: 24px;
 }
 
-/* 图标按钮 */
-.lm-icon-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border: none;
-  border-radius: 50%;
-  background: transparent;
-  color: var(--md-sys-color-on-surface-variant);
-  cursor: pointer;
-  transition:
-    background var(--md-sys-motion-duration-short),
-    transform 120ms var(--md-sys-motion-spring);
+/* 原 .lm-btn--text 左右内边距 12px，比 filled / tonal / outlined 窄 */
+m3e-button[variant="text"][size="small"] {
+  --m3e-button-small-leading-space: 12px;
+  --m3e-button-small-trailing-space: 12px;
 }
-.lm-icon-btn:hover {
-  background: var(--md-sys-color-surface-container-high);
-  color: var(--md-sys-color-on-surface);
+
+/* 原 .lm-btn--outlined：标签用 on-surface（m3e 默认 primary）、描边用 outline-variant（默认 outline） */
+m3e-button[variant="outlined"] {
+  --m3e-outlined-button-label-text-color: var(--md-sys-color-on-surface);
+  --m3e-outlined-button-outline-color: var(--md-sys-color-outline-variant);
 }
-.lm-icon-btn:active {
-  transform: scale(0.92);
+
+/* 原 .lm-icon-btn：图标默认 on-surface-variant，悬停底色 surface-container-high 且图标转 on-surface */
+m3e-icon-button {
+  --m3e-standard-icon-button-icon-color: var(--md-sys-color-on-surface-variant);
+  --m3e-standard-icon-button-hover-icon-color: var(--md-sys-color-on-surface);
+  --m3e-standard-icon-button-hover-state-layer-color: var(--md-sys-color-surface-container-high);
+  --m3e-standard-icon-button-focus-icon-color: var(--md-sys-color-on-surface);
+  --m3e-standard-icon-button-focus-state-layer-color: var(--md-sys-color-surface-container-high);
+}
+
+/* 小尺寸图标按钮（30×30、17px 图标）：原 .lm-icon-btn.small */
+.lm-icon-btn-sm {
+  --m3e-icon-button-small-container-height: 30px;
+  --m3e-icon-button-small-icon-size: 17px;
+  --m3e-icon-button-small-default-leading-space: 6.5px;
+  --m3e-icon-button-small-default-trailing-space: 6.5px;
 }
 
 /* 骨架屏微光 */

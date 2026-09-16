@@ -138,19 +138,21 @@ function backToHome() {
     <div v-if="!pixiv.loginStatus.loggedIn" class="login-bar login-bar--off">
       <span class="material-symbols-outlined">account_circle</span>
       <span class="login-text">{{ t("pixiv.loginHint") }}</span>
-      <button class="lm-btn lm-btn--filled" :disabled="loggingIn" @click="doLogin">
-        <span v-if="loggingIn" class="material-symbols-outlined spin">progress_activity</span>
-        <span v-else class="material-symbols-outlined">login</span>
+      <m3e-button variant="filled" size="small" :disabled="loggingIn" @click="doLogin">
+        <span v-if="loggingIn" slot="icon" class="material-symbols-outlined spin"
+          >progress_activity</span
+        >
+        <span v-else slot="icon" class="material-symbols-outlined">login</span>
         {{ loggingIn ? t("pixiv.loggingIn") : t("pixiv.login") }}
-      </button>
+      </m3e-button>
     </div>
     <div v-else class="login-bar login-bar--on">
       <span class="material-symbols-outlined">check_circle</span>
       <span class="login-text">{{ t("pixiv.loggedInAs").replace("{name}", loginUserName) }}</span>
-      <button class="lm-btn lm-btn--tonal" @click="doLogout">
-        <span class="material-symbols-outlined">logout</span>
+      <m3e-button variant="tonal" size="small" @click="doLogout">
+        <span slot="icon" class="material-symbols-outlined">logout</span>
         {{ t("pixiv.logout") }}
-      </button>
+      </m3e-button>
     </div>
     <p v-if="loginError" class="login-banner">{{ loginError }}</p>
 
@@ -181,9 +183,9 @@ function backToHome() {
       </div>
       <div v-else-if="pixiv.error && !pixiv.bookmarkItems.length" class="state list-error">
         {{ pixiv.error }}
-        <button class="lm-btn lm-btn--text" @click="pixiv.fetchBookmarks()">
-          <span class="material-symbols-outlined">refresh</span>{{ t("pixiv.retry") }}
-        </button>
+        <m3e-button variant="text" size="small" @click="pixiv.fetchBookmarks()">
+          <span slot="icon" class="material-symbols-outlined">refresh</span>{{ t("pixiv.retry") }}
+        </m3e-button>
       </div>
       <div v-else-if="pixiv.bookmarkItems.length" class="pixiv-grid">
         <PixivCard
@@ -195,15 +197,18 @@ function backToHome() {
       </div>
       <div v-else class="state">{{ t("pixiv.empty") }}</div>
       <div v-if="pixiv.bookmarkNext" class="load-more">
-        <button
-          class="lm-btn lm-btn--tonal"
+        <m3e-button
+          variant="tonal"
+          size="small"
           :disabled="pixiv.loading"
           @click="pixiv.fetchBookmarksMore()"
         >
-          <span v-if="pixiv.loading" class="material-symbols-outlined spin">progress_activity</span>
-          <span v-else class="material-symbols-outlined">expand_more</span>
+          <span v-if="pixiv.loading" slot="icon" class="material-symbols-outlined spin"
+            >progress_activity</span
+          >
+          <span v-else slot="icon" class="material-symbols-outlined">expand_more</span>
           {{ t("pixiv.loadMore") }}
-        </button>
+        </m3e-button>
       </div>
     </template>
 
@@ -221,9 +226,9 @@ function backToHome() {
       </div>
       <div v-else-if="pixiv.error && !pixiv.followItems.length" class="state list-error">
         {{ pixiv.error }}
-        <button class="lm-btn lm-btn--text" @click="pixiv.fetchFollow()">
-          <span class="material-symbols-outlined">refresh</span>{{ t("pixiv.retry") }}
-        </button>
+        <m3e-button variant="text" size="small" @click="pixiv.fetchFollow()">
+          <span slot="icon" class="material-symbols-outlined">refresh</span>{{ t("pixiv.retry") }}
+        </m3e-button>
       </div>
       <div v-else-if="pixiv.followItems.length" class="pixiv-grid">
         <PixivCard
@@ -235,15 +240,18 @@ function backToHome() {
       </div>
       <div v-else class="state">{{ t("pixiv.empty") }}</div>
       <div v-if="pixiv.followNext" class="load-more">
-        <button
-          class="lm-btn lm-btn--tonal"
+        <m3e-button
+          variant="tonal"
+          size="small"
           :disabled="pixiv.loading"
           @click="pixiv.fetchFollowMore()"
         >
-          <span v-if="pixiv.loading" class="material-symbols-outlined spin">progress_activity</span>
-          <span v-else class="material-symbols-outlined">expand_more</span>
+          <span v-if="pixiv.loading" slot="icon" class="material-symbols-outlined spin"
+            >progress_activity</span
+          >
+          <span v-else slot="icon" class="material-symbols-outlined">expand_more</span>
           {{ t("pixiv.loadMore") }}
-        </button>
+        </m3e-button>
       </div>
     </template>
 
@@ -271,16 +279,16 @@ function backToHome() {
               {{ pixiv.userDetail.following }} {{ t("pixiv.followFeed") }}
             </span>
           </div>
-          <button
-            class="lm-btn"
-            :class="pixiv.followingAuthor ? 'lm-btn--tonal' : 'lm-btn--filled'"
+          <m3e-button
+            size="small"
+            :variant="pixiv.followingAuthor ? 'tonal' : 'filled'"
             @click="pixiv.toggleFollowAuthor(pixiv.userDetail.user.id)"
           >
-            <span class="material-symbols-outlined">{{
+            <span slot="icon" class="material-symbols-outlined">{{
               pixiv.followingAuthor ? "person_remove" : "person_add"
             }}</span>
             {{ pixiv.followingAuthor ? t("pixiv.unfollow") : t("pixiv.follow") }}
-          </button>
+          </m3e-button>
         </div>
 
         <div v-if="pixiv.userIllusts.length" class="pixiv-grid">
@@ -293,17 +301,18 @@ function backToHome() {
         </div>
         <div v-else class="state">{{ t("pixiv.empty") }}</div>
         <div v-if="pixiv.userNext" class="load-more">
-          <button
-            class="lm-btn lm-btn--tonal"
+          <m3e-button
+            variant="tonal"
+            size="small"
             :disabled="pixiv.loading"
             @click="pixiv.fetchUserIllustsMore()"
           >
-            <span v-if="pixiv.loading" class="material-symbols-outlined spin"
+            <span v-if="pixiv.loading" slot="icon" class="material-symbols-outlined spin"
               >progress_activity</span
             >
-            <span v-else class="material-symbols-outlined">expand_more</span>
+            <span v-else slot="icon" class="material-symbols-outlined">expand_more</span>
             {{ t("pixiv.loadMore") }}
-          </button>
+          </m3e-button>
         </div>
       </template>
     </template>
@@ -324,11 +333,13 @@ function backToHome() {
           :placeholder="t('pixiv.searchPlaceholder')"
           @keyup.enter="doSearch"
         />
-        <button class="lm-btn lm-btn--filled" :disabled="pixiv.loading" @click="doSearch">
-          <span v-if="pixiv.loading" class="material-symbols-outlined spin">progress_activity</span>
-          <span v-else class="material-symbols-outlined">search</span>
+        <m3e-button variant="filled" size="small" :disabled="pixiv.loading" @click="doSearch">
+          <span v-if="pixiv.loading" slot="icon" class="material-symbols-outlined spin"
+            >progress_activity</span
+          >
+          <span v-else slot="icon" class="material-symbols-outlined">search</span>
           {{ t("pixiv.search") }}
-        </button>
+        </m3e-button>
       </div>
 
       <!-- 联想词 -->
@@ -373,29 +384,32 @@ function backToHome() {
       <div v-else class="state">{{ t("pixiv.empty") }}</div>
 
       <div v-if="pixiv.searchNext" class="load-more">
-        <button
-          class="lm-btn lm-btn--tonal"
+        <m3e-button
+          variant="tonal"
+          size="small"
           :disabled="pixiv.loading"
           @click="pixiv.fetchSearchMore()"
         >
-          <span v-if="pixiv.loading" class="material-symbols-outlined spin">progress_activity</span>
-          <span v-else class="material-symbols-outlined">expand_more</span>
+          <span v-if="pixiv.loading" slot="icon" class="material-symbols-outlined spin"
+            >progress_activity</span
+          >
+          <span v-else slot="icon" class="material-symbols-outlined">expand_more</span>
           {{ t("pixiv.loadMore") }}
-        </button>
+        </m3e-button>
       </div>
     </template>
 
     <!-- 主页 -->
     <template v-else>
       <div v-if="pixiv.loginStatus.loggedIn" class="home-toolbar">
-        <button class="lm-btn lm-btn--tonal" @click="goBookmarks">
-          <span class="material-symbols-outlined">bookmarks</span>
+        <m3e-button variant="tonal" size="small" @click="goBookmarks">
+          <span slot="icon" class="material-symbols-outlined">bookmarks</span>
           {{ t("pixiv.myBookmarks") }}
-        </button>
-        <button class="lm-btn lm-btn--tonal" @click="goFollow">
-          <span class="material-symbols-outlined">favorite</span>
+        </m3e-button>
+        <m3e-button variant="tonal" size="small" @click="goFollow">
+          <span slot="icon" class="material-symbols-outlined">favorite</span>
           {{ t("pixiv.followFeed") }}
-        </button>
+        </m3e-button>
       </div>
 
       <div class="search-bar">
@@ -404,11 +418,13 @@ function backToHome() {
           :placeholder="t('pixiv.searchPlaceholder')"
           @keyup.enter="doSearch"
         />
-        <button class="lm-btn lm-btn--tonal" :disabled="pixiv.loading" @click="doSearch">
-          <span v-if="pixiv.loading" class="material-symbols-outlined spin">progress_activity</span>
-          <span v-else class="material-symbols-outlined">search</span>
+        <m3e-button variant="tonal" size="small" :disabled="pixiv.loading" @click="doSearch">
+          <span v-if="pixiv.loading" slot="icon" class="material-symbols-outlined spin"
+            >progress_activity</span
+          >
+          <span v-else slot="icon" class="material-symbols-outlined">search</span>
           {{ t("pixiv.search") }}
-        </button>
+        </m3e-button>
       </div>
 
       <!-- 热门标签 -->
@@ -438,9 +454,9 @@ function backToHome() {
         </div>
         <div v-else-if="pixiv.error && !pixiv.recommended.length" class="state list-error">
           {{ pixiv.error }}
-          <button class="lm-btn lm-btn--text" @click="pixiv.fetchRecommended()">
-            <span class="material-symbols-outlined">refresh</span>{{ t("pixiv.retry") }}
-          </button>
+          <m3e-button variant="text" size="small" @click="pixiv.fetchRecommended()">
+            <span slot="icon" class="material-symbols-outlined">refresh</span>{{ t("pixiv.retry") }}
+          </m3e-button>
         </div>
         <div v-else-if="pixiv.recommended.length" class="pixiv-grid">
           <PixivCard
@@ -452,17 +468,18 @@ function backToHome() {
         </div>
         <div v-else class="state">{{ t("pixiv.empty") }}</div>
         <div v-if="pixiv.recommendedNext" class="load-more">
-          <button
-            class="lm-btn lm-btn--tonal"
+          <m3e-button
+            variant="tonal"
+            size="small"
             :disabled="pixiv.loading"
             @click="pixiv.fetchRecommendedMore()"
           >
-            <span v-if="pixiv.loading" class="material-symbols-outlined spin"
+            <span v-if="pixiv.loading" slot="icon" class="material-symbols-outlined spin"
               >progress_activity</span
             >
-            <span v-else class="material-symbols-outlined">expand_more</span>
+            <span v-else slot="icon" class="material-symbols-outlined">expand_more</span>
             {{ t("pixiv.loadMore") }}
-          </button>
+          </m3e-button>
         </div>
       </section>
 
@@ -498,17 +515,18 @@ function backToHome() {
         </div>
         <div v-else class="state">{{ t("pixiv.empty") }}</div>
         <div v-if="pixiv.rankingNext" class="load-more">
-          <button
-            class="lm-btn lm-btn--tonal"
+          <m3e-button
+            variant="tonal"
+            size="small"
             :disabled="pixiv.loading"
             @click="pixiv.fetchRankingMore()"
           >
-            <span v-if="pixiv.loading" class="material-symbols-outlined spin"
+            <span v-if="pixiv.loading" slot="icon" class="material-symbols-outlined spin"
               >progress_activity</span
             >
-            <span v-else class="material-symbols-outlined">expand_more</span>
+            <span v-else slot="icon" class="material-symbols-outlined">expand_more</span>
             {{ t("pixiv.loadMore") }}
-          </button>
+          </m3e-button>
         </div>
       </section>
     </template>

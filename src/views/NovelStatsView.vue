@@ -131,9 +131,9 @@ onMounted(load);
       </m3e-card>
 
       <div class="actions">
-        <button class="lm-btn lm-btn--outlined" @click="router.push('/treasure')">
+        <m3e-button variant="outlined" size="small" @click="router.push('/treasure')">
           {{ t("actions.cancel") }}
-        </button>
+        </m3e-button>
       </div>
     </template>
   </div>

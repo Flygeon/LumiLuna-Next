@@ -28,21 +28,22 @@ async function emptyTrash() {
       <h2>{{ t("nav.trash") }}</h2>
       <span class="count tabular-nums">{{ items.length }} 项</span>
       <div class="spacer"></div>
-      <button
+      <m3e-button
         v-if="items.length && !confirming"
-        class="lm-btn lm-btn--outlined"
+        variant="outlined"
+        size="small"
         @click="confirming = true"
       >
         {{ t("actions.empty") }}
-      </button>
+      </m3e-button>
       <template v-if="confirming">
         <span class="confirm-text">清除这些索引记录？磁盘文件不受影响。</span>
-        <button class="lm-btn lm-btn--text" @click="confirming = false">
+        <m3e-button variant="text" size="small" @click="confirming = false">
           {{ t("actions.cancel") }}
-        </button>
-        <button class="lm-btn lm-btn--filled danger" @click="emptyTrash">
+        </m3e-button>
+        <m3e-button class="danger" variant="filled" size="small" @click="emptyTrash">
           {{ t("actions.confirm") }}
-        </button>
+        </m3e-button>
       </template>
     </header>
 
@@ -97,8 +98,8 @@ async function emptyTrash() {
   color: var(--md-sys-color-on-surface-variant);
 }
 .danger {
-  background: var(--md-sys-color-error);
-  color: var(--md-sys-color-on-error);
+  --m3e-filled-button-container-color: var(--md-sys-color-error);
+  --m3e-filled-button-label-text-color: var(--md-sys-color-on-error);
 }
 .hint {
   margin-bottom: 20px;

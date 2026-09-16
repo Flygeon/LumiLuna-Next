@@ -347,12 +347,12 @@ router.afterEach((to) => {
             <li v-for="r in skins.pendingRemote.refs" :key="r" :title="r">{{ r }}</li>
           </ul>
           <div class="skin-modal-actions">
-            <button class="lm-btn lm-btn--text" @click="skins.cancelRemoteImport()">
+            <m3e-button variant="text" size="small" @click="skins.cancelRemoteImport()">
               {{ t("settings.skinCancel") }}
-            </button>
-            <button class="lm-btn lm-btn--filled" @click="skins.confirmRemoteImport()">
+            </m3e-button>
+            <m3e-button variant="filled" size="small" @click="skins.confirmRemoteImport()">
               {{ t("settings.skinStillImport") }}
-            </button>
+            </m3e-button>
           </div>
         </div>
       </div>

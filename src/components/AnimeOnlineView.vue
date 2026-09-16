@@ -321,18 +321,18 @@ function backFromEpisodes() {
           <span class="material-symbols-outlined">local_fire_department</span>
           {{ t("anime.trendingTitle") }}
         </h2>
-        <button class="lm-btn lm-btn--tonal" @click="view = 'search'">
-          <span class="material-symbols-outlined">search</span>
+        <m3e-button variant="tonal" size="small" @click="view = 'search'">
+          <span slot="icon" class="material-symbols-outlined">search</span>
           {{ t("anime.searchPageTitle") }}
-        </button>
-        <button class="lm-btn lm-btn--tonal" @click="view = 'collections'">
-          <span class="material-symbols-outlined">subscriptions</span>
+        </m3e-button>
+        <m3e-button variant="tonal" size="small" @click="view = 'collections'">
+          <span slot="icon" class="material-symbols-outlined">subscriptions</span>
           {{ t("anime.myCollection") }}
-        </button>
-        <button class="lm-btn lm-btn--tonal" @click="view = 'rules'">
-          <span class="material-symbols-outlined">rule</span>
+        </m3e-button>
+        <m3e-button variant="tonal" size="small" @click="view = 'rules'">
+          <span slot="icon" class="material-symbols-outlined">rule</span>
           {{ t("anime.manageRules") }}
-        </button>
+        </m3e-button>
       </div>
 
       <!-- 观看历史 -->
@@ -393,17 +393,21 @@ function backFromEpisodes() {
           :placeholder="t('anime.searchPlaceholder')"
           @keyup.enter="doSearch"
         />
-        <button
-          class="lm-btn lm-btn--filled"
+        <m3e-button
+          variant="filled"
+          size="small"
           :disabled="searchLoading || anime.searchLoading"
           @click="doSearch"
         >
-          <span v-if="searchLoading || anime.searchLoading" class="material-symbols-outlined spin"
+          <span
+            v-if="searchLoading || anime.searchLoading"
+            slot="icon"
+            class="material-symbols-outlined spin"
             >progress_activity</span
           >
-          <span v-else class="material-symbols-outlined">search</span>
+          <span v-else slot="icon" class="material-symbols-outlined">search</span>
           {{ t("anime.searchBtn") }}
-        </button>
+        </m3e-button>
       </div>
 
       <template v-if="anime.searchItems.length || anime.searchLoading || anime.searchError">
@@ -438,17 +442,18 @@ function backFromEpisodes() {
         <div v-else class="state">{{ t("anime.searchNoResult") }}</div>
 
         <div v-if="anime.searchHasMore" class="load-more">
-          <button
-            class="lm-btn lm-btn--tonal"
+          <m3e-button
+            variant="tonal"
+            size="small"
             :disabled="anime.searchLoading"
             @click="anime.loadMoreBangumi()"
           >
-            <span v-if="anime.searchLoading" class="material-symbols-outlined spin"
+            <span v-if="anime.searchLoading" slot="icon" class="material-symbols-outlined spin"
               >progress_activity</span
             >
-            <span v-else class="material-symbols-outlined">expand_more</span>
+            <span v-else slot="icon" class="material-symbols-outlined">expand_more</span>
             {{ t("anime.searchMore") }}
-          </button>
+          </m3e-button>
         </div>
       </template>
     </template>

@@ -140,8 +140,9 @@ function onRowContext(e: MouseEvent, item: MediaEntry, index: number) {
         </div>
 
         <div class="r-actions">
-          <button
-            class="lm-icon-btn r-action"
+          <m3e-icon-button
+            class="r-action"
+            size="small"
             :class="{ on: item.favorite }"
             :title="item.favorite ? t('context.unfavorite') : t('context.favorite')"
             @click.stop="emit('favorite', item)"
@@ -149,9 +150,10 @@ function onRowContext(e: MouseEvent, item: MediaEntry, index: number) {
             <span class="material-symbols-outlined" :class="{ filled: item.favorite }"
               >favorite</span
             >
-          </button>
-          <button
-            class="lm-icon-btn r-action"
+          </m3e-icon-button>
+          <m3e-icon-button
+            class="r-action"
+            size="small"
             :title="t('context.playNext')"
             @click.stop="
               player.playNext(item);
@@ -159,9 +161,10 @@ function onRowContext(e: MouseEvent, item: MediaEntry, index: number) {
             "
           >
             <span class="material-symbols-outlined">skip_next</span>
-          </button>
-          <button
-            class="lm-icon-btn r-action"
+          </m3e-icon-button>
+          <m3e-icon-button
+            class="r-action"
+            size="small"
             :title="t('context.addToQueue')"
             @click.stop="
               void player.addToQueue(item);
@@ -169,14 +172,15 @@ function onRowContext(e: MouseEvent, item: MediaEntry, index: number) {
             "
           >
             <span class="material-symbols-outlined">queue_music</span>
-          </button>
-          <button
-            class="lm-icon-btn r-action"
+          </m3e-icon-button>
+          <m3e-icon-button
+            class="r-action"
+            size="small"
             :title="t('actions.more')"
             @click.stop="onRowContext($event, item, index)"
           >
             <span class="material-symbols-outlined">more_vert</span>
-          </button>
+          </m3e-icon-button>
         </div>
 
         <div class="r-duration tabular-nums">
@@ -257,14 +261,13 @@ function onRowContext(e: MouseEvent, item: MediaEntry, index: number) {
   opacity: 1;
 }
 .r-action {
-  width: 34px;
-  height: 34px;
-}
-.r-action .material-symbols-outlined {
-  font-size: 20px;
+  --m3e-icon-button-small-container-height: 34px;
+  --m3e-icon-button-small-icon-size: 20px;
+  --m3e-icon-button-small-default-leading-space: 7px;
+  --m3e-icon-button-small-default-trailing-space: 7px;
 }
 .r-action.on {
-  color: var(--md-sys-color-error);
+  --m3e-standard-icon-button-icon-color: var(--md-sys-color-error);
 }
 .r-duration {
   flex: none;

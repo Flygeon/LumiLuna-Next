@@ -253,7 +253,9 @@ const infoRows = computed(() => {
       <div v-else class="fallback" @click.stop>
         <span class="material-symbols-outlined">menu_book</span>
         <p>{{ current?.name }}</p>
-        <button class="lm-btn lm-btn--filled" @click="openExternally">用系统应用打开</button>
+        <m3e-button variant="filled" size="small" @click="openExternally"
+          >用系统应用打开</m3e-button
+        >
       </div>
 
       <div v-if="loadingImage && current?.type === 'image'" class="spinner"></div>

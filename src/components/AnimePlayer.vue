@@ -497,10 +497,10 @@ onBeforeUnmount(() => {
       </div>
       <div v-else-if="anime.streamError" class="overlay state error">
         <span>{{ anime.streamError }}</span>
-        <button class="lm-btn lm-btn--filled" @click="retry">
-          <span class="material-symbols-outlined">refresh</span>
+        <m3e-button variant="filled" size="small" @click="retry">
+          <span slot="icon" class="material-symbols-outlined">refresh</span>
           {{ t("anime.retry") }}
-        </button>
+        </m3e-button>
       </div>
 
       <!-- 弹幕状态指示（左下角；DanDanPlay 无凭证 / 无匹配时显示原因）-->

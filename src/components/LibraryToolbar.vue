@@ -88,14 +88,14 @@ function clearSearch() {
         ></div>
       </div>
       <span class="scan-text">{{ library.scanLabel }}</span>
-      <button class="lm-btn lm-btn--text" @click="library.cancelScan()">
+      <m3e-button variant="text" size="small" @click="library.cancelScan()">
         {{ t("actions.cancel") }}
-      </button>
+      </m3e-button>
     </div>
-    <button v-else class="lm-btn lm-btn--tonal" @click="library.startScan()">
-      <span class="material-symbols-outlined">refresh</span>
+    <m3e-button v-else variant="tonal" size="small" @click="library.startScan()">
+      <span slot="icon" class="material-symbols-outlined">refresh</span>
       {{ t("actions.rescan") }}
-    </button>
+    </m3e-button>
   </div>
 </template>
 

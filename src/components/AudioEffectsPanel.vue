@@ -263,10 +263,10 @@ const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k
             :placeholder="t('player.effectsSaveName')"
             @keyup.enter="savePreset"
           />
-          <button class="lm-btn lm-btn--tonal" @click="savePreset">
-            <span class="material-symbols-outlined">save</span>
+          <m3e-button variant="tonal" size="small" @click="savePreset">
+            <span slot="icon" class="material-symbols-outlined">save</span>
             {{ t("player.effectsSave") }}
-          </button>
+          </m3e-button>
         </div>
         <div class="import-preset">
           <input
@@ -274,10 +274,10 @@ const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k
             :placeholder="t('player.effectsImportCode')"
             @keyup.enter="importPreset"
           />
-          <button class="lm-btn lm-btn--tonal" @click="importPreset">
-            <span class="material-symbols-outlined">input</span>
+          <m3e-button variant="tonal" size="small" @click="importPreset">
+            <span slot="icon" class="material-symbols-outlined">input</span>
             {{ t("player.effectsImport") }}
-          </button>
+          </m3e-button>
         </div>
         <p v-if="shareStatus" class="share-status" :class="shareStatus">
           {{ t(`player.effectsShare${shareStatus[0].toUpperCase()}${shareStatus.slice(1)}`) }}
@@ -335,10 +335,10 @@ const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k
         </label>
       </section>
 
-      <button class="lm-btn lm-btn--text reset" @click="effects.resetToFlat()">
-        <span class="material-symbols-outlined">restart_alt</span>
+      <m3e-button class="reset" variant="text" size="small" @click="effects.resetToFlat()">
+        <span slot="icon" class="material-symbols-outlined">restart_alt</span>
         {{ t("player.effectsReset") }}
-      </button>
+      </m3e-button>
     </fieldset>
 
     <!-- 分享选择弹窗 -->
@@ -394,24 +394,28 @@ const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k
           </div>
 
           <div class="upload-actions">
-            <button
-              class="lm-btn lm-btn--filled"
+            <m3e-button
+              variant="filled"
+              size="small"
               :disabled="uploadStatus === 'saving' || uploadStatus === 'saved'"
               @click="saveUploadJson"
             >
-              <span v-if="uploadStatus === 'saving'" class="material-symbols-outlined spinning"
+              <span
+                v-if="uploadStatus === 'saving'"
+                slot="icon"
+                class="material-symbols-outlined spinning"
                 >sync</span
               >
-              <span v-else class="material-symbols-outlined">save</span>
+              <span v-else slot="icon" class="material-symbols-outlined">save</span>
               {{
                 uploadStatus === "saved"
                   ? t("player.effectsUploadSaved")
                   : t("player.effectsUploadSave")
               }}
-            </button>
-            <button class="lm-btn lm-btn--text" @click="closeSharePopup">
+            </m3e-button>
+            <m3e-button variant="text" size="small" @click="closeSharePopup">
               {{ t("actions.cancel") }}
-            </button>
+            </m3e-button>
           </div>
 
           <button class="popup-close" @click="closeSharePopup">
@@ -571,12 +575,11 @@ const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k
 .import-preset input:focus {
   border-color: var(--md-sys-color-primary);
 }
-.import-preset .lm-btn {
-  height: 36px;
-  padding: 0 14px;
-}
-.import-preset .lm-btn .material-symbols-outlined {
-  font-size: 17px;
+.import-preset m3e-button {
+  --m3e-button-small-container-height: 36px;
+  --m3e-button-small-leading-space: 14px;
+  --m3e-button-small-trailing-space: 14px;
+  --m3e-button-small-icon-size: 17px;
 }
 .share-status {
   margin: -2px 0 0;
@@ -602,12 +605,11 @@ const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k
 .save-preset input:focus {
   border-color: var(--md-sys-color-primary);
 }
-.save-preset .lm-btn {
-  height: 36px;
-  padding: 0 14px;
-}
-.save-preset .lm-btn .material-symbols-outlined {
-  font-size: 17px;
+.save-preset m3e-button {
+  --m3e-button-small-container-height: 36px;
+  --m3e-button-small-leading-space: 14px;
+  --m3e-button-small-trailing-space: 14px;
+  --m3e-button-small-icon-size: 17px;
 }
 
 .eq-grid {

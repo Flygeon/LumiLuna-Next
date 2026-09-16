@@ -137,10 +137,10 @@ onMounted(loadHome);
 
     <!-- 详情 -->
     <div v-else-if="view === 'detail'" class="detail">
-      <button class="lm-btn lm-btn--text back" @click="onDetailBack">
-        <span class="material-symbols-outlined">arrow_back</span>
+      <m3e-button class="back" variant="text" size="small" @click="onDetailBack">
+        <span slot="icon" class="material-symbols-outlined">arrow_back</span>
         返回
-      </button>
+      </m3e-button>
 
       <p v-if="detailError" class="error">{{ detailError }}</p>
       <div v-else-if="detailLoading" class="state">加载中……</div>
@@ -180,10 +180,10 @@ onMounted(loadHome);
     <template v-else>
       <div class="search-bar">
         <input v-model="searchQuery" placeholder="搜索笔趣阁小说" @keyup.enter="doSearch" />
-        <button class="lm-btn lm-btn--tonal" :disabled="searching" @click="doSearch">
-          <span class="material-symbols-outlined">search</span>
+        <m3e-button variant="tonal" size="small" :disabled="searching" @click="doSearch">
+          <span slot="icon" class="material-symbols-outlined">search</span>
           {{ searching ? "搜索中" : "搜索" }}
-        </button>
+        </m3e-button>
       </div>
       <p v-if="searchError" class="error">{{ searchError }}</p>
 

@@ -46,10 +46,10 @@ const roadIndex = ref(0);
     <div v-if="anime.episodesLoading" class="state">{{ t("anime.loadingEpisodes") }}</div>
     <div v-else-if="anime.episodesError && !anime.selectedRoads.length" class="state error">
       {{ anime.episodesError }}
-      <button class="lm-btn lm-btn--tonal retry" @click="emit('changeSource')">
-        <span class="material-symbols-outlined">swap_horiz</span>
+      <m3e-button class="retry" variant="tonal" size="small" @click="emit('changeSource')">
+        <span slot="icon" class="material-symbols-outlined">swap_horiz</span>
         {{ t("anime.changeSource") }}
-      </button>
+      </m3e-button>
     </div>
 
     <template v-else>
@@ -162,10 +162,8 @@ const roadIndex = ref(0);
   white-space: pre-line;
   line-height: 1.6;
 }
+/* 布局由 m3e-button 内部负责，这里只留下原来给按钮外层的位置微调 */
 .retry {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
   margin-top: 12px;
 }
 .roads {

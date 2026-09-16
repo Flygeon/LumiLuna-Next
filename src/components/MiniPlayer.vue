@@ -58,31 +58,34 @@ function seek(e: MouseEvent) {
       </div>
 
       <div class="controls" @click.stop>
-        <button
+        <m3e-icon-button
           v-if="canLike"
-          class="lm-icon-btn like"
+          class="like"
+          size="small"
           :class="{ on: liked }"
           :title="liked ? '取消喜欢' : '喜欢'"
           @click="toggleLike"
         >
           <span class="material-symbols-outlined" :class="{ filled: liked }">favorite</span>
-        </button>
-        <button class="lm-icon-btn" title="上一首" @click="player.previous()">
+        </m3e-icon-button>
+        <m3e-icon-button size="small" title="上一首" @click="player.previous()">
           <span class="material-symbols-outlined filled">skip_previous</span>
-        </button>
-        <button
-          class="lm-icon-btn play"
+        </m3e-icon-button>
+        <m3e-icon-button
+          class="play"
+          variant="filled"
+          size="small"
           :title="player.playing ? '暂停' : '播放'"
           @click="player.togglePlay()"
         >
           <PlayerControlIcon :name="player.playing ? 'pause' : 'play'" />
-        </button>
-        <button class="lm-icon-btn" title="下一首" @click="player.next()">
+        </m3e-icon-button>
+        <m3e-icon-button size="small" title="下一首" @click="player.next()">
           <span class="material-symbols-outlined filled">skip_next</span>
-        </button>
-        <button class="lm-icon-btn" title="展开播放器" @click="router.push('/music/player')">
+        </m3e-icon-button>
+        <m3e-icon-button size="small" title="展开播放器" @click="router.push('/music/player')">
           <span class="material-symbols-outlined">expand_less</span>
-        </button>
+        </m3e-icon-button>
       </div>
     </div>
   </div>
@@ -201,10 +204,11 @@ function seek(e: MouseEvent) {
   gap: 2px;
 }
 .controls .play {
-  width: 44px;
-  height: 44px;
-  background: var(--md-sys-color-primary-container);
-  color: var(--md-sys-color-on-primary-container);
+  --m3e-icon-button-small-container-height: 44px;
+  --m3e-icon-button-small-default-leading-space: 10px;
+  --m3e-icon-button-small-default-trailing-space: 10px;
+  --m3e-filled-icon-button-container-color: var(--md-sys-color-primary-container);
+  --m3e-filled-icon-button-icon-color: var(--md-sys-color-on-primary-container);
 }
 .controls .play:hover {
   filter: brightness(1.08);
@@ -214,11 +218,14 @@ function seek(e: MouseEvent) {
   height: 23px;
   filter: drop-shadow(0 0 6px rgba(0, 0, 0, 0.18));
 }
-.like.on {
-  color: var(--md-sys-color-error);
+/* 图标 20px 时把左右留白补到 10px，维持 40×40 正圆 */
+.like {
+  --m3e-icon-button-small-icon-size: 20px;
+  --m3e-icon-button-small-default-leading-space: 10px;
+  --m3e-icon-button-small-default-trailing-space: 10px;
 }
-.like .material-symbols-outlined {
-  font-size: 20px;
+.like.on {
+  --m3e-standard-icon-button-icon-color: var(--md-sys-color-error);
 }
 
 @media (max-width: 720px) {

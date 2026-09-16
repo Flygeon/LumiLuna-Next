@@ -248,9 +248,9 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
       </div>
       <div v-else-if="pixiv.commentsError && !pixiv.comments.length" class="state list-error">
         {{ pixiv.commentsError }}
-        <button class="lm-btn lm-btn--text" @click="pixiv.fetchComments(illust.id)">
-          <span class="material-symbols-outlined">refresh</span>{{ t("pixiv.retry") }}
-        </button>
+        <m3e-button variant="text" size="small" @click="pixiv.fetchComments(illust.id)">
+          <span slot="icon" class="material-symbols-outlined">refresh</span>{{ t("pixiv.retry") }}
+        </m3e-button>
       </div>
       <div v-else-if="pixiv.comments.length" class="comments">
         <div v-for="c in pixiv.comments" :key="c.id" class="comment">
@@ -266,17 +266,18 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
         </div>
 
         <div v-if="pixiv.commentsNext != null" class="load-more">
-          <button
-            class="lm-btn lm-btn--tonal"
+          <m3e-button
+            variant="tonal"
+            size="small"
             :disabled="pixiv.commentsLoading"
             @click="pixiv.fetchCommentsMore()"
           >
-            <span v-if="pixiv.commentsLoading" class="material-symbols-outlined spin"
+            <span v-if="pixiv.commentsLoading" slot="icon" class="material-symbols-outlined spin"
               >progress_activity</span
             >
-            <span v-else class="material-symbols-outlined">expand_more</span>
+            <span v-else slot="icon" class="material-symbols-outlined">expand_more</span>
             {{ t("pixiv.loadMore") }}
-          </button>
+          </m3e-button>
         </div>
       </div>
       <div v-else class="state">{{ t("pixiv.empty") }}</div>

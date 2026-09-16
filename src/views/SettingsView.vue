@@ -507,8 +507,9 @@ function selectSection(id: string) {
                 >
                 <span class="ver tabular-nums">{{ s.meta.version }}</span>
               </span>
-              <button
-                class="lm-icon-btn small danger skin-del"
+              <m3e-icon-button
+                class="lm-icon-btn-sm danger skin-del"
+                size="small"
                 :class="{ confirming: confirmDeleteSkin === s.id }"
                 :title="
                   confirmDeleteSkin === s.id
@@ -520,7 +521,7 @@ function selectSection(id: string) {
                 <span class="material-symbols-outlined">
                   {{ confirmDeleteSkin === s.id ? "check" : "close" }}
                 </span>
-              </button>
+              </m3e-icon-button>
             </div>
             <button class="skin-card import" @click="importSkin">
               <span class="material-symbols-outlined">add</span>
@@ -528,10 +529,10 @@ function selectSection(id: string) {
             </button>
           </div>
           <div v-if="settings.activeSkin" class="actions skin-actions">
-            <button class="lm-btn lm-btn--text" @click="skins.activate('')">
-              <span class="material-symbols-outlined">restart_alt</span>
+            <m3e-button variant="text" size="small" @click="skins.activate('')">
+              <span slot="icon" class="material-symbols-outlined">restart_alt</span>
               {{ t("settings.skinRestoreDefault") }}
-            </button>
+            </m3e-button>
           </div>
         </div>
         <p class="hint">{{ t("settings.skinsHint") }}</p>
@@ -638,25 +639,26 @@ function selectSection(id: string) {
           <div v-for="(dir, i) in settings.scanDirs" :key="dir" class="dir-item">
             <span class="material-symbols-outlined">folder</span>
             <span class="dir-path" :title="dir">{{ dir }}</span>
-            <button class="lm-icon-btn small danger" @click="removeScanDir(i)">
+            <m3e-icon-button class="lm-icon-btn-sm danger" size="small" @click="removeScanDir(i)">
               <span class="material-symbols-outlined">close</span>
-            </button>
+            </m3e-icon-button>
           </div>
         </div>
         <div v-else class="notice">{{ t("settings.globalScanHint") }}</div>
 
         <div class="actions">
-          <button class="lm-btn lm-btn--tonal" @click="addScanDir">
-            <span class="material-symbols-outlined">create_new_folder</span>
+          <m3e-button variant="tonal" size="small" @click="addScanDir">
+            <span slot="icon" class="material-symbols-outlined">create_new_folder</span>
             {{ t("settings.addScanDir") }}
-          </button>
-          <button
+          </m3e-button>
+          <m3e-button
             v-if="settings.scanDirs.length"
-            class="lm-btn lm-btn--text"
+            variant="text"
+            size="small"
             @click="clearScanDirs"
           >
             {{ t("settings.clearScanDirs") }}
-          </button>
+          </m3e-button>
         </div>
       </div>
     </m3e-card>
@@ -749,25 +751,26 @@ function selectSection(id: string) {
         </div>
 
         <div class="actions">
-          <button class="lm-btn lm-btn--tonal" @click="chooseFfmpegDir">
-            <span class="material-symbols-outlined">folder_open</span>
+          <m3e-button variant="tonal" size="small" @click="chooseFfmpegDir">
+            <span slot="icon" class="material-symbols-outlined">folder_open</span>
             {{ t("settings.ffmpegChoose") }}
-          </button>
-          <button class="lm-btn lm-btn--outlined" :disabled="checking" @click="recheckFfmpeg">
-            <span class="material-symbols-outlined">refresh</span>
+          </m3e-button>
+          <m3e-button variant="outlined" size="small" :disabled="checking" @click="recheckFfmpeg">
+            <span slot="icon" class="material-symbols-outlined">refresh</span>
             {{ t("settings.ffmpegRecheck") }}
-          </button>
-          <button v-if="settings.ffmpegDir" class="lm-btn lm-btn--text" @click="resetFfmpegDir">
+          </m3e-button>
+          <m3e-button v-if="settings.ffmpegDir" variant="text" size="small" @click="resetFfmpegDir">
             {{ t("settings.ffmpegReset") }}
-          </button>
-          <button
+          </m3e-button>
+          <m3e-button
             v-if="!ffmpeg?.available"
-            class="lm-btn lm-btn--text"
+            variant="text"
+            size="small"
             @click="capabilities.openFfmpegDownloadPage()"
           >
-            <span class="material-symbols-outlined">download</span>
+            <span slot="icon" class="material-symbols-outlined">download</span>
             {{ t("settings.ffmpegDownload") }}
-          </button>
+          </m3e-button>
         </div>
       </div>
     </m3e-card>
@@ -996,9 +999,9 @@ function selectSection(id: string) {
         </label>
 
         <div class="actions">
-          <button class="lm-btn lm-btn--outlined" @click="resetDesktopLyricsBounds">
+          <m3e-button variant="outlined" size="small" @click="resetDesktopLyricsBounds">
             {{ t("settings.desktopLyricsResetPos") }}
-          </button>
+          </m3e-button>
         </div>
       </div>
     </m3e-card>
@@ -1197,20 +1200,22 @@ function selectSection(id: string) {
                   autocomplete="off"
                   :placeholder="t('settings.bangumiTokenPlaceholder')"
                 />
-                <button
-                  class="lm-btn lm-btn--filled"
+                <m3e-button
+                  variant="filled"
+                  size="small"
                   :disabled="bangumiCollect.authState === 'checking' || !bangumiTokenDraft.trim()"
                   @click="connectBangumi"
                 >
                   {{ t("settings.bangumiConnect") }}
-                </button>
-                <button
+                </m3e-button>
+                <m3e-button
                   v-if="bangumiCollect.authorized"
-                  class="lm-btn lm-btn--text"
+                  variant="text"
+                  size="small"
                   @click="disconnectBangumi"
                 >
                   {{ t("settings.bangumiDisconnect") }}
-                </button>
+                </m3e-button>
               </div>
               <p v-if="bangumiCollect.authorized" class="token-state ok">
                 {{
@@ -1426,15 +1431,16 @@ function selectSection(id: string) {
                   spellcheck="false"
                   autocomplete="new-password"
                 />
-                <button
-                  class="lm-icon-btn small"
+                <m3e-icon-button
+                  class="lm-icon-btn-sm"
+                  size="small"
                   :title="showDavPass ? 'hide' : 'show'"
                   @click="showDavPass = !showDavPass"
                 >
                   <span class="material-symbols-outlined">
                     {{ showDavPass ? "visibility_off" : "visibility" }}
                   </span>
-                </button>
+                </m3e-icon-button>
               </div>
             </div>
           </div>
@@ -1452,14 +1458,14 @@ function selectSection(id: string) {
           </div>
 
           <div class="actions">
-            <button class="lm-btn lm-btn--tonal" :disabled="davTesting" @click="testWebDav">
-              <span class="material-symbols-outlined">cloud_sync</span>
+            <m3e-button variant="tonal" size="small" :disabled="davTesting" @click="testWebDav">
+              <span slot="icon" class="material-symbols-outlined">cloud_sync</span>
               {{ davTesting ? t("settings.webdavTesting") : t("settings.webdavTest") }}
-            </button>
-            <button class="lm-btn lm-btn--outlined" @click="router.push('/webdav')">
-              <span class="material-symbols-outlined">cloud</span>
+            </m3e-button>
+            <m3e-button variant="outlined" size="small" @click="router.push('/webdav')">
+              <span slot="icon" class="material-symbols-outlined">cloud</span>
               {{ t("settings.webdavOpen") }}
-            </button>
+            </m3e-button>
           </div>
         </div>
       </div>
@@ -1484,10 +1490,10 @@ function selectSection(id: string) {
         </label>
         <p class="hint">{{ t("settings.devtoolsHint") }}</p>
         <div class="actions">
-          <button class="lm-btn lm-btn--outlined" @click="clearCache">
-            <span class="material-symbols-outlined">cleaning_services</span>
+          <m3e-button variant="outlined" size="small" @click="clearCache">
+            <span slot="icon" class="material-symbols-outlined">cleaning_services</span>
             {{ t("settings.clearCache") }}
-          </button>
+          </m3e-button>
         </div>
       </div>
     </m3e-card>
@@ -1864,8 +1870,6 @@ function selectSection(id: string) {
   color: var(--md-sys-color-on-surface-variant);
 }
 .skin-del {
-  width: 24px;
-  height: 24px;
   opacity: 0;
 }
 .skin-card:hover .skin-del {
@@ -1873,7 +1877,7 @@ function selectSection(id: string) {
 }
 .skin-del.confirming {
   opacity: 1;
-  color: var(--md-sys-color-error);
+  --m3e-standard-icon-button-icon-color: var(--md-sys-color-error);
 }
 .skin-actions {
   margin-top: 0;
@@ -1911,16 +1915,10 @@ function selectSection(id: string) {
   direction: rtl;
   text-align: left;
 }
-.lm-icon-btn.small {
-  width: 30px;
-  height: 30px;
-}
-.lm-icon-btn.small .material-symbols-outlined {
-  font-size: 17px;
-}
-.lm-icon-btn.danger:hover {
-  background: var(--md-sys-color-error-container);
-  color: var(--md-sys-color-error);
+/* 30×30 的尺寸与 17px 图标由全局 .lm-icon-btn-sm 提供 */
+m3e-icon-button.danger:hover {
+  --m3e-standard-icon-button-hover-state-layer-color: var(--md-sys-color-error-container);
+  --m3e-standard-icon-button-hover-icon-color: var(--md-sys-color-error);
 }
 
 .notice {

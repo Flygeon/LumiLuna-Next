@@ -78,9 +78,10 @@ async function toggleShelf() {
           {{ t("novel.back") }}
         </button>
         <div class="head-actions">
-          <button
+          <m3e-button
             v-if="volumes.length && volumes[0].chapters.length"
-            class="lm-btn lm-btn--filled"
+            variant="filled"
+            size="small"
             @click="
               void capabilities.appLog(
                 `[detail-panel] 立即阅读点击 aid=${props.aid} cid=${volumes[0].chapters[0].cid} title=${volumes[0].chapters[0].title}`,
@@ -88,15 +89,15 @@ async function toggleShelf() {
               emit('read', volumes[0].chapters[0].cid, volumes[0].chapters[0].title);
             "
           >
-            <span class="material-symbols-outlined">menu_book</span>
+            <span slot="icon" class="material-symbols-outlined">menu_book</span>
             {{ t("novel.readNow") }}
-          </button>
-          <button class="lm-btn lm-btn--tonal" :disabled="shelfBusy" @click="toggleShelf">
-            <span class="material-symbols-outlined">{{
+          </m3e-button>
+          <m3e-button variant="tonal" size="small" :disabled="shelfBusy" @click="toggleShelf">
+            <span slot="icon" class="material-symbols-outlined">{{
               inShelf ? "bookmark_remove" : "bookmark_add"
             }}</span>
             {{ inShelf ? t("novel.removeShelf") : t("novel.addShelf") }}
-          </button>
+          </m3e-button>
         </div>
       </div>
 

@@ -100,8 +100,10 @@ function onClosed() {
         @keydown.enter="confirm"
       />
       <div slot="actions" end>
-        <m3e-button variant="text" @click="cancel">{{ t("actions.cancel") }}</m3e-button>
-        <m3e-button variant="tonal" :disabled="!value.trim()" @click="confirm">
+        <m3e-button variant="text" size="small" @click="cancel">{{
+          t("actions.cancel")
+        }}</m3e-button>
+        <m3e-button variant="tonal" size="small" :disabled="!value.trim()" @click="confirm">
           {{ t("actions.confirm") }}
         </m3e-button>
       </div>

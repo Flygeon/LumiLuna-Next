@@ -989,9 +989,9 @@ const PDF_MODES = [
       <div v-else-if="error" class="state">
         <span class="material-symbols-outlined big">error</span>
         <p>{{ error }}</p>
-        <button v-if="item" class="lm-btn lm-btn--filled" @click="openExternally">
+        <m3e-button v-if="item" variant="filled" size="small" @click="openExternally">
           用系统应用打开
-        </button>
+        </m3e-button>
       </div>
 
       <!-- PDF：单页/双页居中，滚动模式纵向排列 -->

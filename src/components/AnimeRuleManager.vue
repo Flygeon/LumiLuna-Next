@@ -183,8 +183,9 @@ async function importFromRepo(entry: RepoEntry) {
           <span class="rule-name" :title="r.name">{{ r.name }}</span>
           <span v-if="r.version" class="rule-ver tabular-nums">v{{ r.version }}</span>
           <span v-if="!r.enabled" class="rule-badge">{{ t("anime.rule.disabled") }}</span>
-          <button
-            class="lm-icon-btn small rule-toggle"
+          <m3e-icon-button
+            class="lm-icon-btn-sm rule-toggle"
+            size="small"
             :class="{ off: !r.enabled }"
             :title="r.enabled ? t('anime.rule.disable') : t('anime.rule.enable')"
             @click.stop="anime.setRuleEnabled(r.name, !r.enabled)"
@@ -192,9 +193,10 @@ async function importFromRepo(entry: RepoEntry) {
             <span class="material-symbols-outlined">{{
               r.enabled ? "toggle_on" : "toggle_off"
             }}</span>
-          </button>
-          <button
-            class="lm-icon-btn small danger rule-del"
+          </m3e-icon-button>
+          <m3e-icon-button
+            class="lm-icon-btn-sm danger rule-del"
+            size="small"
             :class="{ confirming: confirmDelete === r.name }"
             :title="
               confirmDelete === r.name ? t('anime.rule.deleteConfirm') : t('anime.rule.delete')
@@ -204,7 +206,7 @@ async function importFromRepo(entry: RepoEntry) {
             <span class="material-symbols-outlined">
               {{ confirmDelete === r.name ? "check" : "close" }}
             </span>
-          </button>
+          </m3e-icon-button>
         </div>
       </div>
     </section>
@@ -220,15 +222,17 @@ async function importFromRepo(entry: RepoEntry) {
       ></textarea>
       <p v-if="saveError" class="error">{{ saveError }}</p>
       <div class="actions">
-        <button class="lm-btn lm-btn--tonal" :disabled="!json.trim()" @click="saveRule">
-          <span class="material-symbols-outlined">save</span>
+        <m3e-button variant="tonal" size="small" :disabled="!json.trim()" @click="saveRule">
+          <span slot="icon" class="material-symbols-outlined">save</span>
           {{ t("anime.rule.save") }}
-        </button>
-        <button class="lm-btn lm-btn--outlined" :disabled="repoBusy" @click="fetchRepo">
-          <span v-if="repoBusy" class="material-symbols-outlined spin">progress_activity</span>
-          <span v-else class="material-symbols-outlined">cloud_download</span>
+        </m3e-button>
+        <m3e-button variant="outlined" size="small" :disabled="repoBusy" @click="fetchRepo">
+          <span v-if="repoBusy" slot="icon" class="material-symbols-outlined spin"
+            >progress_activity</span
+          >
+          <span v-else slot="icon" class="material-symbols-outlined">cloud_download</span>
           {{ repoBusy ? t("anime.rule.fromRepoFetching") : t("anime.rule.fromRepo") }}
-        </button>
+        </m3e-button>
       </div>
       <p v-if="repoError" class="error">{{ repoError }}</p>
       <div v-if="repoItems.length" class="repo-list">
@@ -356,13 +360,12 @@ async function importFromRepo(entry: RepoEntry) {
   color: var(--md-sys-color-on-surface-variant);
   font-size: var(--md-sys-typescale-label-small-size);
 }
+/* 尺寸（30×30）由全局 .lm-icon-btn-sm 令牌提供，这里只改图标色 */
 .rule-toggle {
-  width: 30px;
-  height: 30px;
-  color: var(--md-sys-color-primary);
+  --m3e-standard-icon-button-icon-color: var(--md-sys-color-primary);
 }
 .rule-toggle.off {
-  color: var(--md-sys-color-outline);
+  --m3e-standard-icon-button-icon-color: var(--md-sys-color-outline);
 }
 .rule-row > .material-symbols-outlined,
 .repo-row > .material-symbols-outlined {
@@ -382,8 +385,6 @@ async function importFromRepo(entry: RepoEntry) {
   color: var(--md-sys-color-on-surface-variant);
 }
 .rule-del {
-  width: 30px;
-  height: 30px;
   opacity: 0;
 }
 .rule-row:hover .rule-del {
@@ -391,7 +392,7 @@ async function importFromRepo(entry: RepoEntry) {
 }
 .rule-del.confirming {
   opacity: 1;
-  color: var(--md-sys-color-error);
+  --m3e-standard-icon-button-icon-color: var(--md-sys-color-error);
 }
 textarea {
   width: 100%;

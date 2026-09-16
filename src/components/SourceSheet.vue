@@ -173,12 +173,17 @@ function closeSheet() {
         :placeholder="t('anime.manualSearch')"
         @keyup.enter="doRequeryAll"
       />
-      <button class="lm-btn lm-btn--tonal" :disabled="anime.sourceSearching" @click="doRequeryAll">
-        <span v-if="anime.sourceSearching" class="material-symbols-outlined spin"
+      <m3e-button
+        variant="tonal"
+        size="small"
+        :disabled="anime.sourceSearching"
+        @click="doRequeryAll"
+      >
+        <span v-if="anime.sourceSearching" slot="icon" class="material-symbols-outlined spin"
           >progress_activity</span
         >
-        <span v-else class="material-symbols-outlined">search</span>
-      </button>
+        <span v-else slot="icon" class="material-symbols-outlined">search</span>
+      </m3e-button>
     </div>
 
     <p v-if="anime.sourceSearchError" class="state error">
@@ -264,9 +269,9 @@ function closeSheet() {
                 :placeholder="t('anime.manualSearch')"
                 @keyup.enter="doManualSearch(result.pluginName)"
               />
-              <button class="lm-btn lm-btn--tonal" @click="doManualSearch(result.pluginName)">
-                <span class="material-symbols-outlined">search</span>
-              </button>
+              <m3e-button variant="tonal" size="small" @click="doManualSearch(result.pluginName)">
+                <span slot="icon" class="material-symbols-outlined">search</span>
+              </m3e-button>
             </div>
           </div>
         </div>
