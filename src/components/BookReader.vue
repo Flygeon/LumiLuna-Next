@@ -65,6 +65,27 @@ const emit = defineEmits<{ (e: "close"): void }>();
 
 const settings = useSettingsStore();
 
+/** m3e-slider 当前值：值挂在 m3e-slider-thumb 上，input 由 thumb 冒泡到外层 slider */
+function sliderValue(e: Event): number | null {
+  const host = e.currentTarget as { thumb?: { value?: number | null } | null } | null;
+  const v = host?.thumb?.value;
+  return typeof v === "number" && Number.isFinite(v) ? v : null;
+}
+
+/** 整数滑块写回 */
+function onSliderInt(e: Event, key: ReaderSliderKey) {
+  const v = sliderValue(e);
+  if (v != null) settings[key] = Math.round(v);
+}
+
+/** 行距滑块（0.1 步进，保留一位小数） */
+function onSliderLineHeight(e: Event) {
+  const v = sliderValue(e);
+  if (v != null) settings.readerLineHeight = Math.round(v * 10) / 10;
+}
+
+type ReaderSliderKey = "readerFontPct" | "readerParaSpacing";
+
 const host = ref<HTMLDivElement | null>(null);
 /** 单页/双页模式下的画布容器；滚动模式下承载所有页 */
 const pdfPane = ref<HTMLDivElement | null>(null);
@@ -862,7 +883,9 @@ const PDF_MODES = [
       <div v-if="menuOpen" class="reader-settings" @click.stop>
         <div class="set-row">
           <span class="set-label">字号</span>
-          <input v-model.number="settings.readerFontPct" type="range" min="60" max="220" step="5" />
+          <m3e-slider :min="60" :max="220" :step="5" @input="onSliderInt($event, 'readerFontPct')">
+            <m3e-slider-thumb :value="settings.readerFontPct" />
+          </m3e-slider>
           <span class="set-value tabular-nums">{{ settings.readerFontPct }}%</span>
         </div>
         <div class="set-row">
@@ -881,24 +904,21 @@ const PDF_MODES = [
         </div>
         <div class="set-row">
           <span class="set-label">行距</span>
-          <input
-            v-model.number="settings.readerLineHeight"
-            type="range"
-            min="1"
-            max="2.6"
-            step="0.1"
-          />
+          <m3e-slider :min="1" :max="2.6" :step="0.1" @input="onSliderLineHeight">
+            <m3e-slider-thumb :value="settings.readerLineHeight" />
+          </m3e-slider>
           <span class="set-value tabular-nums">{{ settings.readerLineHeight.toFixed(1) }}</span>
         </div>
         <div class="set-row">
           <span class="set-label">段间距</span>
-          <input
-            v-model.number="settings.readerParaSpacing"
-            type="range"
-            min="0"
-            max="24"
-            step="2"
-          />
+          <m3e-slider
+            :min="0"
+            :max="24"
+            :step="2"
+            @input="onSliderInt($event, 'readerParaSpacing')"
+          >
+            <m3e-slider-thumb :value="settings.readerParaSpacing" />
+          </m3e-slider>
           <span class="set-value tabular-nums">{{
             settings.readerParaSpacing === 0 ? "原书" : settings.readerParaSpacing + "px"
           }}</span>
@@ -1168,9 +1188,13 @@ const PDF_MODES = [
   font-size: 13px;
   color: color-mix(in srgb, var(--reader-fg) 80%, transparent);
 }
-.set-row input[type="range"] {
+.set-row m3e-slider {
   flex: 1;
-  accent-color: var(--reader-fg);
+  min-width: 0;
+  --m3e-slider-min-width: 0px;
+  --m3e-slider-active-track-color: var(--reader-fg);
+  --m3e-slider-inactive-track-color: color-mix(in srgb, var(--reader-fg) 22%, transparent);
+  --m3e-slider-thumb-color: var(--reader-fg);
 }
 .set-value {
   flex: none;

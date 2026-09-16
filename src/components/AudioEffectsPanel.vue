@@ -180,6 +180,30 @@ function importPreset() {
   if (shareStatus.value === "imported") importCode.value = "";
 }
 
+/** m3e-switch 选中态：change 由开关自身派发，e.target 即 m3e-switch */
+function switchChecked(e: Event): boolean {
+  return !!(e.target as HTMLElement & { checked?: boolean }).checked;
+}
+
+/** m3e-slider 当前值：值挂在 m3e-slider-thumb 上，input 由 thumb 冒泡到外层 slider */
+function sliderValue(e: Event): number | null {
+  const host = e.currentTarget as { thumb?: { value?: number | null } | null } | null;
+  const v = host?.thumb?.value;
+  return typeof v === "number" && Number.isFinite(v) ? v : null;
+}
+
+/** 把滑块值（取整）交给指定 setter */
+function applySlider(e: Event, setter: (v: number) => void) {
+  const v = sliderValue(e);
+  if (v != null) setter(Math.round(v));
+}
+
+/** EQ 第 i 段的增益 */
+function applyEqBand(i: number, e: Event) {
+  const v = sliderValue(e);
+  if (v != null) effects.setEqBand(i, Math.round(v));
+}
+
 const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k` : String(hz));
 </script>
 
@@ -188,10 +212,9 @@ const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k
     <label class="enable-row">
       <span class="material-symbols-outlined">graphic_eq</span>
       <span class="enable-label">{{ t("player.effectsEnable") }}</span>
-      <input
-        type="checkbox"
+      <m3e-switch
         :checked="effects.config.enabled"
-        @change="effects.setEnabled(($event.target as HTMLInputElement).checked)"
+        @change="effects.setEnabled(switchChecked($event))"
       />
     </label>
 
@@ -267,14 +290,9 @@ const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k
         <div class="eq-grid">
           <label v-for="(band, i) in effects.config.eqBands" :key="band.frequency" class="eq-band">
             <span class="eq-freq">{{ frequencyLabel(band.frequency) }}</span>
-            <input
-              type="range"
-              min="-12"
-              max="12"
-              step="1"
-              :value="band.gain"
-              @input="effects.setEqBand(i, Number(($event.target as HTMLInputElement).value))"
-            />
+            <m3e-slider orientation="vertical" :min="-12" :max="12" @input="applyEqBand(i, $event)">
+              <m3e-slider-thumb :value="band.gain" />
+            </m3e-slider>
             <span class="eq-value tabular-nums">{{
               band.gain > 0 ? `+${band.gain}` : band.gain
             }}</span>
@@ -290,14 +308,9 @@ const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k
             <span class="material-symbols-outlined">sensors</span>
             {{ t("player.effectsBass") }}
           </span>
-          <input
-            type="range"
-            min="-12"
-            max="12"
-            step="1"
-            :value="effects.config.bassBoost"
-            @input="effects.setBassBoost(Number(($event.target as HTMLInputElement).value))"
-          />
+          <m3e-slider :min="-12" :max="12" @input="applySlider($event, effects.setBassBoost)">
+            <m3e-slider-thumb :value="effects.config.bassBoost" />
+          </m3e-slider>
           <span class="slider-value tabular-nums">{{ effects.config.bassBoost }}</span>
         </label>
         <label class="slider-row">
@@ -305,14 +318,9 @@ const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k
             <span class="material-symbols-outlined">surround_sound</span>
             {{ t("player.effectsReverb") }}
           </span>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            step="1"
-            :value="effects.config.reverb"
-            @input="effects.setReverb(Number(($event.target as HTMLInputElement).value))"
-          />
+          <m3e-slider :min="0" :max="100" @input="applySlider($event, effects.setReverb)">
+            <m3e-slider-thumb :value="effects.config.reverb" />
+          </m3e-slider>
           <span class="slider-value tabular-nums">{{ effects.config.reverb }}</span>
         </label>
         <label class="slider-row">
@@ -320,14 +328,9 @@ const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k
             <span class="material-symbols-outlined">swap_horiz</span>
             {{ t("player.effectsStereo") }}
           </span>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            step="1"
-            :value="effects.config.stereoWidth"
-            @input="effects.setStereoWidth(Number(($event.target as HTMLInputElement).value))"
-          />
+          <m3e-slider :min="0" :max="100" @input="applySlider($event, effects.setStereoWidth)">
+            <m3e-slider-thumb :value="effects.config.stereoWidth" />
+          </m3e-slider>
           <span class="slider-value tabular-nums">{{ effects.config.stereoWidth }}</span>
         </label>
       </section>
@@ -451,8 +454,9 @@ const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k
   font-size: var(--md-sys-typescale-body-medium-size);
   font-weight: 500;
 }
-/* 开关视觉统一在 src/tokens/theme.css 的「M3 Switch」全局样式里 */
-.enable-row input[type="checkbox"] {
+/* 开关改用 @m3e/web 的 m3e-switch */
+.enable-row m3e-switch {
+  flex: none;
   cursor: pointer;
 }
 
@@ -624,11 +628,9 @@ const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k
   font-size: 11px;
   color: var(--md-sys-color-on-surface-variant);
 }
-.eq-band input[type="range"] {
-  width: 100%;
-  accent-color: var(--md-sys-color-primary);
-  writing-mode: vertical-lr;
-  direction: rtl;
+/* 竖向滑块：--m3e-slider-min-width 在竖向时即 min-block-size（高度），默认 200px 会撑爆 EQ 区 */
+.eq-band m3e-slider {
+  --m3e-slider-min-width: 90px;
   height: 90px;
 }
 .eq-value {
@@ -654,9 +656,10 @@ const frequencyLabel = (hz: number) => (hz >= 1000 ? `${(hz / 1000).toFixed(0)}k
   font-size: 18px;
   color: var(--md-sys-color-primary);
 }
-.slider-row input[type="range"] {
+.slider-row m3e-slider {
   flex: 1;
-  accent-color: var(--md-sys-color-primary);
+  min-width: 0;
+  --m3e-slider-min-width: 0px;
 }
 .slider-value {
   width: 36px;

@@ -70,7 +70,7 @@ function notify(message: string) {
 }
 
 function toggleDevtools(event: Event) {
-  const enabled = (event.target as HTMLInputElement).checked;
+  const enabled = switchChecked(event);
   devtoolsEnabled.value = enabled;
   localStorage.setItem("lumiluna-devtools-enabled", enabled ? "1" : "0");
   if (enabled) {
@@ -233,6 +233,76 @@ async function testWebDav() {
   }
 }
 
+// ---- M3E 表单控件（m3e-switch / m3e-slider）事件桥 ----
+
+/** m3e-switch 的选中态：change 事件由开关自身派发，e.target 即 m3e-switch */
+function switchChecked(e: Event): boolean {
+  return !!(e.target as HTMLElement & { checked?: boolean }).checked;
+}
+
+/** 把开关选中态写回对应布尔设置项 */
+function setSwitch(key: BoolSettingKey, e: Event) {
+  settings[key] = switchChecked(e);
+}
+
+/**
+ * 读取 m3e-slider 当前值。值挂在 m3e-slider-thumb 上，而 input 事件由 thumb 冒泡到外层
+ * m3e-slider，故用 e.currentTarget（监听所在的 slider）取 thumb.value。
+ * 注意：上一版误读 e.target.thumb.value —— thumb 自身并无 thumb 属性，导致滑动不写回设置。
+ */
+function sliderValue(e: Event): number | null {
+  const host = e.currentTarget as { thumb?: { value?: number | null } | null } | null;
+  const v = host?.thumb?.value;
+  return typeof v === "number" && Number.isFinite(v) ? v : null;
+}
+
+/** 整数滑块写回（除歌词行距外的全部滑块） */
+function onSliderInt(e: Event, key: SliderIntKey) {
+  const v = sliderValue(e);
+  if (v != null) settings[key] = Math.round(v);
+}
+
+/** 歌词行距滑块（0.1 步进，保留一位小数） */
+function onSliderLineHeight(e: Event) {
+  const v = sliderValue(e);
+  if (v != null) settings.lyricLineHeight = Math.round(v * 10) / 10;
+}
+
+/** 布尔设置项键（供 setSwitch 复用，避免每个开关重复写事件表达式） */
+type BoolSettingKey =
+  | "wordLyrics"
+  | "preciseLyrics"
+  | "detectInstrumental"
+  | "desktopLyricsEnabled"
+  | "desktopLyricsShowNext"
+  | "desktopLyricsShowTranslation"
+  | "desktopLyricsLocked"
+  | "desktopLyricsClickThrough"
+  | "desktopLyricsAlwaysOnTop"
+  | "lyricBlur"
+  | "enableOnlineMusic"
+  | "neteaseEnabled"
+  | "onlineNovelEnabled"
+  | "bqgNovelEnabled"
+  | "onlineAnimeEnabled"
+  | "onlinePixivEnabled"
+  | "danmakuEnabled"
+  | "danmakuAntiOverlap"
+  | "webdavEnabled";
+
+/** 整数滑块对应的数值设置项键 */
+type SliderIntKey =
+  | "lyricFontSize"
+  | "lyricLineGap"
+  | "lyricTranslationSize"
+  | "lyricTranslationGap"
+  | "desktopLyricsFontSize"
+  | "desktopLyricsOpacity"
+  | "danmakuOpacity"
+  | "danmakuFontSize"
+  | "danmakuArea"
+  | "danmakuSpeed";
+
 // ---- 最小体积过滤 ----
 
 const SIZE_PRESETS = [0, 1, 5, 20, 100];
@@ -262,8 +332,9 @@ const sizeLabel = computed(() => {
   return mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb} MB`;
 });
 
-function onSizeSlider(value: string) {
-  applySize(posToMb(Number(value)));
+function onSizeSlider(e: Event) {
+  const v = sliderValue(e);
+  if (v != null) applySize(posToMb(v));
 }
 
 function applySize(mb: number) {
@@ -575,14 +646,9 @@ function selectSection(id: string) {
       <h3>{{ t("settings.minSize") }}</h3>
       <p class="hint">{{ t("settings.minSizeHint") }}</p>
       <div class="row">
-        <input
-          type="range"
-          min="0"
-          max="100"
-          step="1"
-          :value="sliderPos"
-          @input="onSizeSlider(($event.target as HTMLInputElement).value)"
-        />
+        <m3e-slider :min="0" :max="100" @input="onSizeSlider">
+          <m3e-slider-thumb :value="sliderPos" />
+        </m3e-slider>
         <span class="value tabular-nums">
           {{ settings.minFileSizeMb > 0 ? sizeLabel : t("settings.minSizeOff") }}
         </span>
@@ -680,17 +746,23 @@ function selectSection(id: string) {
       <h3>{{ t("settings.lyrics") }}</h3>
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.wordLyrics") }}</span>
-        <input v-model="settings.wordLyrics" type="checkbox" />
+        <m3e-switch :checked="settings.wordLyrics" @change="setSwitch('wordLyrics', $event)" />
       </label>
       <p class="hint">{{ t("settings.wordLyricsHint") }}</p>
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.preciseLyrics") }}</span>
-        <input v-model="settings.preciseLyrics" type="checkbox" />
+        <m3e-switch
+          :checked="settings.preciseLyrics"
+          @change="setSwitch('preciseLyrics', $event)"
+        />
       </label>
       <p class="hint">{{ t("settings.preciseLyricsHint") }}</p>
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.detectInstrumental") }}</span>
-        <input v-model="settings.detectInstrumental" type="checkbox" />
+        <m3e-switch
+          :checked="settings.detectInstrumental"
+          @change="setSwitch('detectInstrumental', $event)"
+        />
       </label>
       <p class="hint">{{ t("settings.detectInstrumentalHint") }}</p>
       <div class="row">
@@ -713,53 +785,50 @@ function selectSection(id: string) {
         <div class="row-label">
           <span>{{ t("settings.lyricFontSize") }}</span>
         </div>
-        <input v-model.number="settings.lyricFontSize" type="range" min="16" max="48" />
+        <m3e-slider :min="16" :max="48" @input="onSliderInt($event, 'lyricFontSize')">
+          <m3e-slider-thumb :value="settings.lyricFontSize" />
+        </m3e-slider>
         <span class="value tabular-nums">{{ settings.lyricFontSize }}px</span>
       </div>
       <div class="row">
         <div class="row-label">
           <span>{{ t("settings.lyricLineHeight") }}</span>
         </div>
-        <input
-          v-model.number="settings.lyricLineHeight"
-          type="range"
-          min="1.6"
-          max="3.2"
-          step="0.1"
-        />
+        <m3e-slider :min="1.6" :max="3.2" :step="0.1" @input="onSliderLineHeight">
+          <m3e-slider-thumb :value="settings.lyricLineHeight" />
+        </m3e-slider>
         <span class="value tabular-nums">{{ settings.lyricLineHeight.toFixed(1) }}</span>
       </div>
       <div class="row">
         <div class="row-label">
           <span>{{ t("settings.lyricLineGap") }}</span>
         </div>
-        <input v-model.number="settings.lyricLineGap" type="range" min="0" max="64" step="1" />
+        <m3e-slider :min="0" :max="64" @input="onSliderInt($event, 'lyricLineGap')">
+          <m3e-slider-thumb :value="settings.lyricLineGap" />
+        </m3e-slider>
         <span class="value tabular-nums">{{ settings.lyricLineGap }}px</span>
       </div>
       <div class="row">
         <div class="row-label">
           <span>{{ t("settings.lyricTranslationSize") }}</span>
         </div>
-        <input
-          v-model.number="settings.lyricTranslationSize"
-          type="range"
-          min="40"
-          max="120"
-          step="5"
-        />
+        <m3e-slider
+          :min="40"
+          :max="120"
+          :step="5"
+          @input="onSliderInt($event, 'lyricTranslationSize')"
+        >
+          <m3e-slider-thumb :value="settings.lyricTranslationSize" />
+        </m3e-slider>
         <span class="value tabular-nums">{{ settings.lyricTranslationSize }}%</span>
       </div>
       <div class="row">
         <div class="row-label">
           <span>{{ t("settings.lyricTranslationGap") }}</span>
         </div>
-        <input
-          v-model.number="settings.lyricTranslationGap"
-          type="range"
-          min="0"
-          max="24"
-          step="1"
-        />
+        <m3e-slider :min="0" :max="24" @input="onSliderInt($event, 'lyricTranslationGap')">
+          <m3e-slider-thumb :value="settings.lyricTranslationGap" />
+        </m3e-slider>
         <span class="value tabular-nums">{{ settings.lyricTranslationGap }}px</span>
       </div>
     </section>
@@ -770,17 +839,26 @@ function selectSection(id: string) {
 
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.desktopLyricsEnable") }}</span>
-        <input v-model="settings.desktopLyricsEnabled" type="checkbox" />
+        <m3e-switch
+          :checked="settings.desktopLyricsEnabled"
+          @change="setSwitch('desktopLyricsEnabled', $event)"
+        />
       </label>
 
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.desktopLyricsShowNext") }}</span>
-        <input v-model="settings.desktopLyricsShowNext" type="checkbox" />
+        <m3e-switch
+          :checked="settings.desktopLyricsShowNext"
+          @change="setSwitch('desktopLyricsShowNext', $event)"
+        />
       </label>
 
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.desktopLyricsShowTranslation") }}</span>
-        <input v-model="settings.desktopLyricsShowTranslation" type="checkbox" />
+        <m3e-switch
+          :checked="settings.desktopLyricsShowTranslation"
+          @change="setSwitch('desktopLyricsShowTranslation', $event)"
+        />
       </label>
 
       <div class="row">
@@ -820,13 +898,9 @@ function selectSection(id: string) {
         <div class="row-label">
           <span>{{ t("settings.desktopLyricsFontSize") }}</span>
         </div>
-        <input
-          v-model.number="settings.desktopLyricsFontSize"
-          type="range"
-          min="16"
-          max="64"
-          step="1"
-        />
+        <m3e-slider :min="16" :max="64" @input="onSliderInt($event, 'desktopLyricsFontSize')">
+          <m3e-slider-thumb :value="settings.desktopLyricsFontSize" />
+        </m3e-slider>
         <span class="value tabular-nums">{{ settings.desktopLyricsFontSize }}px</span>
       </div>
 
@@ -834,13 +908,14 @@ function selectSection(id: string) {
         <div class="row-label">
           <span>{{ t("settings.desktopLyricsOpacity") }}</span>
         </div>
-        <input
-          v-model.number="settings.desktopLyricsOpacity"
-          type="range"
-          min="30"
-          max="100"
-          step="5"
-        />
+        <m3e-slider
+          :min="30"
+          :max="100"
+          :step="5"
+          @input="onSliderInt($event, 'desktopLyricsOpacity')"
+        >
+          <m3e-slider-thumb :value="settings.desktopLyricsOpacity" />
+        </m3e-slider>
         <span class="value tabular-nums">{{ settings.desktopLyricsOpacity }}%</span>
       </div>
 
@@ -863,18 +938,27 @@ function selectSection(id: string) {
 
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.desktopLyricsLocked") }}</span>
-        <input v-model="settings.desktopLyricsLocked" type="checkbox" />
+        <m3e-switch
+          :checked="settings.desktopLyricsLocked"
+          @change="setSwitch('desktopLyricsLocked', $event)"
+        />
       </label>
 
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.desktopLyricsClickThrough") }}</span>
-        <input v-model="settings.desktopLyricsClickThrough" type="checkbox" />
+        <m3e-switch
+          :checked="settings.desktopLyricsClickThrough"
+          @change="setSwitch('desktopLyricsClickThrough', $event)"
+        />
       </label>
       <p class="hint">{{ t("settings.desktopLyricsClickThroughHint") }}</p>
 
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.desktopLyricsAlwaysOnTop") }}</span>
-        <input v-model="settings.desktopLyricsAlwaysOnTop" type="checkbox" />
+        <m3e-switch
+          :checked="settings.desktopLyricsAlwaysOnTop"
+          @change="setSwitch('desktopLyricsAlwaysOnTop', $event)"
+        />
       </label>
 
       <div class="actions">
@@ -923,7 +1007,7 @@ function selectSection(id: string) {
       <p class="hint">{{ t("player.hotkeysHint") }}</p>
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.lyricBlur") }}</span>
-        <input v-model="settings.lyricBlur" type="checkbox" />
+        <m3e-switch :checked="settings.lyricBlur" @change="setSwitch('lyricBlur', $event)" />
       </label>
     </section>
 
@@ -957,11 +1041,17 @@ function selectSection(id: string) {
       <p class="hint">{{ t("settings.onlineHint") }}</p>
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.onlineEnable") }}</span>
-        <input v-model="settings.enableOnlineMusic" type="checkbox" />
+        <m3e-switch
+          :checked="settings.enableOnlineMusic"
+          @change="setSwitch('enableOnlineMusic', $event)"
+        />
       </label>
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.neteaseEnable") }}</span>
-        <input v-model="settings.neteaseEnabled" type="checkbox" />
+        <m3e-switch
+          :checked="settings.neteaseEnabled"
+          @change="setSwitch('neteaseEnabled', $event)"
+        />
       </label>
       <p class="hint">{{ t("settings.neteaseHint") }}</p>
       <div v-if="settings.enableOnlineMusic" class="row">
@@ -988,11 +1078,17 @@ function selectSection(id: string) {
       <p class="hint">{{ t("settings.onlineNovelHint") }}</p>
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.onlineNovelEnable") }}</span>
-        <input v-model="settings.onlineNovelEnabled" type="checkbox" />
+        <m3e-switch
+          :checked="settings.onlineNovelEnabled"
+          @change="setSwitch('onlineNovelEnabled', $event)"
+        />
       </label>
       <label class="row switch-row">
         <span class="row-label">是否启用笔趣阁小说阅读</span>
-        <input v-model="settings.bqgNovelEnabled" type="checkbox" />
+        <m3e-switch
+          :checked="settings.bqgNovelEnabled"
+          @change="setSwitch('bqgNovelEnabled', $event)"
+        />
       </label>
       <div v-if="settings.onlineNovelEnabled" class="row">
         <div class="row-label">
@@ -1034,7 +1130,10 @@ function selectSection(id: string) {
       <p class="hint">{{ t("settings.onlineAnimeHint") }}</p>
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.onlineAnimeEnable") }}</span>
-        <input v-model="settings.onlineAnimeEnabled" type="checkbox" />
+        <m3e-switch
+          :checked="settings.onlineAnimeEnabled"
+          @change="setSwitch('onlineAnimeEnabled', $event)"
+        />
       </label>
       <template v-if="settings.onlineAnimeEnabled">
         <p class="hint">{{ t("settings.bangumiHint") }}</p>
@@ -1092,7 +1191,10 @@ function selectSection(id: string) {
       <p class="hint">{{ t("settings.onlinePixivHint") }}</p>
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.onlinePixivEnabled") }}</span>
-        <input v-model="settings.onlinePixivEnabled" type="checkbox" />
+        <m3e-switch
+          :checked="settings.onlinePixivEnabled"
+          @change="setSwitch('onlinePixivEnabled', $event)"
+        />
       </label>
       <template v-if="settings.onlinePixivEnabled">
         <div class="row">
@@ -1132,7 +1234,10 @@ function selectSection(id: string) {
       <p class="hint">{{ t("settings.danmakuHint") }}</p>
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.danmakuEnable") }}</span>
-        <input v-model="settings.danmakuEnabled" type="checkbox" />
+        <m3e-switch
+          :checked="settings.danmakuEnabled"
+          @change="setSwitch('danmakuEnabled', $event)"
+        />
       </label>
       <template v-if="settings.danmakuEnabled">
         <div class="dav-form">
@@ -1158,31 +1263,32 @@ function selectSection(id: string) {
         <div class="dav-grid">
           <label class="field">
             <span>{{ t("settings.danmakuOpacity") }} {{ settings.danmakuOpacity }}%</span>
-            <input
-              v-model.number="settings.danmakuOpacity"
-              type="range"
-              min="10"
-              max="100"
-              step="5"
-            />
+            <m3e-slider
+              :min="10"
+              :max="100"
+              :step="5"
+              @input="onSliderInt($event, 'danmakuOpacity')"
+            >
+              <m3e-slider-thumb :value="settings.danmakuOpacity" />
+            </m3e-slider>
           </label>
           <label class="field">
             <span>{{ t("settings.danmakuFontSize") }} {{ settings.danmakuFontSize }}px</span>
-            <input
-              v-model.number="settings.danmakuFontSize"
-              type="range"
-              min="12"
-              max="48"
-              step="1"
-            />
+            <m3e-slider :min="12" :max="48" @input="onSliderInt($event, 'danmakuFontSize')">
+              <m3e-slider-thumb :value="settings.danmakuFontSize" />
+            </m3e-slider>
           </label>
           <label class="field">
             <span>{{ t("settings.danmakuArea") }} {{ settings.danmakuArea }}%</span>
-            <input v-model.number="settings.danmakuArea" type="range" min="20" max="100" step="5" />
+            <m3e-slider :min="20" :max="100" :step="5" @input="onSliderInt($event, 'danmakuArea')">
+              <m3e-slider-thumb :value="settings.danmakuArea" />
+            </m3e-slider>
           </label>
           <label class="field">
             <span>{{ t("settings.danmakuSpeed") }} {{ settings.danmakuSpeed }}</span>
-            <input v-model.number="settings.danmakuSpeed" type="range" min="1" max="10" step="1" />
+            <m3e-slider :min="1" :max="10" @input="onSliderInt($event, 'danmakuSpeed')">
+              <m3e-slider-thumb :value="settings.danmakuSpeed" />
+            </m3e-slider>
           </label>
         </div>
         <div class="dav-grid">
@@ -1199,7 +1305,10 @@ function selectSection(id: string) {
           </label>
           <label class="row switch-row">
             <span class="row-label">{{ t("settings.danmakuAntiOverlap") }}</span>
-            <input v-model="settings.danmakuAntiOverlap" type="checkbox" />
+            <m3e-switch
+              :checked="settings.danmakuAntiOverlap"
+              @change="setSwitch('danmakuAntiOverlap', $event)"
+            />
           </label>
         </div>
       </template>
@@ -1212,7 +1321,10 @@ function selectSection(id: string) {
 
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.webdavEnable") }}</span>
-        <input v-model="settings.webdavEnabled" type="checkbox" />
+        <m3e-switch
+          :checked="settings.webdavEnabled"
+          @change="setSwitch('webdavEnabled', $event)"
+        />
       </label>
 
       <div v-if="settings.webdavEnabled" class="dav-form">
@@ -1292,7 +1404,7 @@ function selectSection(id: string) {
       </div>
       <label class="row switch-row">
         <span class="row-label">{{ t("settings.devtools") }}</span>
-        <input type="checkbox" :checked="devtoolsEnabled" @change="toggleDevtools" />
+        <m3e-switch :checked="devtoolsEnabled" @change="toggleDevtools" />
       </label>
       <p class="hint">{{ t("settings.devtoolsHint") }}</p>
       <div class="actions">
@@ -1455,9 +1567,10 @@ function selectSection(id: string) {
   flex: 1;
   font-size: var(--md-sys-typescale-body-medium-size);
 }
-.row input[type="range"] {
+.row m3e-slider {
   flex: 2;
-  accent-color: var(--md-sys-color-primary);
+  min-width: 0;
+  --m3e-slider-min-width: 0px;
 }
 .value {
   min-width: 52px;
@@ -1466,9 +1579,12 @@ function selectSection(id: string) {
   color: var(--md-sys-color-on-surface-variant);
 }
 
-/* 开关视觉统一在 src/tokens/theme.css 的「M3 Switch」全局样式里，此处只管点击区域 */
+/* 开关改用 @m3e/web 的 m3e-switch（视觉令牌见 tokens/theme.css），此处只管点击区域 */
 .switch-row {
   cursor: pointer;
+}
+.switch-row m3e-switch {
+  flex: none;
 }
 
 .segmented {
