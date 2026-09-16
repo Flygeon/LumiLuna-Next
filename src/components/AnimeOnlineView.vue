@@ -413,15 +413,15 @@ function backFromEpisodes() {
       <template v-if="anime.searchItems.length || anime.searchLoading || anime.searchError">
         <div class="sort-row">
           <span class="sort-label">{{ t("anime.searchSort") }}</span>
-          <button
+          <m3e-filter-chip
             v-for="s in SORTS"
             :key="s.value"
             class="chip"
-            :class="{ active: sort === s.value }"
+            :selected="sort === s.value"
             @click="changeSort(s.value)"
           >
             {{ s.label }}
-          </button>
+          </m3e-filter-chip>
         </div>
 
         <div v-if="anime.searchLoading && !anime.searchItems.length" class="state">
@@ -613,28 +613,6 @@ function backFromEpisodes() {
   font-size: var(--md-sys-typescale-label-small-size);
   color: var(--md-sys-color-on-surface-variant);
 }
-.chip {
-  display: inline-flex;
-  align-items: center;
-  height: 28px;
-  padding: 0 12px;
-  border: 1px solid var(--md-sys-color-outline-variant);
-  border-radius: var(--md-sys-shape-corner-full);
-  background: transparent;
-  color: var(--md-sys-color-on-surface-variant);
-  font-family: inherit;
-  font-size: var(--md-sys-typescale-label-small-size);
-  cursor: pointer;
-}
-.chip:hover {
-  color: var(--md-sys-color-primary);
-  border-color: var(--md-sys-color-primary);
-}
-.chip.active {
-  background: var(--md-sys-color-primary-container);
-  color: var(--md-sys-color-on-primary-container);
-  border-color: transparent;
-}
 .load-more {
   display: flex;
   justify-content: center;
@@ -660,5 +638,21 @@ function backFromEpisodes() {
   to {
     transform: rotate(360deg);
   }
+}
+/* chip 本体交给 m3e-filter-chip / m3e-assist-chip（选中态即 M3 规范：secondary-container 底 +
+   on-secondary-container 文字 + 无描边，与改造前 .chip.active 一致）；
+   下面把度量对齐改造前的 .chip（含选中时组件会占用 icon 槽展示勾选标记所需的 with-icon 内边距） */
+.sort-row m3e-filter-chip {
+  --m3e-chip-container-height: 28px;
+  --m3e-chip-container-shape: var(--md-sys-shape-corner-full);
+  --m3e-chip-padding-start: 12px;
+  --m3e-chip-padding-end: 12px;
+  --m3e-chip-with-icon-padding-start: 12px;
+  --m3e-chip-with-icon-padding-end: 12px;
+  --m3e-chip-label-text-font-size: var(--md-sys-typescale-label-small-size);
+  /* 改造前 .chip.active 用 primary-container */
+  --m3e-chip-selected-container-color: var(--md-sys-color-primary-container);
+  --m3e-chip-selected-label-text-color: var(--md-sys-color-on-primary-container);
+  --m3e-chip-selected-leading-icon-color: var(--md-sys-color-on-primary-container);
 }
 </style>

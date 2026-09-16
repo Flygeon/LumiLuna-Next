@@ -34,10 +34,10 @@ const roadIndex = ref(0);
         <span class="src-name" :title="anime.selectedSourceName">
           {{ anime.selectedSourceName }}
         </span>
-        <button class="chip" @click="emit('changeSource')">
-          <span class="material-symbols-outlined">swap_horiz</span>
+        <m3e-assist-chip class="chip" @click="emit('changeSource')">
+          <span slot="icon" class="material-symbols-outlined">swap_horiz</span>
           {{ t("anime.changeSource") }}
-        </button>
+        </m3e-assist-chip>
       </div>
     </div>
 
@@ -56,15 +56,15 @@ const roadIndex = ref(0);
       <div v-if="!anime.selectedRoads.length" class="state">{{ t("anime.noEpisodes") }}</div>
       <template v-else>
         <div class="roads">
-          <button
+          <m3e-filter-chip
             v-for="(r, ri) in anime.selectedRoads"
             :key="ri"
             class="road-chip"
-            :class="{ active: roadIndex === ri }"
+            :selected="roadIndex === ri"
             @click="roadIndex = ri"
           >
             {{ r.name }}
-          </button>
+          </m3e-filter-chip>
         </div>
         <div class="ep-grid">
           <button
@@ -125,27 +125,6 @@ const roadIndex = ref(0);
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  height: 30px;
-  padding: 0 12px;
-  border: 1px solid var(--md-sys-color-outline-variant);
-  border-radius: var(--md-sys-shape-corner-full);
-  background: transparent;
-  color: var(--md-sys-color-on-surface-variant);
-  font-family: inherit;
-  font-size: var(--md-sys-typescale-label-small-size);
-  cursor: pointer;
-}
-.chip:hover {
-  color: var(--md-sys-color-primary);
-  border-color: var(--md-sys-color-primary);
-}
-.chip .material-symbols-outlined {
-  font-size: 16px;
-}
 .title {
   margin: 0;
   font-size: var(--md-sys-typescale-title-large-size);
@@ -170,22 +149,6 @@ const roadIndex = ref(0);
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-}
-.road-chip {
-  height: 30px;
-  padding: 0 12px;
-  border: 1px solid var(--md-sys-color-outline-variant);
-  border-radius: var(--md-sys-shape-corner-full);
-  background: transparent;
-  color: var(--md-sys-color-on-surface-variant);
-  font-family: inherit;
-  font-size: var(--md-sys-typescale-label-small-size);
-  cursor: pointer;
-}
-.road-chip.active {
-  background: var(--md-sys-color-secondary-container);
-  color: var(--md-sys-color-on-secondary-container);
-  border-color: transparent;
 }
 .ep-grid {
   display: grid;
@@ -223,5 +186,20 @@ const roadIndex = ref(0);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+/* chip 本体交给 m3e-filter-chip / m3e-assist-chip（选中态即 M3 规范：secondary-container 底 +
+   on-secondary-container 文字 + 无描边，与改造前 .chip.active 一致）；
+   下面把度量对齐改造前的 .chip（含选中时组件会占用 icon 槽展示勾选标记所需的 with-icon 内边距） */
+.head-right m3e-assist-chip,
+.roads m3e-filter-chip {
+  --m3e-chip-container-height: 30px;
+  --m3e-chip-container-shape: var(--md-sys-shape-corner-full);
+  --m3e-chip-padding-start: 12px;
+  --m3e-chip-padding-end: 12px;
+  --m3e-chip-with-icon-padding-start: 12px;
+  --m3e-chip-with-icon-padding-end: 12px;
+  --m3e-chip-spacing: 5px;
+  --m3e-chip-icon-size: 16px;
+  --m3e-chip-label-text-font-size: var(--md-sys-typescale-label-small-size);
 }
 </style>

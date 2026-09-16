@@ -60,18 +60,21 @@ function clearSearch() {
     </div>
 
     <div class="sorts">
-      <button
+      <m3e-filter-chip
         v-for="s in SORTS"
         :key="s.key"
         class="chip"
-        :class="{ active: library.sortBy === s.key }"
+        :selected="library.sortBy === s.key"
         @click="pickSort(s.key)"
       >
         {{ s.label }}
-        <span v-if="library.sortBy === s.key" class="material-symbols-outlined arrow">{{
-          library.sortDesc ? "arrow_downward" : "arrow_upward"
-        }}</span>
-      </button>
+        <span
+          v-if="library.sortBy === s.key"
+          slot="trailing-icon"
+          class="material-symbols-outlined arrow"
+          >{{ library.sortDesc ? "arrow_downward" : "arrow_upward" }}</span
+        >
+      </m3e-filter-chip>
     </div>
 
     <span class="count tabular-nums">{{ props.count }} 项</span>
@@ -157,33 +160,6 @@ function clearSearch() {
   display: flex;
   gap: 6px;
 }
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  height: 32px;
-  padding: 0 12px;
-  border: 1px solid var(--md-sys-color-outline-variant);
-  border-radius: var(--md-sys-shape-corner-small);
-  background: transparent;
-  color: var(--md-sys-color-on-surface-variant);
-  font-family: inherit;
-  font-size: var(--md-sys-typescale-label-large-size);
-  cursor: pointer;
-  transition: all var(--md-sys-motion-duration-short) var(--md-sys-motion-spring-effects-fast);
-}
-.chip:hover {
-  background: var(--md-sys-color-surface-container-high);
-}
-.chip.active {
-  background: var(--md-sys-color-secondary-container);
-  color: var(--md-sys-color-on-secondary-container);
-  border-color: transparent;
-}
-.chip .arrow {
-  font-size: 15px;
-}
-
 .count {
   font-size: var(--md-sys-typescale-body-small-size);
   color: var(--md-sys-color-on-surface-variant);
@@ -210,5 +186,18 @@ function clearSearch() {
   font-size: var(--md-sys-typescale-body-small-size);
   color: var(--md-sys-color-on-surface-variant);
   min-width: 120px;
+}
+/* chip 本体交给 m3e-filter-chip / m3e-assist-chip（选中态即 M3 规范：secondary-container 底 +
+   on-secondary-container 文字 + 无描边，与改造前 .chip.active 一致）；
+   下面把度量对齐改造前的 .chip（含选中时组件会占用 icon 槽展示勾选标记所需的 with-icon 内边距） */
+.sorts m3e-filter-chip {
+  --m3e-chip-container-height: 32px;
+  --m3e-chip-padding-start: 12px;
+  --m3e-chip-padding-end: 12px;
+  --m3e-chip-with-icon-padding-start: 12px;
+  --m3e-chip-with-icon-padding-end: 12px;
+  --m3e-chip-spacing: 4px;
+  --m3e-chip-icon-size: 15px;
+  --m3e-chip-unselected-state-layer-hover-color: var(--md-sys-color-surface-container-high);
 }
 </style>

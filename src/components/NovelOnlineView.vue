@@ -279,15 +279,15 @@ onMounted(() => {
         <div class="section-head">
           <h3 class="section-title">{{ t("novel.rank") }}</h3>
           <div class="rank-tabs">
-            <button
+            <m3e-filter-chip
               v-for="s in ['allvisit', 'postdate', 'goodnum'] as const"
               :key="s"
               class="chip"
-              :class="{ active: rankSort === s }"
+              :selected="rankSort === s"
               @click="pickRank(s)"
             >
               {{ t("novel.rank_" + s) }}
-            </button>
+            </m3e-filter-chip>
           </div>
         </div>
         <div v-if="rankLoading" class="state">{{ t("novel.loading") }}</div>
@@ -423,22 +423,6 @@ onMounted(() => {
   display: flex;
   gap: 6px;
 }
-.chip {
-  height: 30px;
-  padding: 0 12px;
-  border: 1px solid var(--md-sys-color-outline-variant);
-  border-radius: var(--md-sys-shape-corner-full);
-  background: transparent;
-  color: var(--md-sys-color-on-surface-variant);
-  font-family: inherit;
-  font-size: var(--md-sys-typescale-label-small-size);
-  cursor: pointer;
-}
-.chip.active {
-  background: var(--md-sys-color-secondary-container);
-  color: var(--md-sys-color-on-secondary-container);
-  border-color: transparent;
-}
 .novel-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -449,5 +433,17 @@ onMounted(() => {
   text-align: center;
   font-size: var(--md-sys-typescale-body-small-size);
   color: var(--md-sys-color-on-surface-variant);
+}
+/* chip 本体交给 m3e-filter-chip / m3e-assist-chip（选中态即 M3 规范：secondary-container 底 +
+   on-secondary-container 文字 + 无描边，与改造前 .chip.active 一致）；
+   下面把度量对齐改造前的 .chip（含选中时组件会占用 icon 槽展示勾选标记所需的 with-icon 内边距） */
+.rank-tabs m3e-filter-chip {
+  --m3e-chip-container-height: 30px;
+  --m3e-chip-container-shape: var(--md-sys-shape-corner-full);
+  --m3e-chip-padding-start: 12px;
+  --m3e-chip-padding-end: 12px;
+  --m3e-chip-with-icon-padding-start: 12px;
+  --m3e-chip-with-icon-padding-end: 12px;
+  --m3e-chip-label-text-font-size: var(--md-sys-typescale-label-small-size);
 }
 </style>

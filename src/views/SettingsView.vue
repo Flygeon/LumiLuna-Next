@@ -677,15 +677,15 @@ function selectSection(id: string) {
           </span>
         </div>
         <div class="presets">
-          <button
+          <m3e-filter-chip
             v-for="p in SIZE_PRESETS"
             :key="p"
             class="chip"
-            :class="{ active: settings.minFileSizeMb === p }"
+            :selected="settings.minFileSizeMb === p"
             @click="applySize(p)"
           >
             {{ p === 0 ? t("settings.minSizeOff") : `${p} MB` }}
-          </button>
+          </m3e-filter-chip>
         </div>
       </div>
     </m3e-card>
@@ -805,15 +805,15 @@ function selectSection(id: string) {
             <span>{{ t("settings.lyricFont") }}</span>
           </div>
           <div class="presets inline">
-            <button
+            <m3e-filter-chip
               v-for="k in LYRIC_FONT_KEYS"
               :key="k"
               class="chip"
-              :class="{ active: settings.lyricFont === k }"
+              :selected="settings.lyricFont === k"
               @click="settings.lyricFont = k"
             >
               {{ t("settings.lyricFont_" + k) }}
-            </button>
+            </m3e-filter-chip>
           </div>
         </div>
         <div class="row">
@@ -961,15 +961,15 @@ function selectSection(id: string) {
             <span>{{ t("settings.desktopLyricsAnimation") }}</span>
           </div>
           <div class="presets inline">
-            <button
+            <m3e-filter-chip
               v-for="k in LYRICS_ANIMATIONS"
               :key="k"
               class="chip"
-              :class="{ active: settings.desktopLyricsAnimation === k }"
+              :selected="settings.desktopLyricsAnimation === k"
               @click="settings.desktopLyricsAnimation = k"
             >
               {{ t("settings.desktopLyricsAnim_" + k) }}
-            </button>
+            </m3e-filter-chip>
           </div>
         </div>
 
@@ -1986,31 +1986,6 @@ m3e-icon-button.danger:hover {
 .presets.inline {
   margin-top: 0;
 }
-.presets.inline .chip {
-  height: 30px;
-  padding: 0 12px;
-}
-.presets .chip {
-  height: 32px;
-  padding: 0 14px;
-  border: 1px solid var(--md-sys-color-outline-variant);
-  border-radius: var(--md-sys-shape-corner-small);
-  background: transparent;
-  color: var(--md-sys-color-on-surface-variant);
-  font-family: inherit;
-  font-size: var(--md-sys-typescale-label-large-size);
-  cursor: pointer;
-  transition: all var(--md-sys-motion-duration-short) var(--md-sys-motion-spring-effects-fast);
-}
-.presets .chip:hover {
-  background: var(--md-sys-color-surface-container-high);
-}
-.presets .chip.active {
-  background: var(--md-sys-color-secondary-container);
-  color: var(--md-sys-color-on-secondary-container);
-  border-color: transparent;
-  font-weight: 500;
-}
 
 .toast {
   position: fixed;
@@ -2057,5 +2032,23 @@ m3e-icon-button.danger:hover {
   .card {
     scroll-margin-top: 12px;
   }
+}
+/* chip 本体交给 m3e-filter-chip / m3e-assist-chip（选中态即 M3 规范：secondary-container 底 +
+   on-secondary-container 文字 + 无描边，与改造前 .chip.active 一致）；
+   下面把度量对齐改造前的 .chip（含选中时组件会占用 icon 槽展示勾选标记所需的 with-icon 内边距） */
+.presets m3e-filter-chip {
+  --m3e-chip-container-height: 32px;
+  --m3e-chip-padding-start: 14px;
+  --m3e-chip-padding-end: 14px;
+  --m3e-chip-with-icon-padding-start: 14px;
+  --m3e-chip-with-icon-padding-end: 14px;
+  --m3e-chip-unselected-state-layer-hover-color: var(--md-sys-color-surface-container-high);
+}
+.presets.inline m3e-filter-chip {
+  --m3e-chip-container-height: 30px;
+  --m3e-chip-padding-start: 12px;
+  --m3e-chip-padding-end: 12px;
+  --m3e-chip-with-icon-padding-start: 12px;
+  --m3e-chip-with-icon-padding-end: 12px;
 }
 </style>

@@ -344,27 +344,27 @@ function backToHome() {
 
       <!-- 联想词 -->
       <div v-if="searchWord.trim() && pixiv.suggestions.length" class="suggest-row">
-        <button
+        <m3e-assist-chip
           v-for="s in pixiv.suggestions.slice(0, 12)"
           :key="s"
           class="chip"
           @click="searchTag(s)"
         >
           {{ s }}
-        </button>
+        </m3e-assist-chip>
       </div>
 
       <div class="sort-row">
         <span class="sort-label">{{ t("pixiv.rank") }}</span>
-        <button
+        <m3e-filter-chip
           v-for="s in SEARCH_SORTS"
           :key="s.value"
           class="chip"
-          :class="{ active: searchSort === s.value }"
+          :selected="searchSort === s.value"
           @click="changeSort(s.value)"
         >
           {{ s.label() }}
-        </button>
+        </m3e-filter-chip>
       </div>
 
       <div v-if="pixiv.loading && !pixiv.searchItems.length" class="state">
@@ -431,7 +431,7 @@ function backToHome() {
       <div v-if="pixiv.trendTags.length" class="trend-row">
         <span class="sort-label">{{ t("pixiv.hotTags") }}</span>
         <div class="trend-chips">
-          <button
+          <m3e-assist-chip
             v-for="tag in pixiv.trendTags.slice(0, 10)"
             :key="tag.name"
             class="chip"
@@ -439,7 +439,7 @@ function backToHome() {
             @click="searchTag(tag)"
           >
             # {{ tag.translatedName || tag.name }}
-          </button>
+          </m3e-assist-chip>
         </div>
       </div>
 
@@ -491,15 +491,15 @@ function backToHome() {
             {{ t("pixiv.rank") }}
           </h3>
           <div class="rank-tabs">
-            <button
+            <m3e-filter-chip
               v-for="m in RANK_MODES"
               :key="m.value"
               class="chip"
-              :class="{ active: rankMode === m.value }"
+              :selected="rankMode === m.value"
               @click="pickRank(m.value)"
             >
               {{ m.label() }}
-            </button>
+            </m3e-filter-chip>
           </div>
         </div>
         <div v-if="pixiv.loading && !pixiv.ranking.length" class="state">
@@ -625,28 +625,6 @@ function backToHome() {
   gap: 6px;
   flex-wrap: wrap;
 }
-.chip {
-  display: inline-flex;
-  align-items: center;
-  height: 28px;
-  padding: 0 12px;
-  border: 1px solid var(--md-sys-color-outline-variant);
-  border-radius: var(--md-sys-shape-corner-full);
-  background: transparent;
-  color: var(--md-sys-color-on-surface-variant);
-  font-family: inherit;
-  font-size: var(--md-sys-typescale-label-small-size);
-  cursor: pointer;
-}
-.chip:hover {
-  color: var(--md-sys-color-primary);
-  border-color: var(--md-sys-color-primary);
-}
-.chip.active {
-  background: var(--md-sys-color-primary-container);
-  color: var(--md-sys-color-on-primary-container);
-  border-color: transparent;
-}
 .section {
   display: flex;
   flex-direction: column;
@@ -759,5 +737,24 @@ function backToHome() {
   to {
     transform: rotate(360deg);
   }
+}
+/* chip 本体交给 m3e-filter-chip / m3e-assist-chip（选中态即 M3 规范：secondary-container 底 +
+   on-secondary-container 文字 + 无描边，与改造前 .chip.active 一致）；
+   下面把度量对齐改造前的 .chip（含选中时组件会占用 icon 槽展示勾选标记所需的 with-icon 内边距） */
+.sort-row m3e-filter-chip,
+.rank-tabs m3e-filter-chip,
+.suggest-row m3e-assist-chip,
+.trend-chips m3e-assist-chip {
+  --m3e-chip-container-height: 28px;
+  --m3e-chip-container-shape: var(--md-sys-shape-corner-full);
+  --m3e-chip-padding-start: 12px;
+  --m3e-chip-padding-end: 12px;
+  --m3e-chip-with-icon-padding-start: 12px;
+  --m3e-chip-with-icon-padding-end: 12px;
+  --m3e-chip-label-text-font-size: var(--md-sys-typescale-label-small-size);
+  /* 改造前 .chip.active 用 primary-container */
+  --m3e-chip-selected-container-color: var(--md-sys-color-primary-container);
+  --m3e-chip-selected-label-text-color: var(--md-sys-color-on-primary-container);
+  --m3e-chip-selected-leading-icon-color: var(--md-sys-color-on-primary-container);
 }
 </style>

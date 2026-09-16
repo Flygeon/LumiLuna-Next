@@ -141,20 +141,23 @@ const metaParts = computed(() => {
         </h3>
         <template v-if="collect.authorized">
           <div class="status-row">
-            <button
+            <m3e-filter-chip
               v-for="s in STATUS_BTNS"
               :key="s.cat"
               class="status-chip"
-              :class="{ active: currentStatus === s.cat }"
               :disabled="saving"
+              :selected="currentStatus === s.cat"
               @click="pickStatus(s.cat)"
             >
-              <span v-if="saving && currentStatus === s.cat" class="material-symbols-outlined spin"
+              <span
+                v-if="saving && currentStatus === s.cat"
+                slot="icon"
+                class="material-symbols-outlined spin"
                 >progress_activity</span
               >
-              <span v-else class="material-symbols-outlined">{{ s.icon }}</span>
+              <span v-else slot="icon" class="material-symbols-outlined">{{ s.icon }}</span>
               {{ t("anime.cat" + s.cat) }}
-            </button>
+            </m3e-filter-chip>
           </div>
           <p class="collect-hint">
             {{
@@ -331,40 +334,7 @@ const metaParts = computed(() => {
   flex-wrap: wrap;
   gap: 8px;
 }
-.status-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 34px;
-  padding: 0 14px;
-  border: 1px solid var(--md-sys-color-outline-variant);
-  border-radius: var(--md-sys-shape-corner-small);
-  background: transparent;
-  color: var(--md-sys-color-on-surface-variant);
-  font-family: inherit;
-  font-size: var(--md-sys-typescale-label-large-size);
-  cursor: pointer;
-  transition:
-    background var(--md-sys-motion-duration-short) var(--md-sys-motion-spring-effects-fast),
-    color var(--md-sys-motion-duration-short),
-    border-color var(--md-sys-motion-duration-short);
-}
-.status-chip:hover:not(:disabled):not(.active) {
-  background: var(--md-sys-color-surface-container-high);
-  color: var(--md-sys-color-on-surface);
-}
-.status-chip.active {
-  background: var(--md-sys-color-primary-container);
-  color: var(--md-sys-color-on-primary-container);
-  border-color: transparent;
-}
-.status-chip:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-.status-chip .material-symbols-outlined {
-  font-size: 16px;
-}
+/* 悬停/按下/涟漪态与图标字号分别由组件与 --m3e-chip-icon-size 负责 */
 .status-chip .spin {
   animation: lm-spin 1s linear infinite;
 }
@@ -390,5 +360,22 @@ const metaParts = computed(() => {
   text-decoration: underline;
   cursor: pointer;
   padding: 0;
+}
+/* chip 本体交给 m3e-filter-chip / m3e-assist-chip（选中态即 M3 规范：secondary-container 底 +
+   on-secondary-container 文字 + 无描边，与改造前 .chip.active 一致）；
+   下面把度量对齐改造前的 .chip（含选中时组件会占用 icon 槽展示勾选标记所需的 with-icon 内边距） */
+.status-row m3e-filter-chip {
+  --m3e-chip-container-height: 34px;
+  --m3e-chip-padding-start: 14px;
+  --m3e-chip-padding-end: 14px;
+  --m3e-chip-with-icon-padding-start: 14px;
+  --m3e-chip-with-icon-padding-end: 14px;
+  --m3e-chip-spacing: 6px;
+  --m3e-chip-icon-size: 16px;
+  /* 改造前 .status-chip.active 用 primary-container，不是默认的 secondary-container */
+  --m3e-chip-selected-container-color: var(--md-sys-color-primary-container);
+  --m3e-chip-selected-label-text-color: var(--md-sys-color-on-primary-container);
+  --m3e-chip-selected-leading-icon-color: var(--md-sys-color-on-primary-container);
+  --m3e-chip-selected-trailing-icon-color: var(--md-sys-color-on-primary-container);
 }
 </style>
