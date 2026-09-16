@@ -1,47 +1,54 @@
-/** * 全局右键菜单（Material Design 3）。 * - 位置直接由菜单状态 menu.x/menu.y 派生（reactive →
-computed）， * 不依赖「watch + nextTick + 改 ref」的二次更新——那套在真实 WebView 里 *
-会失效导致菜单错位到左上角。 * - 贴边自动翻转用 onUpdated 测量 + margin
-位移，best-effort，失败停在光标处。 * - 点击菜单外 / Esc / 滚动 / 缩放 关闭；不用 window contextmenu
-监听， * 避免「刚打开又被同一事件关掉」的竞态（mousedown 已覆盖空白处右键关闭）。 */
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, onUpdated, ref, watch } from "vue";
+/**
+ * 全局右键菜单（Material Design 3）。
+ * 菜单本体交给 @m3e/web 的 m3e-menu / m3e-menu-item：
+ * - 位置：m3e-menu 只支持锚定到「元素」，故用一个 0×0 的固定定位锚点贴在光标坐标上，
+ *   再 show(anchor)。贴边翻转 / 位移钳制由组件内置的 positionAnchor(flip + shift) 负责，
+ *   不再手写 measureFlip。
+ * - 打开时先同步写入锚点坐标，再强制读一次 rect 触发排版，避免真实 WebView 下
+ *   「样式未提交就测量」导致菜单错位到左上角。
+ * - 方向键 / Enter 的项导航由 m3e-menu 原生负责；这里只兜「点击菜单外 / Esc / 滚动 / 缩放」关闭。
+ *   不用 window contextmenu 监听，避免「刚打开又被同一事件关掉」的竞态
+ *   （mousedown 已覆盖空白处右键关闭）。
+ */
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { closeContextMenu, useContextMenu } from "@/composables/useContextMenu";
 
 const menu = useContextMenu();
-const menuRef = ref<HTMLDivElement | null>(null);
-const activeIndex = ref(-1);
-/** 贴边翻转位移（margin 实现，避免与入场 scale 动画的 transform 冲突） */
-const flip = ref({ x: 0, y: 0 });
+const menuRef = ref<HTMLElement | null>(null);
+const anchorRef = ref<HTMLDivElement | null>(null);
 
-const menuStyle = computed(() => ({
-  left: menu.x + "px",
-  top: menu.y + "px",
-  marginLeft: flip.value.x + "px",
-  marginTop: flip.value.y + "px",
-}));
+/** m3e-menu 的打开 / 关闭方法 */
+interface M3eMenu extends HTMLElement {
+  show(trigger: HTMLElement): Promise<void>;
+  hide(restoreFocus?: boolean): void;
+}
 
-function measureFlip() {
-  const el = menuRef.value;
-  if (!el || !menu.visible) return;
-  const r = el.getBoundingClientRect();
-  const m = 8;
-  let x = 0;
-  let y = 0;
-  if (r.right > window.innerWidth - m) x = window.innerWidth - r.right - m;
-  if (r.bottom > window.innerHeight - m) y = window.innerHeight - r.bottom - m;
-  if (r.left < m) x = Math.max(x, m - r.left);
-  if (r.top < m) y = Math.max(y, m - r.top);
-  if (x !== flip.value.x || y !== flip.value.y) flip.value = { x, y };
+/** 打开菜单：把锚点贴到光标坐标，剩余定位交给 m3e-menu */
+async function openAt() {
+  const anchor = anchorRef.value;
+  const el = menuRef.value as M3eMenu | null;
+  if (!anchor || !el) return;
+  // 同步写入坐标（不依赖 watch+nextTick 的二次渲染），再强制读 rect 触发排版，
+  // 保证随后 show() 量到的是最新位置
+  anchor.style.left = `${menu.x}px`;
+  anchor.style.top = `${menu.y}px`;
+  await nextTick();
+  anchor.getBoundingClientRect();
+  await el.show(anchor);
+}
+
+function closeMenu() {
+  (menuRef.value as M3eMenu | null)?.hide();
 }
 
 watch(
   () => menu.visible,
   (v) => {
-    activeIndex.value = -1;
-    if (!v) flip.value = { x: 0, y: 0 };
+    if (v) void openAt();
+    else closeMenu();
   },
 );
-onUpdated(measureFlip);
 
 function select(id: string) {
   const cb = menu.onSelect;
@@ -51,37 +58,14 @@ function select(id: string) {
 
 function onKeydown(e: KeyboardEvent) {
   if (!menu.visible) return;
-  if (e.key === "Escape") {
-    closeContextMenu();
-    return;
-  }
-  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-    e.preventDefault();
-    const n = menu.items.length;
-    if (!n) return;
-    const dir = e.key === "ArrowDown" ? 1 : -1;
-    let next = activeIndex.value + dir;
-    for (let i = 0; i < n; i++) {
-      const idx = ((next % n) + n) % n;
-      if (!menu.items[idx]?.disabled) {
-        next = idx;
-        break;
-      }
-      next += dir;
-    }
-    activeIndex.value = next;
-  }
-  if (e.key === "Enter" && activeIndex.value >= 0) {
-    const item = menu.items[activeIndex.value];
-    if (item && !item.disabled) select(item.id);
-  }
+  // 方向键 / Enter 的项导航由 m3e-menu 原生负责，这里只兜 Esc
+  if (e.key === "Escape") closeContextMenu();
 }
 
 function onGlobalMousedown(e: MouseEvent) {
   if (!menu.visible) return;
-  const el = menuRef.value;
-  // 菜单内部点击不关（item 的 click 处理）；菜单外（含空白处右键）都关闭
-  if (!el || !el.contains(e.target as Node)) closeContextMenu();
+  // 菜单内部点击交给 item 的 click 处理；菜单外（含空白处右键）都关闭
+  if (!menuRef.value?.contains(e.target as Node)) closeContextMenu();
 }
 
 onMounted(() => {
@@ -100,95 +84,41 @@ onBeforeUnmount(() => {
 
 <template>
   <Teleport to="body">
-    <div v-if="menu.visible" ref="menuRef" class="ctx-menu" :style="menuStyle">
-      <button
-        v-for="(item, i) in menu.items"
+    <!-- 0×0 锚点：仅用于把 m3e-menu 定位到光标坐标 -->
+    <div ref="anchorRef" class="ctx-anchor"></div>
+
+    <m3e-menu ref="menuRef" class="ctx-menu">
+      <m3e-menu-item
+        v-for="item in menu.items"
         :key="item.id"
         class="ctx-item"
-        :class="{
-          danger: item.danger,
-          disabled: item.disabled,
-          active: i === activeIndex,
-        }"
+        :class="{ danger: item.danger }"
         :disabled="item.disabled"
         @click="select(item.id)"
-        @mouseenter="activeIndex = i"
       >
-        <span v-if="item.icon" class="material-symbols-outlined ctx-icon">
-          {{ item.icon }}
-        </span>
-        <span class="ctx-label">{{ item.label }}</span>
-      </button>
-    </div>
+        <span v-if="item.icon" slot="icon" class="material-symbols-outlined ctx-icon">{{
+          item.icon
+        }}</span>
+        {{ item.label }}
+      </m3e-menu-item>
+    </m3e-menu>
   </Teleport>
 </template>
 
 <style scoped>
-.ctx-menu {
+.ctx-anchor {
   position: fixed;
-  z-index: 1000;
-  min-width: 188px;
-  padding: 8px;
-  background: var(--md-sys-color-surface-container);
-  border-radius: var(--md-sys-shape-corner-extra-large);
-  box-shadow:
-    var(--md-elevation-2),
-    inset 0 0 0 1px var(--lm-hairline);
-  transform-origin: top left;
-  animation: ctx-pop 220ms var(--md-sys-motion-spring-spatial);
+  width: 0;
+  height: 0;
+  pointer-events: none;
 }
-@keyframes ctx-pop {
-  from {
-    opacity: 0;
-    transform: scale(0.92);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+.ctx-menu {
+  --m3e-menu-container-min-width: 188px;
 }
-
-.ctx-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  height: 40px;
-  padding: 0 16px;
-  border: none;
-  border-radius: var(--md-sys-shape-corner-medium);
-  background: transparent;
-  color: var(--md-sys-color-on-surface);
-  font-family: inherit;
-  font-size: var(--md-sys-typescale-body-medium-size);
-  text-align: left;
-  cursor: pointer;
-  transition: background var(--md-sys-motion-duration-short)
-    var(--md-sys-motion-spring-effects-fast);
-}
-.ctx-item:hover,
-.ctx-item.active {
-  background: var(--md-sys-color-surface-container-high);
+.ctx-item.danger {
+  --m3e-menu-item-color: var(--md-sys-color-error);
 }
 .ctx-icon {
   font-size: 20px;
-  color: var(--md-sys-color-on-surface-variant);
-  flex: none;
-}
-.ctx-label {
-  flex: 1;
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.ctx-item.danger,
-.ctx-item.danger .ctx-icon {
-  color: var(--md-sys-color-error);
-}
-.ctx-item.disabled {
-  opacity: 0.4;
-  cursor: default;
-  pointer-events: none;
 }
 </style>

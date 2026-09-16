@@ -1,7 +1,10 @@
-/** * M3 文本输入对话框：标题 + 单行输入 + 取消/确认。 * 打开时自动聚焦并全选，Enter 确认，Esc /
-点击遮罩取消。 */
 <script setup lang="ts">
-import { nextTick, onMounted, ref, watch } from "vue";
+/**
+ * M3 文本输入对话框：标题 + 单行输入 + 取消/确认。
+ * 打开时自动聚焦并全选，Enter 确认，Esc / 点击遮罩取消。
+ * 容器改用 @m3e/web 的 m3e-dialog：遮罩、焦点陷阱、Esc/点遮罩关闭、进出场动画都由组件负责。
+ */
+import { nextTick, ref, watch } from "vue";
 import { useSettingsStore } from "@/stores/settings";
 import { resolvePrompt, useTextPrompt } from "@/composables/useTextPrompt";
 import { translate } from "@shared/i18n";
@@ -10,6 +13,18 @@ const settings = useSettingsStore();
 const prompt = useTextPrompt();
 const value = ref("");
 const inputRef = ref<HTMLInputElement | null>(null);
+const dialogRef = ref<HTMLElement | null>(null);
+
+/** m3e-dialog 的打开 / 关闭方法 */
+interface M3eDialog extends HTMLElement {
+  show(): Promise<void>;
+  hide(returnValue?: string): Promise<void>;
+}
+
+/** 本次交互意图：ok = 确认；其余（取消 / 点遮罩 / Esc）一律按取消结算 */
+let intent: "ok" | "cancel" = "cancel";
+/** 防止 cancel 与 closed 重复结算（resolvePrompt 只应生效一次） */
+let settled = false;
 
 function t(key: string) {
   return translate(settings.lang, key);
@@ -20,104 +35,84 @@ watch(
   async (v) => {
     if (!v) return;
     value.value = prompt.initial;
+    intent = "cancel";
+    settled = false;
     await nextTick();
-    const el = inputRef.value;
-    if (el) {
-      el.focus();
-      el.select();
-    }
+    // 用 m3e-dialog.show() 驱动打开：遮罩、焦点陷阱、进出场动画由组件负责
+    await (dialogRef.value as M3eDialog | null)?.show();
   },
 );
 
+/** 完成打开后再聚焦并全选，避开与打开动画 / 焦点接管的竞态 */
+function onOpened() {
+  const el = inputRef.value;
+  if (el) {
+    el.focus();
+    el.select();
+  }
+}
+
+/** 结算一次（resolvePrompt 会置 visible=false 并 resolve 调用方） */
+function settle(v: string | null) {
+  if (settled) return;
+  settled = true;
+  resolvePrompt(v);
+}
+
 function confirm() {
-  resolvePrompt(value.value.trim() || null);
+  if (!value.value.trim()) return;
+  intent = "ok";
+  void (dialogRef.value as M3eDialog | null)?.hide();
 }
 
 function cancel() {
-  resolvePrompt(null);
+  intent = "cancel";
+  void (dialogRef.value as M3eDialog | null)?.hide();
 }
 
-onMounted(() => {
-  const onKey = (e: KeyboardEvent) => {
-    if (!prompt.visible) return;
-    if (e.key === "Escape") cancel();
-  };
-  window.addEventListener("keydown", onKey);
-  // 无 onBeforeUnmount 清理：组件常驻（挂载在 App.vue）
-});
+/** 点遮罩 / 按 Esc：m3e 已开始关闭，这里同步结算，避免 open 仍为真导致重开 */
+function onCancel() {
+  // 程序化 hide() 也可能触发 cancel；此时 intent 已被按钮置为 ok，不能按取消结算
+  if (intent === "ok") return;
+  settle(null);
+}
+
+function onClosed() {
+  settle(intent === "ok" ? value.value.trim() || null : null);
+}
 </script>
 
 <template>
   <Teleport to="body">
-    <div v-if="prompt.visible" class="backdrop" @click.self="cancel">
-      <div class="dlg">
-        <h3 class="dlg-title">{{ prompt.title }}</h3>
-        <input
-          ref="inputRef"
-          v-model="value"
-          class="dlg-input"
-          maxlength="64"
-          @keydown.enter="confirm"
-        />
-        <div class="dlg-actions">
-          <button class="lm-btn lm-btn--text" @click="cancel">
-            {{ t("actions.cancel") }}
-          </button>
-          <button class="lm-btn lm-btn--tonal" :disabled="!value.trim()" @click="confirm">
-            {{ t("actions.confirm") }}
-          </button>
-        </div>
+    <m3e-dialog
+      ref="dialogRef"
+      class="text-prompt"
+      @opened="onOpened"
+      @cancel="onCancel"
+      @closed="onClosed"
+    >
+      <span slot="header">{{ prompt.title }}</span>
+      <input
+        ref="inputRef"
+        v-model="value"
+        class="dlg-input"
+        maxlength="64"
+        @keydown.enter="confirm"
+      />
+      <div slot="actions" end>
+        <m3e-button variant="text" @click="cancel">{{ t("actions.cancel") }}</m3e-button>
+        <m3e-button variant="tonal" :disabled="!value.trim()" @click="confirm">
+          {{ t("actions.confirm") }}
+        </m3e-button>
       </div>
-    </div>
+    </m3e-dialog>
   </Teleport>
 </template>
 
 <style scoped>
-.backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 2000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.4);
-  animation: fade-in 150ms var(--md-sys-motion-spring-effects-fast);
+.text-prompt {
+  --m3e-dialog-min-width: 360px;
 }
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-.dlg {
-  width: min(360px, calc(100vw - 48px));
-  padding: 24px;
-  background: var(--md-sys-color-surface-container-high);
-  border-radius: var(--md-sys-shape-corner-extra-large);
-  box-shadow: var(--md-elevation-3);
-  animation: dlg-rise 220ms var(--md-sys-motion-spring-spatial);
-}
-@keyframes dlg-rise {
-  from {
-    opacity: 0;
-    transform: scale(0.94) translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-.dlg-title {
-  margin: 0 0 18px;
-  font-size: var(--md-sys-typescale-title-medium-size);
-  font-weight: var(--md-sys-typescale-title-medium-weight);
-  color: var(--md-sys-color-on-surface);
-}
-
 .dlg-input {
   width: 100%;
   padding: 10px 14px;
@@ -132,12 +127,5 @@ onMounted(() => {
 .dlg-input:focus {
   border-color: var(--md-sys-color-primary);
   box-shadow: 0 0 0 1px var(--md-sys-color-primary);
-}
-
-.dlg-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 20px;
 }
 </style>

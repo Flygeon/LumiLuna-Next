@@ -5,7 +5,7 @@
  * 头（源名 + 状态：检索中/无结果/N 条/检索失败）+ 命中条目行（点击 → 选该源）。
  * 卡片头部更多操作：别名检索 / 手动检索 / 在浏览器中打开。
  */
-import { computed, ref } from "vue";
+import { computed, nextTick, onMounted, ref } from "vue";
 import { useSettingsStore } from "@/stores/settings";
 import { useAnimeStore } from "@/stores/anime";
 import { translate } from "@shared/i18n";
@@ -128,149 +128,155 @@ function openInBrowser(pluginName: string) {
 
 /** 当前卡片没有结果时可提示的别名（照 Kazumi 别名检索候选） */
 const aliasList = computed(() => props.subject?.alias?.slice(0, 12) ?? []);
+
+// ---- m3e-bottom-sheet 容器控制 ----
+
+/** m3e-bottom-sheet 的打开 / 关闭方法 */
+interface M3eBottomSheet extends HTMLElement {
+  show(detent?: number): void;
+  hide(): void;
+}
+
+const sheetRef = ref<HTMLElement | null>(null);
+
+/** 挂载即打开（父组件用 v-if 控制挂载，挂载时机即「打开」时机） */
+onMounted(async () => {
+  await nextTick();
+  (sheetRef.value as M3eBottomSheet | null)?.show();
+});
+
+/** 主动关闭：交给组件播放收起动画，收起后由 closed 事件通知父组件卸载 */
+function closeSheet() {
+  (sheetRef.value as M3eBottomSheet | null)?.hide();
+}
 </script>
 
 <template>
-  <Teleport to="body">
-    <div class="scrim" @click.self="emit('close')">
-      <div class="sheet">
-        <div class="sheet-head">
-          <span class="sheet-title">{{ t("anime.sourceSheetTitle") }}</span>
-          <button class="close" :title="t('anime.exit')" @click="emit('close')">
-            <span class="material-symbols-outlined">close</span>
-          </button>
-        </div>
+  <m3e-bottom-sheet
+    ref="sheetRef"
+    class="source-sheet"
+    modal
+    handle
+    hideable
+    @closed="emit('close')"
+  >
+    <div slot="header" class="sheet-head">
+      <span class="sheet-title">{{ t("anime.sourceSheetTitle") }}</span>
+      <button class="close" :title="t('anime.exit')" @click="closeSheet">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
 
-        <div class="kw-row">
-          <input
-            v-model="topKeyword"
-            :placeholder="t('anime.manualSearch')"
-            @keyup.enter="doRequeryAll"
-          />
-          <button
-            class="lm-btn lm-btn--tonal"
-            :disabled="anime.sourceSearching"
-            @click="doRequeryAll"
+    <div class="kw-row">
+      <input
+        v-model="topKeyword"
+        :placeholder="t('anime.manualSearch')"
+        @keyup.enter="doRequeryAll"
+      />
+      <button class="lm-btn lm-btn--tonal" :disabled="anime.sourceSearching" @click="doRequeryAll">
+        <span v-if="anime.sourceSearching" class="material-symbols-outlined spin"
+          >progress_activity</span
+        >
+        <span v-else class="material-symbols-outlined">search</span>
+      </button>
+    </div>
+
+    <p v-if="anime.sourceSearchError" class="state error">
+      {{ anime.sourceSearchError }}
+    </p>
+
+    <p v-else-if="anime.sourceSearching && !anime.sourceSearch.length" class="state">
+      {{ t("anime.choosingSource") }}
+    </p>
+
+    <div v-else-if="!anime.sourceSearch.length" class="state">
+      {{ t("anime.noSource") }}
+    </div>
+
+    <div v-else class="cards">
+      <div v-for="result in anime.sourceSearch" :key="result.pluginName" class="card">
+        <!-- 卡片头：源名 + 状态 -->
+        <button class="card-head" @click="toggle(result.pluginName)">
+          <span class="src-name">{{ result.pluginName }}</span>
+          <span
+            class="src-status"
+            :class="{ error: statusInfo(result).error }"
+            :title="statusInfo(result).text"
+            >{{ statusInfo(result).text }}</span
           >
-            <span v-if="anime.sourceSearching" class="material-symbols-outlined spin"
-              >progress_activity</span
-            >
-            <span v-else class="material-symbols-outlined">search</span>
+          <span v-if="result.status === 'pending'" class="material-symbols-outlined spin"
+            >progress_activity</span
+          >
+          <span v-else class="material-symbols-outlined chevron">expand_more</span>
+        </button>
+
+        <!-- 命中条目 -->
+        <button
+          v-for="(item, i) in result.items.slice(0, 12)"
+          v-show="isExpanded(result.pluginName)"
+          :key="i"
+          class="result-row"
+          @click="pick(result.pluginName, item)"
+        >
+          <span class="row-name">{{ item.name }}</span>
+          <span class="material-symbols-outlined">play_arrow</span>
+        </button>
+
+        <!-- 更多操作 -->
+        <div v-show="isExpanded(result.pluginName)" class="more-area">
+          <button class="more-toggle" @click="toggleMore(result.pluginName)">
+            <span class="material-symbols-outlined">more_vert</span>
           </button>
-        </div>
 
-        <p v-if="anime.sourceSearchError" class="state error">
-          {{ anime.sourceSearchError }}
-        </p>
-
-        <p v-else-if="anime.sourceSearching && !anime.sourceSearch.length" class="state">
-          {{ t("anime.choosingSource") }}
-        </p>
-
-        <div v-else-if="!anime.sourceSearch.length" class="state">
-          {{ t("anime.noSource") }}
-        </div>
-
-        <div v-else class="cards">
-          <div v-for="result in anime.sourceSearch" :key="result.pluginName" class="card">
-            <!-- 卡片头：源名 + 状态 -->
-            <button class="card-head" @click="toggle(result.pluginName)">
-              <span class="src-name">{{ result.pluginName }}</span>
-              <span
-                class="src-status"
-                :class="{ error: statusInfo(result).error }"
-                :title="statusInfo(result).text"
-                >{{ statusInfo(result).text }}</span
+          <div v-if="moreOpen.has(result.pluginName)" class="more-panel">
+            <div class="more-actions">
+              <button
+                v-if="aliasList.length"
+                class="act"
+                @click="doAliasSearch(result.pluginName, aliasList[0])"
               >
-              <span v-if="result.status === 'pending'" class="material-symbols-outlined spin"
-                >progress_activity</span
-              >
-              <span v-else class="material-symbols-outlined chevron">expand_more</span>
-            </button>
-
-            <!-- 命中条目 -->
-            <button
-              v-for="(item, i) in result.items.slice(0, 12)"
-              v-show="isExpanded(result.pluginName)"
-              :key="i"
-              class="result-row"
-              @click="pick(result.pluginName, item)"
-            >
-              <span class="row-name">{{ item.name }}</span>
-              <span class="material-symbols-outlined">play_arrow</span>
-            </button>
-
-            <!-- 更多操作 -->
-            <div v-show="isExpanded(result.pluginName)" class="more-area">
-              <button class="more-toggle" @click="toggleMore(result.pluginName)">
-                <span class="material-symbols-outlined">more_vert</span>
+                {{ t("anime.aliasSearch") }}
               </button>
-
-              <div v-if="moreOpen.has(result.pluginName)" class="more-panel">
-                <div class="more-actions">
-                  <button
-                    v-if="aliasList.length"
-                    class="act"
-                    @click="doAliasSearch(result.pluginName, aliasList[0])"
-                  >
-                    {{ t("anime.aliasSearch") }}
-                  </button>
-                  <button class="act" @click="doManualSearch(result.pluginName)">
-                    {{ t("anime.manualSearch") }}
-                  </button>
-                  <button class="act" @click="openInBrowser(result.pluginName)">
-                    {{ t("anime.openInBrowser") }}
-                  </button>
-                </div>
-                <div v-if="aliasList.length" class="alias-row">
-                  <span
-                    v-for="a in aliasList"
-                    :key="a"
-                    class="alias-chip"
-                    @click="doAliasSearch(result.pluginName, a)"
-                    >{{ a }}</span
-                  >
-                </div>
-                <div class="manual-row">
-                  <input
-                    v-model="manualKeyword[result.pluginName]"
-                    :placeholder="t('anime.manualSearch')"
-                    @keyup.enter="doManualSearch(result.pluginName)"
-                  />
-                  <button class="lm-btn lm-btn--tonal" @click="doManualSearch(result.pluginName)">
-                    <span class="material-symbols-outlined">search</span>
-                  </button>
-                </div>
-              </div>
+              <button class="act" @click="doManualSearch(result.pluginName)">
+                {{ t("anime.manualSearch") }}
+              </button>
+              <button class="act" @click="openInBrowser(result.pluginName)">
+                {{ t("anime.openInBrowser") }}
+              </button>
+            </div>
+            <div v-if="aliasList.length" class="alias-row">
+              <span
+                v-for="a in aliasList"
+                :key="a"
+                class="alias-chip"
+                @click="doAliasSearch(result.pluginName, a)"
+                >{{ a }}</span
+              >
+            </div>
+            <div class="manual-row">
+              <input
+                v-model="manualKeyword[result.pluginName]"
+                :placeholder="t('anime.manualSearch')"
+                @keyup.enter="doManualSearch(result.pluginName)"
+              />
+              <button class="lm-btn lm-btn--tonal" @click="doManualSearch(result.pluginName)">
+                <span class="material-symbols-outlined">search</span>
+              </button>
             </div>
           </div>
         </div>
       </div>
     </div>
-  </Teleport>
+  </m3e-bottom-sheet>
 </template>
 
 <style scoped>
-.scrim {
-  position: fixed;
-  inset: 0;
-  z-index: 190;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.42);
-  animation: lm-fade-in 180ms var(--md-sys-motion-spring-effects-fast);
-}
-.sheet {
-  width: min(680px, 100vw);
-  max-height: 86vh;
-  overflow-y: auto;
-  padding: 16px 18px;
-  border-radius: var(--md-sys-shape-corner-extra-large) var(--md-sys-shape-corner-extra-large) 0 0;
-  background: var(--md-sys-color-surface-container-high);
-  color: var(--md-sys-color-on-surface);
-  box-shadow: var(--md-elevation-3);
-  animation: rise 240ms var(--md-sys-motion-spring-spatial) both;
+/* 遮罩、拖拽手柄、下滑关闭、进出场动画均由 m3e-bottom-sheet（modal + handle + hideable）负责；
+   这里只覆盖尺寸与配色令牌，尽量保持改造前观感 */
+.source-sheet {
+  --m3e-bottom-sheet-max-width: 680px;
+  --m3e-bottom-sheet-container-color: var(--md-sys-color-surface-container-high);
+  --m3e-bottom-sheet-container-shape: var(--md-sys-shape-corner-extra-large);
 }
 .sheet-head {
   display: flex;
@@ -496,19 +502,5 @@ const aliasList = computed(() => props.subject?.alias?.slice(0, 12) ?? []);
   font-family: inherit;
   font-size: var(--md-sys-typescale-body-small-size);
   outline: none;
-}
-@keyframes lm-fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-@keyframes rise {
-  from {
-    transform: translateY(24px);
-    opacity: 0;
-  }
 }
 </style>
