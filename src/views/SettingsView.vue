@@ -419,1001 +419,1078 @@ function selectSection(id: string) {
       </template>
     </aside>
     <!-- 外观 -->
-    <section v-if="activeSection === 'settings-appearance'" id="settings-appearance" class="card">
-      <h3>{{ t("settings.appearance") }}</h3>
+    <m3e-card
+      v-if="activeSection === 'settings-appearance'"
+      id="settings-appearance"
+      class="card"
+      variant="outlined"
+    >
+      <div slot="content">
+        <h3>{{ t("settings.appearance") }}</h3>
 
-      <div class="row">
-        <div class="row-label">
-          <span>{{ t("settings.theme") }}</span>
-        </div>
-        <div class="segmented">
-          <button
-            v-for="mode in ['system', 'light', 'dark'] as ThemeMode[]"
-            :key="mode"
-            class="seg"
-            :class="{ active: settings.theme === mode }"
-            :disabled="themeLocked"
-            @click="setTheme(mode)"
-          >
-            {{ t("settings." + mode) }}
-          </button>
-        </div>
-      </div>
-      <p v-if="themeLockHint" class="hint">{{ themeLockHint }}</p>
-
-      <!-- 皮肤 -->
-      <div class="row column">
-        <div class="row-label">
-          <span>{{ t("settings.skins") }}</span>
-        </div>
-        <div class="skin-list">
-          <div
-            class="skin-card"
-            :class="{ active: !settings.activeSkin }"
-            @click="skins.activate('')"
-          >
-            <span class="skin-dot" :style="{ '--sw': settings.seedColor }"></span>
-            <span class="skin-name">{{ t("settings.skinDefault") }}</span>
-          </div>
-          <div
-            v-for="s in skins.list"
-            :key="s.id"
-            class="skin-card"
-            :class="{
-              active: settings.activeSkin === s.id,
-              broken: s.status === 'broken',
-            }"
-            :title="skinCardTitle(s)"
-            @click="onSkinCard(s)"
-          >
-            <span
-              class="skin-dot"
-              :style="{ '--sw': s.meta?.accent || 'var(--md-sys-color-primary)' }"
-            ></span>
-            <span class="skin-name">{{ s.meta?.name ?? s.id }}</span>
-            <span v-if="s.meta" class="skin-badges">
-              <span
-                class="fmt"
-                :class="`v${s.meta.formatVersion}`"
-                :title="t('settings.skinFmtTitle').replace('{v}', String(s.meta.formatVersion))"
-                >v{{ s.meta.formatVersion }}</span
-              >
-              <span
-                v-if="s.meta.hasBackground"
-                class="material-symbols-outlined mode"
-                :title="t('settings.skinHasBackground')"
-                >wallpaper</span
-              >
-              <span
-                v-if="s.meta.hasIcons"
-                class="material-symbols-outlined mode"
-                :title="t('settings.skinHasIcons')"
-                >interests</span
-              >
-              <span class="material-symbols-outlined mode" :title="s.meta.modes.join(' / ')">{{
-                modeIcon(s.meta.modes)
-              }}</span>
-              <span
-                v-if="s.meta.seedColor"
-                class="material-symbols-outlined seed"
-                :title="t('settings.skinSeedAdapted')"
-                >colorize</span
-              >
-              <span class="ver tabular-nums">{{ s.meta.version }}</span>
-            </span>
-            <button
-              class="lm-icon-btn small danger skin-del"
-              :class="{ confirming: confirmDeleteSkin === s.id }"
-              :title="
-                confirmDeleteSkin === s.id
-                  ? t('settings.skinDeleteConfirm')
-                  : t('settings.skinDelete')
-              "
-              @click.stop="onDeleteSkin(s.id)"
-            >
-              <span class="material-symbols-outlined">
-                {{ confirmDeleteSkin === s.id ? "check" : "close" }}
-              </span>
-            </button>
-          </div>
-          <button class="skin-card import" @click="importSkin">
-            <span class="material-symbols-outlined">add</span>
-            <span class="skin-name">{{ t("settings.skinImport") }}</span>
-          </button>
-        </div>
-        <div v-if="settings.activeSkin" class="actions skin-actions">
-          <button class="lm-btn lm-btn--text" @click="skins.activate('')">
-            <span class="material-symbols-outlined">restart_alt</span>
-            {{ t("settings.skinRestoreDefault") }}
-          </button>
-        </div>
-      </div>
-      <p class="hint">{{ t("settings.skinsHint") }}</p>
-
-      <div class="row">
-        <div class="row-label">
-          <span>{{ t("settings.language") }}</span>
-        </div>
-        <div class="segmented">
-          <button
-            class="seg"
-            :class="{ active: settings.lang === 'zh' }"
-            @click="settings.lang = 'zh'"
-          >
-            简体中文
-          </button>
-          <button
-            class="seg"
-            :class="{ active: settings.lang === 'en' }"
-            @click="settings.lang = 'en'"
-          >
-            English
-          </button>
-        </div>
-      </div>
-
-      <div class="row">
-        <div class="row-label">
-          <span>{{ t("settings.colorScheme") }}</span>
-        </div>
-        <div class="swatches" :class="{ disabled: seedLocked }">
-          <button
-            v-for="c in COLOR_SEEDS"
-            :key="c.key"
-            class="swatch"
-            :class="{ active: settings.seedColor.toLowerCase() === c.hex.toLowerCase() }"
-            :style="{ '--sw': c.hex }"
-            :title="t('settings.colorSeed_' + c.key)"
-            :aria-label="t('settings.colorSeed_' + c.key)"
-            :disabled="seedLocked"
-            @click="pickSeed(c.hex)"
-          >
-            <span class="material-symbols-outlined">check</span>
-          </button>
-          <label
-            class="swatch custom"
-            :class="{ active: isCustomSeed }"
-            :style="{ '--sw': settings.seedColor }"
-            :title="t('settings.colorCustom')"
-          >
-            <span class="material-symbols-outlined">{{ isCustomSeed ? "check" : "colorize" }}</span>
-            <input
-              type="color"
-              :value="settings.seedColor"
-              :disabled="seedLocked"
-              @input="onCustomSeed"
-            />
-          </label>
-        </div>
-      </div>
-      <p class="hint">
-        {{ seedLocked ? t("settings.skinSeedLocked") : t("settings.colorSchemeHint") }}
-      </p>
-
-      <div class="row">
-        <div class="row-label">
-          <span>{{ t("settings.closeAction") }}</span>
-        </div>
-        <div class="segmented">
-          <button
-            class="seg"
-            :class="{ active: settings.closeToTray }"
-            @click="settings.closeToTray = true"
-          >
-            {{ t("settings.closeAction_tray") }}
-          </button>
-          <button
-            class="seg"
-            :class="{ active: !settings.closeToTray }"
-            @click="settings.closeToTray = false"
-          >
-            {{ t("settings.closeAction_quit") }}
-          </button>
-        </div>
-      </div>
-      <p class="hint">{{ t("settings.closeToTrayHint") }}</p>
-    </section>
-
-    <!-- 扫描目录 -->
-    <section v-if="activeSection === 'settings-library'" id="settings-library" class="card">
-      <h3>{{ t("settings.scanDirs") }}</h3>
-      <p class="hint">{{ t("settings.scanDirsHint") }}</p>
-
-      <div v-if="settings.scanDirs.length" class="dir-list">
-        <div v-for="(dir, i) in settings.scanDirs" :key="dir" class="dir-item">
-          <span class="material-symbols-outlined">folder</span>
-          <span class="dir-path" :title="dir">{{ dir }}</span>
-          <button class="lm-icon-btn small danger" @click="removeScanDir(i)">
-            <span class="material-symbols-outlined">close</span>
-          </button>
-        </div>
-      </div>
-      <div v-else class="notice">{{ t("settings.globalScanHint") }}</div>
-
-      <div class="actions">
-        <button class="lm-btn lm-btn--tonal" @click="addScanDir">
-          <span class="material-symbols-outlined">create_new_folder</span>
-          {{ t("settings.addScanDir") }}
-        </button>
-        <button v-if="settings.scanDirs.length" class="lm-btn lm-btn--text" @click="clearScanDirs">
-          {{ t("settings.clearScanDirs") }}
-        </button>
-      </div>
-    </section>
-
-    <!-- 体积过滤 -->
-    <section v-if="activeSection === 'settings-library'" class="card">
-      <h3>{{ t("settings.minSize") }}</h3>
-      <p class="hint">{{ t("settings.minSizeHint") }}</p>
-      <div class="row">
-        <m3e-slider :min="0" :max="100" @input="onSizeSlider">
-          <m3e-slider-thumb :value="sliderPos" />
-        </m3e-slider>
-        <span class="value tabular-nums">
-          {{ settings.minFileSizeMb > 0 ? sizeLabel : t("settings.minSizeOff") }}
-        </span>
-      </div>
-      <div class="presets">
-        <button
-          v-for="p in SIZE_PRESETS"
-          :key="p"
-          class="chip"
-          :class="{ active: settings.minFileSizeMb === p }"
-          @click="applySize(p)"
-        >
-          {{ p === 0 ? t("settings.minSizeOff") : `${p} MB` }}
-        </button>
-      </div>
-    </section>
-
-    <!-- 阅读 -->
-    <section v-if="activeSection === 'settings-library'" class="card">
-      <h3>{{ t("settings.reading") }}</h3>
-      <p class="hint">{{ t("settings.pdfModeHint") }}</p>
-      <div class="row">
-        <div class="row-label">
-          <span>{{ t("settings.pdfMode") }}</span>
-        </div>
-        <div class="segmented">
-          <button
-            v-for="m in ['single', 'dual', 'scroll'] as PdfReadMode[]"
-            :key="m"
-            class="seg"
-            :class="{ active: settings.pdfReadMode === m }"
-            @click="settings.pdfReadMode = m"
-          >
-            {{ t("settings.pdfMode_" + m) }}
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <!-- FFmpeg -->
-    <section v-if="activeSection === 'settings-playback'" id="settings-playback" class="card">
-      <h3>{{ t("settings.ffmpeg") }}</h3>
-      <p class="hint">{{ t("settings.ffmpegHint") }}</p>
-
-      <div class="status" :class="ffmpeg?.available ? 'ok' : 'warn'">
-        <span class="material-symbols-outlined">
-          {{ ffmpeg?.available ? "check_circle" : "error" }}
-        </span>
-        <div class="status-text">
-          <strong>
-            {{ ffmpeg?.available ? t("settings.ffmpegDetected") : t("settings.ffmpegMissing") }}
-          </strong>
-          <span v-if="ffmpeg?.available" class="mono">{{ ffmpeg.ffmpegPath }}</span>
-          <span v-if="ffmpeg?.version" class="version">{{ ffmpeg.version }}</span>
-          <span v-if="ffmpeg?.available" class="source">
-            {{
-              ffmpeg.source === "override"
-                ? t("settings.ffmpegFromOverride")
-                : t("settings.ffmpegFromPath")
-            }}
-          </span>
-        </div>
-      </div>
-
-      <div v-if="settings.ffmpegDir" class="dir-item override">
-        <span class="material-symbols-outlined">tune</span>
-        <span class="dir-path" :title="settings.ffmpegDir">{{ settings.ffmpegDir }}</span>
-      </div>
-
-      <div class="actions">
-        <button class="lm-btn lm-btn--tonal" @click="chooseFfmpegDir">
-          <span class="material-symbols-outlined">folder_open</span>
-          {{ t("settings.ffmpegChoose") }}
-        </button>
-        <button class="lm-btn lm-btn--outlined" :disabled="checking" @click="recheckFfmpeg">
-          <span class="material-symbols-outlined">refresh</span>
-          {{ t("settings.ffmpegRecheck") }}
-        </button>
-        <button v-if="settings.ffmpegDir" class="lm-btn lm-btn--text" @click="resetFfmpegDir">
-          {{ t("settings.ffmpegReset") }}
-        </button>
-        <button
-          v-if="!ffmpeg?.available"
-          class="lm-btn lm-btn--text"
-          @click="capabilities.openFfmpegDownloadPage()"
-        >
-          <span class="material-symbols-outlined">download</span>
-          {{ t("settings.ffmpegDownload") }}
-        </button>
-      </div>
-    </section>
-
-    <!-- 歌词 -->
-    <section v-if="activeSection === 'settings-playback'" class="card">
-      <h3>{{ t("settings.lyrics") }}</h3>
-      <label class="row switch-row">
-        <span class="row-label">{{ t("settings.wordLyrics") }}</span>
-        <m3e-switch :checked="settings.wordLyrics" @change="setSwitch('wordLyrics', $event)" />
-      </label>
-      <p class="hint">{{ t("settings.wordLyricsHint") }}</p>
-      <label class="row switch-row">
-        <span class="row-label">{{ t("settings.preciseLyrics") }}</span>
-        <m3e-switch
-          :checked="settings.preciseLyrics"
-          @change="setSwitch('preciseLyrics', $event)"
-        />
-      </label>
-      <p class="hint">{{ t("settings.preciseLyricsHint") }}</p>
-      <label class="row switch-row">
-        <span class="row-label">{{ t("settings.detectInstrumental") }}</span>
-        <m3e-switch
-          :checked="settings.detectInstrumental"
-          @change="setSwitch('detectInstrumental', $event)"
-        />
-      </label>
-      <p class="hint">{{ t("settings.detectInstrumentalHint") }}</p>
-      <div class="row">
-        <div class="row-label">
-          <span>{{ t("settings.lyricFont") }}</span>
-        </div>
-        <div class="presets inline">
-          <button
-            v-for="k in LYRIC_FONT_KEYS"
-            :key="k"
-            class="chip"
-            :class="{ active: settings.lyricFont === k }"
-            @click="settings.lyricFont = k"
-          >
-            {{ t("settings.lyricFont_" + k) }}
-          </button>
-        </div>
-      </div>
-      <div class="row">
-        <div class="row-label">
-          <span>{{ t("settings.lyricFontSize") }}</span>
-        </div>
-        <m3e-slider :min="16" :max="48" @input="onSliderInt($event, 'lyricFontSize')">
-          <m3e-slider-thumb :value="settings.lyricFontSize" />
-        </m3e-slider>
-        <span class="value tabular-nums">{{ settings.lyricFontSize }}px</span>
-      </div>
-      <div class="row">
-        <div class="row-label">
-          <span>{{ t("settings.lyricLineHeight") }}</span>
-        </div>
-        <m3e-slider :min="1.6" :max="3.2" :step="0.1" @input="onSliderLineHeight">
-          <m3e-slider-thumb :value="settings.lyricLineHeight" />
-        </m3e-slider>
-        <span class="value tabular-nums">{{ settings.lyricLineHeight.toFixed(1) }}</span>
-      </div>
-      <div class="row">
-        <div class="row-label">
-          <span>{{ t("settings.lyricLineGap") }}</span>
-        </div>
-        <m3e-slider :min="0" :max="64" @input="onSliderInt($event, 'lyricLineGap')">
-          <m3e-slider-thumb :value="settings.lyricLineGap" />
-        </m3e-slider>
-        <span class="value tabular-nums">{{ settings.lyricLineGap }}px</span>
-      </div>
-      <div class="row">
-        <div class="row-label">
-          <span>{{ t("settings.lyricTranslationSize") }}</span>
-        </div>
-        <m3e-slider
-          :min="40"
-          :max="120"
-          :step="5"
-          @input="onSliderInt($event, 'lyricTranslationSize')"
-        >
-          <m3e-slider-thumb :value="settings.lyricTranslationSize" />
-        </m3e-slider>
-        <span class="value tabular-nums">{{ settings.lyricTranslationSize }}%</span>
-      </div>
-      <div class="row">
-        <div class="row-label">
-          <span>{{ t("settings.lyricTranslationGap") }}</span>
-        </div>
-        <m3e-slider :min="0" :max="24" @input="onSliderInt($event, 'lyricTranslationGap')">
-          <m3e-slider-thumb :value="settings.lyricTranslationGap" />
-        </m3e-slider>
-        <span class="value tabular-nums">{{ settings.lyricTranslationGap }}px</span>
-      </div>
-    </section>
-    <!-- 桌面歌词 -->
-    <section v-if="activeSection === 'settings-playback'" class="card">
-      <h3>{{ t("settings.desktopLyrics") }}</h3>
-      <p class="hint">{{ t("settings.desktopLyricsHint") }}</p>
-
-      <label class="row switch-row">
-        <span class="row-label">{{ t("settings.desktopLyricsEnable") }}</span>
-        <m3e-switch
-          :checked="settings.desktopLyricsEnabled"
-          @change="setSwitch('desktopLyricsEnabled', $event)"
-        />
-      </label>
-
-      <label class="row switch-row">
-        <span class="row-label">{{ t("settings.desktopLyricsShowNext") }}</span>
-        <m3e-switch
-          :checked="settings.desktopLyricsShowNext"
-          @change="setSwitch('desktopLyricsShowNext', $event)"
-        />
-      </label>
-
-      <label class="row switch-row">
-        <span class="row-label">{{ t("settings.desktopLyricsShowTranslation") }}</span>
-        <m3e-switch
-          :checked="settings.desktopLyricsShowTranslation"
-          @change="setSwitch('desktopLyricsShowTranslation', $event)"
-        />
-      </label>
-
-      <div class="row">
-        <div class="row-label">
-          <span>{{ t("settings.desktopLyricsToolbar") }}</span>
-        </div>
-        <div class="segmented">
-          <button
-            v-for="m in ['click', 'always'] as DesktopLyricsToolbar[]"
-            :key="m"
-            class="seg"
-            :class="{ active: settings.desktopLyricsToolbar === m }"
-            @click="settings.desktopLyricsToolbar = m"
-          >
-            {{ t("settings.desktopLyricsToolbar_" + m) }}
-          </button>
-        </div>
-      </div>
-      <div class="row">
-        <div class="row-label">
-          <span>{{ t("settings.desktopLyricsDoubleClick") }}</span>
-        </div>
-        <div class="segmented">
-          <button
-            v-for="m in ['none', 'toggle'] as DesktopLyricsDoubleClick[]"
-            :key="m"
-            class="seg"
-            :class="{ active: settings.desktopLyricsDoubleClick === m }"
-            @click="settings.desktopLyricsDoubleClick = m"
-          >
-            {{ t("settings.desktopLyricsDoubleClick_" + m) }}
-          </button>
-        </div>
-      </div>
-
-      <div class="row">
-        <div class="row-label">
-          <span>{{ t("settings.desktopLyricsFontSize") }}</span>
-        </div>
-        <m3e-slider :min="16" :max="64" @input="onSliderInt($event, 'desktopLyricsFontSize')">
-          <m3e-slider-thumb :value="settings.desktopLyricsFontSize" />
-        </m3e-slider>
-        <span class="value tabular-nums">{{ settings.desktopLyricsFontSize }}px</span>
-      </div>
-
-      <div class="row">
-        <div class="row-label">
-          <span>{{ t("settings.desktopLyricsOpacity") }}</span>
-        </div>
-        <m3e-slider
-          :min="30"
-          :max="100"
-          :step="5"
-          @input="onSliderInt($event, 'desktopLyricsOpacity')"
-        >
-          <m3e-slider-thumb :value="settings.desktopLyricsOpacity" />
-        </m3e-slider>
-        <span class="value tabular-nums">{{ settings.desktopLyricsOpacity }}%</span>
-      </div>
-
-      <div class="row">
-        <div class="row-label">
-          <span>{{ t("settings.desktopLyricsAnimation") }}</span>
-        </div>
-        <div class="presets inline">
-          <button
-            v-for="k in LYRICS_ANIMATIONS"
-            :key="k"
-            class="chip"
-            :class="{ active: settings.desktopLyricsAnimation === k }"
-            @click="settings.desktopLyricsAnimation = k"
-          >
-            {{ t("settings.desktopLyricsAnim_" + k) }}
-          </button>
-        </div>
-      </div>
-
-      <label class="row switch-row">
-        <span class="row-label">{{ t("settings.desktopLyricsLocked") }}</span>
-        <m3e-switch
-          :checked="settings.desktopLyricsLocked"
-          @change="setSwitch('desktopLyricsLocked', $event)"
-        />
-      </label>
-
-      <label class="row switch-row">
-        <span class="row-label">{{ t("settings.desktopLyricsClickThrough") }}</span>
-        <m3e-switch
-          :checked="settings.desktopLyricsClickThrough"
-          @change="setSwitch('desktopLyricsClickThrough', $event)"
-        />
-      </label>
-      <p class="hint">{{ t("settings.desktopLyricsClickThroughHint") }}</p>
-
-      <label class="row switch-row">
-        <span class="row-label">{{ t("settings.desktopLyricsAlwaysOnTop") }}</span>
-        <m3e-switch
-          :checked="settings.desktopLyricsAlwaysOnTop"
-          @change="setSwitch('desktopLyricsAlwaysOnTop', $event)"
-        />
-      </label>
-
-      <div class="actions">
-        <button class="lm-btn lm-btn--outlined" @click="resetDesktopLyricsBounds">
-          {{ t("settings.desktopLyricsResetPos") }}
-        </button>
-      </div>
-    </section>
-
-    <!-- 播放器 -->
-    <section v-if="activeSection === 'settings-playback'" class="card">
-      <h3>{{ t("settings.playback") }}</h3>
-      <p class="hint">{{ t("settings.playerBgHint") }}</p>
-      <div class="row">
-        <div class="row-label">
-          <span>{{ t("settings.playerBg") }}</span>
-        </div>
-        <div class="segmented">
-          <button
-            v-for="m in ['animated', 'image', 'off'] as PlayerBgMode[]"
-            :key="m"
-            class="seg"
-            :class="{ active: settings.playerBg === m }"
-            @click="settings.playerBg = m"
-          >
-            {{ t("settings.playerBg_" + m) }}
-          </button>
-        </div>
-      </div>
-      <div class="row">
-        <div class="row-label">
-          <span>{{ t("settings.musicViewMode") }}</span>
-        </div>
-        <div class="segmented">
-          <button
-            v-for="m in ['grid', 'list'] as const"
-            :key="m"
-            class="seg"
-            :class="{ active: settings.musicViewMode === m }"
-            @click="settings.musicViewMode = m"
-          >
-            {{ t("settings.musicViewMode_" + m) }}
-          </button>
-        </div>
-      </div>
-      <p class="hint">{{ t("player.hotkeysHint") }}</p>
-      <label class="row switch-row">
-        <span class="row-label">{{ t("settings.lyricBlur") }}</span>
-        <m3e-switch :checked="settings.lyricBlur" @change="setSwitch('lyricBlur', $event)" />
-      </label>
-    </section>
-
-    <!-- 音效 -->
-    <section v-if="activeSection === 'settings-playback'" class="card">
-      <h3>{{ t("settings.audioEffects") }}</h3>
-      <p class="hint">{{ t("settings.audioEffectsHint") }}</p>
-      <div class="row">
-        <div class="row-label">
-          <span>{{ t("settings.shareCodePreference") }}</span>
-        </div>
-        <div class="segmented">
-          <button
-            v-for="mode in ['chinese', 'original', 'both'] as ShareCodePreference[]"
-            :key="mode"
-            class="seg"
-            :class="{ active: settings.shareCodePreference === mode }"
-            @click="settings.shareCodePreference = mode"
-          >
-            {{ t("settings.shareCodePreference_" + mode) }}
-          </button>
-        </div>
-      </div>
-      <p class="hint">{{ t("settings.shareCodePreferenceHint") }}</p>
-      <AudioEffectsPanel />
-    </section>
-
-    <!-- 实验性：在线音乐 -->
-    <section v-if="activeSection === 'settings-online'" id="settings-online" class="card">
-      <h3>{{ t("settings.online") }}</h3>
-      <p class="hint">{{ t("settings.onlineHint") }}</p>
-      <label class="row switch-row">
-        <span class="row-label">{{ t("settings.onlineEnable") }}</span>
-        <m3e-switch
-          :checked="settings.enableOnlineMusic"
-          @change="setSwitch('enableOnlineMusic', $event)"
-        />
-      </label>
-      <label class="row switch-row">
-        <span class="row-label">{{ t("settings.neteaseEnable") }}</span>
-        <m3e-switch
-          :checked="settings.neteaseEnabled"
-          @change="setSwitch('neteaseEnabled', $event)"
-        />
-      </label>
-      <p class="hint">{{ t("settings.neteaseHint") }}</p>
-      <div v-if="settings.enableOnlineMusic" class="row">
-        <div class="row-label">
-          <span>{{ t("settings.onlineServer") }}</span>
-        </div>
-        <div class="segmented">
-          <button
-            v-for="s in ['netease'] as const"
-            :key="s"
-            class="seg"
-            :class="{ active: settings.musicServer === s }"
-            @click="settings.musicServer = s"
-          >
-            {{ t("settings.onlineServer_" + s) }}
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <!-- 在线小说 -->
-    <section v-if="activeSection === 'settings-online'" class="card">
-      <h3>{{ t("settings.onlineNovel") }}</h3>
-      <p class="hint">{{ t("settings.onlineNovelHint") }}</p>
-      <label class="row switch-row">
-        <span class="row-label">{{ t("settings.onlineNovelEnable") }}</span>
-        <m3e-switch
-          :checked="settings.onlineNovelEnabled"
-          @change="setSwitch('onlineNovelEnabled', $event)"
-        />
-      </label>
-      <label class="row switch-row">
-        <span class="row-label">是否启用笔趣阁小说阅读</span>
-        <m3e-switch
-          :checked="settings.bqgNovelEnabled"
-          @change="setSwitch('bqgNovelEnabled', $event)"
-        />
-      </label>
-      <div v-if="settings.onlineNovelEnabled" class="row">
-        <div class="row-label">
-          <span>{{ t("settings.wenku8Node") }}</span>
-        </div>
-        <div class="segmented">
-          <button
-            v-for="n in ['cc', 'net'] as const"
-            :key="n"
-            class="seg"
-            :class="{ active: settings.wenku8Node === n }"
-            @click="settings.wenku8Node = n"
-          >
-            {{ t("settings.wenku8Node_" + n) }}
-          </button>
-        </div>
-      </div>
-      <div v-if="settings.onlineNovelEnabled" class="row">
-        <div class="row-label">
-          <span>{{ t("settings.novelCharset") }}</span>
-        </div>
-        <div class="segmented">
-          <button
-            v-for="c in ['gbk', 'big5'] as const"
-            :key="c"
-            class="seg"
-            :class="{ active: settings.novelCharset === c }"
-            @click="settings.novelCharset = c"
-          >
-            {{ t("settings.novelCharset_" + c) }}
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <!-- 在线番剧 -->
-    <section v-if="activeSection === 'settings-online'" class="card">
-      <h3>{{ t("settings.onlineAnime") }}</h3>
-      <p class="hint">{{ t("settings.onlineAnimeHint") }}</p>
-      <label class="row switch-row">
-        <span class="row-label">{{ t("settings.onlineAnimeEnable") }}</span>
-        <m3e-switch
-          :checked="settings.onlineAnimeEnabled"
-          @change="setSwitch('onlineAnimeEnabled', $event)"
-        />
-      </label>
-      <template v-if="settings.onlineAnimeEnabled">
-        <p class="hint">{{ t("settings.bangumiHint") }}</p>
-        <div class="dav-form">
-          <div class="field">
-            <label>{{ t("settings.bangumiTokenLabel") }}</label>
-            <div class="token-line">
-              <input
-                v-model="bangumiTokenDraft"
-                type="password"
-                spellcheck="false"
-                autocomplete="off"
-                :placeholder="t('settings.bangumiTokenPlaceholder')"
-              />
-              <button
-                class="lm-btn lm-btn--filled"
-                :disabled="bangumiCollect.authState === 'checking' || !bangumiTokenDraft.trim()"
-                @click="connectBangumi"
-              >
-                {{ t("settings.bangumiConnect") }}
-              </button>
-              <button
-                v-if="bangumiCollect.authorized"
-                class="lm-btn lm-btn--text"
-                @click="disconnectBangumi"
-              >
-                {{ t("settings.bangumiDisconnect") }}
-              </button>
-            </div>
-            <p v-if="bangumiCollect.authorized" class="token-state ok">
-              {{
-                t("settings.bangumiConnected").replace(
-                  "{u}",
-                  bangumiCollect.user?.nickname || settings.bangumiUsername,
-                )
-              }}
-            </p>
-            <p v-else-if="bangumiCollect.authError" class="token-state err">
-              {{ bangumiCollect.authError }}
-            </p>
-            <p class="hint">
-              {{ t("settings.bangumiTokenHelp") }}
-              <button class="link-inline" @click="openBangumiTokenPage">
-                {{ t("settings.bangumiTokenLink") }}
-              </button>
-            </p>
-          </div>
-        </div>
-      </template>
-    </section>
-
-    <!-- 在线 Pixiv -->
-    <section v-if="activeSection === 'settings-online'" class="card">
-      <h3>{{ t("settings.onlinePixivEnabled") }}</h3>
-      <p class="hint">{{ t("settings.onlinePixivHint") }}</p>
-      <label class="row switch-row">
-        <span class="row-label">{{ t("settings.onlinePixivEnabled") }}</span>
-        <m3e-switch
-          :checked="settings.onlinePixivEnabled"
-          @change="setSwitch('onlinePixivEnabled', $event)"
-        />
-      </label>
-      <template v-if="settings.onlinePixivEnabled">
         <div class="row">
           <div class="row-label">
-            <span>{{ t("settings.pixivQuality") }}</span>
+            <span>{{ t("settings.theme") }}</span>
           </div>
           <div class="segmented">
             <button
-              v-for="q in ['squareMedium', 'medium', 'large', 'original'] as const"
-              :key="q"
+              v-for="mode in ['system', 'light', 'dark'] as ThemeMode[]"
+              :key="mode"
               class="seg"
-              :class="{ active: settings.pixivImageQuality === q }"
-              @click="settings.pixivImageQuality = q"
+              :class="{ active: settings.theme === mode }"
+              :disabled="themeLocked"
+              @click="setTheme(mode)"
             >
-              {{ t("settings.pixivQuality_" + q) }}
+              {{ t("settings." + mode) }}
             </button>
           </div>
         </div>
-        <p class="hint">{{ t("settings.pixivRefreshTokenHint") }}</p>
-        <div class="dav-form">
-          <div class="field">
-            <label>{{ t("settings.pixivRefreshTokenLabel") }}</label>
-            <input
-              v-model="settings.pixivRefreshToken"
-              type="password"
-              spellcheck="false"
-              autocomplete="off"
-            />
-          </div>
-        </div>
-      </template>
-    </section>
+        <p v-if="themeLockHint" class="hint">{{ themeLockHint }}</p>
 
-    <!-- DanDanPlay 弹幕 -->
-    <section v-if="activeSection === 'settings-online' && settings.onlineAnimeEnabled" class="card">
-      <h3>{{ t("settings.danmaku") }}</h3>
-      <p class="hint">{{ t("settings.danmakuHint") }}</p>
-      <label class="row switch-row">
-        <span class="row-label">{{ t("settings.danmakuEnable") }}</span>
-        <m3e-switch
-          :checked="settings.danmakuEnabled"
-          @change="setSwitch('danmakuEnabled', $event)"
-        />
-      </label>
-      <template v-if="settings.danmakuEnabled">
-        <div class="dav-form">
-          <div class="field">
-            <label>{{ t("settings.danmakuAppId") }}</label>
-            <input
-              v-model="settings.dandanAppId"
-              type="text"
-              spellcheck="false"
-              autocomplete="off"
-            />
+        <!-- 皮肤 -->
+        <div class="row column">
+          <div class="row-label">
+            <span>{{ t("settings.skins") }}</span>
           </div>
-          <div class="field">
-            <label>{{ t("settings.danmakuAppSecret") }}</label>
-            <input
-              v-model="settings.dandanAppSecret"
-              type="password"
-              spellcheck="false"
-              autocomplete="off"
-            />
-          </div>
-        </div>
-        <div class="dav-grid">
-          <label class="field">
-            <span>{{ t("settings.danmakuOpacity") }} {{ settings.danmakuOpacity }}%</span>
-            <m3e-slider
-              :min="10"
-              :max="100"
-              :step="5"
-              @input="onSliderInt($event, 'danmakuOpacity')"
+          <div class="skin-list">
+            <div
+              class="skin-card"
+              :class="{ active: !settings.activeSkin }"
+              @click="skins.activate('')"
             >
-              <m3e-slider-thumb :value="settings.danmakuOpacity" />
-            </m3e-slider>
-          </label>
-          <label class="field">
-            <span>{{ t("settings.danmakuFontSize") }} {{ settings.danmakuFontSize }}px</span>
-            <m3e-slider :min="12" :max="48" @input="onSliderInt($event, 'danmakuFontSize')">
-              <m3e-slider-thumb :value="settings.danmakuFontSize" />
-            </m3e-slider>
-          </label>
-          <label class="field">
-            <span>{{ t("settings.danmakuArea") }} {{ settings.danmakuArea }}%</span>
-            <m3e-slider :min="20" :max="100" :step="5" @input="onSliderInt($event, 'danmakuArea')">
-              <m3e-slider-thumb :value="settings.danmakuArea" />
-            </m3e-slider>
-          </label>
-          <label class="field">
-            <span>{{ t("settings.danmakuSpeed") }} {{ settings.danmakuSpeed }}</span>
-            <m3e-slider :min="1" :max="10" @input="onSliderInt($event, 'danmakuSpeed')">
-              <m3e-slider-thumb :value="settings.danmakuSpeed" />
-            </m3e-slider>
-          </label>
-        </div>
-        <div class="dav-grid">
-          <label class="field">
-            <span>{{ t("settings.danmakuTimeOffset") }}</span>
-            <input
-              :value="(settings.danmakuTimeOffsetMs / 1000).toFixed(1)"
-              type="number"
-              step="0.1"
-              min="-30"
-              max="30"
-              @change="onDanmakuOffsetChange"
-            />
-          </label>
-          <label class="row switch-row">
-            <span class="row-label">{{ t("settings.danmakuAntiOverlap") }}</span>
-            <m3e-switch
-              :checked="settings.danmakuAntiOverlap"
-              @change="setSwitch('danmakuAntiOverlap', $event)"
-            />
-          </label>
-        </div>
-      </template>
-    </section>
-
-    <!-- WebDAV -->
-    <section v-if="activeSection === 'settings-sync'" id="settings-sync" class="card">
-      <h3>{{ t("settings.webdav") }}</h3>
-      <p class="hint">{{ t("settings.webdavHint") }}</p>
-
-      <label class="row switch-row">
-        <span class="row-label">{{ t("settings.webdavEnable") }}</span>
-        <m3e-switch
-          :checked="settings.webdavEnabled"
-          @change="setSwitch('webdavEnabled', $event)"
-        />
-      </label>
-
-      <div v-if="settings.webdavEnabled" class="dav-form">
-        <div class="field">
-          <label>{{ t("settings.webdavUrl") }}</label>
-          <input
-            v-model="settings.webdavUrl"
-            type="url"
-            :placeholder="t('settings.webdavUrlPlaceholder')"
-            spellcheck="false"
-            autocomplete="off"
-          />
-        </div>
-        <div class="dav-grid">
-          <div class="field">
-            <label>{{ t("settings.webdavUser") }}</label>
-            <input
-              v-model="settings.webdavUser"
-              type="text"
-              spellcheck="false"
-              autocomplete="off"
-            />
-          </div>
-          <div class="field">
-            <label>{{ t("settings.webdavPass") }}</label>
-            <div class="pass-wrap">
-              <input
-                v-model="settings.webdavPass"
-                :type="showDavPass ? 'text' : 'password'"
-                spellcheck="false"
-                autocomplete="new-password"
-              />
+              <span class="skin-dot" :style="{ '--sw': settings.seedColor }"></span>
+              <span class="skin-name">{{ t("settings.skinDefault") }}</span>
+            </div>
+            <div
+              v-for="s in skins.list"
+              :key="s.id"
+              class="skin-card"
+              :class="{
+                active: settings.activeSkin === s.id,
+                broken: s.status === 'broken',
+              }"
+              :title="skinCardTitle(s)"
+              @click="onSkinCard(s)"
+            >
+              <span
+                class="skin-dot"
+                :style="{ '--sw': s.meta?.accent || 'var(--md-sys-color-primary)' }"
+              ></span>
+              <span class="skin-name">{{ s.meta?.name ?? s.id }}</span>
+              <span v-if="s.meta" class="skin-badges">
+                <span
+                  class="fmt"
+                  :class="`v${s.meta.formatVersion}`"
+                  :title="t('settings.skinFmtTitle').replace('{v}', String(s.meta.formatVersion))"
+                  >v{{ s.meta.formatVersion }}</span
+                >
+                <span
+                  v-if="s.meta.hasBackground"
+                  class="material-symbols-outlined mode"
+                  :title="t('settings.skinHasBackground')"
+                  >wallpaper</span
+                >
+                <span
+                  v-if="s.meta.hasIcons"
+                  class="material-symbols-outlined mode"
+                  :title="t('settings.skinHasIcons')"
+                  >interests</span
+                >
+                <span class="material-symbols-outlined mode" :title="s.meta.modes.join(' / ')">{{
+                  modeIcon(s.meta.modes)
+                }}</span>
+                <span
+                  v-if="s.meta.seedColor"
+                  class="material-symbols-outlined seed"
+                  :title="t('settings.skinSeedAdapted')"
+                  >colorize</span
+                >
+                <span class="ver tabular-nums">{{ s.meta.version }}</span>
+              </span>
               <button
-                class="lm-icon-btn small"
-                :title="showDavPass ? 'hide' : 'show'"
-                @click="showDavPass = !showDavPass"
+                class="lm-icon-btn small danger skin-del"
+                :class="{ confirming: confirmDeleteSkin === s.id }"
+                :title="
+                  confirmDeleteSkin === s.id
+                    ? t('settings.skinDeleteConfirm')
+                    : t('settings.skinDelete')
+                "
+                @click.stop="onDeleteSkin(s.id)"
               >
                 <span class="material-symbols-outlined">
-                  {{ showDavPass ? "visibility_off" : "visibility" }}
+                  {{ confirmDeleteSkin === s.id ? "check" : "close" }}
                 </span>
               </button>
             </div>
+            <button class="skin-card import" @click="importSkin">
+              <span class="material-symbols-outlined">add</span>
+              <span class="skin-name">{{ t("settings.skinImport") }}</span>
+            </button>
+          </div>
+          <div v-if="settings.activeSkin" class="actions skin-actions">
+            <button class="lm-btn lm-btn--text" @click="skins.activate('')">
+              <span class="material-symbols-outlined">restart_alt</span>
+              {{ t("settings.skinRestoreDefault") }}
+            </button>
+          </div>
+        </div>
+        <p class="hint">{{ t("settings.skinsHint") }}</p>
+
+        <div class="row">
+          <div class="row-label">
+            <span>{{ t("settings.language") }}</span>
+          </div>
+          <div class="segmented">
+            <button
+              class="seg"
+              :class="{ active: settings.lang === 'zh' }"
+              @click="settings.lang = 'zh'"
+            >
+              简体中文
+            </button>
+            <button
+              class="seg"
+              :class="{ active: settings.lang === 'en' }"
+              @click="settings.lang = 'en'"
+            >
+              English
+            </button>
           </div>
         </div>
 
-        <div v-if="davResult" class="status" :class="davResult.ok ? 'ok' : 'warn'">
+        <div class="row">
+          <div class="row-label">
+            <span>{{ t("settings.colorScheme") }}</span>
+          </div>
+          <div class="swatches" :class="{ disabled: seedLocked }">
+            <button
+              v-for="c in COLOR_SEEDS"
+              :key="c.key"
+              class="swatch"
+              :class="{ active: settings.seedColor.toLowerCase() === c.hex.toLowerCase() }"
+              :style="{ '--sw': c.hex }"
+              :title="t('settings.colorSeed_' + c.key)"
+              :aria-label="t('settings.colorSeed_' + c.key)"
+              :disabled="seedLocked"
+              @click="pickSeed(c.hex)"
+            >
+              <span class="material-symbols-outlined">check</span>
+            </button>
+            <label
+              class="swatch custom"
+              :class="{ active: isCustomSeed }"
+              :style="{ '--sw': settings.seedColor }"
+              :title="t('settings.colorCustom')"
+            >
+              <span class="material-symbols-outlined">{{
+                isCustomSeed ? "check" : "colorize"
+              }}</span>
+              <input
+                type="color"
+                :value="settings.seedColor"
+                :disabled="seedLocked"
+                @input="onCustomSeed"
+              />
+            </label>
+          </div>
+        </div>
+        <p class="hint">
+          {{ seedLocked ? t("settings.skinSeedLocked") : t("settings.colorSchemeHint") }}
+        </p>
+
+        <div class="row">
+          <div class="row-label">
+            <span>{{ t("settings.closeAction") }}</span>
+          </div>
+          <div class="segmented">
+            <button
+              class="seg"
+              :class="{ active: settings.closeToTray }"
+              @click="settings.closeToTray = true"
+            >
+              {{ t("settings.closeAction_tray") }}
+            </button>
+            <button
+              class="seg"
+              :class="{ active: !settings.closeToTray }"
+              @click="settings.closeToTray = false"
+            >
+              {{ t("settings.closeAction_quit") }}
+            </button>
+          </div>
+        </div>
+        <p class="hint">{{ t("settings.closeToTrayHint") }}</p>
+      </div>
+    </m3e-card>
+
+    <!-- 扫描目录 -->
+    <m3e-card
+      v-if="activeSection === 'settings-library'"
+      id="settings-library"
+      class="card"
+      variant="outlined"
+    >
+      <div slot="content">
+        <h3>{{ t("settings.scanDirs") }}</h3>
+        <p class="hint">{{ t("settings.scanDirsHint") }}</p>
+
+        <div v-if="settings.scanDirs.length" class="dir-list">
+          <div v-for="(dir, i) in settings.scanDirs" :key="dir" class="dir-item">
+            <span class="material-symbols-outlined">folder</span>
+            <span class="dir-path" :title="dir">{{ dir }}</span>
+            <button class="lm-icon-btn small danger" @click="removeScanDir(i)">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+        </div>
+        <div v-else class="notice">{{ t("settings.globalScanHint") }}</div>
+
+        <div class="actions">
+          <button class="lm-btn lm-btn--tonal" @click="addScanDir">
+            <span class="material-symbols-outlined">create_new_folder</span>
+            {{ t("settings.addScanDir") }}
+          </button>
+          <button
+            v-if="settings.scanDirs.length"
+            class="lm-btn lm-btn--text"
+            @click="clearScanDirs"
+          >
+            {{ t("settings.clearScanDirs") }}
+          </button>
+        </div>
+      </div>
+    </m3e-card>
+
+    <!-- 体积过滤 -->
+    <m3e-card v-if="activeSection === 'settings-library'" class="card" variant="outlined">
+      <div slot="content">
+        <h3>{{ t("settings.minSize") }}</h3>
+        <p class="hint">{{ t("settings.minSizeHint") }}</p>
+        <div class="row">
+          <m3e-slider :min="0" :max="100" @input="onSizeSlider">
+            <m3e-slider-thumb :value="sliderPos" />
+          </m3e-slider>
+          <span class="value tabular-nums">
+            {{ settings.minFileSizeMb > 0 ? sizeLabel : t("settings.minSizeOff") }}
+          </span>
+        </div>
+        <div class="presets">
+          <button
+            v-for="p in SIZE_PRESETS"
+            :key="p"
+            class="chip"
+            :class="{ active: settings.minFileSizeMb === p }"
+            @click="applySize(p)"
+          >
+            {{ p === 0 ? t("settings.minSizeOff") : `${p} MB` }}
+          </button>
+        </div>
+      </div>
+    </m3e-card>
+
+    <!-- 阅读 -->
+    <m3e-card v-if="activeSection === 'settings-library'" class="card" variant="outlined">
+      <div slot="content">
+        <h3>{{ t("settings.reading") }}</h3>
+        <p class="hint">{{ t("settings.pdfModeHint") }}</p>
+        <div class="row">
+          <div class="row-label">
+            <span>{{ t("settings.pdfMode") }}</span>
+          </div>
+          <div class="segmented">
+            <button
+              v-for="m in ['single', 'dual', 'scroll'] as PdfReadMode[]"
+              :key="m"
+              class="seg"
+              :class="{ active: settings.pdfReadMode === m }"
+              @click="settings.pdfReadMode = m"
+            >
+              {{ t("settings.pdfMode_" + m) }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </m3e-card>
+
+    <!-- FFmpeg -->
+    <m3e-card
+      v-if="activeSection === 'settings-playback'"
+      id="settings-playback"
+      class="card"
+      variant="outlined"
+    >
+      <div slot="content">
+        <h3>{{ t("settings.ffmpeg") }}</h3>
+        <p class="hint">{{ t("settings.ffmpegHint") }}</p>
+
+        <div class="status" :class="ffmpeg?.available ? 'ok' : 'warn'">
           <span class="material-symbols-outlined">
-            {{ davResult.ok ? "check_circle" : "error" }}
+            {{ ffmpeg?.available ? "check_circle" : "error" }}
           </span>
           <div class="status-text">
             <strong>
-              {{ davResult.ok ? t("settings.webdavOk") : t("settings.webdavFail") }}
+              {{ ffmpeg?.available ? t("settings.ffmpegDetected") : t("settings.ffmpegMissing") }}
             </strong>
-            <span v-if="!davResult.ok && davResult.error">{{ davResult.error }}</span>
+            <span v-if="ffmpeg?.available" class="mono">{{ ffmpeg.ffmpegPath }}</span>
+            <span v-if="ffmpeg?.version" class="version">{{ ffmpeg.version }}</span>
+            <span v-if="ffmpeg?.available" class="source">
+              {{
+                ffmpeg.source === "override"
+                  ? t("settings.ffmpegFromOverride")
+                  : t("settings.ffmpegFromPath")
+              }}
+            </span>
           </div>
         </div>
 
+        <div v-if="settings.ffmpegDir" class="dir-item override">
+          <span class="material-symbols-outlined">tune</span>
+          <span class="dir-path" :title="settings.ffmpegDir">{{ settings.ffmpegDir }}</span>
+        </div>
+
         <div class="actions">
-          <button class="lm-btn lm-btn--tonal" :disabled="davTesting" @click="testWebDav">
-            <span class="material-symbols-outlined">cloud_sync</span>
-            {{ davTesting ? t("settings.webdavTesting") : t("settings.webdavTest") }}
+          <button class="lm-btn lm-btn--tonal" @click="chooseFfmpegDir">
+            <span class="material-symbols-outlined">folder_open</span>
+            {{ t("settings.ffmpegChoose") }}
           </button>
-          <button class="lm-btn lm-btn--outlined" @click="router.push('/webdav')">
-            <span class="material-symbols-outlined">cloud</span>
-            {{ t("settings.webdavOpen") }}
+          <button class="lm-btn lm-btn--outlined" :disabled="checking" @click="recheckFfmpeg">
+            <span class="material-symbols-outlined">refresh</span>
+            {{ t("settings.ffmpegRecheck") }}
+          </button>
+          <button v-if="settings.ffmpegDir" class="lm-btn lm-btn--text" @click="resetFfmpegDir">
+            {{ t("settings.ffmpegReset") }}
+          </button>
+          <button
+            v-if="!ffmpeg?.available"
+            class="lm-btn lm-btn--text"
+            @click="capabilities.openFfmpegDownloadPage()"
+          >
+            <span class="material-symbols-outlined">download</span>
+            {{ t("settings.ffmpegDownload") }}
           </button>
         </div>
       </div>
-    </section>
+    </m3e-card>
+
+    <!-- 歌词 -->
+    <m3e-card v-if="activeSection === 'settings-playback'" class="card" variant="outlined">
+      <div slot="content">
+        <h3>{{ t("settings.lyrics") }}</h3>
+        <label class="row switch-row">
+          <span class="row-label">{{ t("settings.wordLyrics") }}</span>
+          <m3e-switch :checked="settings.wordLyrics" @change="setSwitch('wordLyrics', $event)" />
+        </label>
+        <p class="hint">{{ t("settings.wordLyricsHint") }}</p>
+        <label class="row switch-row">
+          <span class="row-label">{{ t("settings.preciseLyrics") }}</span>
+          <m3e-switch
+            :checked="settings.preciseLyrics"
+            @change="setSwitch('preciseLyrics', $event)"
+          />
+        </label>
+        <p class="hint">{{ t("settings.preciseLyricsHint") }}</p>
+        <label class="row switch-row">
+          <span class="row-label">{{ t("settings.detectInstrumental") }}</span>
+          <m3e-switch
+            :checked="settings.detectInstrumental"
+            @change="setSwitch('detectInstrumental', $event)"
+          />
+        </label>
+        <p class="hint">{{ t("settings.detectInstrumentalHint") }}</p>
+        <div class="row">
+          <div class="row-label">
+            <span>{{ t("settings.lyricFont") }}</span>
+          </div>
+          <div class="presets inline">
+            <button
+              v-for="k in LYRIC_FONT_KEYS"
+              :key="k"
+              class="chip"
+              :class="{ active: settings.lyricFont === k }"
+              @click="settings.lyricFont = k"
+            >
+              {{ t("settings.lyricFont_" + k) }}
+            </button>
+          </div>
+        </div>
+        <div class="row">
+          <div class="row-label">
+            <span>{{ t("settings.lyricFontSize") }}</span>
+          </div>
+          <m3e-slider :min="16" :max="48" @input="onSliderInt($event, 'lyricFontSize')">
+            <m3e-slider-thumb :value="settings.lyricFontSize" />
+          </m3e-slider>
+          <span class="value tabular-nums">{{ settings.lyricFontSize }}px</span>
+        </div>
+        <div class="row">
+          <div class="row-label">
+            <span>{{ t("settings.lyricLineHeight") }}</span>
+          </div>
+          <m3e-slider :min="1.6" :max="3.2" :step="0.1" @input="onSliderLineHeight">
+            <m3e-slider-thumb :value="settings.lyricLineHeight" />
+          </m3e-slider>
+          <span class="value tabular-nums">{{ settings.lyricLineHeight.toFixed(1) }}</span>
+        </div>
+        <div class="row">
+          <div class="row-label">
+            <span>{{ t("settings.lyricLineGap") }}</span>
+          </div>
+          <m3e-slider :min="0" :max="64" @input="onSliderInt($event, 'lyricLineGap')">
+            <m3e-slider-thumb :value="settings.lyricLineGap" />
+          </m3e-slider>
+          <span class="value tabular-nums">{{ settings.lyricLineGap }}px</span>
+        </div>
+        <div class="row">
+          <div class="row-label">
+            <span>{{ t("settings.lyricTranslationSize") }}</span>
+          </div>
+          <m3e-slider
+            :min="40"
+            :max="120"
+            :step="5"
+            @input="onSliderInt($event, 'lyricTranslationSize')"
+          >
+            <m3e-slider-thumb :value="settings.lyricTranslationSize" />
+          </m3e-slider>
+          <span class="value tabular-nums">{{ settings.lyricTranslationSize }}%</span>
+        </div>
+        <div class="row">
+          <div class="row-label">
+            <span>{{ t("settings.lyricTranslationGap") }}</span>
+          </div>
+          <m3e-slider :min="0" :max="24" @input="onSliderInt($event, 'lyricTranslationGap')">
+            <m3e-slider-thumb :value="settings.lyricTranslationGap" />
+          </m3e-slider>
+          <span class="value tabular-nums">{{ settings.lyricTranslationGap }}px</span>
+        </div>
+      </div>
+    </m3e-card>
+    <!-- 桌面歌词 -->
+    <m3e-card v-if="activeSection === 'settings-playback'" class="card" variant="outlined">
+      <div slot="content">
+        <h3>{{ t("settings.desktopLyrics") }}</h3>
+        <p class="hint">{{ t("settings.desktopLyricsHint") }}</p>
+
+        <label class="row switch-row">
+          <span class="row-label">{{ t("settings.desktopLyricsEnable") }}</span>
+          <m3e-switch
+            :checked="settings.desktopLyricsEnabled"
+            @change="setSwitch('desktopLyricsEnabled', $event)"
+          />
+        </label>
+
+        <label class="row switch-row">
+          <span class="row-label">{{ t("settings.desktopLyricsShowNext") }}</span>
+          <m3e-switch
+            :checked="settings.desktopLyricsShowNext"
+            @change="setSwitch('desktopLyricsShowNext', $event)"
+          />
+        </label>
+
+        <label class="row switch-row">
+          <span class="row-label">{{ t("settings.desktopLyricsShowTranslation") }}</span>
+          <m3e-switch
+            :checked="settings.desktopLyricsShowTranslation"
+            @change="setSwitch('desktopLyricsShowTranslation', $event)"
+          />
+        </label>
+
+        <div class="row">
+          <div class="row-label">
+            <span>{{ t("settings.desktopLyricsToolbar") }}</span>
+          </div>
+          <div class="segmented">
+            <button
+              v-for="m in ['click', 'always'] as DesktopLyricsToolbar[]"
+              :key="m"
+              class="seg"
+              :class="{ active: settings.desktopLyricsToolbar === m }"
+              @click="settings.desktopLyricsToolbar = m"
+            >
+              {{ t("settings.desktopLyricsToolbar_" + m) }}
+            </button>
+          </div>
+        </div>
+        <div class="row">
+          <div class="row-label">
+            <span>{{ t("settings.desktopLyricsDoubleClick") }}</span>
+          </div>
+          <div class="segmented">
+            <button
+              v-for="m in ['none', 'toggle'] as DesktopLyricsDoubleClick[]"
+              :key="m"
+              class="seg"
+              :class="{ active: settings.desktopLyricsDoubleClick === m }"
+              @click="settings.desktopLyricsDoubleClick = m"
+            >
+              {{ t("settings.desktopLyricsDoubleClick_" + m) }}
+            </button>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="row-label">
+            <span>{{ t("settings.desktopLyricsFontSize") }}</span>
+          </div>
+          <m3e-slider :min="16" :max="64" @input="onSliderInt($event, 'desktopLyricsFontSize')">
+            <m3e-slider-thumb :value="settings.desktopLyricsFontSize" />
+          </m3e-slider>
+          <span class="value tabular-nums">{{ settings.desktopLyricsFontSize }}px</span>
+        </div>
+
+        <div class="row">
+          <div class="row-label">
+            <span>{{ t("settings.desktopLyricsOpacity") }}</span>
+          </div>
+          <m3e-slider
+            :min="30"
+            :max="100"
+            :step="5"
+            @input="onSliderInt($event, 'desktopLyricsOpacity')"
+          >
+            <m3e-slider-thumb :value="settings.desktopLyricsOpacity" />
+          </m3e-slider>
+          <span class="value tabular-nums">{{ settings.desktopLyricsOpacity }}%</span>
+        </div>
+
+        <div class="row">
+          <div class="row-label">
+            <span>{{ t("settings.desktopLyricsAnimation") }}</span>
+          </div>
+          <div class="presets inline">
+            <button
+              v-for="k in LYRICS_ANIMATIONS"
+              :key="k"
+              class="chip"
+              :class="{ active: settings.desktopLyricsAnimation === k }"
+              @click="settings.desktopLyricsAnimation = k"
+            >
+              {{ t("settings.desktopLyricsAnim_" + k) }}
+            </button>
+          </div>
+        </div>
+
+        <label class="row switch-row">
+          <span class="row-label">{{ t("settings.desktopLyricsLocked") }}</span>
+          <m3e-switch
+            :checked="settings.desktopLyricsLocked"
+            @change="setSwitch('desktopLyricsLocked', $event)"
+          />
+        </label>
+
+        <label class="row switch-row">
+          <span class="row-label">{{ t("settings.desktopLyricsClickThrough") }}</span>
+          <m3e-switch
+            :checked="settings.desktopLyricsClickThrough"
+            @change="setSwitch('desktopLyricsClickThrough', $event)"
+          />
+        </label>
+        <p class="hint">{{ t("settings.desktopLyricsClickThroughHint") }}</p>
+
+        <label class="row switch-row">
+          <span class="row-label">{{ t("settings.desktopLyricsAlwaysOnTop") }}</span>
+          <m3e-switch
+            :checked="settings.desktopLyricsAlwaysOnTop"
+            @change="setSwitch('desktopLyricsAlwaysOnTop', $event)"
+          />
+        </label>
+
+        <div class="actions">
+          <button class="lm-btn lm-btn--outlined" @click="resetDesktopLyricsBounds">
+            {{ t("settings.desktopLyricsResetPos") }}
+          </button>
+        </div>
+      </div>
+    </m3e-card>
+
+    <!-- 播放器 -->
+    <m3e-card v-if="activeSection === 'settings-playback'" class="card" variant="outlined">
+      <div slot="content">
+        <h3>{{ t("settings.playback") }}</h3>
+        <p class="hint">{{ t("settings.playerBgHint") }}</p>
+        <div class="row">
+          <div class="row-label">
+            <span>{{ t("settings.playerBg") }}</span>
+          </div>
+          <div class="segmented">
+            <button
+              v-for="m in ['animated', 'image', 'off'] as PlayerBgMode[]"
+              :key="m"
+              class="seg"
+              :class="{ active: settings.playerBg === m }"
+              @click="settings.playerBg = m"
+            >
+              {{ t("settings.playerBg_" + m) }}
+            </button>
+          </div>
+        </div>
+        <div class="row">
+          <div class="row-label">
+            <span>{{ t("settings.musicViewMode") }}</span>
+          </div>
+          <div class="segmented">
+            <button
+              v-for="m in ['grid', 'list'] as const"
+              :key="m"
+              class="seg"
+              :class="{ active: settings.musicViewMode === m }"
+              @click="settings.musicViewMode = m"
+            >
+              {{ t("settings.musicViewMode_" + m) }}
+            </button>
+          </div>
+        </div>
+        <p class="hint">{{ t("player.hotkeysHint") }}</p>
+        <label class="row switch-row">
+          <span class="row-label">{{ t("settings.lyricBlur") }}</span>
+          <m3e-switch :checked="settings.lyricBlur" @change="setSwitch('lyricBlur', $event)" />
+        </label>
+      </div>
+    </m3e-card>
+
+    <!-- 音效 -->
+    <m3e-card v-if="activeSection === 'settings-playback'" class="card" variant="outlined">
+      <div slot="content">
+        <h3>{{ t("settings.audioEffects") }}</h3>
+        <p class="hint">{{ t("settings.audioEffectsHint") }}</p>
+        <div class="row">
+          <div class="row-label">
+            <span>{{ t("settings.shareCodePreference") }}</span>
+          </div>
+          <div class="segmented">
+            <button
+              v-for="mode in ['chinese', 'original', 'both'] as ShareCodePreference[]"
+              :key="mode"
+              class="seg"
+              :class="{ active: settings.shareCodePreference === mode }"
+              @click="settings.shareCodePreference = mode"
+            >
+              {{ t("settings.shareCodePreference_" + mode) }}
+            </button>
+          </div>
+        </div>
+        <p class="hint">{{ t("settings.shareCodePreferenceHint") }}</p>
+        <AudioEffectsPanel />
+      </div>
+    </m3e-card>
+
+    <!-- 实验性：在线音乐 -->
+    <m3e-card
+      v-if="activeSection === 'settings-online'"
+      id="settings-online"
+      class="card"
+      variant="outlined"
+    >
+      <div slot="content">
+        <h3>{{ t("settings.online") }}</h3>
+        <p class="hint">{{ t("settings.onlineHint") }}</p>
+        <label class="row switch-row">
+          <span class="row-label">{{ t("settings.onlineEnable") }}</span>
+          <m3e-switch
+            :checked="settings.enableOnlineMusic"
+            @change="setSwitch('enableOnlineMusic', $event)"
+          />
+        </label>
+        <label class="row switch-row">
+          <span class="row-label">{{ t("settings.neteaseEnable") }}</span>
+          <m3e-switch
+            :checked="settings.neteaseEnabled"
+            @change="setSwitch('neteaseEnabled', $event)"
+          />
+        </label>
+        <p class="hint">{{ t("settings.neteaseHint") }}</p>
+        <div v-if="settings.enableOnlineMusic" class="row">
+          <div class="row-label">
+            <span>{{ t("settings.onlineServer") }}</span>
+          </div>
+          <div class="segmented">
+            <button
+              v-for="s in ['netease'] as const"
+              :key="s"
+              class="seg"
+              :class="{ active: settings.musicServer === s }"
+              @click="settings.musicServer = s"
+            >
+              {{ t("settings.onlineServer_" + s) }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </m3e-card>
+
+    <!-- 在线小说 -->
+    <m3e-card v-if="activeSection === 'settings-online'" class="card" variant="outlined">
+      <div slot="content">
+        <h3>{{ t("settings.onlineNovel") }}</h3>
+        <p class="hint">{{ t("settings.onlineNovelHint") }}</p>
+        <label class="row switch-row">
+          <span class="row-label">{{ t("settings.onlineNovelEnable") }}</span>
+          <m3e-switch
+            :checked="settings.onlineNovelEnabled"
+            @change="setSwitch('onlineNovelEnabled', $event)"
+          />
+        </label>
+        <label class="row switch-row">
+          <span class="row-label">是否启用笔趣阁小说阅读</span>
+          <m3e-switch
+            :checked="settings.bqgNovelEnabled"
+            @change="setSwitch('bqgNovelEnabled', $event)"
+          />
+        </label>
+        <div v-if="settings.onlineNovelEnabled" class="row">
+          <div class="row-label">
+            <span>{{ t("settings.wenku8Node") }}</span>
+          </div>
+          <div class="segmented">
+            <button
+              v-for="n in ['cc', 'net'] as const"
+              :key="n"
+              class="seg"
+              :class="{ active: settings.wenku8Node === n }"
+              @click="settings.wenku8Node = n"
+            >
+              {{ t("settings.wenku8Node_" + n) }}
+            </button>
+          </div>
+        </div>
+        <div v-if="settings.onlineNovelEnabled" class="row">
+          <div class="row-label">
+            <span>{{ t("settings.novelCharset") }}</span>
+          </div>
+          <div class="segmented">
+            <button
+              v-for="c in ['gbk', 'big5'] as const"
+              :key="c"
+              class="seg"
+              :class="{ active: settings.novelCharset === c }"
+              @click="settings.novelCharset = c"
+            >
+              {{ t("settings.novelCharset_" + c) }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </m3e-card>
+
+    <!-- 在线番剧 -->
+    <m3e-card v-if="activeSection === 'settings-online'" class="card" variant="outlined">
+      <div slot="content">
+        <h3>{{ t("settings.onlineAnime") }}</h3>
+        <p class="hint">{{ t("settings.onlineAnimeHint") }}</p>
+        <label class="row switch-row">
+          <span class="row-label">{{ t("settings.onlineAnimeEnable") }}</span>
+          <m3e-switch
+            :checked="settings.onlineAnimeEnabled"
+            @change="setSwitch('onlineAnimeEnabled', $event)"
+          />
+        </label>
+        <template v-if="settings.onlineAnimeEnabled">
+          <p class="hint">{{ t("settings.bangumiHint") }}</p>
+          <div class="dav-form">
+            <div class="field">
+              <label>{{ t("settings.bangumiTokenLabel") }}</label>
+              <div class="token-line">
+                <input
+                  v-model="bangumiTokenDraft"
+                  type="password"
+                  spellcheck="false"
+                  autocomplete="off"
+                  :placeholder="t('settings.bangumiTokenPlaceholder')"
+                />
+                <button
+                  class="lm-btn lm-btn--filled"
+                  :disabled="bangumiCollect.authState === 'checking' || !bangumiTokenDraft.trim()"
+                  @click="connectBangumi"
+                >
+                  {{ t("settings.bangumiConnect") }}
+                </button>
+                <button
+                  v-if="bangumiCollect.authorized"
+                  class="lm-btn lm-btn--text"
+                  @click="disconnectBangumi"
+                >
+                  {{ t("settings.bangumiDisconnect") }}
+                </button>
+              </div>
+              <p v-if="bangumiCollect.authorized" class="token-state ok">
+                {{
+                  t("settings.bangumiConnected").replace(
+                    "{u}",
+                    bangumiCollect.user?.nickname || settings.bangumiUsername,
+                  )
+                }}
+              </p>
+              <p v-else-if="bangumiCollect.authError" class="token-state err">
+                {{ bangumiCollect.authError }}
+              </p>
+              <p class="hint">
+                {{ t("settings.bangumiTokenHelp") }}
+                <button class="link-inline" @click="openBangumiTokenPage">
+                  {{ t("settings.bangumiTokenLink") }}
+                </button>
+              </p>
+            </div>
+          </div>
+        </template>
+      </div>
+    </m3e-card>
+
+    <!-- 在线 Pixiv -->
+    <m3e-card v-if="activeSection === 'settings-online'" class="card" variant="outlined">
+      <div slot="content">
+        <h3>{{ t("settings.onlinePixivEnabled") }}</h3>
+        <p class="hint">{{ t("settings.onlinePixivHint") }}</p>
+        <label class="row switch-row">
+          <span class="row-label">{{ t("settings.onlinePixivEnabled") }}</span>
+          <m3e-switch
+            :checked="settings.onlinePixivEnabled"
+            @change="setSwitch('onlinePixivEnabled', $event)"
+          />
+        </label>
+        <template v-if="settings.onlinePixivEnabled">
+          <div class="row">
+            <div class="row-label">
+              <span>{{ t("settings.pixivQuality") }}</span>
+            </div>
+            <div class="segmented">
+              <button
+                v-for="q in ['squareMedium', 'medium', 'large', 'original'] as const"
+                :key="q"
+                class="seg"
+                :class="{ active: settings.pixivImageQuality === q }"
+                @click="settings.pixivImageQuality = q"
+              >
+                {{ t("settings.pixivQuality_" + q) }}
+              </button>
+            </div>
+          </div>
+          <p class="hint">{{ t("settings.pixivRefreshTokenHint") }}</p>
+          <div class="dav-form">
+            <div class="field">
+              <label>{{ t("settings.pixivRefreshTokenLabel") }}</label>
+              <input
+                v-model="settings.pixivRefreshToken"
+                type="password"
+                spellcheck="false"
+                autocomplete="off"
+              />
+            </div>
+          </div>
+        </template>
+      </div>
+    </m3e-card>
+
+    <!-- DanDanPlay 弹幕 -->
+    <m3e-card
+      v-if="activeSection === 'settings-online' && settings.onlineAnimeEnabled"
+      class="card"
+      variant="outlined"
+    >
+      <div slot="content">
+        <h3>{{ t("settings.danmaku") }}</h3>
+        <p class="hint">{{ t("settings.danmakuHint") }}</p>
+        <label class="row switch-row">
+          <span class="row-label">{{ t("settings.danmakuEnable") }}</span>
+          <m3e-switch
+            :checked="settings.danmakuEnabled"
+            @change="setSwitch('danmakuEnabled', $event)"
+          />
+        </label>
+        <template v-if="settings.danmakuEnabled">
+          <div class="dav-form">
+            <div class="field">
+              <label>{{ t("settings.danmakuAppId") }}</label>
+              <input
+                v-model="settings.dandanAppId"
+                type="text"
+                spellcheck="false"
+                autocomplete="off"
+              />
+            </div>
+            <div class="field">
+              <label>{{ t("settings.danmakuAppSecret") }}</label>
+              <input
+                v-model="settings.dandanAppSecret"
+                type="password"
+                spellcheck="false"
+                autocomplete="off"
+              />
+            </div>
+          </div>
+          <div class="dav-grid">
+            <label class="field">
+              <span>{{ t("settings.danmakuOpacity") }} {{ settings.danmakuOpacity }}%</span>
+              <m3e-slider
+                :min="10"
+                :max="100"
+                :step="5"
+                @input="onSliderInt($event, 'danmakuOpacity')"
+              >
+                <m3e-slider-thumb :value="settings.danmakuOpacity" />
+              </m3e-slider>
+            </label>
+            <label class="field">
+              <span>{{ t("settings.danmakuFontSize") }} {{ settings.danmakuFontSize }}px</span>
+              <m3e-slider :min="12" :max="48" @input="onSliderInt($event, 'danmakuFontSize')">
+                <m3e-slider-thumb :value="settings.danmakuFontSize" />
+              </m3e-slider>
+            </label>
+            <label class="field">
+              <span>{{ t("settings.danmakuArea") }} {{ settings.danmakuArea }}%</span>
+              <m3e-slider
+                :min="20"
+                :max="100"
+                :step="5"
+                @input="onSliderInt($event, 'danmakuArea')"
+              >
+                <m3e-slider-thumb :value="settings.danmakuArea" />
+              </m3e-slider>
+            </label>
+            <label class="field">
+              <span>{{ t("settings.danmakuSpeed") }} {{ settings.danmakuSpeed }}</span>
+              <m3e-slider :min="1" :max="10" @input="onSliderInt($event, 'danmakuSpeed')">
+                <m3e-slider-thumb :value="settings.danmakuSpeed" />
+              </m3e-slider>
+            </label>
+          </div>
+          <div class="dav-grid">
+            <label class="field">
+              <span>{{ t("settings.danmakuTimeOffset") }}</span>
+              <input
+                :value="(settings.danmakuTimeOffsetMs / 1000).toFixed(1)"
+                type="number"
+                step="0.1"
+                min="-30"
+                max="30"
+                @change="onDanmakuOffsetChange"
+              />
+            </label>
+            <label class="row switch-row">
+              <span class="row-label">{{ t("settings.danmakuAntiOverlap") }}</span>
+              <m3e-switch
+                :checked="settings.danmakuAntiOverlap"
+                @change="setSwitch('danmakuAntiOverlap', $event)"
+              />
+            </label>
+          </div>
+        </template>
+      </div>
+    </m3e-card>
+
+    <!-- WebDAV -->
+    <m3e-card
+      v-if="activeSection === 'settings-sync'"
+      id="settings-sync"
+      class="card"
+      variant="outlined"
+    >
+      <div slot="content">
+        <h3>{{ t("settings.webdav") }}</h3>
+        <p class="hint">{{ t("settings.webdavHint") }}</p>
+
+        <label class="row switch-row">
+          <span class="row-label">{{ t("settings.webdavEnable") }}</span>
+          <m3e-switch
+            :checked="settings.webdavEnabled"
+            @change="setSwitch('webdavEnabled', $event)"
+          />
+        </label>
+
+        <div v-if="settings.webdavEnabled" class="dav-form">
+          <div class="field">
+            <label>{{ t("settings.webdavUrl") }}</label>
+            <input
+              v-model="settings.webdavUrl"
+              type="url"
+              :placeholder="t('settings.webdavUrlPlaceholder')"
+              spellcheck="false"
+              autocomplete="off"
+            />
+          </div>
+          <div class="dav-grid">
+            <div class="field">
+              <label>{{ t("settings.webdavUser") }}</label>
+              <input
+                v-model="settings.webdavUser"
+                type="text"
+                spellcheck="false"
+                autocomplete="off"
+              />
+            </div>
+            <div class="field">
+              <label>{{ t("settings.webdavPass") }}</label>
+              <div class="pass-wrap">
+                <input
+                  v-model="settings.webdavPass"
+                  :type="showDavPass ? 'text' : 'password'"
+                  spellcheck="false"
+                  autocomplete="new-password"
+                />
+                <button
+                  class="lm-icon-btn small"
+                  :title="showDavPass ? 'hide' : 'show'"
+                  @click="showDavPass = !showDavPass"
+                >
+                  <span class="material-symbols-outlined">
+                    {{ showDavPass ? "visibility_off" : "visibility" }}
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="davResult" class="status" :class="davResult.ok ? 'ok' : 'warn'">
+            <span class="material-symbols-outlined">
+              {{ davResult.ok ? "check_circle" : "error" }}
+            </span>
+            <div class="status-text">
+              <strong>
+                {{ davResult.ok ? t("settings.webdavOk") : t("settings.webdavFail") }}
+              </strong>
+              <span v-if="!davResult.ok && davResult.error">{{ davResult.error }}</span>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button class="lm-btn lm-btn--tonal" :disabled="davTesting" @click="testWebDav">
+              <span class="material-symbols-outlined">cloud_sync</span>
+              {{ davTesting ? t("settings.webdavTesting") : t("settings.webdavTest") }}
+            </button>
+            <button class="lm-btn lm-btn--outlined" @click="router.push('/webdav')">
+              <span class="material-symbols-outlined">cloud</span>
+              {{ t("settings.webdavOpen") }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </m3e-card>
 
     <!-- 关于 -->
-    <section v-if="activeSection === 'settings-other'" id="settings-other" class="card">
-      <h3>{{ t("settings.about") }}</h3>
-      <div class="row">
-        <span class="row-label">{{ t("settings.version") }}</span>
-        <span class="value">{{ APP_VERSION }}</span>
+    <m3e-card
+      v-if="activeSection === 'settings-other'"
+      id="settings-other"
+      class="card"
+      variant="outlined"
+    >
+      <div slot="content">
+        <h3>{{ t("settings.about") }}</h3>
+        <div class="row">
+          <span class="row-label">{{ t("settings.version") }}</span>
+          <span class="value">{{ APP_VERSION }}</span>
+        </div>
+        <label class="row switch-row">
+          <span class="row-label">{{ t("settings.devtools") }}</span>
+          <m3e-switch :checked="devtoolsEnabled" @change="toggleDevtools" />
+        </label>
+        <p class="hint">{{ t("settings.devtoolsHint") }}</p>
+        <div class="actions">
+          <button class="lm-btn lm-btn--outlined" @click="clearCache">
+            <span class="material-symbols-outlined">cleaning_services</span>
+            {{ t("settings.clearCache") }}
+          </button>
+        </div>
       </div>
-      <label class="row switch-row">
-        <span class="row-label">{{ t("settings.devtools") }}</span>
-        <m3e-switch :checked="devtoolsEnabled" @change="toggleDevtools" />
-      </label>
-      <p class="hint">{{ t("settings.devtoolsHint") }}</p>
-      <div class="actions">
-        <button class="lm-btn lm-btn--outlined" @click="clearCache">
-          <span class="material-symbols-outlined">cleaning_services</span>
-          {{ t("settings.clearCache") }}
-        </button>
-      </div>
-    </section>
+    </m3e-card>
 
     <transition name="toast">
       <div v-if="toast" class="toast">{{ toast }}</div>
@@ -1492,12 +1569,13 @@ function selectSection(id: string) {
 .card {
   grid-column: 2;
   scroll-margin-top: 18px;
-  background: var(--md-sys-color-surface-container-low);
-  border-radius: var(--lm-shape-card);
-  padding: 20px 22px;
   margin-bottom: 16px;
-  box-shadow: inset 0 0 0 1px var(--lm-hairline);
   animation: lm-rise 340ms var(--md-sys-motion-spring-spatial) both;
+  /* 底色 / 圆角 / 描边改由 m3e-card（variant=outlined）提供，内边距走组件的 content 槽令牌 */
+  --m3e-card-padding: 20px;
+  --m3e-card-shape: var(--lm-shape-card);
+  --m3e-outlined-card-container-color: var(--md-sys-color-surface-container-low);
+  --m3e-outlined-card-outline-color: var(--lm-hairline);
 }
 .card h3 {
   margin-bottom: 6px;

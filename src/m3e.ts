@@ -7,9 +7,11 @@
 // - m3e-dialog / m3e-dialog-action：对话框（文本输入）
 // - m3e-bottom-sheet：底部面板（聚合搜索播放源）
 // - m3e-menu / m3e-menu-item：菜单（全局右键菜单）
+// - m3e-card：内容卡（设置页区块 / 阅读统计 / 源结果卡）
 import "@m3e/web/bottom-sheet";
 import "@m3e/web/button";
 import "@m3e/web/button-group";
+import "@m3e/web/card";
 import "@m3e/web/dialog";
 import "@m3e/web/list";
 import "@m3e/web/menu";

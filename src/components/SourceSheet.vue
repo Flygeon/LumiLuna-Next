@@ -194,7 +194,12 @@ function closeSheet() {
     </div>
 
     <div v-else class="cards">
-      <div v-for="result in anime.sourceSearch" :key="result.pluginName" class="card">
+      <m3e-card
+        v-for="result in anime.sourceSearch"
+        :key="result.pluginName"
+        class="card"
+        variant="filled"
+      >
         <!-- 卡片头：源名 + 状态 -->
         <button class="card-head" @click="toggle(result.pluginName)">
           <span class="src-name">{{ result.pluginName }}</span>
@@ -265,7 +270,7 @@ function closeSheet() {
             </div>
           </div>
         </div>
-      </div>
+      </m3e-card>
     </div>
   </m3e-bottom-sheet>
 </template>
@@ -338,9 +343,12 @@ function closeSheet() {
   gap: 10px;
 }
 .card {
+  /* 源结果卡是「贴合式」卡片（头的按钮 / 结果行自带内边距），故用 m3e-card 的默认槽
+     （默认槽不带内边距），并保留宿主圆角 + 溢出裁剪，让贴合内容也贴齐圆角 */
   border-radius: var(--md-sys-shape-corner-extra-large);
-  background: var(--md-sys-color-surface-container);
   overflow: hidden;
+  --m3e-card-shape: var(--md-sys-shape-corner-extra-large);
+  --m3e-filled-card-container-color: var(--md-sys-color-surface-container);
 }
 .card-head {
   display: flex;

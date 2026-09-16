@@ -75,54 +75,60 @@ onMounted(load);
       </div>
 
       <!-- 每日趋势 -->
-      <section class="card">
-        <h3 class="card-title">{{ t("novelStats.trend") }}</h3>
-        <div v-if="trend.length === 0" class="state">{{ t("novelStats.empty") }}</div>
-        <div v-else class="trend-bars">
-          <div v-for="d in trend" :key="d.day" class="bar-col">
-            <div
-              class="bar"
-              :style="{
-                height:
-                  Math.max(4, (d.totalMs / Math.max(...trend.map((x) => x.totalMs), 1)) * 80) +
-                  'px',
-              }"
-              :title="`${d.day}: ${formatDuration(d.totalMs)}`"
-            ></div>
-            <span class="bar-label">{{ d.day.slice(5) }}</span>
+      <m3e-card class="card" variant="outlined">
+        <div slot="content">
+          <h3 class="card-title">{{ t("novelStats.trend") }}</h3>
+          <div v-if="trend.length === 0" class="state">{{ t("novelStats.empty") }}</div>
+          <div v-else class="trend-bars">
+            <div v-for="d in trend" :key="d.day" class="bar-col">
+              <div
+                class="bar"
+                :style="{
+                  height:
+                    Math.max(4, (d.totalMs / Math.max(...trend.map((x) => x.totalMs), 1)) * 80) +
+                    'px',
+                }"
+                :title="`${d.day}: ${formatDuration(d.totalMs)}`"
+              ></div>
+              <span class="bar-label">{{ d.day.slice(5) }}</span>
+            </div>
           </div>
         </div>
-      </section>
+      </m3e-card>
 
       <!-- 本地/在线占比 -->
-      <section class="card">
-        <h3 class="card-title">{{ t("novelStats.source") }}</h3>
-        <div v-if="sources.length === 0" class="state">{{ t("novelStats.empty") }}</div>
-        <div v-else class="source-list">
-          <div v-for="s in sources" :key="s.source" class="source-row">
-            <span class="source-name">{{
-              s.source === "online" ? t("novelStats.online") : t("novelStats.local")
-            }}</span>
-            <span class="source-value">{{ s.readCount }} · {{ formatDuration(s.totalMs) }}</span>
+      <m3e-card class="card" variant="outlined">
+        <div slot="content">
+          <h3 class="card-title">{{ t("novelStats.source") }}</h3>
+          <div v-if="sources.length === 0" class="state">{{ t("novelStats.empty") }}</div>
+          <div v-else class="source-list">
+            <div v-for="s in sources" :key="s.source" class="source-row">
+              <span class="source-name">{{
+                s.source === "online" ? t("novelStats.online") : t("novelStats.local")
+              }}</span>
+              <span class="source-value">{{ s.readCount }} · {{ formatDuration(s.totalMs) }}</span>
+            </div>
           </div>
         </div>
-      </section>
+      </m3e-card>
 
       <!-- 最近在读 / Top -->
-      <section class="card">
-        <h3 class="card-title">{{ t("novelStats.topBooks") }}</h3>
-        <div v-if="topBooks.length === 0" class="state">{{ t("novelStats.empty") }}</div>
-        <div v-else class="book-list">
-          <div v-for="(b, i) in topBooks" :key="b.bookId" class="book-row">
-            <span class="rank">{{ i + 1 }}</span>
-            <div class="book-main">
-              <div class="book-title">{{ b.title }}</div>
-              <div class="book-sub">{{ b.chapterTitle || b.source }}</div>
+      <m3e-card class="card" variant="outlined">
+        <div slot="content">
+          <h3 class="card-title">{{ t("novelStats.topBooks") }}</h3>
+          <div v-if="topBooks.length === 0" class="state">{{ t("novelStats.empty") }}</div>
+          <div v-else class="book-list">
+            <div v-for="(b, i) in topBooks" :key="b.bookId" class="book-row">
+              <span class="rank">{{ i + 1 }}</span>
+              <div class="book-main">
+                <div class="book-title">{{ b.title }}</div>
+                <div class="book-sub">{{ b.chapterTitle || b.source }}</div>
+              </div>
+              <span class="book-stat">{{ b.readCount }} · {{ formatDuration(b.totalMs) }}</span>
             </div>
-            <span class="book-stat">{{ b.readCount }} · {{ formatDuration(b.totalMs) }}</span>
           </div>
         </div>
-      </section>
+      </m3e-card>
 
       <div class="actions">
         <button class="lm-btn lm-btn--outlined" @click="router.push('/treasure')">
@@ -173,11 +179,12 @@ onMounted(load);
   color: var(--md-sys-color-on-surface-variant);
 }
 .card {
-  background: var(--md-sys-color-surface-container-low);
-  border-radius: var(--lm-shape-card);
-  padding: 18px 20px;
   margin-bottom: 16px;
-  box-shadow: inset 0 0 0 1px var(--lm-hairline);
+  /* 底色 / 圆角 / 描边改由 m3e-card（variant=outlined）提供 */
+  --m3e-card-padding: 18px;
+  --m3e-card-shape: var(--lm-shape-card);
+  --m3e-outlined-card-container-color: var(--md-sys-color-surface-container-low);
+  --m3e-outlined-card-outline-color: var(--lm-hairline);
 }
 .card-title {
   margin: 0 0 14px;

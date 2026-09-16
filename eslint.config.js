@@ -72,6 +72,8 @@ export default [
       "src/components/TextPrompt.vue",
       "src/components/SourceSheet.vue",
       "src/components/ContextMenu.vue",
+      "src/views/SettingsView.vue",
+      "src/views/NovelStatsView.vue",
     ],
     rules: {
       "vue/no-deprecated-slot-attribute": "off",
