@@ -247,16 +247,18 @@ function typeOf(entry: WebDavEntry) {
     <template v-else>
       <!-- 面包屑 + 刷新 -->
       <div class="crumbs">
-        <button
-          v-for="(c, i) in crumbs"
-          :key="c.target"
-          class="crumb"
-          :class="{ current: i === crumbs.length - 1 }"
-          @click="i < crumbs.length - 1 && load(c.target)"
-        >
-          <span v-if="i === 0" class="material-symbols-outlined">home</span>
-          {{ c.label }}
-        </button>
+        <m3e-breadcrumb class="crumb-trail" wrap>
+          <m3e-breadcrumb-item
+            v-for="(c, i) in crumbs"
+            :key="c.target"
+            :current="i === crumbs.length - 1"
+            :item-label="c.label"
+            @click="i < crumbs.length - 1 && load(c.target)"
+          >
+            <span v-if="i === 0" slot="icon" class="material-symbols-outlined">home</span>
+            {{ c.label }}
+          </m3e-breadcrumb-item>
+        </m3e-breadcrumb>
         <m3e-icon-button class="refresh" size="small" title="刷新" @click="refresh">
           <span class="material-symbols-outlined">refresh</span>
         </m3e-icon-button>
@@ -361,38 +363,28 @@ function typeOf(entry: WebDavEntry) {
   flex-wrap: wrap;
   gap: 2px;
 }
-.crumb {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+/* 面包屑交由 m3e-breadcrumb / m3e-breadcrumb-item 渲染（导航语义、当前项标记、
+   分隔符都由组件提供，分隔符从原来的 "/" 换成 M3 的人字箭头）；
+   这里把条目度量对齐改造前 .crumb 的 32px 高 / extra-large 圆角 / 10px 内边距与 4px 图标间距 */
+.crumb-trail {
+  flex: 1 1 auto;
+  min-width: 0;
+  --m3e-breadcrumb-item-container-height: 32px;
+  --m3e-breadcrumb-item-shape: var(--md-sys-shape-corner-extra-large);
+  --m3e-breadcrumb-item-label-color: var(--md-sys-color-on-surface-variant);
+  --m3e-breadcrumb-item-label-hover-state-layer-color: var(--md-sys-color-surface-container);
+  --m3e-breadcrumb-item-label-focus-state-layer-color: var(--md-sys-color-surface-container);
+  --m3e-breadcrumb-item-label-padding-inline: 10px;
+  --m3e-breadcrumb-item-icon-size: 16px;
+  --m3e-breadcrumb-item-icon-label-space: 4px;
+  --m3e-breadcrumb-separator-icon-size: 16px;
+}
+.crumb-trail m3e-breadcrumb-item {
   max-width: 240px;
-  padding: 6px 10px;
-  border: none;
-  border-radius: var(--md-sys-shape-corner-extra-large);
-  background: transparent;
-  color: var(--md-sys-color-on-surface-variant);
-  font-family: inherit;
-  font-size: var(--md-sys-typescale-label-large-size);
-  cursor: pointer;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  transition: background var(--md-sys-motion-duration-short);
 }
-.crumb:hover {
-  background: var(--md-sys-color-surface-container);
-}
-.crumb.current {
-  color: var(--md-sys-color-on-surface);
-  font-weight: 500;
-}
-.crumb .material-symbols-outlined {
-  font-size: 16px;
-}
-.crumb:not(:last-child)::after {
-  content: "/";
-  margin-left: 4px;
-  opacity: 0.45;
+/* 当前项：原 .crumb.current 的 500 字重 */
+.crumb-trail m3e-breadcrumb-item[current] {
+  --m3e-breadcrumb-item-label-font-weight: 500;
 }
 .crumbs .refresh {
   margin-left: 6px;

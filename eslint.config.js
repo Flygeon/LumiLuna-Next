@@ -91,6 +91,8 @@ export default [
       "src/components/PixivOnlineView.vue",
       "src/views/MusicView.vue",
       "src/views/PresetMarket.vue",
+      // B6：面包屑条目用组件的 icon 槽
+      "src/views/WebDavView.vue",
     ],
     rules: {
       "vue/no-deprecated-slot-attribute": "off",

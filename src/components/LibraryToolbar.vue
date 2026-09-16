@@ -80,13 +80,13 @@ function clearSearch() {
 
     <!-- 扫描中显示进度与取消，否则显示扫描按钮 -->
     <div v-if="library.scanning" class="scan-progress">
-      <div class="bar">
-        <div
-          class="fill"
-          :class="{ indeterminate: !library.progress?.total }"
-          :style="{ width: (library.progress?.percent ?? 0) + '%' }"
-        ></div>
-      </div>
+      <!-- 枚举阶段总数未知 -> indeterminate；否则按百分比显示 -->
+      <m3e-linear-progress-indicator
+        class="scan-bar"
+        :indeterminate="!library.progress?.total"
+        :max="100"
+        :value="library.progress?.percent ?? 0"
+      ></m3e-linear-progress-indicator>
       <span class="scan-text">{{ library.scanLabel }}</span>
       <m3e-button variant="text" size="small" @click="library.cancelScan()">
         {{ t("actions.cancel") }}
@@ -198,31 +198,13 @@ function clearSearch() {
   align-items: center;
   gap: 10px;
 }
-.bar {
+/* 进度条本体交给 m3e-linear-progress-indicator（默认 4px 厚、primary 前景）；
+   这里只把轨道色换回原来的 surface-container-highest，并固定 140px 宽度 */
+.scan-bar {
   width: 140px;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--md-sys-color-surface-container-highest);
-  overflow: hidden;
-}
-.fill {
-  height: 100%;
-  border-radius: 2px;
-  background: var(--md-sys-color-primary);
-  transition: width 200ms var(--md-sys-motion-spring-effects-fast);
-}
-/* 枚举阶段总数未知，用来回滑动表示忙碌 */
-.fill.indeterminate {
-  width: 35% !important;
-  animation: lm-indeterminate 1.2s ease-in-out infinite;
-}
-@keyframes lm-indeterminate {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(320%);
-  }
+  flex: none;
+  --m3e-linear-progress-indicator-thickness: 4px;
+  --m3e-progress-indicator-track-color: var(--md-sys-color-surface-container-highest);
 }
 .scan-text {
   font-size: var(--md-sys-typescale-body-small-size);
