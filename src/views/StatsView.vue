@@ -628,33 +628,35 @@ function piePath(cx: number, cy: number, r: number, startAngle: number, endAngle
         <div v-if="filteredTracks.length === 0" class="empty-list">
           <p>{{ topTracks.length === 0 ? t("stats.noDataHint") : t("stats.noMatchHint") }}</p>
         </div>
-        <div v-else class="track-list">
-          <div
+        <m3e-list v-else variant="segmented" class="track-list">
+          <m3e-list-item
             v-for="(track, index) in filteredTracks"
             :key="track.trackId + '-' + track.source"
             class="track-row"
             :class="{ active: player.song?.id === track.trackId }"
             @click="playTrack(track)"
           >
-            <span class="rank" :class="{ top3: index < 3 }">{{ index + 1 }}</span>
-            <div class="track-info">
-              <p class="track-title">{{ track.title }}</p>
-              <p class="track-artist">{{ track.artist || "未知艺人" }}</p>
-            </div>
-            <span class="track-source-badge" :class="'source-' + track.source">
-              {{
-                track.source === "local"
-                  ? t("stats.sourceLocal")
-                  : track.source === "online"
-                    ? t("stats.sourceOnline")
-                    : t("stats.sourceWebdav")
-              }}
+            <span slot="leading" class="rank" :class="{ top3: index < 3 }">{{ index + 1 }}</span>
+            <span class="track-title">{{ track.title }}</span>
+            <span slot="supporting-text" class="track-artist">{{
+              track.artist || "未知艺人"
+            }}</span>
+            <span slot="trailing" class="track-tail">
+              <span class="track-source-badge" :class="'source-' + track.source">
+                {{
+                  track.source === "local"
+                    ? t("stats.sourceLocal")
+                    : track.source === "online"
+                      ? t("stats.sourceOnline")
+                      : t("stats.sourceWebdav")
+                }}
+              </span>
+              <span class="track-plays"
+                >{{ track.playCount }}<span class="plays-unit"> {{ t("stats.times") }}</span></span
+              >
             </span>
-            <span class="track-plays"
-              >{{ track.playCount }}<span class="plays-unit"> {{ t("stats.times") }}</span></span
-            >
-          </div>
-        </div>
+          </m3e-list-item>
+        </m3e-list>
       </section>
     </template>
   </div>
@@ -1083,14 +1085,26 @@ function piePath(cx: number, cy: number, r: number, startAngle: number, endAngle
   background: var(--md-sys-color-surface-container-highest);
 }
 
-/* 排行列表 */
+/* 排行列表：容器与行的外观交给 m3e-list(segmented)，这里只覆盖令牌与原观感对齐 */
 .track-list {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  background: var(--md-sys-color-surface-container-high);
-  border-radius: 22px;
-  padding: 6px;
+  --m3e-segmented-list-container-shape: 22px;
+  --m3e-segmented-list-segment-gap: 2px;
+  --m3e-segmented-list-item-container-color: var(--md-sys-color-surface-container-high);
+  --m3e-segmented-list-item-container-shape: 14px;
+  --m3e-segmented-list-item-hover-container-shape: 14px;
+  --m3e-segmented-list-item-focus-container-shape: 14px;
+  --m3e-segmented-list-item-selected-container-shape: 14px;
+  /* 行高由内容决定：把 m3e 默认的 72px 最小高度压到内容之下，行内间距对齐原 padding 8px 10px */
+  --m3e-list-item-one-line-height: 40px;
+  --m3e-list-item-two-line-height: 40px;
+  --m3e-list-item-one-line-top-space: 8px;
+  --m3e-list-item-one-line-bottom-space: 8px;
+  --m3e-list-item-two-line-top-space: 8px;
+  --m3e-list-item-two-line-bottom-space: 8px;
+  --m3e-list-item-padding-inline: 10px;
+  --m3e-list-item-leading-space: 0px;
+  --m3e-list-item-trailing-space: 0px;
+  --m3e-list-item-between-space: 10px;
 }
 .empty-list {
   display: flex;
@@ -1103,19 +1117,11 @@ function piePath(cx: number, cy: number, r: number, startAngle: number, endAngle
   font-size: 14px;
 }
 .track-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border-radius: 14px;
   cursor: pointer;
-  transition: background 0.15s var(--md-sys-motion-spring-effects-fast);
 }
-.track-row:hover {
-  background: var(--md-sys-color-surface-container-highest);
-}
+/* 正在播放：整行容器色换成 secondaryContainer（m3e 的 selected 容器色令牌） */
 .track-row.active {
-  background: var(--md-sys-color-secondary-container);
+  --m3e-segmented-list-item-container-color: var(--md-sys-color-secondary-container);
 }
 .rank {
   width: 24px;
@@ -1129,12 +1135,7 @@ function piePath(cx: number, cy: number, r: number, startAngle: number, endAngle
   font-weight: 700;
   color: var(--md-sys-color-on-surface);
 }
-.track-info {
-  flex: 1;
-  min-width: 0;
-}
 .track-title {
-  margin: 0;
   font-size: 14px;
   font-weight: 500;
   color: var(--md-sys-color-on-surface);
@@ -1143,12 +1144,17 @@ function piePath(cx: number, cy: number, r: number, startAngle: number, endAngle
   white-space: nowrap;
 }
 .track-artist {
-  margin: 2px 0 0;
   font-size: 12px;
   color: var(--md-sys-color-on-surface-variant);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* trailing 槽：来源徽章 + 播放次数 */
+.track-tail {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 .track-source-badge {
   font-size: 11px;

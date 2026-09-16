@@ -74,6 +74,7 @@ export default [
       "src/components/ContextMenu.vue",
       "src/views/SettingsView.vue",
       "src/views/NovelStatsView.vue",
+      "src/views/StatsView.vue",
     ],
     rules: {
       "vue/no-deprecated-slot-attribute": "off",
