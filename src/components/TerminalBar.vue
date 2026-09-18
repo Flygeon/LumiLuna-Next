@@ -57,8 +57,7 @@ function t(key: string) {
   color: var(--ak-text-secondary, var(--md-sys-color-on-surface-variant));
   font: inherit;
   cursor: pointer;
-  transition: color var(--ak-motion-fast, 120ms)
-    var(--ak-ease-standard, cubic-bezier(0.2, 0, 0, 1));
+  transition: color var(--ak-motion-fast, 120ms) var(--ak-ease-standard, cubic-bezier(0.2, 0, 0, 1));
 }
 .term-bar-home:hover {
   color: var(--ak-text-primary, var(--md-sys-color-on-surface));

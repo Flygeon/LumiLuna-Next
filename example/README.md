@@ -11,13 +11,13 @@
 
 ## 皮肤清单
 
-| 文件 | 格式 | 名称 | 演示内容 |
-|------|------|------|----------|
-| `skins/lumiluna.mono-ink.json` | v1 | 墨 | 纯结构化令牌：黑白灰去彩色 |
-| `skins/lumiluna.roundify.json` | v1 | 圆角狂想 | 种子色适配（`seedColor: true`）+ 圆角/动效令牌 |
-| `skins/lumiluna.midnight.json` | v1 | 午夜 | 单模式（`modes: ["dark"]`）：AMOLED 纯黑 + 自动锁定深色 |
-| `skins/lumiluna.md1.json` | v1 | Material Design 1 | 全量令牌 + 任意 CSS：2014 初代 Material 复刻 |
-| `skins/lumiluna.sakura.zip` | **v2** | 樱小路露娜 | **v2 三合一测试**：背景图片（浅/深双模式遮罩）+ SVG 图标包（导航九图标）+ 布局令牌（104px 侧栏 / 增强毛玻璃） |
+| 文件                           | 格式   | 名称              | 演示内容                                                                                                      |
+| ------------------------------ | ------ | ----------------- | ------------------------------------------------------------------------------------------------------------- |
+| `skins/lumiluna.mono-ink.json` | v1     | 墨                | 纯结构化令牌：黑白灰去彩色                                                                                    |
+| `skins/lumiluna.roundify.json` | v1     | 圆角狂想          | 种子色适配（`seedColor: true`）+ 圆角/动效令牌                                                                |
+| `skins/lumiluna.midnight.json` | v1     | 午夜              | 单模式（`modes: ["dark"]`）：AMOLED 纯黑 + 自动锁定深色                                                       |
+| `skins/lumiluna.md1.json`      | v1     | Material Design 1 | 全量令牌 + 任意 CSS：2014 初代 Material 复刻                                                                  |
+| `skins/lumiluna.sakura.zip`    | **v2** | 樱小路露娜        | **v2 三合一测试**：背景图片（浅/深双模式遮罩）+ SVG 图标包（导航九图标）+ 布局令牌（104px 侧栏 / 增强毛玻璃） |
 
 `lumiluna.sakura/` 目录是 v2 皮肤的**源文件**（`skin.json` + `assets/`），供皮肤作者参考；`.zip` 是打包好可直接导入的产物。
 
