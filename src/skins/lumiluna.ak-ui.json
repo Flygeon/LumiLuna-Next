@@ -6,10 +6,7 @@
     "version": "1.0.0",
     "author": "LumiLuna",
     "description": "ak-ui 设计语言终端皮肤：命令面板式主页（隐藏侧栏）、工业几何、战术信息层级与终端式反馈。原创实现，不使用任何游戏素材。",
-    "modes": [
-      "light",
-      "dark"
-    ],
+    "modes": ["light", "dark"],
     "layout": "terminal",
     "seedColor": false,
     "accent": "#4aabea"
