@@ -6,6 +6,14 @@
 
 export type SkinMode = "light" | "dark";
 
+/**
+ * 皮肤布局能力（manifest.layout，可选，默认 "default"）：
+ * - "default"：沿用侧栏 + 常规页面；
+ * - "terminal"：命令面板式主页（隐藏侧栏，落地 /home），由 App.vue 消费。
+ * 只声明布局能力，不含任何样式——视觉仍由该皮肤的 tokens / css 提供。
+ */
+export type SkinLayout = "default" | "terminal";
+
 /** 皮肤清单：作者与适配能力声明 */
 export interface SkinManifest {
   id: string;
@@ -17,6 +25,8 @@ export interface SkinManifest {
   modes: SkinMode[];
   /** 一行开关：true 时设置里的种子色配色方案对该皮肤可用（§2 D3，默认关） */
   seedColor: boolean;
+  /** 布局能力：terminal 时应用隐藏侧栏并落地终端主页（可选，默认 default） */
+  layout?: SkinLayout;
   /** 列表缩略圆点展示色（仅展示用） */
   accent?: string;
 }
@@ -358,6 +368,15 @@ export function validateSkin(
     }
   }
 
+  let layout: SkinLayout | undefined;
+  if (m.layout !== undefined && m.layout !== null) {
+    if (m.layout !== "default" && m.layout !== "terminal") {
+      errors.push('manifest.layout：只允许 "default" / "terminal"');
+    } else {
+      layout = m.layout;
+    }
+  }
+
   let accent: string | undefined;
   if (m.accent !== undefined && m.accent !== null) {
     const a = m.accent;
@@ -552,6 +571,7 @@ export function validateSkin(
       ...(minAppVersion ? { minAppVersion } : {}),
       modes,
       seedColor,
+      ...(layout && layout !== "default" ? { layout } : {}),
       ...(accent ? { accent } : {}),
     },
     ...(tokens ? { tokens } : {}),

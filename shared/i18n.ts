@@ -13,8 +13,10 @@ export const messages = {
       favorites: "收藏",
       history: "历史",
       trash: "回收站",
+      home: "主页",
       settings: "设置",
       stats: "统计",
+      extensions: "扩展",
     },
     navDesc: {
       images: "照片与截图",
@@ -28,6 +30,13 @@ export const messages = {
       history: "最近播放记录",
       trash: "已删除的媒体",
       settings: "偏好与来源",
+    },
+    // 终端布局（皮肤 manifest.layout === "terminal"）
+    terminal: {
+      kicker: "LumiLuna // 本地媒体控制台",
+      indexed: "项已索引",
+      modules: "模块",
+      backHome: "主页",
     },
     actions: {
       scan: "扫描目录",
@@ -682,8 +691,10 @@ export const messages = {
       favorites: "Favorites",
       history: "History",
       trash: "Trash",
+      home: "Home",
       settings: "Settings",
       stats: "Stats",
+      extensions: "Extensions",
     },
     navDesc: {
       images: "Photos & screenshots",
@@ -697,6 +708,13 @@ export const messages = {
       history: "Recent activity",
       trash: "Deleted media",
       settings: "Preferences & sources",
+    },
+    // Terminal layout (skin manifest.layout === "terminal")
+    terminal: {
+      kicker: "LumiLuna // Local Media Console",
+      indexed: "items indexed",
+      modules: "Modules",
+      backHome: "Home",
     },
     actions: {
       scan: "Scan",

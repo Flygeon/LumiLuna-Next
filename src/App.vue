@@ -8,11 +8,18 @@ import { useAudioEffectsStore } from "@/stores/audioEffects";
 import { useLibraryStore } from "@/stores/library";
 import { isTauri } from "@/capabilities";
 import MiniPlayer from "@/components/MiniPlayer.vue";
+import TerminalBar from "@/components/TerminalBar.vue";
 import ContextMenu from "@/components/ContextMenu.vue";
 import TextPrompt from "@/components/TextPrompt.vue";
 import WindowTitleBar from "@/components/WindowTitleBar.vue";
 import { useDesktopChrome } from "@/composables/useDesktopChrome";
-import { activeSkinDoc, skinBgActive, skinSafeMode } from "@/utils/skinRuntime";
+import { activeSkinDoc, skinBgActive, skinSafeMode, skinTerminalLayout } from "@/utils/skinRuntime";
+import {
+  BOTTOM_DESTINATIONS,
+  PRIMARY_DESTINATIONS,
+  destinationForPath,
+  titleKeyForPath,
+} from "@/utils/navDestinations";
 import { translate } from "@shared/i18n";
 import { listen, type Event, type UnlistenFn } from "@tauri-apps/api/event";
 import { getCurrentWebview, type DragDropEvent } from "@tauri-apps/api/webview";
@@ -106,17 +113,10 @@ const audioEffects = useAudioEffectsStore();
 const router = useRouter();
 const route = useRoute();
 
-const navItems = computed(() => [
-  { key: "images", path: "/images", icon: "image", type: "image" },
-  { key: "videos", path: "/videos", icon: "movie", type: "video" },
-  { key: "music", path: "/music", icon: "music_note", type: "audio" },
-  { key: "books", path: "/books", icon: "menu_book", type: "book" },
-  { key: "treasure", path: "/treasure", icon: "inventory_2", type: null },
-]);
-const bottomItems = [
-  // 收藏 / 历史 / 回收站 / 扩展 已统一收纳进「百宝箱」，不再单独占底部导航
-  { key: "settings", path: "/settings", icon: "settings", label: "" },
-];
+// 导航目标集中在 utils/navDestinations.ts —— 侧栏与终端布局主页共用同一份定义，
+// 收藏 / 历史 / 回收站 / 扩展 已统一收纳进「百宝箱」，不再单独占底部导航。
+const navItems = PRIMARY_DESTINATIONS;
+const bottomItems = BOTTOM_DESTINATIONS;
 
 function t(key: string) {
   return translate(settings.lang, key);
@@ -125,6 +125,29 @@ function t(key: string) {
 const isPlayerPage = computed(() => route.path === "/music/player");
 const isDesktopLyricsPage = computed(() => route.path === "/desktop-lyrics");
 const isExtensionHostPage = computed(() => route.path === "/extension-host");
+const isHomePage = computed(() => route.path === "/home");
+
+// ---- 终端布局（皮肤 manifest.layout === "terminal"）----
+// 侧栏被隐藏后，顶部命令条承担导航：当前位置标题 + 该模块的实时计数。
+const currentDestination = computed(() => destinationForPath(route.path));
+const currentTitle = computed(() => {
+  const key = titleKeyForPath(route.path);
+  return key ? t(key) : route.path;
+});
+const currentCount = computed(() => {
+  const type = currentDestination.value?.type;
+  return type ? (library.counts[type] ?? 0) : null;
+});
+
+/** 开关终端布局：给 <html> 打钩子属性（皮肤 CSS 用），并落地 / 撤离命令面板主页 */
+function syncTerminalLayout() {
+  const on = skinTerminalLayout.value;
+  document.documentElement.toggleAttribute("data-lm-terminal", on);
+  if (on && !isHomePage.value) void router.replace("/home");
+  else if (!on && isHomePage.value) void router.replace("/images");
+}
+
+watch(skinTerminalLayout, syncTerminalLayout);
 
 // 扩展窗口（label: extension，由 Rust open_extension_window 创建）加载的是
 // 主 SPA，默认会 redirect 到 /images —— 按 label 重定向到扩展宿主路由。
@@ -154,6 +177,8 @@ onMounted(async () => {
   // 皮肤加载（含 --safe-mode 检测、内置皮肤播种、激活皮肤解析）须在主题解析前完成
   await skins.load();
   settings.applyTheme(settings.theme);
+  // 皮肤解析完成后再决定终端布局落地（同一次同步任务内完成，不会闪一帧默认布局）
+  syncTerminalLayout();
   void audioEffects.init();
   void library.refreshCounts();
 });
@@ -238,7 +263,7 @@ router.afterEach((to) => {
     <div class="app-body">
       <!-- 左侧导航 Rail -->
       <nav
-        v-if="!isPlayerPage && !isDesktopLyricsPage && !isExtensionHostPage"
+        v-if="!isPlayerPage && !isDesktopLyricsPage && !isExtensionHostPage && !skinTerminalLayout"
         class="nav-rail lm-glass"
         data-lm-region="nav"
       >
@@ -287,6 +312,18 @@ router.afterEach((to) => {
 
       <!-- 内容区 -->
       <div class="content" data-lm-region="content">
+        <!-- 终端布局：侧栏被主页取代后的常驻导航条 -->
+        <TerminalBar
+          v-if="
+            skinTerminalLayout &&
+            !isHomePage &&
+            !isPlayerPage &&
+            !isDesktopLyricsPage &&
+            !isExtensionHostPage
+          "
+          :title="currentTitle"
+          :count="currentCount"
+        />
         <main ref="mainEl" class="main-content">
           <router-view v-slot="{ Component }">
             <transition :name="isPlayerPage ? 'player' : 'page'" mode="out-in">

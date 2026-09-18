@@ -24,6 +24,12 @@ export const skinModeLock = computed<SkinMode | null>(() => {
   return modes[0];
 });
 
+/** 终端布局能力：激活皮肤声明 layout:"terminal" 时为真。
+ *  App.vue 据此隐藏侧栏、落地 /home 并渲染顶部命令条；安全模式下不生效。 */
+export const skinTerminalLayout = computed(
+  () => !skinSafeMode.value && activeSkinDoc.value?.manifest.layout === "terminal",
+);
+
 /** 背景图层显隐（App.vue 渲染 .lm-skin-bg 的开关） */
 export const skinBgActive = computed(
   () =>

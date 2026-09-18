@@ -4,6 +4,8 @@ const router = createRouter({
   history: createWebHashHistory(),
   routes: [
     { path: "/", redirect: "/images" },
+    // 终端布局皮肤的主页（layout: "terminal" 时落地；普通皮肤下不可达）
+    { path: "/home", component: () => import("@/views/TerminalHome.vue") },
     { path: "/images", component: () => import("@/views/ImagesView.vue") },
     { path: "/videos", component: () => import("@/views/VideosView.vue") },
     { path: "/music", component: () => import("@/views/MusicView.vue") },
