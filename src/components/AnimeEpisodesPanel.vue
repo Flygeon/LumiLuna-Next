@@ -43,7 +43,10 @@ const roadIndex = ref(0);
 
     <h2 class="title">{{ anime.displayTitle }}</h2>
 
-    <div v-if="anime.episodesLoading" class="state">{{ t("anime.loadingEpisodes") }}</div>
+    <div v-if="anime.episodesLoading" class="state">
+      <m3e-loading-indicator class="lm-loading" />
+      {{ t("anime.loadingEpisodes") }}
+    </div>
     <div v-else-if="anime.episodesError && !anime.selectedRoads.length" class="state error">
       {{ anime.episodesError }}
       <m3e-button class="retry" variant="tonal" size="small" @click="emit('changeSource')">

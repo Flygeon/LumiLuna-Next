@@ -132,6 +132,7 @@ function nicknameOf(c: NeteaseComment): string {
 
           <div class="comment-body">
             <p v-if="status === 'loading'" class="comment-state">
+              <m3e-loading-indicator class="lm-loading" />
               {{ t("netease.commentsLoading") }}
             </p>
             <p v-else-if="status === 'error'" class="comment-state error">

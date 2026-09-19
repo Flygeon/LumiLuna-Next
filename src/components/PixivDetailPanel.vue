@@ -169,7 +169,10 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
       <h2 class="page-title">{{ illust.title }}</h2>
     </div>
 
-    <div v-if="loading" class="state">{{ t("pixiv.loading") }}</div>
+    <div v-if="loading" class="state">
+      <m3e-loading-indicator class="lm-loading" />
+      {{ t("pixiv.loading") }}
+    </div>
     <div v-else-if="error" class="state list-error">{{ error }}</div>
 
     <div v-else class="detail-body">
@@ -244,6 +247,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
       </h3>
 
       <div v-if="pixiv.commentsLoading && !pixiv.comments.length" class="state">
+        <m3e-loading-indicator class="lm-loading" />
         {{ t("pixiv.loading") }}
       </div>
       <div v-else-if="pixiv.commentsError && !pixiv.comments.length" class="state list-error">

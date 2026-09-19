@@ -5,9 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>LumiLuna · 光影媒体库</title>
     <style>
-      /* 启动加载动画（MD3 风格）：内联保证首帧即显示，覆盖 bundle 加载与
-         Vue 初始化期间；main.ts 挂载完成后淡出移除。颜色对齐 theme.css
-         的默认令牌（surface / on-surface / primary），深色跟随系统。 */
+      /* 启动加载动画：M3 Expressive 加载指示器 <m3e-loading-indicator>
+         （旋转 + 在多边形之间形变，动画由 @m3e/web 组件内部提供，不手写关键帧）。
+         内联保证首帧即显示，覆盖 bundle 加载与 Vue 初始化期间；main.ts 挂载
+         完成后淡出移除。颜色对齐 theme.css 的默认令牌，深色跟随系统。
+         组件由 src/m3e.ts 注册，bundle 就绪前该元素是空占位（标题即刻可见）。 */
       #boot-splash {
         position: fixed;
         inset: 0;
@@ -28,19 +30,9 @@
         opacity: 0;
         visibility: hidden;
       }
-      #boot-splash .boot-spinner {
-        width: 48px;
-        height: 48px;
-        animation: boot-rotate 1.6s linear infinite;
-      }
-      #boot-splash .boot-spinner circle {
-        fill: none;
-        stroke: #1a5c9e;
-        stroke-width: 4;
-        stroke-linecap: round;
-        stroke-dasharray: 1 126;
-        stroke-dashoffset: 0;
-        animation: boot-dash 1.2s ease-in-out infinite;
+      #boot-splash m3e-loading-indicator {
+        --m3e-loading-indicator-size: 48px;
+        --m3e-loading-indicator-active-indicator-color: #1a5c9e;
       }
       #boot-splash .boot-title {
         font-size: 22px;
@@ -52,51 +44,29 @@
         font-size: 12px;
         color: #44474e;
       }
-      @keyframes boot-rotate {
-        to {
-          transform: rotate(360deg);
-        }
-      }
-      /* MD3 indeterminate 指示器：弧长从一点舒展到近满圆再收拢前移 */
-      @keyframes boot-dash {
-        0% {
-          stroke-dasharray: 1 126;
-          stroke-dashoffset: 0;
-        }
-        50% {
-          stroke-dasharray: 89 126;
-          stroke-dashoffset: -20;
-        }
-        100% {
-          stroke-dasharray: 89 126;
-          stroke-dashoffset: -125;
-        }
-      }
       @media (prefers-color-scheme: dark) {
         #boot-splash {
           background: #0f0f11;
           color: #e2e2e5;
         }
-        #boot-splash .boot-spinner circle {
-          stroke: #8bb9f0;
+        #boot-splash m3e-loading-indicator {
+          --m3e-loading-indicator-active-indicator-color: #8bb9f0;
         }
         #boot-splash .boot-sub {
           color: #c7c9cd;
         }
       }
       @media (prefers-reduced-motion: reduce) {
-        #boot-splash .boot-spinner,
-        #boot-splash .boot-spinner circle {
-          animation-duration: 3.2s;
+        /* 指示器动画在组件 shadow DOM 内（@m3e/web 未提供降级），这里只减淡出 */
+        #boot-splash {
+          transition: none;
         }
       }
     </style>
   </head>
   <body>
     <div id="boot-splash" aria-hidden="true">
-      <svg class="boot-spinner" viewBox="0 0 48 48">
-        <circle cx="24" cy="24" r="20" />
-      </svg>
+      <m3e-loading-indicator></m3e-loading-indicator>
       <div class="boot-title">LumiLuna</div>
       <div class="boot-sub">光影媒体库</div>
     </div>

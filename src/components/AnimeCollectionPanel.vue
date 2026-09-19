@@ -208,7 +208,10 @@ async function disconnect() {
           @open="emit('open', c.subject, $event)"
         />
       </div>
-      <div v-else-if="collect.listLoading" class="state">{{ t("anime.loading") }}</div>
+      <div v-else-if="collect.listLoading" class="state">
+        <m3e-loading-indicator class="lm-loading" />
+        {{ t("anime.loading") }}
+      </div>
       <div v-else class="state">{{ t("anime.collectionEmpty") }}</div>
     </template>
   </div>

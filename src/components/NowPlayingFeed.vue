@@ -95,7 +95,10 @@ onMounted(loadAll);
 
 <template>
   <div class="home-feed">
-    <div v-if="status === 'loading'" class="feed-loading">{{ t("online.loading") }}</div>
+    <div v-if="status === 'loading'" class="feed-loading">
+      <m3e-loading-indicator class="lm-loading" />
+      {{ t("online.loading") }}
+    </div>
     <p v-else-if="status === 'error'" class="feed-error">
       <span class="material-symbols-outlined">error</span>
       {{ error }}

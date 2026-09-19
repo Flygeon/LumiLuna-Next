@@ -94,7 +94,10 @@ const metaParts = computed(() => {
       </button>
     </div>
 
-    <div v-if="loading && !subject" class="state">{{ t("anime.loading") }}</div>
+    <div v-if="loading && !subject" class="state">
+      <m3e-loading-indicator class="lm-loading" />
+      {{ t("anime.loading") }}
+    </div>
     <p v-else-if="error && !subject" class="state error">{{ error }}</p>
 
     <template v-else-if="subject">

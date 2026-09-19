@@ -290,7 +290,10 @@ onMounted(() => {
             </m3e-filter-chip>
           </div>
         </div>
-        <div v-if="rankLoading" class="state">{{ t("novel.loading") }}</div>
+        <div v-if="rankLoading" class="state">
+          <m3e-loading-indicator class="lm-loading" />
+          {{ t("novel.loading") }}
+        </div>
         <div v-else class="novel-grid">
           <NovelCard v-for="n in rankResults" :key="n.aid" :item="n" @open="openNovel(n)" />
         </div>

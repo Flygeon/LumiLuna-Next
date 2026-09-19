@@ -53,7 +53,10 @@ onMounted(load);
 <template>
   <div class="view">
     <PageHeader :title="t('novelStats.title')" :description="t('novelStats.subtitle')" />
-    <div v-if="loading" class="state">{{ t("novelStats.loading") }}</div>
+    <div v-if="loading" class="state">
+      <m3e-loading-indicator class="lm-loading" />
+      {{ t("novelStats.loading") }}
+    </div>
 
     <template v-else>
       <div class="overview">

@@ -316,7 +316,10 @@ onBeforeUnmount(() => {
           lineHeight: settings.readerLineHeight,
         }"
       >
-        <p v-if="loading" class="state">{{ t("novel.loading") }}</p>
+        <p v-if="loading" class="state">
+          <m3e-loading-indicator class="lm-loading" />
+          {{ t("novel.loading") }}
+        </p>
         <p v-else-if="error" class="state error">{{ error }}</p>
         <template v-else-if="content">
           <h2 class="chapter-title">{{ currentTitle }}</h2>

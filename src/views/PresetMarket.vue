@@ -93,7 +93,10 @@ loadPresets();
       </m3e-button>
     </div>
 
-    <div v-if="loading" class="loading">{{ t("online.loading") }}</div>
+    <div v-if="loading" class="loading">
+      <m3e-loading-indicator class="lm-loading" />
+      {{ t("online.loading") }}
+    </div>
 
     <div v-else-if="error" class="error-bar">
       <span class="material-symbols-outlined">error</span>

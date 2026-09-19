@@ -427,6 +427,19 @@ m3e-icon-button {
   animation: lm-shimmer 1.4s ease-in-out infinite;
 }
 
+/* M3 Expressive 加载指示器（@m3e/web m3e-loading-indicator）：旋转 + 在多边形
+   之间形变。动画在组件内部，这里只给尺寸 / 语义色 / 布局，不手写关键帧。
+   注意：组件 :host 的 display 权重高于类型选择器，布局覆盖必须带类名。 */
+m3e-loading-indicator {
+  --m3e-loading-indicator-size: 24px;
+  --m3e-loading-indicator-active-indicator-color: var(--md-sys-color-primary);
+}
+/* 文本型加载提示里的默认姿态：独占一行并水平居中 */
+m3e-loading-indicator.lm-loading {
+  display: block;
+  margin: 0 auto 10px;
+}
+
 /* 列表项入场：父子错开 20-35ms 由组件用 --i 变量驱动 */
 @keyframes lm-rise {
   from {

@@ -360,6 +360,7 @@ function backFromEpisodes() {
           {{ t("anime.browse") }}
         </h3>
         <div v-if="anime.trendingLoading && !anime.trending.length" class="state">
+          <m3e-loading-indicator class="lm-loading" />
           {{ t("anime.loading") }}
         </div>
         <div v-else-if="anime.trendingError && !anime.trending.length" class="state list-error">
@@ -425,6 +426,7 @@ function backFromEpisodes() {
         </div>
 
         <div v-if="anime.searchLoading && !anime.searchItems.length" class="state">
+          <m3e-loading-indicator class="lm-loading" />
           {{ t("anime.loading") }}
         </div>
         <div v-else-if="anime.searchError && !anime.searchItems.length" class="state list-error">

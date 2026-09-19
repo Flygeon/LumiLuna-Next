@@ -258,7 +258,10 @@ const infoRows = computed(() => {
         >
       </div>
 
-      <div v-if="loadingImage && current?.type === 'image'" class="spinner"></div>
+      <m3e-loading-indicator
+        v-if="loadingImage && current?.type === 'image'"
+        class="media-loading"
+      />
     </div>
 
     <!-- 信息面板 -->
@@ -380,19 +383,13 @@ const infoRows = computed(() => {
   opacity: 0;
 }
 
-.spinner {
+/* 加载指示器：M3 Expressive 形状形变（组件自带动画），这里只定位与配色 */
+m3e-loading-indicator.media-loading {
   position: absolute;
-  width: 38px;
-  height: 38px;
-  border: 3px solid rgba(255, 255, 255, 0.2);
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: spin 700ms linear infinite;
-}
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+  inset: 0;
+  margin: auto;
+  --m3e-loading-indicator-size: 38px;
+  --m3e-loading-indicator-active-indicator-color: #fff;
 }
 
 .nav {

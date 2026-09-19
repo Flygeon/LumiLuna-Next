@@ -69,7 +69,10 @@ async function toggleShelf() {
 
 <template>
   <div class="novel-detail">
-    <div v-if="loading" class="state">{{ t("novel.loading") }}</div>
+    <div v-if="loading" class="state">
+      <m3e-loading-indicator class="lm-loading" />
+      {{ t("novel.loading") }}
+    </div>
     <p v-else-if="error" class="state error">{{ error }}</p>
     <template v-else-if="detail">
       <div class="head">

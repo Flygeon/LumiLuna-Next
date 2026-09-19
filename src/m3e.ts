@@ -6,6 +6,7 @@
 // - m3e-linear-progress-indicator：线性进度条（媒体库扫描）
 // - m3e-button-group：连通按钮组（子选项卡）
 // - m3e-list / m3e-list-item：连通分组列表（百宝箱）
+// - m3e-loading-indicator：M3 Expressive 加载指示器（旋转 + 多边形形变）
 // - m3e-switch：开关（设置页 / 音效面板）
 // - m3e-slider / m3e-slider-thumb：滑块（设置页 / 音效面板 / 阅读器）
 // - m3e-dialog / m3e-dialog-action：对话框（文本输入）
@@ -21,6 +22,7 @@ import "@m3e/web/chips";
 import "@m3e/web/dialog";
 import "@m3e/web/icon-button";
 import "@m3e/web/list";
+import "@m3e/web/loading-indicator";
 import "@m3e/web/menu";
 import "@m3e/web/progress-indicator";
 import "@m3e/web/slider";

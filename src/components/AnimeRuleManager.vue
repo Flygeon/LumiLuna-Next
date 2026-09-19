@@ -169,7 +169,10 @@ async function importFromRepo(entry: RepoEntry) {
     <!-- 已装规则 -->
     <section class="section">
       <h3 class="section-title">{{ t("anime.manageRules") }}</h3>
-      <div v-if="anime.rulesLoading" class="state">{{ t("anime.loading") }}</div>
+      <div v-if="anime.rulesLoading" class="state">
+        <m3e-loading-indicator class="lm-loading" />
+        {{ t("anime.loading") }}
+      </div>
       <div v-else-if="!anime.rules.length" class="state">{{ t("anime.noSource") }}</div>
       <div v-else class="rule-list">
         <div

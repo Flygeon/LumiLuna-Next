@@ -179,6 +179,7 @@ function backToHome() {
         <h2 class="page-title">{{ t("pixiv.myBookmarks") }}</h2>
       </div>
       <div v-if="pixiv.loading && !pixiv.bookmarkItems.length" class="state">
+        <m3e-loading-indicator class="lm-loading" />
         {{ t("pixiv.loading") }}
       </div>
       <div v-else-if="pixiv.error && !pixiv.bookmarkItems.length" class="state list-error">
@@ -222,6 +223,7 @@ function backToHome() {
         <h2 class="page-title">{{ t("pixiv.followFeed") }}</h2>
       </div>
       <div v-if="pixiv.loading && !pixiv.followItems.length" class="state">
+        <m3e-loading-indicator class="lm-loading" />
         {{ t("pixiv.loading") }}
       </div>
       <div v-else-if="pixiv.error && !pixiv.followItems.length" class="state list-error">
@@ -265,7 +267,10 @@ function backToHome() {
         <h2 class="page-title">{{ pixiv.userDetail?.user.name || "" }}</h2>
       </div>
 
-      <div v-if="pixiv.loading && !pixiv.userDetail" class="state">{{ t("pixiv.loading") }}</div>
+      <div v-if="pixiv.loading && !pixiv.userDetail" class="state">
+        <m3e-loading-indicator class="lm-loading" />
+        {{ t("pixiv.loading") }}
+      </div>
       <div v-else-if="pixiv.error && !pixiv.userDetail" class="state list-error">
         {{ pixiv.error }}
       </div>
@@ -368,6 +373,7 @@ function backToHome() {
       </div>
 
       <div v-if="pixiv.loading && !pixiv.searchItems.length" class="state">
+        <m3e-loading-indicator class="lm-loading" />
         {{ t("pixiv.loading") }}
       </div>
       <div v-else-if="pixiv.error && !pixiv.searchItems.length" class="state list-error">
@@ -450,6 +456,7 @@ function backToHome() {
           {{ t("pixiv.recommend") }}
         </h3>
         <div v-if="pixiv.loading && !pixiv.recommended.length" class="state">
+          <m3e-loading-indicator class="lm-loading" />
           {{ t("pixiv.loading") }}
         </div>
         <div v-else-if="pixiv.error && !pixiv.recommended.length" class="state list-error">
@@ -503,6 +510,7 @@ function backToHome() {
           </div>
         </div>
         <div v-if="pixiv.loading && !pixiv.ranking.length" class="state">
+          <m3e-loading-indicator class="lm-loading" />
           {{ t("pixiv.loading") }}
         </div>
         <div v-else-if="pixiv.ranking.length" class="pixiv-grid">

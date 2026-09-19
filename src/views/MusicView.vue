@@ -546,7 +546,10 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
           <span class="material-symbols-outlined">error</span>
           {{ onlineError }}
         </div>
-        <div v-if="onlineLoading" class="loading">{{ t("online.loading") }}</div>
+        <div v-if="onlineLoading" class="loading">
+          <m3e-loading-indicator class="lm-loading" />
+          {{ t("online.loading") }}
+        </div>
       </template>
 
       <!-- 搜索根 -->
@@ -566,7 +569,10 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
           <span class="material-symbols-outlined">error</span>
           {{ onlineError }}
         </div>
-        <div v-if="onlineLoading" class="loading">{{ t("online.loading") }}</div>
+        <div v-if="onlineLoading" class="loading">
+          <m3e-loading-indicator class="lm-loading" />
+          {{ t("online.loading") }}
+        </div>
       </template>
     </SegmentedTabs>
 
@@ -647,7 +653,10 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
           </div>
         </button>
       </div>
-      <div v-else-if="onlineLoading" class="loading">{{ t("online.loading") }}</div>
+      <div v-else-if="onlineLoading" class="loading">
+        <m3e-loading-indicator class="lm-loading" />
+        {{ t("online.loading") }}
+      </div>
 
       <!-- 云盘：空态 / 加载更多 -->
       <EmptyState
@@ -657,6 +666,7 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
         :description="t('netease.cloudEmptyHint')"
       />
       <div v-if="detail.type === 'cloud' && detail.loadingMore" class="loading">
+        <m3e-loading-indicator class="lm-loading" />
         {{ t("online.loading") }}
       </div>
       <button
@@ -777,7 +787,10 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
           <template v-if="netease.authTab === 'qr'">
             <div class="qr-img-wrap">
               <img v-if="netease.qrCode" :src="netease.qrCode" alt="QR" class="qr-img" />
-              <div v-else class="qr-loading">{{ t("online.loading") }}</div>
+              <div v-else class="qr-loading">
+                <m3e-loading-indicator class="lm-loading" />
+                {{ t("online.loading") }}
+              </div>
             </div>
             <p class="qr-status" :class="{ error: netease.qrState === 'error' }">
               <template v-if="netease.qrState === 'wait'">{{ t("netease.scanWaiting") }}</template>
