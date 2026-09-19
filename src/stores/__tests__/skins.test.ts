@@ -53,13 +53,16 @@ beforeEach(() => {
 });
 
 describe("内置皮肤播种", () => {
-  it("空库首次启动写入内置皮肤，且带 terminal 布局能力位", async () => {
+  it("空库首次启动写入内置皮肤（存的是校验后的规范化文档）", async () => {
     const store = useSkinsStore();
     await store.load();
     expect(skinSave).toHaveBeenCalledTimes(1);
     const [id, json] = skinSave.mock.calls[0] as [string, string];
     expect(id).toBe(BUILTIN_ID);
-    expect(JSON.parse(json).manifest.layout).toBe("terminal");
+    const saved = JSON.parse(json);
+    expect(saved.formatVersion).toBe(1);
+    expect(saved.manifest.id).toBe(BUILTIN_ID);
+    expect(saved.css).toBeTruthy();
     expect(store.loaded).toBe(true);
   });
 

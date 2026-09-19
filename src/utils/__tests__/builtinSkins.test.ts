@@ -14,15 +14,18 @@ function loadBuiltin() {
 }
 
 describe("内置皮肤 lumiluna.ak-ui", () => {
-  it("通过校验且声明 terminal 布局", () => {
+  it("通过校验，且是纯视觉皮肤（不改导航结构）", () => {
     const v = loadBuiltin();
     expect(v.errors).toEqual([]);
     expect(v.ok).toBe(true);
     expect(v.skin?.formatVersion).toBe(1);
     expect(v.skin?.manifest.id).toBe("lumiluna.ak-ui");
-    expect(v.skin?.manifest.layout).toBe("terminal");
     expect(v.skin?.manifest.modes).toEqual(["light", "dark"]);
     expect(v.skin?.manifest.seedColor).toBe(false);
+    // 皮肤只能影响外观：没有布局能力位，也不引用任何布局钩子属性
+    expect(Object.keys(v.skin?.manifest ?? {})).not.toContain("layout");
+    expect(v.skin?.css ?? "").not.toContain("data-lm-terminal");
+    expect(v.skin?.css ?? "").not.toContain('data-lm-region="nav"');
   });
 
   it("css 非空、不超限、无远程引用", () => {
@@ -57,44 +60,6 @@ describe("内置皮肤 lumiluna.ak-ui", () => {
       }
     }
     expect(t["--md-sys-shape-corner-full"]).toBeUndefined();
-  });
-});
-
-describe("manifest.layout 能力位", () => {
-  const doc = (layout?: string) =>
-    JSON.stringify({
-      formatVersion: 1,
-      manifest: {
-        id: "com.example.skin",
-        name: "测试皮肤",
-        version: "1.0.0",
-        author: "tester",
-        modes: ["light", "dark"],
-        ...(layout === undefined ? {} : { layout }),
-      },
-      tokens: { light: { "--md-sys-color-primary": "#112233" } },
-    });
-
-  it("缺省 = 未声明（沿用侧栏布局）", () => {
-    const v = validateSkin(doc());
-    expect(v.ok).toBe(true);
-    expect(v.skin?.manifest.layout).toBeUndefined();
-  });
-
-  it('接受 "terminal"；"default" 归一化为不写入', () => {
-    const term = validateSkin(doc("terminal"));
-    expect(term.ok).toBe(true);
-    expect(term.skin?.manifest.layout).toBe("terminal");
-
-    const def = validateSkin(doc("default"));
-    expect(def.ok).toBe(true);
-    expect(def.skin?.manifest.layout).toBeUndefined();
-  });
-
-  it("未知取值拒收", () => {
-    const v = validateSkin(doc("hologram"));
-    expect(v.ok).toBe(false);
-    expect(v.errors.join()).toContain("manifest.layout");
   });
 });
 
