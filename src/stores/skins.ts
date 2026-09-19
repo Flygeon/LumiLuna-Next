@@ -1,8 +1,7 @@
 /**
  * 皮肤系统 store：皮肤库列表、导入（v1 JSON 直存 / v2 ZIP 两阶段 staging）、
- * 激活、删除、内置播种与安全模式。设计见 doc/皮肤系统开发方案书.md 与 v2 方案书。
- * 示例皮肤统一放仓库 example/ 目录由用户下载导入；只有 src/skins/ 下的内置皮肤
- * （当前一款：ak-ui 终端皮肤）在首次启动播种进皮肤库，删除后记入 hiddenBuiltinSkins。
+ * 激活、删除与安全模式。设计见 doc/皮肤系统开发方案书.md 与 v2 方案书。
+ * 示例皮肤不再内置播种——统一放仓库 example/ 目录由用户自行下载导入。
  */
 import { defineStore } from "pinia";
 import { ref } from "vue";
@@ -13,12 +12,6 @@ import { prepareSkin } from "@/utils/skinLoader";
 import { activePrepared, activeSkinDoc, skinSafeMode } from "@/utils/skinRuntime";
 import { translate } from "@shared/i18n";
 import type { SkinEntry } from "@shared/types";
-
-// 内置皮肤（构建期以原文嵌入，首次启动播种进皮肤库；各演示一项机制）
-import builtinAkUi from "@/skins/lumiluna.ak-ui.json?raw";
-
-const BUILTIN_SKINS = [{ id: "lumiluna.ak-ui", json: builtinAkUi }];
-const BUILTIN_IDS = new Set(BUILTIN_SKINS.map((b) => b.id));
 
 async function appVersionSafe(): Promise<string> {
   try {
@@ -85,35 +78,10 @@ export const useSkinsStore = defineStore("skins", () => {
     return false;
   }
 
-  /**
-   * 内置皮肤播种：库中无对应 id 且用户没删除过（hiddenBuiltinSkins 记忆）才写入。
-   * 任何失败都只告警、绝不阻断启动——内置皮肤与校验器同步演进，坏数据不该让应用打不开。
-   */
-  async function seedBuiltinSkins() {
-    const hidden = settings.hiddenBuiltinSkins;
-    let seeded = false;
-    for (const b of BUILTIN_SKINS) {
-      if (list.value.some((s) => s.id === b.id) || hidden.includes(b.id)) continue;
-      const v = validateSkin(b.json);
-      if (!v.ok || !v.skin) {
-        console.warn(`[skins] 内置皮肤 ${b.id} 未通过校验：`, v.errors);
-        continue;
-      }
-      try {
-        await capabilities.skinSave(b.id, JSON.stringify(v.skin));
-        seeded = true;
-      } catch (e) {
-        console.warn(`[skins] 内置皮肤 ${b.id} 播种失败：`, e);
-      }
-    }
-    if (seeded) await refresh();
-  }
-
   async function load() {
     // 逃生通道：--safe-mode 启动时本会话不应用任何皮肤（resolveTheme 读取该标志）
     skinSafeMode.value = await capabilities.appSafeMode();
     await refresh();
-    await seedBuiltinSkins();
 
     // 解析激活皮肤：文件丢失/被改坏时自动回退默认并提示（v1 §6.6）
     const activeId = settings.activeSkin;
@@ -153,10 +121,6 @@ export const useSkinsStore = defineStore("skins", () => {
   async function remove(id: string) {
     if (settings.activeSkin === id) await activate("");
     await capabilities.skinDelete(id);
-    // 内置皮肤删除即记忆，否则下次启动会被播种复活
-    if (BUILTIN_IDS.has(id) && !settings.hiddenBuiltinSkins.includes(id)) {
-      settings.hiddenBuiltinSkins = [...settings.hiddenBuiltinSkins, id];
-    }
     await refresh();
     notify(tr("settings.skinDeleted"));
   }

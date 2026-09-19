@@ -1,7 +1,6 @@
 /**
  * 皮肤校验器单测（方案书 §14 M1）：
- * 覆盖 §4.2 每条格式规则的正反例、远程引用检测、四款示例皮肤必须全部通过。
- * （内置皮肤的回归见 builtinSkins.test.ts）
+ * 覆盖 §4.2 每条格式规则的正反例、远程引用检测、四款内置皮肤必须全部通过。
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
