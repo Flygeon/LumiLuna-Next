@@ -1,6 +1,7 @@
 pub mod anime;
 pub mod commands;
 pub mod error;
+pub mod kugou;
 pub mod media;
 pub mod netease;
 pub mod novel;
@@ -204,6 +205,21 @@ pub fn run() {
             netease::netease_daily_recommend_songs,
             netease::netease_personal_fm,
             netease::netease_logout,
+            // ---- 在线音乐（酷狗）----
+            kugou::kugou_login_status,
+            kugou::kugou_login_qr_key,
+            kugou::kugou_login_qr_check,
+            kugou::kugou_captcha_sent,
+            kugou::kugou_login_cellphone,
+            kugou::kugou_account,
+            kugou::kugou_logout,
+            kugou::kugou_sign_in,
+            kugou::kugou_song_url,
+            kugou::kugou_search,
+            kugou::kugou_playlist_detail,
+            kugou::kugou_rank_list,
+            kugou::kugou_rank_songs,
+            kugou::kugou_everyday_recommend,
             novel::novel_search,
             novel::novel_rank,
             novel::novel_category,

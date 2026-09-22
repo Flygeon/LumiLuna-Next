@@ -627,6 +627,35 @@ export function mockInvoke<T>(cmd: string, args?: Record<string, unknown>): Prom
       mockSkins.delete(String(args?.id));
       return as(undefined);
 
+    // ---- 酷狗音乐：浏览器预览只提供空态，真实数据需桌面端运行 ----
+    case "kugou_login_status":
+      return as({ loggedIn: false, profile: null, signedDays: [] });
+    case "kugou_login_qr_key":
+      return as({ key: "preview", url: "https://example.invalid/kugou-preview" });
+    case "kugou_login_qr_check":
+      return as({ status: 1, loggedIn: false, profile: null });
+    case "kugou_sign_in":
+      return as({
+        ok: false,
+        message: "浏览器预览不支持酷狗签到，请在桌面端使用",
+        ssaCode: null,
+        svip: false,
+      });
+    case "kugou_song_url":
+      return as({ url: "", quality: "128" });
+    case "kugou_logout":
+    case "kugou_captcha_sent":
+      return as(undefined);
+    case "kugou_login_cellphone":
+    case "kugou_account":
+      throw new Error("浏览器预览不支持酷狗账号操作，请在桌面端使用");
+    case "kugou_search":
+    case "kugou_playlist_detail":
+    case "kugou_rank_list":
+    case "kugou_rank_songs":
+    case "kugou_everyday_recommend":
+      return as(null);
+
     default:
       return as(null);
   }

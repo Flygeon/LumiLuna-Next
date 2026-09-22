@@ -7,16 +7,25 @@ import MediaGrid from "@/components/MediaGrid.vue";
 import TrackList from "@/components/TrackList.vue";
 import EmptyState from "@/components/EmptyState.vue";
 import NowPlayingFeed from "@/components/NowPlayingFeed.vue";
+import KugouFeed from "@/components/KugouFeed.vue";
+import PlatformBar from "@/components/PlatformBar.vue";
 import CachedCover from "@/components/CachedCover.vue";
 import SegmentedTabs from "@/components/SegmentedTabs.vue";
 import { useLibraryStore } from "@/stores/library";
 import { usePlayerStore } from "@/stores/player";
 import { useSettingsStore } from "@/stores/settings";
 import { useNeteaseStore } from "@/stores/netease";
+import { useKugouStore } from "@/stores/kugou";
 import { capabilities } from "@/capabilities";
 import { openContextMenu } from "@/composables/useContextMenu";
 import { promptText } from "@/composables/useTextPrompt";
 import { toOnlineSongs } from "@/utils/netease";
+import {
+  kugouToOnlineSongs,
+  kugouRankCards,
+  resolveKugouUrl,
+  type KugouRankCard,
+} from "@/utils/kugou";
 import { translate } from "@shared/i18n";
 import { CURATED_PLAYLISTS, metingPlaylist, metingSearch } from "@/utils/meting";
 import type { MediaEntry, MusicServer, OnlinePlaylistEntry, OnlineSong } from "@shared/types";
@@ -26,6 +35,7 @@ const library = useLibraryStore();
 const player = usePlayerStore();
 const settings = useSettingsStore();
 const netease = useNeteaseStore();
+const kugou = useKugouStore();
 const router = useRouter();
 
 const items = computed(() => library.entries("audio"));
@@ -52,10 +62,19 @@ onMounted(load);
 onMounted(() => {
   void netease.init();
 });
+onMounted(() => {
+  void kugou.init();
+});
 watch(
   () => settings.neteaseEnabled,
   (on) => {
     if (on) void netease.init();
+  },
+);
+watch(
+  () => settings.kugouEnabled,
+  (on) => {
+    if (on) void kugou.init();
   },
 );
 onActivated(() => {
@@ -65,6 +84,10 @@ onActivated(() => {
 // ---- 在线音乐（实验性）----
 const onlineMode = computed(() => settings.enableOnlineMusic);
 const tab = ref<"feed" | "playlists" | "search">("feed");
+/** 在线音乐已开启且至少启用了一个平台时显示平台条（单平台时只显示账号部分） */
+const showPlatformBar = computed(() => onlineMode.value && settings.enabledServers.length > 0);
+/** 当前平台是否为酷狗；两个平台的推荐流与歌单来源不同，分支处理 */
+const isKugou = computed(() => settings.musicServer === "kugou");
 /** 非在线模式（本地/详情）不传 tab，组件只渲染内容、不显示分段条 */
 const onlineTabs = computed(() => [
   { value: "feed", label: t("homeFeed.forYou"), icon: "star" },
@@ -83,6 +106,11 @@ const onlineError = ref("");
 const searchQuery = ref("");
 const addName = ref("");
 const addId = ref("");
+
+/** 酷狗排行榜卡片（/rank/list；列表位置与字段形态在 utils/kugou.ts 里归一化） */
+const kugouRanks = ref<KugouRankCard[]>([]);
+const kugouRanksLoading = ref(false);
+const kugouRanksError = ref("");
 
 /** 歌单歌曲缓存（key = server:id），用于卡片首曲封面、数量展示与秒开 */
 const playlistCache = reactive(new Map<string, OnlineSong[]>());
@@ -133,7 +161,10 @@ watch(
     settings.onlinePlaylists.map((p) => p.id).join(","),
   ],
   () => {
-    if (onlineMode.value && tab.value === "playlists") void prefetchPlaylists();
+    if (!onlineMode.value || tab.value !== "playlists") return;
+    // 酷狗歌单根列表是排行榜卡片，不走 meting 预取
+    if (isKugou.value) void loadKugouRanks();
+    else void prefetchPlaylists();
   },
   { immediate: true },
 );
@@ -143,6 +174,16 @@ watch(
   () => settings.enableOnlineMusic,
   (on) => {
     if (!on) detail.value = null;
+  },
+);
+
+// 切换平台 = 换数据源：详情页属于具体数据，跨源保留无意义，清空回根列表。
+// 内容域 tab（为你推荐 / 歌单 / 搜索）保持不变——平台与内容域职责正交。
+watch(
+  () => settings.musicServer,
+  () => {
+    detail.value = null;
+    onlineError.value = "";
   },
 );
 
@@ -259,6 +300,53 @@ async function openCloud() {
   }
 }
 
+/** 酷狗：拉取排行榜卡片（只拉一次，失败可重试） */
+async function loadKugouRanks() {
+  if (kugouRanks.value.length || kugouRanksLoading.value) return;
+  kugouRanksLoading.value = true;
+  kugouRanksError.value = "";
+  try {
+    const raw = await capabilities.kugouRankList();
+    kugouRanks.value = kugouRankCards(raw);
+  } catch (e) {
+    kugouRanksError.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    kugouRanksLoading.value = false;
+  }
+}
+
+/** 酷狗：进入某个榜单（拉取榜单歌曲） */
+async function openKugouRank(card: KugouRankCard) {
+  onlineLoading.value = true;
+  onlineError.value = "";
+  try {
+    const raw = await capabilities.kugouRankSongs(card.id);
+    detail.value = { type: "online", title: card.name, songs: kugouToOnlineSongs(raw) };
+  } catch (e) {
+    onlineError.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    onlineLoading.value = false;
+  }
+}
+
+/** 酷狗：进入每日推荐 */
+async function openKugouDaily() {
+  onlineLoading.value = true;
+  onlineError.value = "";
+  try {
+    const raw = await capabilities.kugouEverydayRecommend();
+    detail.value = {
+      type: "online",
+      title: t("homeFeed.dailyRecommend"),
+      songs: kugouToOnlineSongs(raw),
+    };
+  } catch (e) {
+    onlineError.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    onlineLoading.value = false;
+  }
+}
+
 /** 云盘分页加载更多 */
 async function loadMoreCloud() {
   const d = detail.value;
@@ -276,12 +364,13 @@ async function loadMoreCloud() {
   }
 }
 
-/** 退出登录：清 Rust 侧 cookie + 本地状态 */
-async function logoutNetease() {
-  await netease.logout();
-  if (detail.value?.type === "cloud") detail.value = null;
-  notify(t("netease.loggedOut"));
-}
+// 退出登录后云盘详情失去数据来源，回到根列表（退出动作由平台条发起）
+watch(
+  () => netease.loggedIn,
+  (on) => {
+    if (!on && detail.value?.type === "cloud") detail.value = null;
+  },
+);
 
 async function doSearch() {
   const q = searchQuery.value.trim();
@@ -289,7 +378,10 @@ async function doSearch() {
   onlineLoading.value = true;
   onlineError.value = "";
   try {
-    const songs = await metingSearch(settings.musicServer, q);
+    // 酷狗走 Rust 侧客户端（meting 实例只放行 netease，见 README 说明）
+    const songs = isKugou.value
+      ? kugouToOnlineSongs(await capabilities.kugouSearch(q))
+      : await metingSearch(settings.musicServer, q);
     detail.value = { type: "online", title: `「${q}」`, songs };
   } catch (e) {
     onlineError.value = e instanceof Error ? e.message : String(e);
@@ -393,10 +485,24 @@ async function downloadCover(song: OnlineSong) {
 }
 
 /** 在线歌曲入队并跳转全屏播放器 */
-function playOnlineSongs(songs: OnlineSong[], index: number) {
+async function playOnlineSongs(songs: OnlineSong[], index: number) {
   error.value = "";
+  const song = songs[index];
+  if (!song) return;
+
+  // 酷狗列表接口不返回直链，播放前按需解析（解析结果写回队列项，
+  // 后续「上一首/下一首」命中同一对象时无需重复请求）
+  if (!song.url && song.server === "kugou") {
+    const url = await resolveKugouUrl(song);
+    if (!url) {
+      error.value = `无法播放「${song.name}」：未取到播放地址`;
+      return;
+    }
+    song.url = url;
+  }
+
   // 网易云无版权/VIP 歌曲 url 为空，直接提示不进入播放器
-  if (!songs[index]?.url) {
+  if (!song.url) {
     error.value = t("netease.playFailed");
     return;
   }
@@ -416,7 +522,7 @@ function playOnlineSongs(songs: OnlineSong[], index: number) {
 
 /** 现在就听信息流：直接播放 */
 function handleFeedPlaySongs(songs: OnlineSong[], index: number) {
-  playOnlineSongs(songs, index);
+  void playOnlineSongs(songs, index);
 }
 
 /** 现在就听信息流：打开推荐歌单 */
@@ -458,98 +564,127 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
 <template>
   <div class="view">
     <PageHeader :title="t('nav.music')" :description="t('navDesc.music')" />
+
+    <!-- 平台条（一级导航）：平台切换 + 账号；仅在线音乐开启且已启用平台时渲染。
+         单平台时只显示账号部分，视觉等同改造前的账号条。 -->
+    <PlatformBar v-if="showPlatformBar" v-model:server="settings.musicServer" />
+
     <!-- 在线音乐：推荐 / 歌单 / 搜索 切换 -->
     <SegmentedTabs v-model="tab" :tabs="showOnlineRoot ? onlineTabs : []">
-      <!-- 现在就听信息流 -->
+      <!-- 现在就听信息流：一平台一组件（两家推荐结构不同） -->
       <template v-if="showOnlineRoot && tab === 'feed'">
-        <NowPlayingFeed @play-songs="handleFeedPlaySongs" @open-playlist="openNeteasePlaylist" />
+        <KugouFeed v-if="isKugou" @play-songs="handleFeedPlaySongs" />
+        <NowPlayingFeed
+          v-else
+          @play-songs="handleFeedPlaySongs"
+          @open-playlist="openNeteasePlaylist"
+        />
       </template>
 
       <!-- 歌单根列表 -->
       <template v-if="showOnlineRoot && tab === 'playlists'">
-        <!-- 网易云账号条 -->
-        <div v-if="settings.neteaseEnabled" class="netease-bar">
-          <template v-if="netease.loggedIn">
-            <CachedCover
-              v-if="netease.profile?.avatarUrl"
-              :url="netease.profile.avatarUrl"
-              class="avatar"
-              alt=""
-            />
-            <span v-else class="avatar placeholder">
-              <span class="material-symbols-outlined">person</span>
-            </span>
-            <span class="nickname">{{ netease.profile?.nickname ?? "" }}</span>
-            <span class="spacer"></span>
-            <m3e-button variant="text" size="small" @click="logoutNetease">
-              <span slot="icon" class="material-symbols-outlined">logout</span>
-              {{ t("netease.logout") }}
-            </m3e-button>
-          </template>
-          <template v-else>
-            <span class="avatar placeholder">
-              <span class="material-symbols-outlined">person</span>
-            </span>
-            <span class="nickname">{{ t("netease.loginHint") }}</span>
-            <span class="spacer"></span>
-            <m3e-button variant="tonal" size="small" @click="netease.openQr()">
-              <span slot="icon" class="material-symbols-outlined">qr_code</span>
-              {{ t("netease.login") }}
-            </m3e-button>
-          </template>
-        </div>
         <p class="online-hint">{{ t("online.hint") }}</p>
-        <div class="online-grid">
-          <button
-            v-for="c in playlistCards"
-            :key="c.key"
-            class="song-card"
-            @click="openPlaylist(c)"
-            @contextmenu="onPlaylistContext($event, c)"
-          >
-            <button
-              v-if="c.key.startsWith('user:')"
-              class="p-remove"
-              :title="t('online.removePlaylist')"
-              @click.stop="removePlaylist(c.id!)"
-            >
-              <span class="material-symbols-outlined">close</span>
+
+        <!-- 酷狗：每日推荐 + 排行榜卡片（公开数据，无需登录） -->
+        <template v-if="isKugou">
+          <div class="online-grid">
+            <button class="song-card" @click="openKugouDaily">
+              <div class="thumb">
+                <span class="placeholder material-symbols-outlined">event_available</span>
+              </div>
+              <div class="s-meta">
+                <div class="s-title">{{ t("homeFeed.dailyRecommend") }}</div>
+                <div class="s-artist">{{ t("homeFeed.dailyHint") }}</div>
+              </div>
             </button>
-            <div class="thumb">
-              <CachedCover v-if="coverOf(c)" :url="coverOf(c)" :alt="c.name" />
-              <span v-else class="placeholder material-symbols-outlined">
-                {{
-                  c.key === "local" ? "library_music" : c.key === "cloud" ? "cloud" : "queue_music"
-                }}
-              </span>
-            </div>
-            <div class="s-meta">
-              <div class="s-title" :title="c.name">{{ c.name }}</div>
-              <div class="s-artist">{{ subtitleOf(c) }}</div>
-            </div>
-          </button>
-        </div>
+            <button
+              v-for="r in kugouRanks"
+              :key="r.id"
+              class="song-card"
+              :title="r.desc"
+              @click="openKugouRank(r)"
+            >
+              <div class="thumb">
+                <CachedCover v-if="r.cover" :url="r.cover" :alt="r.name" />
+                <span v-else class="placeholder material-symbols-outlined">leaderboard</span>
+              </div>
+              <div class="s-meta">
+                <div class="s-title" :title="r.name">{{ r.name }}</div>
+                <div class="s-artist">{{ r.desc || t("online.playlists") }}</div>
+              </div>
+            </button>
+          </div>
+          <div v-if="kugouRanksLoading" class="loading">
+            <m3e-loading-indicator class="lm-loading" />
+            {{ t("online.loading") }}
+          </div>
+          <div v-else-if="kugouRanksError" class="error-bar">
+            <span class="material-symbols-outlined">error</span>
+            {{ kugouRanksError }}
+            <m3e-icon-button size="small" @click="kugouRanks = []">
+              <span class="material-symbols-outlined">refresh</span>
+            </m3e-icon-button>
+          </div>
+        </template>
 
-        <div class="add-playlist">
-          <input v-model="addId" :placeholder="t('online.addId')" />
-          <input v-model="addName" :placeholder="t('online.addName')" />
-          <m3e-button variant="tonal" size="small" @click="addPlaylist">
-            <span slot="icon" class="material-symbols-outlined">add</span>
-            {{ t("online.addBtn") }}
-          </m3e-button>
-        </div>
-        <p v-if="settings.onlinePlaylists.length" class="online-hint">
-          {{ t("online.addHint") }}
-        </p>
+        <!-- 网易云：云盘 + 我的歌单 + 本地 + 预设 + 用户歌单 -->
+        <template v-else>
+          <div class="online-grid">
+            <button
+              v-for="c in playlistCards"
+              :key="c.key"
+              class="song-card"
+              @click="openPlaylist(c)"
+              @contextmenu="onPlaylistContext($event, c)"
+            >
+              <button
+                v-if="c.key.startsWith('user:')"
+                class="p-remove"
+                :title="t('online.removePlaylist')"
+                @click.stop="removePlaylist(c.id!)"
+              >
+                <span class="material-symbols-outlined">close</span>
+              </button>
+              <div class="thumb">
+                <CachedCover v-if="coverOf(c)" :url="coverOf(c)" :alt="c.name" />
+                <span v-else class="placeholder material-symbols-outlined">
+                  {{
+                    c.key === "local"
+                      ? "library_music"
+                      : c.key === "cloud"
+                        ? "cloud"
+                        : "queue_music"
+                  }}
+                </span>
+              </div>
+              <div class="s-meta">
+                <div class="s-title" :title="c.name">{{ c.name }}</div>
+                <div class="s-artist">{{ subtitleOf(c) }}</div>
+              </div>
+            </button>
+          </div>
 
-        <div v-if="onlineError" class="error-bar">
-          <span class="material-symbols-outlined">error</span>
-          {{ onlineError }}
-        </div>
-        <div v-if="onlineLoading" class="loading">
-          <m3e-loading-indicator class="lm-loading" />
-          {{ t("online.loading") }}
-        </div>
+          <div class="add-playlist">
+            <input v-model="addId" :placeholder="t('online.addId')" />
+            <input v-model="addName" :placeholder="t('online.addName')" />
+            <m3e-button variant="tonal" size="small" @click="addPlaylist">
+              <span slot="icon" class="material-symbols-outlined">add</span>
+              {{ t("online.addBtn") }}
+            </m3e-button>
+          </div>
+          <p v-if="settings.onlinePlaylists.length" class="online-hint">
+            {{ t("online.addHint") }}
+          </p>
+
+          <div v-if="onlineError" class="error-bar">
+            <span class="material-symbols-outlined">error</span>
+            {{ onlineError }}
+          </div>
+          <div v-if="onlineLoading" class="loading">
+            <m3e-loading-indicator class="lm-loading" />
+            {{ t("online.loading") }}
+          </div>
+        </template>
       </template>
 
       <!-- 搜索根 -->
@@ -866,6 +1001,123 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
               </button>
               <div class="phone-actions">
                 <m3e-button variant="text" size="small" @click="netease.closeQr()">
+                  {{ t("actions.cancel") }}
+                </m3e-button>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+    </transition>
+
+    <!-- 酷狗登录弹窗（扫码 / 手机号）；复用与网易云弹窗同一套浮层样式 -->
+    <transition name="qr-fade">
+      <div v-if="kugou.qrOpen" class="qr-mask" @click.self="kugou.closeQr()">
+        <div class="qr-card">
+          <h3>{{ t("kugou.loginTitle") }}</h3>
+          <div class="phone-tabs">
+            <button
+              :class="['phone-tab', { active: kugou.authTab === 'qr' }]"
+              @click="
+                kugou.authTab = 'qr';
+                kugou.phoneError = '';
+              "
+            >
+              <span class="material-symbols-outlined">qr_code</span>
+              {{ t("kugou.qrTab") }}
+            </button>
+            <button
+              :class="['phone-tab', { active: kugou.authTab === 'phone' }]"
+              @click="
+                kugou.authTab = 'phone';
+                kugou.phoneError = '';
+              "
+            >
+              <span class="material-symbols-outlined">smartphone</span>
+              {{ t("kugou.phoneTab") }}
+            </button>
+          </div>
+
+          <!-- 扫码登录 -->
+          <template v-if="kugou.authTab === 'qr'">
+            <div class="qr-img-wrap">
+              <img v-if="kugou.qrCode" :src="kugou.qrCode" alt="QR" class="qr-img" />
+              <div v-else class="qr-loading">
+                <m3e-loading-indicator class="lm-loading" />
+                {{ t("online.loading") }}
+              </div>
+            </div>
+            <p class="qr-status" :class="{ error: kugou.qrState === 'error' }">
+              <template v-if="kugou.qrState === 'wait'">{{ t("kugou.scanWaiting") }}</template>
+              <template v-else-if="kugou.qrState === 'scanned'">{{
+                t("kugou.scanScanned")
+              }}</template>
+              <template v-else-if="kugou.qrState === 'success'">{{
+                t("kugou.scanSuccess")
+              }}</template>
+              <template v-else-if="kugou.qrState === 'timeout'">{{
+                t("kugou.scanTimeout")
+              }}</template>
+              <template v-else-if="kugou.qrState === 'error'">{{ kugou.qrError }}</template>
+            </p>
+            <div class="qr-actions">
+              <m3e-button variant="text" size="small" @click="kugou.closeQr()">
+                {{ t("actions.cancel") }}
+              </m3e-button>
+              <m3e-button
+                v-if="kugou.qrState === 'error' || kugou.qrState === 'timeout'"
+                variant="tonal"
+                size="small"
+                @click="kugou.openQr()"
+              >
+                <span slot="icon" class="material-symbols-outlined">refresh</span>
+                {{ t("kugou.login") }}
+              </m3e-button>
+            </div>
+          </template>
+
+          <!-- 手机号登录 -->
+          <template v-else>
+            <div class="phone-form">
+              <input
+                v-model="kugou.phone"
+                type="tel"
+                inputmode="numeric"
+                maxlength="11"
+                placeholder="手机号"
+                class="phone-input"
+                @keyup.enter="kugou.sendSms()"
+              />
+              <div class="sms-row">
+                <input
+                  v-model="kugou.smsCode"
+                  type="text"
+                  inputmode="numeric"
+                  maxlength="6"
+                  placeholder="短信验证码"
+                  class="phone-input sms-input"
+                  @keyup.enter="kugou.phoneLogin()"
+                />
+                <button
+                  class="sms-btn"
+                  :disabled="kugou.smsSending || kugou.smsCooldown > 0"
+                  @click="kugou.sendSms()"
+                >
+                  <template v-if="kugou.smsCooldown > 0"> {{ kugou.smsCooldown }}s </template>
+                  <template v-else-if="kugou.smsSending"> 发送中… </template>
+                  <template v-else> 获取验证码 </template>
+                </button>
+              </div>
+              <p v-if="kugou.phoneError" class="phone-error">{{ kugou.phoneError }}</p>
+              <button
+                class="phone-login-btn"
+                :disabled="kugou.phoneLogging"
+                @click="kugou.phoneLogin()"
+              >
+                {{ kugou.phoneLogging ? "登录中…" : "登录" }}
+              </button>
+              <div class="phone-actions">
+                <m3e-button variant="text" size="small" @click="kugou.closeQr()">
                   {{ t("actions.cancel") }}
                 </m3e-button>
               </div>
@@ -1201,46 +1453,6 @@ const showOnlineRoot = computed(() => onlineMode.value && !detail.value);
 .toast-leave-to {
   opacity: 0;
   transform: translate(-50%, 12px);
-}
-
-/* ---- 网易云账号 ---- */
-.netease-bar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  margin-bottom: 14px;
-  background: var(--md-sys-color-surface-container-low);
-  border-radius: var(--md-sys-shape-corner-extra-large);
-  box-shadow: inset 0 0 0 1px var(--lm-hairline);
-}
-.avatar {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  object-fit: cover;
-  flex: none;
-}
-.avatar.placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--md-sys-color-surface-container-high);
-  color: var(--md-sys-color-on-surface-variant);
-}
-.avatar.placeholder .material-symbols-outlined {
-  font-size: 20px;
-}
-.nickname {
-  font-size: var(--md-sys-typescale-body-medium-size);
-  font-weight: 500;
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.netease-bar .spacer {
-  flex: 1;
 }
 
 /* ---- 登录弹窗 ---- */

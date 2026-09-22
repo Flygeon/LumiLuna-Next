@@ -64,6 +64,10 @@ flate2 = "1"
 roxmltree = "0.20"
 # WebDAV 媒体本地代理：绑定 127.0.0.1 随机端口的轻量 HTTP 服务（SMTC 封面服务同款，跨平台）
 tiny_http = "0.12"
+# 酷狗音乐 API 客户端（vendored from MD3Music，AGPL-3.0）。
+# 以 path 依赖形式链接：kugou.rs 经 kugou_server::bridge 进程内直调其路由表，
+# 不启动其 HTTP 服务端。该 crate 内已自带 ureq/sha1/rand/qrcode 等依赖。
+kugou_server = { path = "kugou_server" }
 
 # Windows 系统媒体控件（SMTC）：把本应用注册为系统媒体会话。
 # 仅在 Windows 编译，Linux/macOS 构建不受影响。

@@ -282,6 +282,8 @@ type BoolSettingKey =
   | "lyricBlur"
   | "enableOnlineMusic"
   | "neteaseEnabled"
+  | "kugouEnabled"
+  | "kugouAutoSignIn"
   | "onlineNovelEnabled"
   | "bqgNovelEnabled"
   | "onlineAnimeEnabled"
@@ -1102,13 +1104,28 @@ function selectSection(id: string) {
           />
         </label>
         <p class="hint">{{ t("settings.neteaseHint") }}</p>
+        <label class="row switch-row">
+          <span class="row-label">{{ t("settings.kugouEnable") }}</span>
+          <m3e-switch
+            :checked="settings.kugouEnabled"
+            @change="setSwitch('kugouEnabled', $event)"
+          />
+        </label>
+        <p class="hint">{{ t("settings.kugouHint") }}</p>
+        <label v-if="settings.kugouEnabled" class="row switch-row">
+          <span class="row-label">{{ t("settings.kugouAutoSignIn") }}</span>
+          <m3e-switch
+            :checked="settings.kugouAutoSignIn"
+            @change="setSwitch('kugouAutoSignIn', $event)"
+          />
+        </label>
         <div v-if="settings.enableOnlineMusic" class="row">
           <div class="row-label">
             <span>{{ t("settings.onlineServer") }}</span>
           </div>
           <div class="segmented">
             <button
-              v-for="s in ['netease'] as const"
+              v-for="s in ['netease', 'kugou'] as const"
               :key="s"
               class="seg"
               :class="{ active: settings.musicServer === s }"

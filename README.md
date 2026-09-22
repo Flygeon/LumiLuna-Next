@@ -30,7 +30,7 @@ The music player is **Apple-Music-inspired** — fluid dynamic background, cover
 - **Audio effects engine**: 10-band EQ + bass boost + reverb + stereo width; presets can be saved, imported/exported and shared via compact LLFX3 codes
 - **Desktop lyrics**: standalone click-through always-on-top window, 4 transition animations, position memory and lock
 - **SMTC (Windows system media controls)**: taskbar media overlay, media keys (play/pause/prev/next/seek), album art
-- **Online music**: NetEase Cloud Music QR-code / phone-number login (full weapi / xeapi protocol), cloud drive and playlists; plus an experimental Meting aggregate source
+- **Online music**: NetEase Cloud Music QR-code / phone-number login (full weapi / xeapi protocol), cloud drive and playlists; Kugou QR-code / phone-number login, daily recommendations and charts, daily check-in (listening VIP + concept membership); plus an experimental Meting aggregate source
 - "Listen now" feed (private FM / daily recommendations), comments panel, listening-time statistics
 
 ### 📖 Readers
@@ -64,6 +64,7 @@ Parts of this project are ported from or modeled on the following open-source pr
 | [hikari_novel_flutter](https://github.com/15dd/hikari_novel_flutter) | Novel parsing | MIT |
 | [Kazumi](https://github.com/Predidit/Kazumi) | Anime parsing | GPL-3.0 |
 | [LDDC](https://github.com/chenmozhijin/LDDC) | QQ Music QRC word-timed lyrics | GPL-3.0-only |
+| [md3Music](https://github.com/zzyoxml/md3Music) | Kugou Music API (login / playback resolution / daily check-in) | AGPL-3.0 |
 
 ## 🚀 Quick Start
 
@@ -152,5 +153,10 @@ Third-party projects this app references or ports code from:
 - [hikari_novel_flutter](https://github.com/15dd/hikari_novel_flutter) — novel parsing (© 15dd, MIT)
 - [Kazumi](https://github.com/Predidit/Kazumi) — anime parsing (© Predidit, GPL-3.0)
 - [LDDC](https://github.com/chenmozhijin/LDDC) — the QQ Music QRC word-timed lyric module is ported from this project (© 沉默の金, GPL-3.0-only)
+- [md3Music](https://github.com/zzyoxml/md3Music) — Kugou Music API (login / playback resolution / daily check-in); its embedded Rust server is vendored verbatim into `src-tauri/kugou_server/` (© zzyoxml, AGPL-3.0)
 
 > Each reference project's license applies to its corresponding code; LumiLuna's own code remains GPL-3.0-only.
+> `src-tauri/kugou_server/` is AGPL-3.0 code from md3Music, vendored verbatim with its
+> [LICENSE](src-tauri/kugou_server/LICENSE) preserved. Under GPLv3 §13, AGPLv3 code may be
+> combined with this project, with AGPL §13's network-interaction clause applying to the
+> combination; redistribution must also comply with AGPL-3.0.

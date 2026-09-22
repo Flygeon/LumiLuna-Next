@@ -87,6 +87,8 @@ export default [
       "src/components/NovelBqgView.vue",
       "src/components/NovelDetailPanel.vue",
       "src/components/NovelOnlineView.vue",
+      "src/components/KugouFeed.vue",
+      "src/components/PlatformBar.vue",
       "src/components/PixivDetailPanel.vue",
       "src/components/PixivOnlineView.vue",
       "src/views/MusicView.vue",

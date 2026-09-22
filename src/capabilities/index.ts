@@ -23,6 +23,12 @@ import type {
   SmtcCommand,
   SmtcMedia,
   SmtcPlayback,
+  KugouLoginStatus,
+  KugouProfile,
+  KugouQrCheck,
+  KugouQrKey,
+  KugouSignInResult,
+  KugouSongUrl,
   NeteaseCloudPage,
   NeteaseComment,
   NeteaseCommentsPage,
@@ -372,6 +378,70 @@ export const capabilities = {
   },
   neteaseLogout(): Promise<void> {
     return safeInvoke("netease_logout");
+  },
+
+  // ---- 酷狗音乐账号 ----
+  // 请求经 vendored 的 kugou_server crate 进程内直调其路由表（见 src-tauri/src/kugou.rs），
+  // 凭据由 Rust 侧持有并持久化，不进入 WebView。
+  kugouLoginStatus(): Promise<KugouLoginStatus> {
+    return safeInvoke("kugou_login_status");
+  },
+  kugouLoginQrKey(): Promise<KugouQrKey> {
+    return safeInvoke("kugou_login_qr_key");
+  },
+  kugouLoginQrCheck(key: string): Promise<KugouQrCheck> {
+    return safeInvoke("kugou_login_qr_check", { key });
+  },
+  kugouCaptchaSent(mobile: string): Promise<void> {
+    return safeInvoke("kugou_captcha_sent", { mobile });
+  },
+  kugouLoginCellphone(mobile: string, code: string): Promise<KugouProfile> {
+    return safeInvoke("kugou_login_cellphone", { mobile, code });
+  },
+  kugouAccount(): Promise<KugouProfile> {
+    return safeInvoke("kugou_account");
+  },
+  kugouLogout(): Promise<void> {
+    return safeInvoke("kugou_logout");
+  },
+  /** 每日签到（畅听 VIP + 概念版升级）；ssaCode 非空表示需二次安全验证 */
+  kugouSignIn(): Promise<KugouSignInResult> {
+    return safeInvoke("kugou_sign_in");
+  },
+  /** 解析播放地址。albumAudioId / quality 可选 */
+  kugouSongUrl(hash: string, albumAudioId?: string, quality?: string): Promise<KugouSongUrl> {
+    return safeInvoke("kugou_song_url", {
+      hash,
+      albumAudioId: albumAudioId ?? null,
+      quality: quality ?? null,
+    });
+  },
+  /**
+   * 以下列表接口返回酷狗上游原始 JSON：上游存在新旧两套字段形态，
+   * 容错归一化统一放在 utils/kugou.ts（与既有 utils/meting.ts 的做法一致）。
+   */
+  kugouSearch(keyword: string, page?: number, pagesize?: number): Promise<unknown> {
+    return safeInvoke("kugou_search", {
+      keyword,
+      page: page ?? null,
+      pagesize: pagesize ?? null,
+    });
+  },
+  kugouPlaylistDetail(id: string): Promise<unknown> {
+    return safeInvoke("kugou_playlist_detail", { id });
+  },
+  kugouRankList(zone?: string): Promise<unknown> {
+    return safeInvoke("kugou_rank_list", { zone: zone ?? null });
+  },
+  kugouRankSongs(rankCid: string, page?: number, pagesize?: number): Promise<unknown> {
+    return safeInvoke("kugou_rank_songs", {
+      rankCid,
+      page: page ?? null,
+      pagesize: pagesize ?? null,
+    });
+  },
+  kugouEverydayRecommend(): Promise<unknown> {
+    return safeInvoke("kugou_everyday_recommend");
   },
 
   // ---- 在线小说（Wenku8）----

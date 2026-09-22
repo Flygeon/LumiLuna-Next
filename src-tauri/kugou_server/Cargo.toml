@@ -1,0 +1,51 @@
+# 酷狗音乐 API 客户端（vendored）。
+#
+# 来源：MD3Music（https://github.com/zzyoxml/md3Music）内嵌的 Rust API 服务器
+# kugou_api_server/rust，原样引入本仓库作为 path 依赖，未做逻辑改动。
+# 上游以 GNU AGPL-3.0 授权；本 crate 沿用同一许可，详见仓库根 README 致谢栏。
+#
+# 与上游的差异（仅以下三处，均不涉及接口逻辑）：
+#   1. crate-type 只保留 rlib —— 桌面 Tauri 以库形式链接，不需要上游供
+#      Android dart:ffi/JNI 使用的 cdylib（libkugou_server.so）。
+#   2. 移除 [profile.release] —— 作为依赖时其 profile 段会被 Cargo 忽略。
+#   3. 移除 serde_json 的 "preserve_order" feature —— 该项目为 Cargo feature
+#      全局统一，开启会同时改变宿主 crate 的 serde_json 行为（BTreeMap →
+#      IndexMap）。实测酷狗签名（helper::params_joined_sorted / sign_params）
+#      对 params 显式排序，被签名的 body 又由服务端按收到的字节重算，故键序
+#      不参与校验，去掉该 feature 不影响正确性。
+#   4. 保留 tiny_http 与 server.rs：HTTP 服务端在本项目不使用（改由
+#      src/bridge.rs 进程内直调路由表），保留以便与上游保持可比对。
+
+[package]
+name = "kugou_server"
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0-only"
+description = "酷狗音乐 API 客户端（vendored from MD3Music）"
+
+[lib]
+name = "kugou_server"
+crate-type = ["rlib"]
+
+[dependencies]
+tiny_http = "0.12"
+ureq = { version = "2", default-features = false, features = ["tls", "gzip", "json"] }
+md-5 = "0.10"
+sha1 = "0.10"
+sha2 = "0.10"
+aes = "0.8"
+rsa = { version = "0.9", features = ["pem", "sha2", "std"] }
+num-traits = "0.2"
+base64 = "0.22"
+flate2 = "1"
+rand = "0.8"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+libc = "0.2"
+qrcode = { version = "0.14.0", features = ["image"] }
+image = { version = "0.25", default-features = false, features = ["png"] }
+log = "0.4"
+
+[target.'cfg(target_os = "android")'.dependencies]
+jni = "0.21"
+android_logger = "0.14"

@@ -7,6 +7,7 @@ import { useNeteaseStore } from "@/stores/netease";
 import { useAudioEffectsStore } from "@/stores/audioEffects";
 // parseLrc 由 @/utils/lyricTimeline 提供（原先定义在本文件，已移出供歌词源复用）
 import { META_RE, parseLrc } from "@/utils/lyricTimeline";
+import { resolveKugouUrl } from "@/utils/kugou";
 import { lrcGet, lrcSet, resolveCover } from "@/utils/onlineCache";
 import { emitDesktopLyricsState } from "@/utils/desktopLyrics";
 import {
@@ -774,6 +775,11 @@ export const usePlayerStore = defineStore("player", () => {
   async function loadOnlineSong(item: OnlineSong) {
     loadingSong.value = true;
     try {
+      // 酷狗列表接口不返回直链：首次播放由 MusicView 解析，这里兜底
+      // 「上一首 / 下一首 / 自动续播」——解析结果写回队列项，避免重复请求
+      if (!item.url && item.server === "kugou") {
+        item.url = await resolveKugouUrl(item);
+      }
       let parsed: LyricLine[] = [];
       try {
         // lrc 字段可能是 URL（需拉取），也可能是内嵌歌词文本；

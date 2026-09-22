@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { LazyStore } from "@tauri-apps/plugin-store";
 import { capabilities } from "@/capabilities";
 import { applySeedColor, clearSeedTokens } from "@/utils/dynamicTheme";
@@ -112,6 +112,10 @@ const DEFAULTS = {
   webdavPass: "",
   /** 实验性：网易云账号（扫码登录，我的歌单 + 云盘） */
   neteaseEnabled: false,
+  /** 实验性：酷狗账号（扫码/手机号登录，每日推荐 + 排行榜） */
+  kugouEnabled: false,
+  /** 酷狗：登录后自动签到（今日已签则跳过） */
+  kugouAutoSignIn: true,
   /** 实验性：在线小说（Wenku8 抓取） */
   onlineNovelEnabled: false,
   /** 实验性：笔趣阁网络小说（m.bqglll.cc，JS 验证门，走隐藏 WebView） */
@@ -211,6 +215,8 @@ export const useSettingsStore = defineStore("settings", () => {
   const webdavUser = ref(DEFAULTS.webdavUser);
   const webdavPass = ref(DEFAULTS.webdavPass);
   const neteaseEnabled = ref(DEFAULTS.neteaseEnabled);
+  const kugouEnabled = ref(DEFAULTS.kugouEnabled);
+  const kugouAutoSignIn = ref(DEFAULTS.kugouAutoSignIn);
   const onlineNovelEnabled = ref(DEFAULTS.onlineNovelEnabled);
   const bqgNovelEnabled = ref(DEFAULTS.bqgNovelEnabled);
   const onlineAnimeEnabled = ref(DEFAULTS.onlineAnimeEnabled);
@@ -247,6 +253,17 @@ export const useSettingsStore = defineStore("settings", () => {
   const bangumiUsername = ref(DEFAULTS.bangumiUsername);
   const bangumiSyncedAt = ref(DEFAULTS.bangumiSyncedAt);
   const loaded = ref(false);
+
+  /**
+   * 已启用的在线平台（固定展示顺序）。
+   * 平台切换条只在长度 ≥ 2 时渲染——单平台用户界面与改造前完全一致。
+   */
+  const enabledServers = computed<MusicServer[]>(() => {
+    const list: MusicServer[] = [];
+    if (neteaseEnabled.value) list.push("netease");
+    if (kugouEnabled.value) list.push("kugou");
+    return list;
+  });
 
   // 单一注册表：新增设置项只需在此加一行，load/save 自动覆盖
   const fields = {
@@ -287,6 +304,8 @@ export const useSettingsStore = defineStore("settings", () => {
     webdavUser,
     webdavPass,
     neteaseEnabled,
+    kugouEnabled,
+    kugouAutoSignIn,
     onlineNovelEnabled,
     bqgNovelEnabled,
     onlineAnimeEnabled,
@@ -338,13 +357,13 @@ export const useSettingsStore = defineStore("settings", () => {
     } catch (e) {
       console.warn("Failed to load settings:", e);
     }
-    // 兼容旧版本：meting 在线音乐已移除 QQ 音乐平台，历史值归一化到网易云
-    if (musicServer.value !== "netease") {
+    // 兼容旧版本：历史上只支持网易云，未知平台值归一化到网易云
+    if (musicServer.value !== "netease" && musicServer.value !== "kugou") {
       musicServer.value = "netease";
     }
-    if (onlinePlaylists.value.some((p) => p.server !== "netease")) {
-      onlinePlaylists.value = onlinePlaylists.value.filter((p) => p.server === "netease");
-    }
+    onlinePlaylists.value = onlinePlaylists.value.filter(
+      (p) => p.server === "netease" || p.server === "kugou",
+    );
     loaded.value = true;
   }
 
@@ -438,6 +457,7 @@ export const useSettingsStore = defineStore("settings", () => {
 
   return {
     ...fields,
+    enabledServers,
     loaded,
     load,
     save,

@@ -438,21 +438,29 @@ export interface SmtcCommand {
   positionMs?: number;
 }
 
-/** 在线音乐平台（meting API；QQ 音乐平台选项已移除） */
-export type MusicServer = "netease";
+/** 在线音乐平台 */
+export type MusicServer = "netease" | "kugou";
 
-/** 在线歌曲（meting API 返回） */
+/** 在线歌曲（meting API / 酷狗返回） */
 export interface OnlineSong {
   id: string;
   name: string;
   artist: string;
-  /** 可播放音频 URL */
+  /** 可播放音频 URL；需要延迟解析的平台（酷狗）初始为空串 */
   url: string;
   /** 封面图片 URL */
   pic: string;
   /** 歌词文本 URL */
   lrc: string;
   album?: string;
+  /** 来源平台；缺省视为 "netease"（兼容历史队列数据） */
+  server?: MusicServer;
+  /** 酷狗：歌曲 file hash，解析播放地址的主键 */
+  hash?: string;
+  /** 酷狗：album_audio_id，取高音质时需要 */
+  albumAudioId?: string;
+  /** 时长（毫秒，酷狗列表返回） */
+  durationMs?: number;
 }
 
 /** 播放队列项：本地文件 / 在线歌曲 / WebDAV 条目 */
@@ -482,6 +490,57 @@ export interface OnlinePlaylistEntry {
   server: MusicServer;
   id: string;
   name: string;
+}
+
+// ── 酷狗音乐账号（Rust 侧直调，凭据不进 WebView）─────────────────
+
+/** 酷狗账号信息 */
+export interface KugouProfile {
+  userid: number;
+  nickname: string;
+  avatar: string;
+  /** 会员类型（cookie vip_type） */
+  vipType: number;
+}
+
+/** 酷狗登录态（本地读取，不发网络请求） */
+export interface KugouLoginStatus {
+  loggedIn: boolean;
+  profile: KugouProfile | null;
+  /** 已签到日期（YYYY-MM-DD），供签到日历打勾 */
+  signedDays: string[];
+}
+
+/** 扫码登录：二维码 key 与内容 */
+export interface KugouQrKey {
+  key: string;
+  /** 二维码内容；前端用 qrcode 库渲染（与网易云登录同一路径） */
+  url: string;
+}
+
+/** 扫码轮询结果 */
+export interface KugouQrCheck {
+  /** 1=等待扫码 2/803=已扫码待确认 4=登录成功 0/800=已过期 */
+  status: number;
+  loggedIn: boolean;
+  profile: KugouProfile | null;
+}
+
+/** 签到结果（畅听 VIP + 概念版双签到） */
+export interface KugouSignInResult {
+  ok: boolean;
+  message: string;
+  /** 需二次安全验证（error_code=20028）时返回，完成验证后重试 */
+  ssaCode: string | null;
+  /** 是否已升级为概念版（SVIP） */
+  svip: boolean;
+}
+
+/** 播放地址解析结果 */
+export interface KugouSongUrl {
+  url: string;
+  /** 实际命中的音质档位（128 / 320 / flac / high / ...） */
+  quality: string;
 }
 
 // ── 听歌时长统计 ──────────────────────────────────────────────

@@ -30,7 +30,7 @@ LumiLuna 基于 **Tauri 2 + Vue 3 + TypeScript + Material Design 3** 构建：�
 - **音效引擎**：10 段 EQ + 低音增强 + 混响 + 立体声宽度，预设可保存 / 导入导出 / 生成分享码（LLFX3 紧凑格式）
 - **桌面歌词**：独立透明置顶窗口、鼠标穿透、4 种切换动画、位置记忆与锁定
 - **SMTC（Windows 系统媒体控件）**：任务栏媒体浮层、媒体键（播放/暂停/切歌/拖动进度）、封面图
-- **在线音乐**：网易云扫码 / 手机号登录（weapi / xeapi 全协议）、云盘与歌单；另有实验性 Meting 聚合源
+- **在线音乐**：网易云扫码 / 手机号登录（weapi / xeapi 全协议）、云盘与歌单；酷狗扫码 / 手机号登录、每日推荐与排行榜、每日签到（畅听 VIP + 概念版双签到）；另有实验性 Meting 聚合源
 - 现在就听信息流（私人 FM / 每日推荐）、评论面板、听歌时长统计
 
 ### 📖 阅读器
@@ -64,6 +64,7 @@ LumiLuna 基于 **Tauri 2 + Vue 3 + TypeScript + Material Design 3** 构建：�
 | [hikari_novel_flutter](https://github.com/15dd/hikari_novel_flutter) | 小说解析 | MIT |
 | [Kazumi](https://github.com/Predidit/Kazumi) | 动漫解析 | GPL-3.0 |
 | [LDDC](https://github.com/chenmozhijin/LDDC) | QQ 音乐 QRC 逐字歌词 | GPL-3.0-only |
+| [md3Music](https://github.com/zzyoxml/md3Music) | 酷狗音乐 API（登录 / 音乐解析 / 每日签到） | AGPL-3.0 |
 
 ## 🚀 快速开始
 
@@ -152,5 +153,9 @@ doc/               # 设计与方案文档
 - [hikari_novel_flutter](https://github.com/15dd/hikari_novel_flutter) —— 小说解析（© 15dd，MIT）
 - [Kazumi](https://github.com/Predidit/Kazumi) —— 动漫解析（© Predidit，GPL-3.0）
 - [LDDC](https://github.com/chenmozhijin/LDDC) —— QQ 音乐 QRC 逐字歌词模块移植自该项目（© 沉默の金，GPL-3.0-only）
+- [md3Music](https://github.com/zzyoxml/md3Music) —— 酷狗音乐 API（登录 / 音乐解析 / 每日签到），其内嵌的 Rust 服务端已原样引入 `src-tauri/kugou_server/`（© zzyoxml，AGPL-3.0）
 
 > 各参考项目的许可条款适用于其对应代码；本项目的自有代码仍以 GPL-3.0-only 发布。
+> 其中 `src-tauri/kugou_server/` 为 md3Music 的 AGPL-3.0 代码，原样 vendored 并保留其
+> [LICENSE](src-tauri/kugou_server/LICENSE)。依 GPLv3 §13，AGPLv3 代码可与本项目组合，
+> AGPL §13 的网络交互条款适用于该组合；如需在本项目中分发，请一并遵守 AGPL-3.0。
