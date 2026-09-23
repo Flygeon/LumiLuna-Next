@@ -459,6 +459,10 @@ export interface OnlineSong {
   hash?: string;
   /** 酷狗：album_audio_id，取高音质时需要 */
   albumAudioId?: string;
+  /** 酷狗：album_id，解析播放地址时一并上报（部分歌曲缺它取不到音源） */
+  albumId?: string;
+  /** 酷狗：解析结果仅为试听片段（无版权 / 非会员时上游只给开头一小段） */
+  trial?: boolean;
   /** 时长（毫秒，酷狗列表返回） */
   durationMs?: number;
 }
@@ -541,6 +545,8 @@ export interface KugouSongUrl {
   url: string;
   /** 实际命中的音质档位（128 / 320 / flac / high / ...） */
   quality: string;
+  /** 是否为试听片段（无版权 / 非会员时上游只给开头一小段） */
+  trial: boolean;
 }
 
 // ── 听歌时长统计 ──────────────────────────────────────────────

@@ -642,7 +642,9 @@ export function mockInvoke<T>(cmd: string, args?: Record<string, unknown>): Prom
         svip: false,
       });
     case "kugou_song_url":
-      return as({ url: "", quality: "128" });
+      return as({ url: "", quality: "128", trial: false });
+    case "kugou_cover":
+      throw new Error("浏览器预览不支持酷狗封面代理，请在桌面端使用");
     case "kugou_logout":
     case "kugou_captcha_sent":
       return as(undefined);

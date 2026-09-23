@@ -408,13 +408,26 @@ export const capabilities = {
   kugouSignIn(): Promise<KugouSignInResult> {
     return safeInvoke("kugou_sign_in");
   },
-  /** 解析播放地址。albumAudioId / quality 可选 */
-  kugouSongUrl(hash: string, albumAudioId?: string, quality?: string): Promise<KugouSongUrl> {
+  /** 解析播放地址。albumAudioId / albumId / quality 可选 */
+  kugouSongUrl(
+    hash: string,
+    albumAudioId?: string,
+    albumId?: string,
+    quality?: string,
+  ): Promise<KugouSongUrl> {
     return safeInvoke("kugou_song_url", {
       hash,
       albumAudioId: albumAudioId ?? null,
+      albumId: albumId ?? null,
       quality: quality ?? null,
     });
+  },
+  /**
+   * 取酷狗封面（Rust 侧代理，返回 dataURL）。
+   * 酷狗图床不返回 CORS 头，WebView 直连 fetch 会被拦，故必须走这里。
+   */
+  kugouCover(url: string): Promise<string> {
+    return safeInvoke("kugou_cover", { url });
   },
   /**
    * 以下列表接口返回酷狗上游原始 JSON：上游存在新旧两套字段形态，

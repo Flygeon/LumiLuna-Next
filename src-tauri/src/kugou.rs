@@ -18,6 +18,7 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, OnceLock};
 
+use base64::Engine;
 use chrono::{FixedOffset, TimeZone};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -321,6 +322,8 @@ pub struct KugouSongUrl {
     pub url: String,
     /// 实际命中的音质档位（128 / 320 / flac / high / ...）
     pub quality: String,
+    /// 是否为试听片段（无版权 / 非会员时上游只给 30~60s 片段）
+    pub trial: bool,
 }
 
 // ---- 账号 ----
@@ -597,51 +600,146 @@ fn kugou_sign_in_sync(app: tauri::AppHandle) -> Result<KugouSignInResult, String
 
 // ---- 音乐解析 ----
 
-/// 解析播放地址。`album_audio_id` 可选（部分歌曲需要它才能取到高音质）。
+/// 默认音质档位。`/song/url` 的 quality 是字符串（128/320/flac/high/...）。
+const DEFAULT_QUALITY: &str = "128";
+
+/// 解析播放地址。`album_audio_id` / `album_id` 可选（部分歌曲缺它们取不到高音质）。
 #[tauri::command]
 pub async fn kugou_song_url(
     app: tauri::AppHandle,
     hash: String,
     album_audio_id: Option<String>,
+    album_id: Option<String>,
     quality: Option<String>,
 ) -> Result<KugouSongUrl, String> {
     tauri::async_runtime::spawn_blocking(move || {
-        kugou_song_url_sync(app, hash, album_audio_id, quality)
+        kugou_song_url_sync(app, hash, album_audio_id, album_id, quality)
     })
     .await
     .map_err(|e| format!("酷狗请求异常：{e}"))?
+}
+
+/// 一次播放地址命中的结果
+struct PlayHit {
+    url: String,
+    quality: String,
+    trial: bool,
+}
+
+impl From<PlayHit> for KugouSongUrl {
+    fn from(hit: PlayHit) -> Self {
+        KugouSongUrl {
+            url: hit.url,
+            quality: hit.quality,
+            trial: hit.trial,
+        }
+    }
 }
 
 fn kugou_song_url_sync(
     app: tauri::AppHandle,
     hash: String,
     album_audio_id: Option<String>,
+    album_id: Option<String>,
     quality: Option<String>,
 ) -> Result<KugouSongUrl, String> {
     ensure_loaded(&app);
-    let mut params = json!({ "hash": hash });
-    if let Some(id) = album_audio_id {
-        if !id.is_empty() {
-            if let Some(obj) = params.as_object_mut() {
-                obj.insert("album_audio_id".to_string(), json!(id));
-            }
-        }
+    // 上游按小写 hash 索引（参考实现的 getSongUrl 也是先 toLowerCase）
+    let hash = hash.trim().to_ascii_lowercase();
+    if hash.is_empty() {
+        return Err("缺少歌曲 hash，无法解析播放地址".to_string());
     }
-    if let Some(q) = quality {
-        if !q.is_empty() {
-            if let Some(obj) = params.as_object_mut() {
-                obj.insert("quality".to_string(), json!(q));
+    let quality = match quality.as_deref() {
+        Some(q) if !q.is_empty() => q.to_string(),
+        _ => DEFAULT_QUALITY.to_string(),
+    };
+
+    let mut errors: Vec<String> = Vec::new();
+
+    // 接口顺序对齐参考实现的 getSongUrl：
+    //   /song/url      → trackercdn v5/url，普通路径，登录与否都能用；
+    //   /song/url/new  → tracker v6/priv_url，服务端要读 cookie 里的 vip_token
+    //                    才认 VIP，没有 VIP 凭证时常常直接给不出链接。
+    // 之前的实现只调了后者，普通账号必然全军覆没——这就是实机上「该歌曲暂无
+    // 可用播放地址」的根因。
+    for path in ["/song/url", "/song/url/new"] {
+        match call_json(
+            path,
+            url_params(&hash, &album_audio_id, &album_id, &quality, false),
+        ) {
+            Ok(res) => {
+                if let Some(hit) = extract_play(&data_node(&res), &quality) {
+                    // fail_process 含 buy 且请求的不是标准音质 ⇒ 上游给的是试听片段，
+                    // 降级到标准音质重取一次（音频本身可播，但只有前一小段）
+                    if hit.trial && quality != DEFAULT_QUALITY {
+                        let fallback =
+                            url_params(&hash, &album_audio_id, &album_id, DEFAULT_QUALITY, false);
+                        if let Ok(fb) = call_json(path, fallback) {
+                            if let Some(fb_hit) = extract_play(&data_node(&fb), DEFAULT_QUALITY) {
+                                return Ok(fb_hit.into());
+                            }
+                        }
+                    }
+                    return Ok(hit.into());
+                }
             }
+            Err(e) => errors.push(e),
         }
     }
 
-    let res = call_json("/song/url/new", params)?;
-    // data 可能是对象，也可能是数组（取首个）
-    let node = match res.get("data") {
+    // 试听兜底：未登录 / 无版权时只有 free_part=1 才回 30~60s 片段。
+    // 能播一小段总好过完全播不了，但要如实标记 trial。
+    let free_params = url_params(&hash, &album_audio_id, &album_id, DEFAULT_QUALITY, true);
+    if let Ok(free) = call_json("/song/url", free_params) {
+        if let Some(hit) = extract_play(&data_node(&free), DEFAULT_QUALITY) {
+            return Ok(hit.into());
+        }
+    }
+
+    // 接口层本身就失败了（网络 / 风控）就如实回报第一个错误，
+    // 别笼统说成「无版权」，否则排查时会被误导。
+    match errors.into_iter().next() {
+        Some(e) => Err(e),
+        None => Err("该歌曲暂无可用播放地址（可能无版权或需要会员）".to_string()),
+    }
+}
+
+/// 播放地址请求参数。`free_part` 为 true 时向接口索取试听片段。
+fn url_params(
+    hash: &str,
+    album_audio_id: &Option<String>,
+    album_id: &Option<String>,
+    quality: &str,
+    free_part: bool,
+) -> Value {
+    let mut params = json!({ "hash": hash, "quality": quality });
+    if let Some(obj) = params.as_object_mut() {
+        // 这两个 id 上游用 q_num 读，字符串数字也能解析
+        if let Some(id) = album_audio_id.as_deref().filter(|s| !s.is_empty()) {
+            obj.insert("album_audio_id".to_string(), json!(id));
+        }
+        if let Some(id) = album_id.as_deref().filter(|s| !s.is_empty()) {
+            obj.insert("album_id".to_string(), json!(id));
+        }
+        if free_part {
+            obj.insert("free_part".to_string(), json!(1));
+        }
+    }
+    params
+}
+
+/// 取响应的 data 层（可能没有 data、也可能是数组，统一取首个对象）
+fn data_node(res: &Value) -> Value {
+    match res.get("data") {
         Some(Value::Array(items)) => items.first().cloned().unwrap_or(Value::Null),
         Some(other) => other.clone(),
-        None => Value::Null,
-    };
+        None => res.clone(),
+    }
+}
+
+/// 从播放地址响应里取出可用链接。
+/// 返回 (url, 实际音质, 是否试听片段)；没有 url 时返回 None。
+fn extract_play(node: &Value, requested: &str) -> Option<PlayHit> {
     let url = match node.get("url") {
         Some(Value::String(s)) => s.clone(),
         Some(Value::Array(items)) => items
@@ -652,15 +750,152 @@ fn kugou_song_url_sync(
         _ => String::new(),
     };
     if url.is_empty() {
-        return Err(err_msg(&res, "该歌曲暂无可用播放地址"));
+        return None;
     }
-    Ok(KugouSongUrl {
+    // fail_process 含 "buy" ⇒ 该音质需要购买/会员，返回的 URL 实为试听片段，
+    // 不能当作完整音源使用
+    let trial = node
+        .get("fail_process")
+        .and_then(Value::as_array)
+        .map(|a| a.iter().any(|v| v.as_str() == Some("buy")))
+        .unwrap_or(false);
+    Some(PlayHit {
         url,
         quality: node
             .get("quality")
             .and_then(Value::as_str)
-            .unwrap_or("128")
+            .unwrap_or(requested)
             .to_string(),
+        trial,
+    })
+}
+
+// ---- 封面代理 ----
+
+/// 允许代理的图床域名后缀。该命令只用于绕开 WebView 的 CORS 限制，
+/// 加白名单避免它被当成任意 URL 的通用代理使用。
+const KUGOU_IMAGE_HOST_SUFFIXES: [&str; 3] = ["kugou.com", "kgimg.com", "kglink.com"];
+
+fn is_allowed_image_url(url: &str) -> bool {
+    let Some(rest) = url
+        .strip_prefix("https://")
+        .or_else(|| url.strip_prefix("http://"))
+    else {
+        return false;
+    };
+    let host = rest
+        .split(['/', '?', '#'])
+        .next()
+        .unwrap_or("")
+        .rsplit('@')
+        .next()
+        .unwrap_or("")
+        .split(':')
+        .next()
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    if host.is_empty() {
+        return false;
+    }
+    KUGOU_IMAGE_HOST_SUFFIXES
+        .iter()
+        .any(|suffix| host == *suffix || host.ends_with(&format!(".{suffix}")))
+}
+
+/// 取酷狗封面并以 dataURL 返回。
+///
+/// 为什么需要它：`imge.kugou.com` 不返回 `Access-Control-Allow-Origin`，
+/// WebView 里 `fetch()` 会被同源策略直接拦掉（表现为 `[封面缓存] 获取失败`
+/// 加上 `net::ERR_FAILED`）。改由 Rust 侧取字节，前端拿到 dataURL 直接当
+/// `src` 用；IndexedDB 缓存键仍是原始 URL，缓存行为不变。
+///
+/// 顺带处理图床前缀不一致：上游会给搜索结果的封面返回
+/// `imge.kugou.com/mcommon/{size}/…`，但实测同一文件在该前缀下 404、
+/// 在 `stdmusic/{size}/…` 下 200（见 stdmusic_variant 的说明）。
+#[tauri::command]
+pub async fn kugou_cover(url: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || kugou_cover_sync(&url))
+        .await
+        .map_err(|e| format!("酷狗封面请求异常：{e}"))?
+}
+
+fn kugou_cover_sync(url: &str) -> Result<String, String> {
+    if !is_allowed_image_url(url) {
+        return Err("不支持的图片地址".to_string());
+    }
+    let mut candidates = vec![url.to_string()];
+    if let Some(alt) = stdmusic_variant(url) {
+        candidates.push(alt);
+    }
+
+    let mut last_err = String::new();
+    for candidate in candidates {
+        match fetch_image_data_url(&candidate) {
+            Ok(data) => return Ok(data),
+            Err(e) => last_err = e,
+        }
+    }
+    Err(last_err)
+}
+
+/// 备用图床前缀：把路径首段换成 `stdmusic`。
+///
+/// 上游搜索接口返回的封面常形如 `…/mcommon/{size}/20241211/xxx.jpg`，
+/// 但实测该前缀取不到图（HTTP 404，CDN 只回默认占位图），而把首段换成
+/// `stdmusic` 后**同一张图**返回 200。两类前缀都接受 `{size}` 字面量，
+/// 所以只改前缀、其余原样保留；已是 stdmusic 或路径过短时返回 None。
+fn stdmusic_variant(url: &str) -> Option<String> {
+    let (scheme, rest) = url.split_once("://")?;
+    let (host, path) = rest.split_once('/')?;
+    let mut segments: Vec<&str> = path.split('/').collect();
+    if segments.len() < 2 || segments.first() == Some(&"stdmusic") {
+        return None;
+    }
+    segments[0] = "stdmusic";
+    Some(format!("{scheme}://{host}/{}", segments.join("/")))
+}
+
+/// 取单张图并转 dataURL
+fn fetch_image_data_url(url: &str) -> Result<String, String> {
+    let resp = image_client()
+        .get(url)
+        .header(reqwest::header::REFERER, "https://www.kugou.com/")
+        .header(
+            reqwest::header::USER_AGENT,
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        )
+        .send()
+        .map_err(|e| format!("封面请求失败：{e}"))?;
+    let status = resp.status().as_u16();
+    if !(200..=299).contains(&status) {
+        return Err(format!("封面返回 HTTP {status}"));
+    }
+    let mime = resp
+        .headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .filter(|v| v.starts_with("image/"))
+        .unwrap_or("image/jpeg")
+        .to_string();
+    let bytes = resp.bytes().map_err(|e| format!("封面读取失败：{e}"))?;
+    // 缺图时 CDN 也回 2xx + 极小占位图的情况兜一下
+    if bytes.len() < 512 {
+        return Err(format!("封面响应过小（{} 字节）", bytes.len()));
+    }
+    Ok(format!(
+        "data:{mime};base64,{}",
+        base64::engine::general_purpose::STANDARD.encode(&bytes)
+    ))
+}
+
+/// 封面代理专用客户端（带超时，避免图床卡住把命令一直挂着）
+fn image_client() -> &'static reqwest::blocking::Client {
+    static C: OnceLock<reqwest::blocking::Client> = OnceLock::new();
+    C.get_or_init(|| {
+        reqwest::blocking::Client::builder()
+            .timeout(std::time::Duration::from_secs(20))
+            .build()
+            .expect("构建封面 HTTP 客户端失败")
     })
 }
 

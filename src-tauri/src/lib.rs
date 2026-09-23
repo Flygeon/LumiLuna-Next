@@ -215,6 +215,7 @@ pub fn run() {
             kugou::kugou_logout,
             kugou::kugou_sign_in,
             kugou::kugou_song_url,
+            kugou::kugou_cover,
             kugou::kugou_search,
             kugou::kugou_playlist_detail,
             kugou::kugou_rank_list,

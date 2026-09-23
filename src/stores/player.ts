@@ -8,7 +8,7 @@ import { useAudioEffectsStore } from "@/stores/audioEffects";
 // parseLrc 由 @/utils/lyricTimeline 提供（原先定义在本文件，已移出供歌词源复用）
 import { META_RE, parseLrc } from "@/utils/lyricTimeline";
 import { resolveKugouUrl } from "@/utils/kugou";
-import { lrcGet, lrcSet, resolveCover } from "@/utils/onlineCache";
+import { lrcGet, lrcSet, needsProxiedCover, resolveCover } from "@/utils/onlineCache";
 import { emitDesktopLyricsState } from "@/utils/desktopLyrics";
 import {
   fetchCloudLyrics,
@@ -779,6 +779,20 @@ export const usePlayerStore = defineStore("player", () => {
       // 「上一首 / 下一首 / 自动续播」——解析结果写回队列项，避免重复请求
       if (!item.url && item.server === "kugou") {
         item.url = await resolveKugouUrl(item);
+        if (!item.url) {
+          lastError.value = translate(useSettingsStore().lang, "kugou.noSource").replace(
+            "{name}",
+            item.name,
+          );
+          return;
+        }
+        // 无版权 / 非会员时上游只给开头一小段：如实提示，
+        // 否则用户会以为播放器坏了
+        if (item.trial) {
+          showLyricNotice(
+            translate(useSettingsStore().lang, "kugou.trialOnly").replace("{name}", item.name),
+          );
+        }
       }
       let parsed: LyricLine[] = [];
       try {
@@ -824,13 +838,17 @@ export const usePlayerStore = defineStore("player", () => {
       coverColors.value = [];
       currentTime.value = 0;
       duration.value = 0;
-      // 封面主色：在线图需 CORS，加载失败则由 getDominantColors 内部兜底
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.onload = () => {
-        coverColors.value = getDominantColors(img);
-      };
-      img.src = item.pic;
+      // 封面主色：在线图需 CORS，加载失败则由 getDominantColors 内部兜底。
+      // 酷狗图床没有 CORS 头，这里直连必定失败 ⇒ 跳过，交给下面 resolveCover
+      // 拿到的 dataURL 再取色（dataURL 不受跨域限制）。
+      if (!needsProxiedCover(item.pic)) {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+          coverColors.value = getDominantColors(img);
+        };
+        img.src = item.pic;
+      }
       // 封面本地缓存：命中 IndexedDB 立即替换为 dataURL（不阻塞起播）；
       // 未命中则后台下载并写缓存，下次进入/重启直接读本地
       void resolveCover(item.pic).then((cover) => {

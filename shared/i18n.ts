@@ -438,6 +438,8 @@ export const messages = {
       signInRunning: "签到中…",
       signedToday: "今日已签到",
       signInHint: "领取畅听 VIP 并升级概念版会员",
+      trialOnly: "「{name}」仅有试听片段（无版权或需会员）",
+      noSource: "「{name}」暂无可用音源（无版权或需会员）",
     },
     netease: {
       loginTitle: "登录网易云",

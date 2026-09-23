@@ -29,7 +29,6 @@ import {
 import { translate } from "@shared/i18n";
 import { CURATED_PLAYLISTS, metingPlaylist, metingSearch } from "@/utils/meting";
 import type { MediaEntry, MusicServer, OnlinePlaylistEntry, OnlineSong } from "@shared/types";
-import type { NeteasePlaylist } from "@shared/types";
 
 const library = useLibraryStore();
 const player = usePlayerStore();
@@ -495,10 +494,12 @@ async function playOnlineSongs(songs: OnlineSong[], index: number) {
   if (!song.url && song.server === "kugou") {
     const url = await resolveKugouUrl(song);
     if (!url) {
-      error.value = `无法播放「${song.name}」：未取到播放地址`;
+      error.value = t("kugou.noSource").replace("{name}", song.name);
       return;
     }
     song.url = url;
+    // 无版权 / 非会员时上游只给开头一小段，如实提示，否则用户会以为播放器坏了
+    if (song.trial) notify(t("kugou.trialOnly").replace("{name}", song.name));
   }
 
   // 网易云无版权/VIP 歌曲 url 为空，直接提示不进入播放器
